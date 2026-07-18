@@ -32,6 +32,22 @@ export default function ChatClient({
   const active = threads.find((t) => t.applicationId === activeId);
   const messages = local[activeId] ?? [];
 
+  // Plantillas de respuesta rápida según quién escribe.
+  const quickReplies =
+    viewAs === "company"
+      ? [
+          "¡Hola! Gracias por postularte 🙌",
+          "Nos gustaría coordinar una entrevista. ¿Qué día te queda cómodo?",
+          "¿Podés contarnos un poco de tu experiencia?",
+          "Quedó cubierto el puesto por ahora, ¡gracias por tu interés!",
+        ]
+      : [
+          "¡Hola! Sí, sigo muy interesado/a 🙌",
+          "¿Cuándo podríamos coordinar la entrevista?",
+          "Gracias, quedo atento/a a novedades.",
+          "¿El puesto es presencial o remoto?",
+        ];
+
   function send() {
     const content = draft.trim();
     if (!content || !active) return;
@@ -101,6 +117,18 @@ export default function ChatClient({
                   {timeAgo(m.created_at)}
                 </p>
               </div>
+            ))}
+          </div>
+          {/* Plantillas de respuesta rápida */}
+          <div className="px-3 pt-2 flex gap-1.5 overflow-x-auto scroll-thin">
+            {quickReplies.map((q) => (
+              <button
+                key={q}
+                className="chip bg-surface text-gray-600 border border-gray-200 hover:border-primary hover:text-primary whitespace-nowrap shrink-0"
+                onClick={() => setDraft(q)}
+              >
+                {q.length > 32 ? q.slice(0, 30) + "…" : q}
+              </button>
             ))}
           </div>
           <div className="border-t border-gray-100 p-3 flex gap-2">

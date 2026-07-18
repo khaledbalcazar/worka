@@ -740,6 +740,11 @@ export default function AdminPanel({
               ["help_text", "Texto de ayuda"],
               ["custom_industries", "Rubros extra (separados por coma)"],
               ["custom_cities", "Ciudades extra (separadas por coma)"],
+              ["banner_enabled", "Banner global activo (escribí 'true' o dejá vacío)"],
+              ["banner_text", "Texto del banner global"],
+              ["banner_link", "Link del banner (opcional, ej: /empleos)"],
+              ["maintenance_mode", "Modo mantenimiento (escribí 'true' para activar)"],
+              ["maintenance_text", "Texto de la pantalla de mantenimiento"],
             ] as const
           ).map(([key, label]) => (
             <div key={key} className={key === "hero_subtitle" || key === "help_text" || key === "site_description" || key === "custom_industries" || key === "custom_cities" ? "lg:col-span-2" : ""}>

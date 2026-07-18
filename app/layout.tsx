@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { getSiteSettings } from "@/lib/data";
+import GlobalBanner from "@/components/GlobalBanner";
 import "./globals.css";
 
 const inter = Inter({
@@ -20,10 +21,24 @@ export async function generateMetadata(): Promise<Metadata> {
       settings.site_description ||
       "La plataforma de empleo 100% gratuita de Paraguay. Encontrá tu próximo trabajo o publicá tu vacante sin costo.",
     ...(settings.favicon_url
-      ? { icons: { icon: settings.favicon_url } }
+      ? {
+          icons: {
+            icon: settings.favicon_url,
+            apple: settings.favicon_url,
+          },
+        }
       : {}),
+    appleWebApp: {
+      capable: true,
+      title: settings.site_name || "Worka",
+      statusBarStyle: "default",
+    },
   };
 }
+
+export const viewport = {
+  themeColor: "#1e3a8a",
+};
 
 export default function RootLayout({
   children,
@@ -32,7 +47,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${inter.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-surface">{children}</body>
+      <body className="min-h-full flex flex-col bg-surface">
+        <GlobalBanner />
+        {children}
+      </body>
     </html>
   );
 }

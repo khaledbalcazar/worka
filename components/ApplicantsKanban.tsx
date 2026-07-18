@@ -60,6 +60,46 @@ export default function ApplicantsKanban({
     setTimeout(() => setToast(null), 4000);
   }
 
+  // Exporta los postulantes de esta vacante a un CSV descargable (Excel).
+  function exportCsv() {
+    const headers = [
+      "Nombre",
+      "Ciudad",
+      "WhatsApp",
+      "Estado",
+      "Preguntas OK",
+      "Identidad verificada",
+      "Tiene CV",
+      "Se postuló",
+      "Nota interna",
+    ];
+    const escape = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
+    const rows = items.map((a) =>
+      [
+        a.candidate_name,
+        a.candidate_city,
+        a.candidate_phone,
+        a.status,
+        `${a.answers_ok}/${a.answers_total}`,
+        a.identity_verified ? "Sí" : "No",
+        a.has_cv ? "Sí" : "No",
+        new Date(a.applied_at).toLocaleDateString("es-PY"),
+        a.internal_note ?? "",
+      ]
+        .map(escape)
+        .join(",")
+    );
+    // BOM para que Excel abra bien los acentos.
+    const csv = "﻿" + [headers.map(escape).join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `postulantes-${job.title.replace(/\s+/g, "-").toLowerCase()}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   function moveTo(appId: string, column: Column, reason?: RejectionReason) {
     const item = items.find((a) => a.id === appId);
     if (!item || item.column === column) return;
@@ -122,6 +162,16 @@ export default function ApplicantsKanban({
           {toast}
         </div>
       )}
+
+      <div className="flex justify-end mb-3">
+        <button
+          className="btn-secondary text-xs"
+          disabled={items.length === 0}
+          onClick={exportCsv}
+        >
+          ⬇️ Exportar postulantes (CSV)
+        </button>
+      </div>
 
       <div className="grid lg:grid-cols-3 gap-4 items-start">
         {COLUMNS.map((col) => {

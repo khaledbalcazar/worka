@@ -491,6 +491,11 @@ export const defaultSiteSettings: Record<string, string> = {
   help_text: "Escribinos por WhatsApp o email y te respondemos en el día.",
   custom_industries: "",
   custom_cities: "",
+  banner_enabled: "",
+  banner_text: "",
+  banner_link: "",
+  maintenance_mode: "",
+  maintenance_text: "",
 };
 
 export const interviews: Interview[] = [
