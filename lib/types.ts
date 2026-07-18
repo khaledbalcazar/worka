@@ -180,6 +180,7 @@ export interface CompanyPost {
 export interface FilterQuestion {
   id: string;
   question: string;
+  knockout?: boolean; // responder "No" descarta automáticamente
 }
 
 export interface Job {

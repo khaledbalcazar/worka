@@ -18,6 +18,9 @@ import {
   adminSendRecovery,
   approveIndustryTag,
   broadcastNotification,
+  dismissReport,
+  hideJobForReview,
+  warnCompany,
   resolveBoost,
   resolveModeration,
   saveSiteSettings,
@@ -26,7 +29,7 @@ import {
   uploadSiteLogo,
   verifyCompany,
 } from "@/app/actions";
-import type { AdminUser, GlobalStats } from "@/lib/data";
+import type { AdminUser, DetailedReport, GlobalStats } from "@/lib/data";
 
 export type IdentityQueueItem = Candidate & {
   docs: { label: string; url: string }[];
@@ -45,6 +48,7 @@ export default function AdminPanel({
   pendingIndustries = [],
   adminUsers = { users: [], fullAccess: false },
   globalStats,
+  detailedReports = [],
 }: {
   moderationQueue: JobWithCompany[];
   reports: Report[];
@@ -58,6 +62,7 @@ export default function AdminPanel({
   pendingIndustries?: string[];
   adminUsers?: { users: AdminUser[]; fullAccess: boolean };
   globalStats?: GlobalStats;
+  detailedReports?: DetailedReport[];
 }) {
   const [resolved, setResolved] = useState<
     Record<string, "aprobada" | "eliminada">
@@ -80,6 +85,31 @@ export default function AdminPanel({
   const [broadcastBody, setBroadcastBody] = useState("");
   const [broadcastHref, setBroadcastHref] = useState("");
   const [broadcastSent, setBroadcastSent] = useState<number | null>(null);
+  // Bandeja de denuncias
+  const [dismissedReports, setDismissedReports] = useState<
+    Record<string, boolean>
+  >({});
+  const [reportActionDone, setReportActionDone] = useState<
+    Record<string, string>
+  >({});
+
+  function handleReportAction(
+    report: DetailedReport,
+    action: "ocultar" | "advertir" | "descartar"
+  ) {
+    startTransition(async () => {
+      if (action === "descartar") {
+        await dismissReport(report.id);
+        setDismissedReports((s) => ({ ...s, [report.id]: true }));
+      } else if (action === "ocultar") {
+        await hideJobForReview(report.job_id);
+        setReportActionDone((s) => ({ ...s, [report.id]: "🚫 Vacante oculta" }));
+      } else {
+        await warnCompany(report.company_id, report.job_title);
+        setReportActionDone((s) => ({ ...s, [report.id]: "⚠️ Empresa advertida" }));
+      }
+    });
+  }
 
   function handleRecovery(email: string, key: string) {
     setRecoverySent((s) => ({ ...s, [key]: true }));
@@ -833,6 +863,75 @@ export default function AdminPanel({
             </button>
           </div>
         </div>
+      </section>
+
+      {/* Bandeja de denuncias */}
+      <section className="space-y-3">
+        <h2 className="font-bold text-primary-dark text-lg">
+          🗂️ Bandeja de denuncias
+        </h2>
+        <p className="text-sm text-gray-500 -mt-2">
+          Todas las denuncias de la comunidad, con acción directa. (Con 3+, la
+          vacante ya se oculta sola.)
+        </p>
+        {detailedReports.filter((r) => !dismissedReports[r.id]).length === 0 && (
+          <div className="card p-6 text-center text-sm text-gray-400">
+            No hay denuncias pendientes. 🎉
+          </div>
+        )}
+        {detailedReports
+          .filter((r) => !dismissedReports[r.id])
+          .map((r) => (
+            <div
+              key={r.id}
+              className="card p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-red-700">
+                  🚩 &ldquo;{r.reason}&rdquo;
+                </p>
+                <p className="text-sm text-gray-600 mt-0.5">
+                  <span className="font-medium">{r.job_title}</span> ·{" "}
+                  {r.company_name} ·{" "}
+                  <span className="text-gray-400">{timeAgo(r.created_at)}</span>
+                </p>
+                <StatusChip status={r.job_status as never} />
+              </div>
+              <div className="flex flex-wrap gap-2 shrink-0">
+                {reportActionDone[r.id] ? (
+                  <span className="chip bg-emerald-50 text-emerald-700">
+                    {reportActionDone[r.id]}
+                  </span>
+                ) : (
+                  <>
+                    {r.job_status === "Activo" && (
+                      <button
+                        className="btn-danger-outline text-xs"
+                        disabled={pending}
+                        onClick={() => handleReportAction(r, "ocultar")}
+                      >
+                        🚫 Ocultar vacante
+                      </button>
+                    )}
+                    <button
+                      className="btn-secondary text-xs"
+                      disabled={pending}
+                      onClick={() => handleReportAction(r, "advertir")}
+                    >
+                      ⚠️ Advertir empresa
+                    </button>
+                  </>
+                )}
+                <button
+                  className="text-xs text-gray-400 hover:text-gray-600 font-medium px-2"
+                  disabled={pending}
+                  onClick={() => handleReportAction(r, "descartar")}
+                >
+                  Descartar
+                </button>
+              </div>
+            </div>
+          ))}
       </section>
 
       {/* Gestión de usuarios */}

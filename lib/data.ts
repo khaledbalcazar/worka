@@ -29,7 +29,11 @@ function mapJob(row: any): JobWithCompany {
     ...row,
     filter_questions: (row.filter_questions ?? [])
       .sort((a: any, b: any) => a.position - b.position)
-      .map((q: any) => ({ id: q.id, question: q.question })),
+      .map((q: any) => ({
+        id: q.id,
+        question: q.question,
+        knockout: q.knockout ?? false,
+      })),
     company: mapCompany(row.company),
   };
 }
@@ -856,6 +860,45 @@ export async function getModerationQueue(): Promise<JobWithCompany[]> {
     .select(JOB_SELECT)
     .eq("status", "Moderacion");
   return (data ?? []).map(mapJob);
+}
+
+// Denuncias con el detalle de la vacante y empresa (bandeja del admin).
+export interface DetailedReport extends Report {
+  job_title: string;
+  job_status: string;
+  company_id: string;
+  company_name: string;
+}
+
+export async function getDetailedReports(): Promise<DetailedReport[]> {
+  const supabase = await getServerClient();
+  if (!supabase)
+    return mock.reports.map((r) => {
+      const job = mock.getJobById(r.job_id);
+      return {
+        ...r,
+        job_title: job?.title ?? "Vacante",
+        job_status: job?.status ?? "Activo",
+        company_id: job?.company_id ?? "",
+        company_name: job?.company.trade_name ?? "—",
+      };
+    });
+  const { data } = await supabase
+    .from("reports")
+    .select("*, job:jobs(title, status, company_id, company:companies(trade_name))")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  return ((data ?? []) as any[]).map((r) => ({
+    id: r.id,
+    job_id: r.job_id,
+    reporter_id: r.reporter_id,
+    reason: r.reason,
+    created_at: r.created_at,
+    job_title: r.job?.title ?? "Vacante",
+    job_status: r.job?.status ?? "?",
+    company_id: r.job?.company_id ?? "",
+    company_name: r.job?.company?.trade_name ?? "—",
+  }));
 }
 
 export async function getReports(): Promise<Report[]> {

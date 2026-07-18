@@ -107,6 +107,7 @@ create table job_questions (
   id uuid primary key default gen_random_uuid(),
   job_id uuid not null references jobs (id) on delete cascade,
   question text not null,
+  knockout boolean not null default false, -- responder "No" descarta automáticamente
   position smallint not null default 1
 );
 
@@ -479,6 +480,8 @@ create policy reports_insert on reports
   for insert with check (reporter_id = auth.uid());
 create policy reports_admin_read on reports
   for select using (fn_current_role() = 'admin');
+create policy reports_admin_delete on reports
+  for delete using (fn_current_role() = 'admin');
 
 -- ------------------------------------------------------------
 -- Business Intelligence (Power BI / Looker Studio)

@@ -134,6 +134,8 @@ export default function NewJobPage() {
   const [vacancies, setVacancies] = useState(1);
   const [expiresAt, setExpiresAt] = useState("");
   const [questions, setQuestions] = useState<string[]>([]);
+  // Preguntas eliminatorias: responder "No" descarta automáticamente.
+  const [knockouts, setKnockouts] = useState<string[]>([]);
   const [newQuestion, setNewQuestion] = useState("");
   const [urgent, setUrgent] = useState(false);
   const [noExperience, setNoExperience] = useState(false);
@@ -203,7 +205,10 @@ export default function NewJobPage() {
         expires_at: expiresAt || null,
         urgent,
         requires_experience: !noExperience,
-        questions,
+        questions: questions.map((q) => ({
+          question: q,
+          knockout: knockouts.includes(q),
+        })),
       });
       if (result.ok) setPublished(true);
       else setError(result.error ?? "No pudimos publicar la vacante.");
@@ -492,23 +497,45 @@ export default function NewJobPage() {
               aplican.
             </p>
             <div className="space-y-2">
-              {questions.map((q) => (
-                <div
-                  key={q}
-                  className="flex items-center justify-between gap-2 bg-surface rounded-xl px-4 py-2.5 text-sm"
-                >
-                  <span className="text-gray-700">{q}</span>
-                  <button
-                    aria-label="Quitar pregunta"
-                    className="text-gray-400 hover:text-danger"
-                    onClick={() =>
-                      setQuestions(questions.filter((x) => x !== q))
-                    }
+              {questions.map((q) => {
+                const isKnockout = knockouts.includes(q);
+                return (
+                  <div
+                    key={q}
+                    className="flex items-center justify-between gap-2 bg-surface rounded-xl px-4 py-2.5 text-sm"
                   >
-                    ✕
-                  </button>
-                </div>
-              ))}
+                    <span className="text-gray-700 min-w-0 truncate">{q}</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        className={`chip border ${
+                          isKnockout
+                            ? "bg-red-50 text-red-600 border-red-200"
+                            : "bg-white text-gray-400 border-gray-200 hover:border-red-200 hover:text-red-500"
+                        }`}
+                        title='Eliminatoria: si responde "No", se descarta automáticamente'
+                        onClick={() =>
+                          setKnockouts((prev) =>
+                            isKnockout
+                              ? prev.filter((x) => x !== q)
+                              : [...prev, q]
+                          )
+                        }
+                      >
+                        {isKnockout ? "🚫 Eliminatoria" : "Hacer eliminatoria"}
+                      </button>
+                      <button
+                        aria-label="Quitar pregunta"
+                        className="text-gray-400 hover:text-danger"
+                        onClick={() =>
+                          setQuestions(questions.filter((x) => x !== q))
+                        }
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
               {questions.length < 3 && (
                 <div className="flex gap-2">
                   <input

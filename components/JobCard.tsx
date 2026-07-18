@@ -121,6 +121,15 @@ export default function JobCard({
               >
                 💬 Compartir por WhatsApp
               </a>
+              <a
+                href={`/empleo/${job.id}/opengraph-image`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full text-left px-3 py-2.5 text-sm rounded-lg hover:bg-surface"
+                onClick={() => setMenuOpen(false)}
+              >
+                🖼️ Imagen para redes
+              </a>
               <button
                 className="block w-full text-left px-3 py-2.5 text-sm text-danger rounded-lg hover:bg-red-50"
                 onClick={() => {

@@ -310,7 +310,11 @@ export const jobs: Job[] = [
     urgent: true,
     featured: false,
     filter_questions: [
-      { id: "q1", question: "¿Tenés registro de conducir profesional vigente?" },
+      {
+        id: "q1",
+        question: "¿Tenés registro de conducir profesional vigente?",
+        knockout: true,
+      },
       { id: "q2", question: "¿Conocés bien las calles de Gran Asunción?" },
     ],
     views_count: 98,

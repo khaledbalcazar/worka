@@ -111,6 +111,28 @@ export async function applyToJob(
         answer: a.answer,
       }))
     );
+
+    // Preguntas eliminatorias (knockout): un "No" descarta automáticamente.
+    // La empresa lo ve en Descartados y el candidato en su línea de tiempo.
+    const { data: knockouts } = await supabase
+      .from("job_questions")
+      .select("id")
+      .eq("job_id", jobId)
+      .eq("knockout", true);
+    const knockoutIds = new Set((knockouts ?? []).map((q: { id: string }) => q.id));
+    const failedKnockout = answers.some(
+      (a) => knockoutIds.has(a.question_id) && !a.answer
+    );
+    if (failedKnockout) {
+      await supabase
+        .from("applications")
+        .update({
+          status: "Rechazado",
+          rejection_reason: "Perfil distinto al buscado",
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", application.id);
+    }
   }
 
   revalidatePath("/postulaciones");
@@ -680,7 +702,7 @@ export async function createJob(input: {
   expires_at: string | null;
   urgent: boolean;
   requires_experience: boolean;
-  questions: string[];
+  questions: (string | { question: string; knockout: boolean })[];
 }): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
@@ -703,7 +725,8 @@ export async function createJob(input: {
     await supabase.from("job_questions").insert(
       questions.slice(0, 3).map((q, i) => ({
         job_id: job.id,
-        question: q,
+        question: typeof q === "string" ? q : q.question,
+        knockout: typeof q === "string" ? false : q.knockout,
         position: i + 1,
       }))
     );
@@ -1074,6 +1097,58 @@ export async function resolveBoost(
 }
 
 // Configuración del sitio (CMS-lite del backoffice)
+// Descarta una denuncia (bandeja del admin).
+export async function dismissReport(reportId: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  const { error } = await supabase.from("reports").delete().eq("id", reportId);
+  if (error)
+    return {
+      ok: false,
+      error: "No pudimos descartar (¿corriste migration-004.sql?).",
+    };
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+// Oculta una vacante denunciada (pasa a Moderación, fuera del feed).
+export async function hideJobForReview(jobId: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  const { error } = await supabase
+    .from("jobs")
+    .update({ status: "Moderacion" })
+    .eq("id", jobId);
+  if (error) return { ok: false, error: "No pudimos ocultar la vacante." };
+  revalidatePath("/admin");
+  revalidatePath("/empleos");
+  return { ok: true };
+}
+
+// Advierte a la empresa por una vacante denunciada (campanita).
+export async function warnCompany(
+  companyId: string,
+  jobTitle: string
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  const { error } = await supabase.from("notifications").insert({
+    user_id: companyId,
+    icon: "⚠️",
+    title: "Advertencia del equipo de Worka",
+    body: `Tu vacante "${jobTitle}" recibió denuncias de la comunidad. Revisala: si incumple las reglas (pedir dinero, datos falsos), será eliminada.`,
+    href: "/empresa",
+  });
+  if (error) return { ok: false, error: "No pudimos enviar la advertencia." };
+  return { ok: true };
+}
+
 // Verifica que quien llama sea admin (para las acciones del backoffice).
 async function assertAdmin(): Promise<boolean> {
   const supabase = await getServerClient();
