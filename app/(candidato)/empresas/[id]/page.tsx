@@ -7,6 +7,7 @@ import {
   StatusChip,
   VerifiedBadge,
 } from "@/components/Badges";
+import EntityAvatar from "@/components/EntityAvatar";
 import { BADGE_CATALOG } from "@/lib/types";
 
 // Página pública de empresa: funciona como referencia verificable para candidatos.
@@ -53,12 +54,12 @@ export default async function CompanyPublicPage({
           }
         />
         <div className="p-5 pt-0">
-          <div className="w-16 h-16 rounded-2xl border-4 border-white bg-primary-dark text-white flex items-center justify-center text-xl font-bold -mt-8 shadow">
-            {company.trade_name
-              .split(" ")
-              .slice(0, 2)
-              .map((w) => w[0])
-              .join("")}
+          <div className="-mt-8 inline-block">
+            <EntityAvatar
+              url={company.logo_url}
+              name={company.trade_name}
+              className="w-16 h-16 rounded-2xl border-4 border-white text-xl shadow"
+            />
           </div>
           <div className="mt-2">
             <h1 className="font-bold text-primary-dark text-lg leading-snug">

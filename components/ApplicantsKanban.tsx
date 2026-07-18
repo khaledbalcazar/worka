@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import type { KanbanApplicant } from "@/lib/data";
 import type { JobWithCompany, RejectionReason } from "@/lib/types";
 import {
+  contactApplicant,
   getApplicantCvUrl,
   proposeInterview,
   setApplicationNote,
@@ -94,6 +95,24 @@ export default function ApplicantsKanban({
         `📲 Le avisamos a ${item.candidate_name} por WhatsApp que revisaste su perfil.`
       );
     }
+  }
+
+  // Al abrir WhatsApp, el estado pasa a Contactado en tiempo real:
+  // el candidato lo ve en su línea de tiempo y le llega la notificación.
+  function handleContact(item: Item) {
+    setItems((prev) =>
+      prev.map((x) =>
+        x.id === item.id
+          ? { ...x, status: "Contactado", column: "En proceso" }
+          : x
+      )
+    );
+    startTransition(async () => {
+      await contactApplicant(item.id);
+    });
+    showToast(
+      `💬 Marcamos a ${item.candidate_name} como Contactado. Su línea de tiempo ya lo refleja.`
+    );
   }
 
   return (
@@ -222,6 +241,7 @@ export default function ApplicantsKanban({
                             target="_blank"
                             rel="noopener noreferrer"
                             className="btn-success flex-1 text-xs min-h-9"
+                            onClick={() => handleContact(a)}
                           >
                             💬 WhatsApp
                           </a>
@@ -474,7 +494,7 @@ export default function ApplicantsKanban({
                 rel="noopener noreferrer"
                 className="btn-success flex-1"
                 onClick={() => {
-                  moveTo(detail.id, "En proceso");
+                  handleContact(detail);
                   setDetail(null);
                 }}
               >

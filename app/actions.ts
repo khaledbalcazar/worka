@@ -463,6 +463,44 @@ export async function toggleFollowCompany(
   return { ok: true };
 }
 
+// La empresa contactó al candidato por WhatsApp: el estado pasa a 'Contactado'
+// al instante y el candidato lo ve reflejado en su línea de tiempo + campanita.
+export async function contactApplicant(
+  applicationId: string
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+
+  const { data: app } = await supabase
+    .from("applications")
+    .select("candidate_id, reviewed_at, job:jobs(title, company:companies(trade_name))")
+    .eq("id", applicationId)
+    .maybeSingle();
+
+  const { error } = await supabase
+    .from("applications")
+    .update({
+      status: "Contactado",
+      ...((app as any)?.reviewed_at ? {} : { reviewed_at: new Date().toISOString() }),
+    })
+    .eq("id", applicationId);
+  if (error) return { ok: false, error: "No pudimos actualizar el estado." };
+
+  const a = app as any;
+  if (a?.candidate_id) {
+    const empresa = a.job?.company?.trade_name ?? "Una empresa";
+    await supabase.from("notifications").insert({
+      user_id: a.candidate_id,
+      icon: "💬",
+      title: `${empresa} te contactó`,
+      body: `Te escribieron por WhatsApp por "${a.job?.title ?? "una vacante"}". ¡Revisá tu teléfono!`,
+      href: "/postulaciones",
+    });
+  }
+  revalidatePath("/postulaciones");
+  return { ok: true };
+}
+
 // La empresa abre el CV del candidato (URL firmada; RLS: solo si se postuló).
 export async function getApplicantCvUrl(
   candidateId: string
@@ -778,6 +816,42 @@ export async function duplicateJob(jobId: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+// Edición de una vacante existente (RLS: solo la empresa dueña).
+export async function updateJob(
+  jobId: string,
+  input: {
+    title?: string;
+    description?: string;
+    industry?: string;
+    modality?: Modality;
+    contract_type?: ContractType | null;
+    salary_range?: string | null;
+    schedule?: string | null;
+    address?: string | null;
+    nearby_transit?: string | null;
+    requirements?: string[];
+    benefits?: string[];
+    vacancies_count?: number;
+    urgent?: boolean;
+    requires_experience?: boolean;
+  }
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión como empresa." };
+  const { error } = await supabase
+    .from("jobs")
+    .update(input)
+    .eq("id", jobId)
+    .eq("company_id", user.id);
+  if (error) return { ok: false, error: "No pudimos guardar los cambios." };
+  revalidatePath("/empresa");
+  revalidatePath(`/empleo/${jobId}`);
+  revalidatePath("/empleos");
+  return { ok: true };
+}
+
 export async function setJobStatus(
   jobId: string,
   status: JobStatus
@@ -895,9 +969,10 @@ export async function uploadCompanyImage(
   return { ok: true, url };
 }
 
-// Sube el logo del sitio (solo admin) al bucket público y lo guarda en settings.
+// Sube el logo o favicon del sitio (solo admin) y lo guarda en settings.
 export async function uploadSiteLogo(
-  formData: FormData
+  formData: FormData,
+  kind: "logo" | "favicon" = "logo"
 ): Promise<ActionResult & { url?: string }> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
@@ -920,18 +995,20 @@ export async function uploadSiteLogo(
     return { ok: false, error: "El logo no puede pesar más de 2 MB." };
 
   const ext = file.type === "image/png" ? "png" : "jpg";
-  const path = `site/logo.${ext}`;
+  const path = `site/${kind}.${ext}`;
   const { error } = await supabase.storage
     .from("publico")
     .upload(path, file, { upsert: true, contentType: file.type });
   if (error)
-    return { ok: false, error: "No pudimos subir el logo del sitio." };
+    return { ok: false, error: `No pudimos subir el ${kind} del sitio.` };
 
   const { data } = supabase.storage.from("publico").getPublicUrl(path);
   const url = `${data.publicUrl}?v=${Date.now()}`;
-  await supabase
-    .from("site_settings")
-    .upsert({ key: "logo_url", value: url, updated_at: new Date().toISOString() });
+  await supabase.from("site_settings").upsert({
+    key: kind === "logo" ? "logo_url" : "favicon_url",
+    value: url,
+    updated_at: new Date().toISOString(),
+  });
   revalidatePath("/");
   revalidatePath("/admin");
   return { ok: true, url };
@@ -1020,6 +1097,31 @@ export async function resolveBoost(
 }
 
 // Configuración del sitio (CMS-lite del backoffice)
+// Aprueba un rubro propuesto por una empresa: pasa a la lista oficial
+// (site_settings.custom_industries, separados por coma).
+export async function approveIndustryTag(tag: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const { data } = await supabase
+    .from("site_settings")
+    .select("value")
+    .eq("key", "custom_industries")
+    .maybeSingle();
+  const current = (data?.value ?? "")
+    .split(",")
+    .map((s: string) => s.trim())
+    .filter(Boolean);
+  if (!current.includes(tag)) current.push(tag);
+  const { error } = await supabase.from("site_settings").upsert({
+    key: "custom_industries",
+    value: current.join(","),
+    updated_at: new Date().toISOString(),
+  });
+  if (error) return { ok: false, error: "No pudimos aprobar el rubro." };
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
 export async function saveSiteSettings(
   settings: Record<string, string>
 ): Promise<ActionResult> {

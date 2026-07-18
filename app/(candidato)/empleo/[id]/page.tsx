@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getJobById, getMyAppliedJobIds } from "@/lib/data";
 import { formatDate, timeAgo } from "@/lib/format";
 import ApplyPanel from "@/components/ApplyPanel";
+import EntityAvatar from "@/components/EntityAvatar";
 import JobViewTracker from "@/components/JobViewTracker";
 import {
   FastResponderBadge,
@@ -84,13 +85,11 @@ export default async function JobDetailPage({
           {/* Encabezado */}
           <div className="card p-5 sm:p-6">
             <div className="flex items-start gap-4">
-              <span className="w-14 h-14 shrink-0 rounded-2xl bg-blue-50 text-primary flex items-center justify-center font-bold text-lg">
-                {job.company.trade_name
-                  .split(" ")
-                  .slice(0, 2)
-                  .map((w) => w[0])
-                  .join("")}
-              </span>
+              <EntityAvatar
+                url={job.company.logo_url}
+                name={job.company.trade_name}
+                className="w-14 h-14 rounded-2xl text-lg"
+              />
               <div className="min-w-0">
                 <h1 className="text-xl sm:text-2xl font-bold text-primary-dark leading-snug">
                   {job.title}

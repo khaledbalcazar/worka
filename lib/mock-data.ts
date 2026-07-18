@@ -37,6 +37,20 @@ export const INDUSTRIES = [
   "Tecnología",
   "Salud",
   "Construcción",
+  "Educación",
+  "Producción / Fábrica",
+  "Agro y Campo",
+  "Belleza y Estética",
+  "Marketing y Diseño",
+  "Contabilidad y Finanzas",
+  "Recursos Humanos",
+  "Mantenimiento y Oficios",
+  "Transporte y Chofer",
+  "Farmacia",
+  "Textil y Confección",
+  "Turismo y Hotelería",
+  "Call Center",
+  "Legal",
 ];
 
 export const CONTRACT_TYPES = [
@@ -462,14 +476,20 @@ export const workReferences: WorkReference[] = [
 // Configuración del sitio (en live vive en la tabla site_settings)
 export const defaultSiteSettings: Record<string, string> = {
   site_name: "Worka",
+  site_title: "Worka — Tu próximo paso",
+  site_description:
+    "La plataforma de empleo 100% gratuita de Paraguay. Encontrá tu próximo trabajo o publicá tu vacante sin costo.",
   logo_url: "",
+  favicon_url: "",
   hero_title: "Tu próximo paso empieza acá.",
   hero_subtitle:
     "La plataforma de empleo pensada para Paraguay: empresas verificadas, alertas por WhatsApp y hasta las líneas de colectivo para llegar a tu entrevista.",
-  contact_email: "hola@worka.com.py",
+  hero_badge: "🇵🇾 Hecho en Paraguay · 100% gratis para candidatos",
+  contact_email: "hola@worka.click",
   contact_whatsapp: "+595 981 000 000",
   payment_link: "",
   help_text: "Escribinos por WhatsApp o email y te respondemos en el día.",
+  custom_industries: "",
 };
 
 export const interviews: Interview[] = [

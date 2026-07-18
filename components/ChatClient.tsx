@@ -8,11 +8,20 @@ import { timeAgo } from "@/lib/format";
 export interface ChatThread {
   applicationId: string;
   jobTitle: string;
+  // Nombre del interlocutor: la empresa (vista candidato) o el candidato (vista empresa)
   companyName: string;
   messages: ChatMessage[];
 }
 
-export default function ChatClient({ threads }: { threads: ChatThread[] }) {
+// Chat compartido por ambos lados: viewAs define quién escribe y cómo se
+// alinean las burbujas (los mensajes propios siempre a la derecha).
+export default function ChatClient({
+  threads,
+  viewAs = "candidate",
+}: {
+  threads: ChatThread[];
+  viewAs?: "candidate" | "company";
+}) {
   const [activeId, setActiveId] = useState(threads[0]?.applicationId ?? "");
   const [local, setLocal] = useState<Record<string, ChatMessage[]>>(
     Object.fromEntries(threads.map((t) => [t.applicationId, t.messages]))
@@ -29,14 +38,14 @@ export default function ChatClient({ threads }: { threads: ChatThread[] }) {
     const msg: ChatMessage = {
       id: `local-${Date.now()}`,
       application_id: activeId,
-      sender: "candidate",
+      sender: viewAs,
       content,
       created_at: new Date().toISOString(),
     };
     setLocal((prev) => ({ ...prev, [activeId]: [...(prev[activeId] ?? []), msg] }));
     setDraft("");
     startTransition(() => {
-      sendChatMessage(activeId, "candidate", content);
+      sendChatMessage(activeId, viewAs, content);
     });
   }
 
@@ -69,15 +78,16 @@ export default function ChatClient({ threads }: { threads: ChatThread[] }) {
           <div className="flex-1 p-4 space-y-2.5 overflow-y-auto">
             {messages.length === 0 && (
               <p className="text-sm text-gray-400 text-center py-8">
-                Empezá la conversación: presentate y contá por qué te interesa
-                el puesto. 👋
+                {viewAs === "candidate"
+                  ? "Empezá la conversación: presentate y contá por qué te interesa el puesto. 👋"
+                  : "Escribile al candidato: coordiná una llamada o hacé la primera pregunta. 👋"}
               </p>
             )}
             {messages.map((m) => (
               <div
                 key={m.id}
                 className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
-                  m.sender === "candidate"
+                  m.sender === viewAs
                     ? "ml-auto bg-primary text-white rounded-br-md"
                     : "bg-surface text-gray-700 rounded-bl-md"
                 }`}
@@ -85,7 +95,7 @@ export default function ChatClient({ threads }: { threads: ChatThread[] }) {
                 <p>{m.content}</p>
                 <p
                   className={`text-[10px] mt-1 ${
-                    m.sender === "candidate" ? "text-blue-200" : "text-gray-400"
+                    m.sender === viewAs ? "text-blue-200" : "text-gray-400"
                   }`}
                 >
                   {timeAgo(m.created_at)}
@@ -96,7 +106,7 @@ export default function ChatClient({ threads }: { threads: ChatThread[] }) {
           <div className="border-t border-gray-100 p-3 flex gap-2">
             <input
               className="input flex-1"
-              placeholder={`Mensaje para ${active?.companyName ?? "la empresa"}…`}
+              placeholder={`Mensaje para ${active?.companyName ?? (viewAs === "candidate" ? "la empresa" : "el candidato")}…`}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send()}

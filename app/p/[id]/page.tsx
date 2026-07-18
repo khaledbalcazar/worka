@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import EntityAvatar from "@/components/EntityAvatar";
 import Logo from "@/components/Logo";
 import { getPublicCandidate } from "@/lib/data";
 import { formatDate } from "@/lib/format";
@@ -34,12 +35,12 @@ export default async function PublicCandidatePage({
         <div className="card overflow-hidden">
           <div className="h-24 bg-gradient-to-r from-primary-dark to-primary" />
           <div className="p-5 pt-0">
-            <div className="w-20 h-20 rounded-full border-4 border-white bg-primary text-white flex items-center justify-center text-2xl font-bold -mt-10 shadow">
-              {candidate.full_name
-                .split(" ")
-                .slice(0, 2)
-                .map((n) => n[0])
-                .join("")}
+            <div className="-mt-10 inline-block">
+              <EntityAvatar
+                url={candidate.avatar_url}
+                name={candidate.full_name}
+                className="w-20 h-20 rounded-full border-4 border-white text-2xl shadow"
+              />
             </div>
             <h1 className="text-xl font-bold text-primary-dark mt-3">
               {candidate.full_name}
@@ -47,6 +48,11 @@ export default async function PublicCandidatePage({
             <p className="text-sm text-gray-500">
               📍 {candidate.location_city}, Paraguay
             </p>
+            {candidate.bio && (
+              <p className="text-sm text-gray-600 mt-2 leading-relaxed">
+                {candidate.bio}
+              </p>
+            )}
             <div className="flex flex-wrap gap-1.5 mt-3">
               {candidate.phone_verified && (
                 <span className="chip bg-emerald-50 text-emerald-700">

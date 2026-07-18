@@ -5,8 +5,21 @@ import type { Interview } from "@/lib/types";
 import { respondInterview } from "@/app/actions";
 import { formatDate } from "@/lib/format";
 
+// Formato de fecha para Google Calendar: YYYYMMDDTHHMMSSZ (UTC).
+function gcalDate(d: Date): string {
+  return d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+}
+
 // Propuesta de entrevista dentro de la tarjeta de postulación.
-export default function InterviewCard({ interview }: { interview: Interview }) {
+export default function InterviewCard({
+  interview,
+  jobTitle = "Entrevista",
+  companyName = "",
+}: {
+  interview: Interview;
+  jobTitle?: string;
+  companyName?: string;
+}) {
   const [status, setStatus] = useState(interview.status);
   const [pending, startTransition] = useTransition();
 
@@ -15,6 +28,19 @@ export default function InterviewCard({ interview }: { interview: Interview }) {
     hour: "2-digit",
     minute: "2-digit",
   });
+
+  // Evento de 1 hora en Google Calendar (el origen abre con la cuenta del usuario).
+  const end = new Date(when.getTime() + 60 * 60000);
+  const calendarUrl =
+    `https://calendar.google.com/calendar/render?action=TEMPLATE` +
+    `&text=${encodeURIComponent(`Entrevista: ${jobTitle}${companyName ? ` — ${companyName}` : ""}`)}` +
+    `&dates=${gcalDate(when)}/${gcalDate(end)}` +
+    `&details=${encodeURIComponent("Entrevista coordinada por Worka. ¡Éxitos! 🍀")}` +
+    `&location=${encodeURIComponent(interview.location ?? "")}`;
+
+  const shareUrl = `https://wa.me/?text=${encodeURIComponent(
+    `¡Tengo entrevista${companyName ? ` en ${companyName}` : ""}! 🎉 ${formatDate(interview.proposed_at)} a las ${time}${interview.location ? ` — ${interview.location}` : ""}. Conseguida por Worka: worka.click`
+  )}`;
 
   function respond(accept: boolean) {
     setStatus(accept ? "confirmada" : "rechazada");
@@ -67,6 +93,27 @@ export default function InterviewCard({ interview }: { interview: Interview }) {
             ? "✓ Confirmaste tu asistencia. ¡Éxitos! 🍀"
             : "Avisaste que no podés. La empresa puede proponer otra fecha."}
         </p>
+      )}
+
+      {status !== "rechazada" && (
+        <div className="flex gap-2 mt-2">
+          <a
+            href={calendarUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-secondary flex-1 text-xs min-h-9"
+          >
+            🗓️ Agregar al calendario
+          </a>
+          <a
+            href={shareUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-secondary flex-1 text-xs min-h-9"
+          >
+            💬 Compartir
+          </a>
+        </div>
       )}
     </div>
   );

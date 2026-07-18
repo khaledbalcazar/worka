@@ -28,6 +28,7 @@ interface DashStats {
   applicationsThisWeek: number;
   totalViews: number;
   avgResponseHours: number | null;
+  applicationsPerJob?: { title: string; count: number }[];
 }
 
 export default function CompanyDashboard({
@@ -206,6 +207,44 @@ export default function CompanyDashboard({
         ))}
       </div>
 
+      {/* Postulaciones por vacante (datos reales) */}
+      {(realStats?.applicationsPerJob?.length ?? 0) > 0 && (
+        <section className="card p-5">
+          <h2 className="font-semibold text-primary-dark mb-4">
+            📈 Postulaciones por vacante
+          </h2>
+          <div className="space-y-2.5">
+            {realStats!.applicationsPerJob!.map((row) => {
+              const max = Math.max(
+                ...realStats!.applicationsPerJob!.map((r) => r.count),
+                1
+              );
+              return (
+                <div key={row.title} className="flex items-center gap-3">
+                  <span
+                    className="w-40 lg:w-56 text-xs text-gray-600 truncate shrink-0"
+                    title={row.title}
+                  >
+                    {row.title}
+                  </span>
+                  <div className="flex-1 h-5 bg-surface rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all"
+                      style={{
+                        width: `${Math.max((row.count / max) * 100, row.count > 0 ? 6 : 0)}%`,
+                      }}
+                    />
+                  </div>
+                  <span className="w-8 text-sm font-semibold text-primary-dark text-right shrink-0">
+                    {row.count}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       <section className="card overflow-hidden">
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="font-semibold text-primary-dark">Mis vacantes</h2>
@@ -298,6 +337,12 @@ export default function CompanyDashboard({
                         className="text-primary font-medium"
                       >
                         Candidatos
+                      </Link>
+                      <Link
+                        href={`/empresa/vacantes/${job.id}/editar`}
+                        className="text-gray-500 hover:text-primary font-medium"
+                      >
+                        Editar
                       </Link>
                       {job.status === "Activo" && (
                         <button

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { getSiteSettings } from "@/lib/data";
 import "./globals.css";
 
 const inter = Inter({
@@ -7,14 +8,22 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "Worka — Tu próximo paso",
-    template: "%s | Worka",
-  },
-  description:
-    "La plataforma de empleo 100% gratuita de Paraguay. Encontrá tu próximo trabajo o publicá tu vacante sin costo.",
-};
+// Metadata dinámica: el título, descripción y favicon se editan desde /admin.
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSiteSettings();
+  return {
+    title: {
+      default: settings.site_title || "Worka — Tu próximo paso",
+      template: `%s | ${settings.site_name || "Worka"}`,
+    },
+    description:
+      settings.site_description ||
+      "La plataforma de empleo 100% gratuita de Paraguay. Encontrá tu próximo trabajo o publicá tu vacante sin costo.",
+    ...(settings.favicon_url
+      ? { icons: { icon: settings.favicon_url } }
+      : {}),
+  };
+}
 
 export default function RootLayout({
   children,

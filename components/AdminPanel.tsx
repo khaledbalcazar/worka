@@ -14,6 +14,7 @@ import { BADGE_CATALOG } from "@/lib/types";
 import { StatusChip } from "@/components/Badges";
 import { formatDate, timeAgo } from "@/lib/format";
 import {
+  approveIndustryTag,
   resolveBoost,
   resolveModeration,
   saveSiteSettings,
@@ -37,6 +38,7 @@ export default function AdminPanel({
   references = [],
   boosts = [],
   settings = {},
+  pendingIndustries = [],
 }: {
   moderationQueue: JobWithCompany[];
   reports: Report[];
@@ -47,11 +49,13 @@ export default function AdminPanel({
   references?: (WorkReference & { candidate_name?: string })[];
   boosts?: (BoostRequest & { job_title?: string; company_name?: string })[];
   settings?: Record<string, string>;
+  pendingIndustries?: string[];
 }) {
   const [resolved, setResolved] = useState<
     Record<string, "aprobada" | "eliminada">
   >({});
   const [verified, setVerified] = useState<Record<string, boolean>>({});
+  const [approvedTags, setApprovedTags] = useState<Record<string, boolean>>({});
   const [badgeState, setBadgeState] = useState<Record<string, BadgeId[]>>(
     Object.fromEntries(allCompanies.map((c) => [c.id, c.badges]))
   );
@@ -60,16 +64,20 @@ export default function AdminPanel({
   const [settingsDraft, setSettingsDraft] = useState(settings);
   const [settingsSaved, setSettingsSaved] = useState(false);
   const logoInput = useRef<HTMLInputElement>(null);
+  const faviconInput = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
 
-  function handleSiteLogo(file: File | undefined) {
+  function handleSiteLogo(file: File | undefined, kind: "logo" | "favicon") {
     if (!file) return;
     const fd = new FormData();
     fd.append("image", file);
     startTransition(async () => {
-      const result = await uploadSiteLogo(fd);
+      const result = await uploadSiteLogo(fd, kind);
       if (result.ok && result.url)
-        setSettingsDraft((s) => ({ ...s, logo_url: result.url! }));
+        setSettingsDraft((s) => ({
+          ...s,
+          [kind === "logo" ? "logo_url" : "favicon_url"]: result.url!,
+        }));
     });
   }
 
@@ -496,7 +504,11 @@ export default function AdminPanel({
           {(
             [
               ["site_name", "Nombre del sitio"],
-              ["logo_url", "URL del logo (bucket 'publico' o externa)"],
+              ["site_title", "Título de la pestaña (SEO)"],
+              ["site_description", "Descripción para Google (SEO)"],
+              ["logo_url", "Logo del sitio"],
+              ["favicon_url", "Ícono de la pestaña (favicon)"],
+              ["hero_badge", "Chip de la portada"],
               ["hero_title", "Título de la portada"],
               ["hero_subtitle", "Subtítulo de la portada"],
               ["contact_email", "Email de contacto"],
@@ -505,9 +517,9 @@ export default function AdminPanel({
               ["help_text", "Texto de ayuda"],
             ] as const
           ).map(([key, label]) => (
-            <div key={key} className={key === "hero_subtitle" || key === "help_text" ? "lg:col-span-2" : ""}>
+            <div key={key} className={key === "hero_subtitle" || key === "help_text" || key === "site_description" ? "lg:col-span-2" : ""}>
               <label className="label">{label}</label>
-              {key === "hero_subtitle" || key === "help_text" ? (
+              {key === "hero_subtitle" || key === "help_text" || key === "site_description" ? (
                 <textarea
                   className="input min-h-20"
                   value={settingsDraft[key] ?? ""}
@@ -515,38 +527,45 @@ export default function AdminPanel({
                     setSettingsDraft((s) => ({ ...s, [key]: e.target.value }))
                   }
                 />
-              ) : key === "logo_url" ? (
+              ) : key === "logo_url" || key === "favicon_url" ? (
                 <div className="flex items-center gap-2">
-                  {settingsDraft.logo_url && (
+                  {settingsDraft[key] && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={settingsDraft.logo_url}
-                      alt="Logo"
+                      src={settingsDraft[key]}
+                      alt={label}
                       className="h-9 w-9 rounded object-contain bg-surface"
                     />
                   )}
                   <input
                     className="input flex-1"
                     placeholder="Pegá una URL o subí una imagen →"
-                    value={settingsDraft.logo_url ?? ""}
+                    value={settingsDraft[key] ?? ""}
                     onChange={(e) =>
                       setSettingsDraft((s) => ({
                         ...s,
-                        logo_url: e.target.value,
+                        [key]: e.target.value,
                       }))
                     }
                   />
                   <input
-                    ref={logoInput}
+                    ref={key === "logo_url" ? logoInput : faviconInput}
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={(e) => handleSiteLogo(e.target.files?.[0])}
+                    onChange={(e) =>
+                      handleSiteLogo(
+                        e.target.files?.[0],
+                        key === "logo_url" ? "logo" : "favicon"
+                      )
+                    }
                   />
                   <button
                     className="btn-secondary shrink-0 text-xs"
                     disabled={pending}
-                    onClick={() => logoInput.current?.click()}
+                    onClick={() =>
+                      (key === "logo_url" ? logoInput : faviconInput).current?.click()
+                    }
                   >
                     📤 Subir
                   </button>
@@ -583,6 +602,52 @@ export default function AdminPanel({
               {pending ? "Guardando…" : "Guardar configuración"}
             </button>
           </div>
+        </div>
+      </section>
+
+      {/* Rubros propuestos por empresas */}
+      <section className="space-y-3">
+        <h2 className="font-bold text-primary-dark text-lg">
+          🏷️ Rubros propuestos
+        </h2>
+        <p className="text-sm text-gray-500 -mt-2">
+          Rubros escritos a mano al publicar una vacante. Aprobalos para que
+          se vuelvan etiqueta oficial del buscador.
+        </p>
+        {pendingIndustries.filter((t) => !approvedTags[t]).length === 0 && (
+          <div className="card p-6 text-center text-sm text-gray-400">
+            No hay rubros pendientes de revisión.
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2">
+          {pendingIndustries.map((tag) => (
+            <div
+              key={tag}
+              className={`card px-4 py-2.5 flex items-center gap-3 ${
+                approvedTags[tag] ? "opacity-60" : ""
+              }`}
+            >
+              <span className="text-sm font-medium text-gray-700">{tag}</span>
+              {approvedTags[tag] ? (
+                <span className="chip bg-emerald-50 text-emerald-700">
+                  ✓ Aprobado
+                </span>
+              ) : (
+                <button
+                  className="btn-success text-xs"
+                  disabled={pending}
+                  onClick={() => {
+                    setApprovedTags((s) => ({ ...s, [tag]: true }));
+                    startTransition(async () => {
+                      await approveIndustryTag(tag);
+                    });
+                  }}
+                >
+                  Aprobar como tag
+                </button>
+              )}
+            </div>
+          ))}
         </div>
       </section>
 

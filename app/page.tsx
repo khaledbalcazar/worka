@@ -139,7 +139,7 @@ export default async function LandingPage() {
       <section className="relative overflow-hidden bg-gradient-to-b from-blue-50 via-white to-white">
         <div className="max-w-6xl mx-auto px-4 pt-14 pb-10 sm:pt-24 sm:pb-16 text-center">
           <p className="inline-flex items-center gap-2 chip bg-blue-100 text-primary-dark mb-4 animate-fade-up">
-            🇵🇾 Hecho en Paraguay · 100% gratis para candidatos
+            {settings.hero_badge}
           </p>
           <h1 className="text-4xl sm:text-6xl font-extrabold text-primary-dark leading-tight animate-fade-up">
             {settings.hero_title}

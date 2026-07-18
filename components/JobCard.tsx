@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { JobWithCompany } from "@/lib/types";
 import { timeAgo, whatsappShareUrl } from "@/lib/format";
 import { applyToJob, reportJob, toggleSaveJob } from "@/app/actions";
+import EntityAvatar from "./EntityAvatar";
 import {
   FastResponderBadge,
   FirstJobBadge,
@@ -72,13 +73,10 @@ export default function JobCard({
     <article className="card p-4 relative flex flex-col hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-2">
         <Link href={`/empleo/${job.id}`} className="min-w-0 flex items-start gap-3">
-          <span className="w-11 h-11 shrink-0 rounded-xl bg-blue-50 text-primary flex items-center justify-center font-bold text-sm">
-            {job.company.trade_name
-              .split(" ")
-              .slice(0, 2)
-              .map((w) => w[0])
-              .join("")}
-          </span>
+          <EntityAvatar
+            url={job.company.logo_url}
+            name={job.company.trade_name}
+          />
           <span className="min-w-0 block">
             <h3 className="font-semibold text-primary-dark leading-snug hover:text-primary">
               {job.title}
@@ -208,13 +206,10 @@ export default function JobCard({
             ) : (
               <>
                 <div className="flex items-start gap-3 pb-4 border-b border-gray-100">
-                  <span className="w-11 h-11 shrink-0 rounded-xl bg-blue-50 text-primary flex items-center justify-center font-bold text-sm">
-                    {job.company.trade_name
-                      .split(" ")
-                      .slice(0, 2)
-                      .map((w) => w[0])
-                      .join("")}
-                  </span>
+                  <EntityAvatar
+                    url={job.company.logo_url}
+                    name={job.company.trade_name}
+                  />
                   <div>
                     <h4 className="font-semibold text-primary-dark leading-snug">
                       {job.title}

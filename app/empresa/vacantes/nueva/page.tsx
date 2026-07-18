@@ -120,6 +120,7 @@ function ListEditor({
 export default function NewJobPage() {
   const [title, setTitle] = useState("");
   const [industry, setIndustry] = useState("");
+  const [customIndustryOpen, setCustomIndustryOpen] = useState(false);
   const [city, setCity] = useState("");
   const [modality, setModality] = useState<Modality>("Presencial");
   const [contractType, setContractType] = useState<ContractType | "">("");
@@ -283,14 +284,37 @@ export default function NewJobPage() {
                 <label className="label">Rubro *</label>
                 <select
                   className="input"
-                  value={industry}
-                  onChange={(e) => setIndustry(e.target.value)}
+                  value={customIndustryOpen ? "__otro" : industry}
+                  onChange={(e) => {
+                    if (e.target.value === "__otro") {
+                      setCustomIndustryOpen(true);
+                      setIndustry("");
+                    } else {
+                      setCustomIndustryOpen(false);
+                      setIndustry(e.target.value);
+                    }
+                  }}
                 >
                   <option value="">Elegí el rubro</option>
                   {INDUSTRIES.map((i) => (
                     <option key={i}>{i}</option>
                   ))}
+                  <option value="__otro">➕ Otro rubro (escribilo)</option>
                 </select>
+                {customIndustryOpen && (
+                  <>
+                    <input
+                      className="input mt-2"
+                      placeholder="Escribí el rubro (ej: Veterinaria)"
+                      value={industry}
+                      onChange={(e) => setIndustry(e.target.value)}
+                    />
+                    <p className="text-xs text-amber-600 mt-1">
+                      ⏳ Los rubros nuevos pasan a revisión del equipo de Worka
+                      para convertirse en etiqueta oficial.
+                    </p>
+                  </>
+                )}
               </div>
               <div>
                 <label className="label">Ciudad *</label>

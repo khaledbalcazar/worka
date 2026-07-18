@@ -399,6 +399,44 @@ export async function getApplicantsForJob(
   }));
 }
 
+// Hilos de chat de la empresa: una conversación por postulación recibida.
+export interface CompanyThread {
+  applicationId: string;
+  jobTitle: string;
+  candidateName: string;
+  messages: ChatMessage[];
+}
+
+export async function getCompanyThreads(): Promise<CompanyThread[]> {
+  const supabase = await getServerClient();
+  if (!supabase)
+    return mock.companyApplicants.slice(0, 3).map((a) => ({
+      applicationId: a.id,
+      jobTitle: "Cajero/a para sucursal centro",
+      candidateName: a.candidate_name,
+      messages: mock.chatMessages.filter((m) => m.application_id === a.id),
+    }));
+  const user = await getCurrentUser();
+  if (!user) return [];
+  const { data } = await supabase
+    .from("applications")
+    .select(
+      "id, job:jobs!inner(title, company_id), candidate:candidates(full_name), messages(id, application_id, sender, content, created_at)"
+    )
+    .eq("job.company_id", user.id)
+    .order("applied_at", { ascending: false })
+    .limit(50);
+  return ((data ?? []) as any[]).map((row) => ({
+    applicationId: row.id,
+    jobTitle: row.job?.title ?? "Vacante",
+    candidateName: row.candidate?.full_name ?? "Candidato",
+    messages: (row.messages ?? []).sort(
+      (a: ChatMessage, b: ChatMessage) =>
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    ),
+  }));
+}
+
 // URL firmada del CV de un candidato para la empresa (RLS: solo si se postuló).
 export async function getCandidateCvUrl(
   candidateId: string
@@ -417,6 +455,7 @@ export interface CompanyStats {
   applicationsThisWeek: number;
   totalViews: number;
   avgResponseHours: number | null;
+  applicationsPerJob: { title: string; count: number }[];
 }
 
 export async function getCompanyStats(
@@ -427,11 +466,26 @@ export async function getCompanyStats(
   const activeJobs = jobs.filter((j) => j.status === "Activo").length;
   const totalViews = jobs.reduce((s, j) => s + j.views_count, 0);
   if (!supabase)
-    return { activeJobs, applicationsThisWeek: 23, totalViews, avgResponseHours: 31 };
+    return {
+      activeJobs,
+      applicationsThisWeek: 23,
+      totalViews,
+      avgResponseHours: 31,
+      applicationsPerJob: jobs.slice(0, 5).map((j, i) => ({
+        title: j.title,
+        count: [12, 8, 5, 3, 1][i] ?? 1,
+      })),
+    };
 
   const jobIds = jobs.map((j) => j.id);
   if (jobIds.length === 0)
-    return { activeJobs, applicationsThisWeek: 0, totalViews, avgResponseHours: null };
+    return {
+      activeJobs,
+      applicationsThisWeek: 0,
+      totalViews,
+      avgResponseHours: null,
+      applicationsPerJob: [],
+    };
 
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
   const { count } = await supabase
@@ -458,11 +512,27 @@ export async function getCompanyStats(
       hours.reduce((a, b) => a + b, 0) / hours.length
     );
   }
+  // Postulaciones por vacante (para el gráfico del panel).
+  const { data: allApps } = await supabase
+    .from("applications")
+    .select("job_id")
+    .in("job_id", jobIds)
+    .limit(1000);
+  const perJobCount = new Map<string, number>();
+  for (const row of (allApps ?? []) as { job_id: string }[]) {
+    perJobCount.set(row.job_id, (perJobCount.get(row.job_id) ?? 0) + 1);
+  }
+  const applicationsPerJob = jobs
+    .map((j) => ({ title: j.title, count: perJobCount.get(j.id) ?? 0 }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6);
+
   return {
     activeJobs,
     applicationsThisWeek: count ?? 0,
     totalViews,
     avgResponseHours,
+    applicationsPerJob,
   };
 }
 
@@ -474,6 +544,26 @@ export async function getSiteSettings(): Promise<Record<string, string>> {
   const out = { ...mock.defaultSiteSettings };
   for (const row of data ?? []) out[row.key] = row.value;
   return out;
+}
+
+// Rubros escritos a mano por empresas que aún no son etiqueta oficial.
+export async function getPendingIndustryTags(): Promise<string[]> {
+  const supabase = await getServerClient();
+  if (!supabase) return ["Veterinaria"];
+  const settings = await getSiteSettings();
+  const approved = new Set(
+    [
+      ...mock.INDUSTRIES,
+      ...(settings.custom_industries ?? "").split(",").map((s) => s.trim()),
+    ].filter(Boolean)
+  );
+  const { data } = await supabase.from("jobs").select("industry").limit(500);
+  const pending = new Set<string>();
+  for (const row of data ?? []) {
+    const ind = (row.industry ?? "").trim();
+    if (ind && !approved.has(ind)) pending.add(ind);
+  }
+  return [...pending];
 }
 
 export async function getReferenceByToken(token: string): Promise<{

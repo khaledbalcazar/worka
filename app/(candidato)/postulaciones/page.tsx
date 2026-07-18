@@ -5,6 +5,7 @@ import {
   getMySavedJobs,
 } from "@/lib/data";
 import { StatusChip } from "@/components/Badges";
+import EntityAvatar from "@/components/EntityAvatar";
 import JobCard from "@/components/JobCard";
 import InterviewCard from "@/components/InterviewCard";
 import { formatDate } from "@/lib/format";
@@ -88,13 +89,11 @@ export default async function ApplicationsPage() {
           <div key={app.id} className="card p-4">
             <div className="flex items-start justify-between gap-2">
               <Link href={`/empleo/${app.job.id}`} className="min-w-0 flex items-start gap-3">
-                <span className="w-10 h-10 shrink-0 rounded-xl bg-blue-50 text-primary flex items-center justify-center font-bold text-xs">
-                  {app.job.company.trade_name
-                    .split(" ")
-                    .slice(0, 2)
-                    .map((w) => w[0])
-                    .join("")}
-                </span>
+                <EntityAvatar
+                  url={app.job.company.logo_url}
+                  name={app.job.company.trade_name}
+                  className="w-10 h-10 rounded-xl text-xs"
+                />
                 <span className="block min-w-0">
                   <h3 className="font-semibold text-primary-dark leading-snug hover:text-primary">
                     {app.job.title}
@@ -159,7 +158,11 @@ export default async function ApplicationsPage() {
               </p>
             )}
             {interviews[app.id] && (
-              <InterviewCard interview={interviews[app.id]} />
+              <InterviewCard
+                interview={interviews[app.id]}
+                jobTitle={app.job.title}
+                companyName={app.job.company.trade_name}
+              />
             )}
           </div>
         );
