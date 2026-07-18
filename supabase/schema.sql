@@ -365,15 +365,10 @@ create policy job_questions_write on job_questions
 -- applications: el candidato ve las suyas; la empresa ve las de sus vacantes
 create policy applications_candidate on applications
   for select using (candidate_id = auth.uid());
--- Postular exige WhatsApp verificado (medida anti-spam liviana)
+-- Postular: basta con que la postulacion sea del propio candidato.
+-- El anti-spam (perfil completo + limite diario) se aplica en la app.
 create policy applications_candidate_insert on applications
-  for insert with check (
-    candidate_id = auth.uid()
-    and exists (
-      select 1 from candidates c
-      where c.id = auth.uid() and c.phone_verified
-    )
-  );
+  for insert with check (candidate_id = auth.uid());
 
 -- saved_jobs: cada candidato maneja solo sus guardados
 alter table saved_jobs enable row level security;

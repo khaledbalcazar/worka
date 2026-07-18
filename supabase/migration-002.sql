@@ -283,13 +283,11 @@ drop policy if exists candidates_public_profile on candidates;
 create policy candidates_public_profile on candidates
   for select using (public_profile);
 
--- Postular exige WhatsApp verificado
+-- Postular: basta con que la postulacion sea del propio candidato
+-- (el anti-spam se aplica a nivel de la app, no en RLS).
 drop policy if exists applications_candidate_insert on applications;
 create policy applications_candidate_insert on applications
-  for insert with check (
-    candidate_id = auth.uid()
-    and exists (select 1 from candidates c where c.id = auth.uid() and c.phone_verified)
-  );
+  for insert with check (candidate_id = auth.uid());
 
 -- ---------- 6. Storage: buckets y políticas ----------
 

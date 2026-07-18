@@ -9,6 +9,7 @@ import {
   updateCompanyProfile,
   uploadCompanyImage,
 } from "@/app/actions";
+import { compressImage } from "@/lib/compress-image";
 import { timeAgo } from "@/lib/format";
 
 export default function CompanyProfileEditor({
@@ -50,9 +51,13 @@ export default function CompanyProfileEditor({
     reader.onload = () => set(reader.result as string);
     reader.readAsDataURL(file);
 
-    const fd = new FormData();
-    fd.append("image", file);
     startTransition(async () => {
+      // Logo más chico (cuadrado), banner más ancho. Ambos comprimidos.
+      const compressed = await compressImage(file, {
+        maxSize: kind === "logo" ? 512 : 1600,
+      });
+      const fd = new FormData();
+      fd.append("image", compressed);
       const result = await uploadCompanyImage(fd, kind);
       if (result.ok) {
         if (result.url) set(result.url);

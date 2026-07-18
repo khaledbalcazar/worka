@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "PowerShell(Remove-Item -Recurse -Force \"C:\\\\Users\\\\khale\\\\OneDrive\\\\Desktop\\\\worka\\\\.next\" -Confirm:$false)"
+      "PowerShell(Remove-Item -Recurse -Force \"C:\\\\Users\\\\khale\\\\OneDrive\\\\Desktop\\\\worka\\\\.next\" -Confirm:$false)",
+      "PowerShell(git add -A)",
+      "PowerShell(git commit -F \"C:\\\\Users\\\\khale\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-khale-OneDrive-Desktop-worka\\\\46eba7ec-107a-44d3-ae32-21933dc1ea6b\\\\scratchpad\\\\commit-fix2.txt\")",
+      "PowerShell(git push 2>&1)"
     ]
   }
 }

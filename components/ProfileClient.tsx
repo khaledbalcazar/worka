@@ -12,6 +12,7 @@ import {
   updateCandidateProfile,
   uploadCv,
 } from "@/app/actions";
+import { compressImage } from "@/lib/compress-image";
 import { CITIES, INDUSTRIES } from "@/lib/mock-data";
 
 function refWhatsAppUrl(ref: WorkReference, candidateName: string): string {
@@ -99,11 +100,17 @@ export default function ProfileClient({
   function submitIdentity() {
     if (!idFiles.front || !idFiles.back || !idFiles.selfie) return;
     setIdError(null);
-    const fd = new FormData();
-    fd.append("front", idFiles.front);
-    fd.append("back", idFiles.back);
-    fd.append("selfie", idFiles.selfie);
     startTransition(async () => {
+      // Comprimimos cada foto antes de subir: más rápido y menos carga.
+      const [front, back, selfie] = await Promise.all([
+        compressImage(idFiles.front!),
+        compressImage(idFiles.back!),
+        compressImage(idFiles.selfie!),
+      ]);
+      const fd = new FormData();
+      fd.append("front", front);
+      fd.append("back", back);
+      fd.append("selfie", selfie);
       const result = await submitIdentityDocs(fd);
       if (result.ok) setIdentityStatus("pending");
       else setIdError(result.error ?? "No pudimos enviar la solicitud.");

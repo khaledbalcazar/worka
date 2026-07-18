@@ -57,22 +57,19 @@ export async function applyToJob(
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Iniciá sesión para postularte." };
 
-  // Medidas de seguridad livianas: perfil completo + WhatsApp verificado.
+  // Medida anti-spam liviana: exigimos perfil con datos básicos.
+  // (La verificación de WhatsApp quedará como requisito cuando conectemos la
+  // API de Meta; hoy no bloquea para no frenar postulaciones legítimas.)
   const { data: candidate } = await supabase
     .from("candidates")
-    .select("full_name, phone_whatsapp, phone_verified, location_city")
+    .select("full_name, location_city")
     .eq("id", user.id)
     .maybeSingle();
   if (!candidate || !candidate.full_name || !candidate.location_city)
     return {
       ok: false,
-      error: "Completá tu perfil para postularte. Te toma 2 minutos.",
-    };
-  if (!candidate.phone_verified)
-    return {
-      ok: false,
       error:
-        "Verificá tu WhatsApp desde tu perfil para poder postularte. Así las empresas saben que sos una persona real.",
+        "Completá tu perfil (nombre y ciudad) para postularte. Te toma 2 minutos.",
     };
 
   const todayStart = new Date();
@@ -98,7 +95,12 @@ export async function applyToJob(
   if (error) {
     if (error.code === "23505")
       return { ok: false, error: "Ya te postulaste a esta vacante." };
-    return { ok: false, error: "No pudimos enviar tu postulación." };
+    console.error("applyToJob insert error:", error);
+    // Surface del código de Postgres para diagnosticar (42501 = RLS, 23503 = FK…)
+    return {
+      ok: false,
+      error: `No pudimos enviar tu postulación (${error.code ?? "?"}: ${error.message ?? "error"}).`,
+    };
   }
 
   if (answers.length > 0) {
@@ -245,8 +247,13 @@ export async function submitIdentityDocs(
         upsert: true,
         contentType: file.type || "image/jpeg",
       });
-    if (error)
-      return { ok: false, error: `No pudimos subir la foto de ${label}.` };
+    if (error) {
+      console.error("submitIdentityDocs upload error:", error);
+      return {
+        ok: false,
+        error: `No pudimos subir la foto de ${label} (${error.message}). Si dice "Bucket not found", falta crear el bucket 'identidad' en Supabase.`,
+      };
+    }
   }
 
   const { error } = await supabase
