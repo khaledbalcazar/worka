@@ -398,6 +398,8 @@ export const currentCandidate: Candidate = {
   phone_verified: true,
   identity_status: "none",
   location_city: "Asunción",
+  avatar_url: null,
+  bio: "Cajera y atención al cliente con 2 años de experiencia. Responsable, puntual y con ganas de crecer.",
   cv_url: null,
   cv_text: null,
   preferences_industry: ["Ventas", "Atención al Cliente"],

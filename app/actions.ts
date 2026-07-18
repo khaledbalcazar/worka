@@ -306,7 +306,7 @@ export async function addWorkReference(input: {
   if (!user) return { ok: false, error: "Iniciá sesión primero." };
   const { data, error } = await supabase
     .from("work_references")
-    .insert({ candidate_id: user.id, ...input })
+    .insert({ candidate_id: user.id, ...input, status: "generada" })
     .select("token")
     .single();
   if (error) return { ok: false, error: "No pudimos agregar la referencia." };
@@ -328,12 +328,13 @@ export async function confirmReferenceByToken(
   return { ok: true };
 }
 
-// Configuración del candidato: edición completa de datos
+// Configuración del candidato: edición completa de datos (incluye bio y rubros)
 export async function updateCandidateProfile(input: {
-  full_name: string;
-  phone_whatsapp: string;
-  location_city: string;
-  preferences_industry: string[];
+  full_name?: string;
+  phone_whatsapp?: string;
+  location_city?: string;
+  preferences_industry?: string[];
+  bio?: string;
 }): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
@@ -345,7 +346,83 @@ export async function updateCandidateProfile(input: {
     .eq("id", user.id);
   if (error) return { ok: false, error: "No pudimos guardar tus datos." };
   revalidatePath("/perfil");
+  revalidatePath(`/p/${user.id}`);
   return { ok: true };
+}
+
+// Foto de perfil del candidato → bucket público, visible para empresas.
+export async function uploadAvatar(
+  formData: FormData
+): Promise<ActionResult & { url?: string }> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión primero." };
+  const file = formData.get("image") as File | null;
+  if (!file || file.size === 0) return { ok: false, error: "Elegí una imagen." };
+  if (file.size > 5 * 1024 * 1024)
+    return { ok: false, error: "La foto no puede pesar más de 5 MB." };
+
+  const path = `avatars/${user.id}.jpg`;
+  const { error } = await supabase.storage
+    .from("publico")
+    .upload(path, file, { upsert: true, contentType: "image/jpeg" });
+  if (error)
+    return { ok: false, error: "No pudimos subir la foto. ¿Existe el bucket 'publico'?" };
+  const { data } = supabase.storage.from("publico").getPublicUrl(path);
+  const url = `${data.publicUrl}?v=${Date.now()}`;
+  await supabase.from("candidates").update({ avatar_url: url }).eq("id", user.id);
+  revalidatePath("/perfil");
+  revalidatePath(`/p/${user.id}`);
+  return { ok: true, url };
+}
+
+// URL firmada temporal para ver el CV propio (el bucket 'cvs' es privado).
+export async function getMyCvUrl(): Promise<ActionResult & { url?: string }> {
+  const supabase = await getServerClient();
+  if (!supabase) return { ok: true, url: "#demo-cv" };
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sesión no válida." };
+  const { data, error } = await supabase.storage
+    .from("cvs")
+    .createSignedUrl(`${user.id}/cv.pdf`, 300);
+  if (error || !data)
+    return { ok: false, error: "No encontramos tu CV cargado." };
+  return { ok: true, url: data.signedUrl };
+}
+
+// Elimina el CV cargado (archivo + referencia en el perfil).
+export async function deleteCv(): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sesión no válida." };
+  await supabase.storage.from("cvs").remove([`${user.id}/cv.pdf`]);
+  await supabase.from("candidates").update({ cv_url: null }).eq("id", user.id);
+  revalidatePath("/perfil");
+  return { ok: true };
+}
+
+export async function deleteWorkReference(id: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sesión no válida." };
+  const { error } = await supabase
+    .from("work_references")
+    .delete()
+    .eq("id", id)
+    .eq("candidate_id", user.id);
+  if (error) return { ok: false, error: "No pudimos eliminar la referencia." };
+  revalidatePath("/perfil");
+  return { ok: true };
+}
+
+// Suma 1 vista al abrir el detalle de una vacante.
+export async function incrementJobViews(jobId: string): Promise<void> {
+  const supabase = await getServerClient();
+  if (!supabase) return;
+  await supabase.rpc("increment_job_views", { job: jobId });
 }
 
 // Eliminación de cuenta: borra el perfil (cascada a todos los datos) y cierra sesión.

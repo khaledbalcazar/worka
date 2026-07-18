@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getJobById, getMyAppliedJobIds } from "@/lib/data";
 import { formatDate, timeAgo } from "@/lib/format";
 import ApplyPanel from "@/components/ApplyPanel";
+import JobViewTracker from "@/components/JobViewTracker";
 import {
   FastResponderBadge,
   FirstJobBadge,
@@ -73,6 +74,7 @@ export default async function JobDetailPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <JobViewTracker jobId={job.id} />
       <Link href="/empleos" className="text-sm text-primary font-medium">
         ← Volver al feed
       </Link>

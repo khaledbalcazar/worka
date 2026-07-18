@@ -6,17 +6,23 @@ import type { Candidate, IdentityStatus, WorkReference } from "@/lib/types";
 import {
   addWorkReference,
   deleteAccount,
+  deleteCv,
+  deleteWorkReference,
+  getMyCvUrl,
   signOut,
   submitIdentityDocs,
   updateCandidatePrefs,
   updateCandidateProfile,
+  uploadAvatar,
   uploadCv,
 } from "@/app/actions";
 import { compressImage } from "@/lib/compress-image";
+import { toPyWhatsapp } from "@/lib/format";
 import { CITIES, INDUSTRIES } from "@/lib/mock-data";
 
 function refWhatsAppUrl(ref: WorkReference, candidateName: string): string {
-  const phone = ref.referrer_phone.replace(/\D/g, "");
+  // Formato internacional paraguayo: 0992… / 992… → 595992…
+  const phone = toPyWhatsapp(ref.referrer_phone);
   const link = `${typeof window !== "undefined" ? window.location.origin : ""}/ref/${ref.token}`;
   const text = `Hola ${ref.referrer_name.split(" ")[0]}! Soy ${candidateName}. ¿Me confirmás como referencia laboral en Worka? Solo tenés que tocar este link: ${link}`;
   return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
@@ -82,7 +88,11 @@ export default function ProfileClient({
   }>({ front: null, back: null, selfie: null });
   const [idError, setIdError] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(candidate.avatar_url);
+  const [bio, setBio] = useState(candidate.bio ?? "");
+  const [bioSaved, setBioSaved] = useState(false);
   const cvInput = useRef<HTMLInputElement>(null);
+  const avatarInput = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
 
   function handleCvFile(file: File | undefined) {
@@ -94,6 +104,50 @@ export default function ProfileClient({
       const result = await uploadCv(fd);
       if (result.ok) setHasCv(true);
       else setCvError(result.error ?? "No pudimos subir el CV.");
+    });
+  }
+
+  function handleAvatar(file: File | undefined) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setAvatarUrl(reader.result as string);
+    reader.readAsDataURL(file);
+    startTransition(async () => {
+      const compressed = await compressImage(file, { maxSize: 512 });
+      const fd = new FormData();
+      fd.append("image", compressed);
+      const result = await uploadAvatar(fd);
+      if (result.ok && result.url) setAvatarUrl(result.url);
+    });
+  }
+
+  function saveBio() {
+    startTransition(async () => {
+      await updateCandidateProfile({ bio });
+      setBioSaved(true);
+      setTimeout(() => setBioSaved(false), 2500);
+    });
+  }
+
+  function viewCv() {
+    startTransition(async () => {
+      const result = await getMyCvUrl();
+      if (result.ok && result.url) window.open(result.url, "_blank");
+      else setCvError(result.error ?? "No pudimos abrir el CV.");
+    });
+  }
+
+  function removeCv() {
+    startTransition(async () => {
+      await deleteCv();
+      setHasCv(false);
+    });
+  }
+
+  function removeReference(id: string) {
+    setReferences((prev) => prev.filter((r) => r.id !== id));
+    startTransition(() => {
+      deleteWorkReference(id);
     });
   }
 
@@ -139,7 +193,7 @@ export default function ProfileClient({
         id: `local-${Date.now()}`,
         candidate_id: candidate.id,
         ...draft,
-        status: "pendiente",
+        status: "generada",
         token: result.token ?? "",
         created_at: new Date().toISOString(),
       };
@@ -178,13 +232,36 @@ export default function ProfileClient({
         <div className="space-y-4">
           <div className="card p-5 sm:p-6">
             <div className="flex items-center gap-4">
-              <div className="w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center text-xl font-bold shrink-0">
-                {candidate.full_name
-                  .split(" ")
-                  .slice(0, 2)
-                  .map((n) => n[0])
-                  .join("")}
-              </div>
+              <button
+                className="relative w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center text-xl font-bold shrink-0 overflow-hidden group"
+                onClick={() => avatarInput.current?.click()}
+                title="Cambiar foto de perfil"
+              >
+                {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={avatarUrl}
+                    alt="Foto de perfil"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  candidate.full_name
+                    .split(" ")
+                    .slice(0, 2)
+                    .map((n) => n[0])
+                    .join("")
+                )}
+                <span className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-all">
+                  📷
+                </span>
+              </button>
+              <input
+                ref={avatarInput}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => handleAvatar(e.target.files?.[0])}
+              />
               <div className="min-w-0">
                 <h2 className="font-bold text-primary-dark text-lg">
                   {candidate.full_name}
@@ -201,6 +278,22 @@ export default function ProfileClient({
                   Buscando: {candidate.preferences_industry.join(", ") || "—"}
                 </p>
               </div>
+            </div>
+
+            {/* Bio corta, visible para empresas y en tu perfil público */}
+            <div className="mt-4">
+              <label className="label">Sobre mí (bio)</label>
+              <textarea
+                className="input min-h-16 text-sm"
+                maxLength={280}
+                placeholder="Contá en pocas líneas quién sos y qué buscás. Lo ven las empresas."
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                onBlur={saveBio}
+              />
+              <p className="text-xs text-gray-400 mt-0.5">
+                {bioSaved ? "✓ Guardado" : `${bio.length}/280 · se guarda al salir del campo`}
+              </p>
             </div>
 
             <div className="mt-5">
@@ -242,9 +335,16 @@ export default function ProfileClient({
                 <p className="text-sm text-gray-700 font-medium">
                   📄 CV cargado
                 </p>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    className="text-sm text-primary font-medium disabled:opacity-50"
+                    disabled={pending}
+                    onClick={viewCv}
+                  >
+                    Ver PDF
+                  </button>
                   <Link href="/cv" className="text-sm text-primary font-medium">
-                    Ver / editar
+                    Generar con Worka
                   </Link>
                   <button
                     className="text-sm text-gray-500 font-medium"
@@ -252,7 +352,15 @@ export default function ProfileClient({
                   >
                     Reemplazar
                   </button>
+                  <button
+                    className="text-sm text-danger font-medium disabled:opacity-50"
+                    disabled={pending}
+                    onClick={removeCv}
+                  >
+                    Eliminar
+                  </button>
                 </div>
+                {cvError && <p className="text-xs text-danger">{cvError}</p>}
               </div>
             ) : (
               <>
@@ -398,8 +506,14 @@ export default function ProfileClient({
                     {ind}
                   </span>
                 ))}
-                <button className="chip bg-surface text-gray-500">
-                  + Agregar
+                <button
+                  className="chip bg-surface text-gray-500 hover:text-primary"
+                  onClick={() => {
+                    setEditSaved(false);
+                    setConfigModal("editar");
+                  }}
+                >
+                  ✏️ Editar rubros
                 </button>
               </div>
             </div>
@@ -481,23 +595,29 @@ export default function ProfileClient({
                     className={`chip ${
                       r.status === "confirmada"
                         ? "bg-emerald-50 text-emerald-700"
-                        : "bg-amber-50 text-amber-700"
+                        : "bg-blue-50 text-primary"
                     }`}
                   >
                     {r.status === "confirmada"
                       ? "✓ confirmada"
-                      : "⏳ pendiente"}
+                      : "📨 solicitud generada"}
                   </span>
-                  {r.status === "pendiente" && r.token && (
+                  {r.status !== "confirmada" && r.token && (
                     <a
                       href={refWhatsAppUrl(r, candidate.full_name)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs text-primary font-medium"
                     >
-                      📤 Reenviar link
+                      📤 Enviar link por WhatsApp
                     </a>
                   )}
+                  <button
+                    className="text-xs text-gray-400 hover:text-danger"
+                    onClick={() => removeReference(r.id)}
+                  >
+                    Eliminar
+                  </button>
                 </div>
               </div>
             ))}
@@ -554,12 +674,11 @@ export default function ProfileClient({
                     >
                       <span>{idFiles[key] ? `✓ ${label}` : label}</span>
                       <span className="text-xs text-primary font-medium">
-                        {idFiles[key] ? "Cambiar" : "Elegir foto"}
+                        {idFiles[key] ? "Cambiar" : "Cámara o galería"}
                       </span>
                       <input
                         type="file"
                         accept="image/*"
-                        capture="environment"
                         className="hidden"
                         onChange={(e) =>
                           setIdFiles((f) => ({

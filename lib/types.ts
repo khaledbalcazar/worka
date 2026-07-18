@@ -81,6 +81,8 @@ export interface Candidate {
   phone_verified: boolean;
   identity_status: IdentityStatus;
   location_city: string;
+  avatar_url: string | null;
+  bio: string | null;
   cv_url: string | null;
   cv_text: string | null;
   preferences_industry: string[];
@@ -99,7 +101,7 @@ export interface WorkReference {
   referrer_name: string;
   referrer_phone: string;
   relationship: string; // ej: "Fui su encargado en Super Guaraní"
-  status: "pendiente" | "confirmada";
+  status: "pendiente" | "generada" | "confirmada";
   token: string; // link único /ref/[token]
   created_at: string;
 }
