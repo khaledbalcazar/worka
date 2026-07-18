@@ -126,23 +126,34 @@ language plpgsql security definer set search_path = public
 as $$
 declare
   meta jsonb := coalesce(new.raw_user_meta_data, '{}'::jsonb);
-  user_role text := coalesce(meta->>'worka_role', 'candidate');
+  v_role text := coalesce(meta->>'worka_role', 'candidate');
 begin
-  insert into public.profiles (id, role)
-  values (new.id, user_role::user_role)
-  on conflict (id) do nothing;
-
-  if user_role = 'company' and meta ? 'company_name' then
-    insert into public.companies (id, company_name, trade_name, ruc, location_city, ruc_check_status)
-    values (
-      new.id,
-      meta->>'company_name',
-      coalesce(meta->>'trade_name', meta->>'company_name'),
-      meta->>'ruc',
-      coalesce(meta->>'location_city', 'Asunción'),
-      case when coalesce(meta->>'ruc_dv_ok', 'false') = 'true' then 'pendiente' else 'pendiente' end
-    )
+  begin
+    insert into public.profiles (id, role)
+    values (new.id, v_role::user_role)
     on conflict (id) do nothing;
+  exception when others then
+    insert into public.profiles (id, role)
+    values (new.id, 'candidate')
+    on conflict (id) do nothing;
+  end;
+
+  -- Empresa en su propio bloque: un fallo aca (ej: RUC repetido) no debe
+  -- tumbar el alta del usuario. Se omite ruc_check_status (usa su default).
+  if v_role = 'company' and (meta ? 'company_name') then
+    begin
+      insert into public.companies (id, company_name, trade_name, ruc, location_city)
+      values (
+        new.id,
+        meta->>'company_name',
+        coalesce(nullif(meta->>'trade_name', ''), meta->>'company_name'),
+        coalesce(meta->>'ruc', ''),
+        coalesce(nullif(meta->>'location_city', ''), 'Asunción')
+      )
+      on conflict (id) do nothing;
+    exception when others then
+      null;
+    end;
   end if;
 
   return new;
