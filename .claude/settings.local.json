@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Remove-Item -Recurse -Force \"C:\\\\Users\\\\khale\\\\OneDrive\\\\Desktop\\\\worka\\\\.next\" -Confirm:$false)"
+    ]
+  }
+}

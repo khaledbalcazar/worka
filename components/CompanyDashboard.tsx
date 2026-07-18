@@ -1,0 +1,362 @@
+"use client";
+
+import Link from "next/link";
+import { useState, useTransition } from "react";
+import type { Company, JobStatus, JobWithCompany } from "@/lib/types";
+import { StatusChip } from "@/components/Badges";
+import { formatDate } from "@/lib/format";
+import {
+  deleteJob,
+  duplicateJob,
+  setJobStatus,
+  updateJobExpiry,
+} from "@/app/actions";
+
+const TIPS = [
+  "Las vacantes que indican el rango salarial reciben en promedio 2,4 veces más postulaciones.",
+  "Agregá hasta 3 preguntas de filtro: vas a leer solo los perfiles que realmente aplican.",
+  "Respondé en menos de 72 h para conservar tu sello ⚡ Responde rápido: los candidatos filtran por él.",
+  "Las vacantes con líneas de colectivo reciben más postulaciones de candidatos que sí pueden llegar.",
+  "Publicá novedades en tu perfil de empresa: los candidatos las ven antes de postularse.",
+  "¿Buscás el mismo puesto cada tanto? Usá «Duplicar» y publicá en 1 clic.",
+];
+
+export default function CompanyDashboard({
+  company,
+  jobs: initialJobs,
+}: {
+  company: Company;
+  jobs: JobWithCompany[];
+}) {
+  const [jobs, setJobs] = useState(initialJobs);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [editingExpiry, setEditingExpiry] = useState<string | null>(null);
+  const [expiryValue, setExpiryValue] = useState("");
+  const [tipIndex, setTipIndex] = useState(0);
+  const [pending, startTransition] = useTransition();
+
+  const stats = [
+    {
+      label: "Vacantes activas",
+      value: jobs.filter((j) => j.status === "Activo").length,
+    },
+    { label: "Postulaciones esta semana", value: 23 },
+    {
+      label: "Vistas totales",
+      value: jobs.reduce((s, j) => s + j.views_count, 0),
+    },
+    { label: "Tiempo medio de respuesta", value: "31 h", highlight: true },
+  ];
+
+  function flash(message: string) {
+    setNotice(message);
+    setTimeout(() => setNotice(null), 5000);
+  }
+
+  function handleDuplicate(job: JobWithCompany) {
+    startTransition(async () => {
+      const result = await duplicateJob(job.id);
+      if (!result.ok) {
+        flash(result.error ?? "No pudimos duplicar la vacante.");
+        return;
+      }
+      // Reflejo local inmediato (en modo live el revalidate lo confirma).
+      const copy: JobWithCompany = {
+        ...job,
+        id: `${job.id}-copy-${Date.now()}`,
+        status: "Pausado",
+        views_count: 0,
+        created_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 30 * 86400000).toISOString(),
+      };
+      setJobs((prev) => [copy, ...prev]);
+      flash(
+        "✅ Vacante duplicada como borrador (en pausa). Activala cuando quieras."
+      );
+    });
+  }
+
+  function handleStatus(jobId: string, status: JobStatus) {
+    startTransition(async () => {
+      const result = await setJobStatus(jobId, status);
+      if (!result.ok) {
+        flash(result.error ?? "No pudimos cambiar el estado.");
+        return;
+      }
+      setJobs((prev) =>
+        prev.map((j) => (j.id === jobId ? { ...j, status } : j))
+      );
+      flash(
+        status === "Pausado"
+          ? "⏸️ Vacante pausada: dejó de aparecer en el feed."
+          : status === "Activo"
+            ? "▶️ Vacante activa de nuevo."
+            : "🔒 Búsqueda cerrada. Mirá el resumen en la página de candidatos."
+      );
+    });
+  }
+
+  function handleDelete(jobId: string) {
+    setConfirmDelete(null);
+    startTransition(async () => {
+      const result = await deleteJob(jobId);
+      if (!result.ok) {
+        flash(result.error ?? "No pudimos eliminar la vacante.");
+        return;
+      }
+      setJobs((prev) => prev.filter((j) => j.id !== jobId));
+      flash("🗑️ Vacante eliminada definitivamente.");
+    });
+  }
+
+  function handleExpiry(jobId: string) {
+    if (!expiryValue) return;
+    setEditingExpiry(null);
+    startTransition(async () => {
+      const result = await updateJobExpiry(jobId, expiryValue);
+      if (!result.ok) {
+        flash(result.error ?? "No pudimos actualizar la vigencia.");
+        return;
+      }
+      setJobs((prev) =>
+        prev.map((j) =>
+          j.id === jobId
+            ? { ...j, expires_at: new Date(expiryValue).toISOString() }
+            : j
+        )
+      );
+      flash(`📅 Vigencia actualizada al ${formatDate(expiryValue)}.`);
+    });
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-primary-dark">
+            Hola, {company.trade_name} 👋
+          </h1>
+          <p className="text-sm text-gray-500">
+            Así van tus búsquedas esta semana.
+          </p>
+        </div>
+        <Link href="/empresa/vacantes/nueva" className="btn-primary">
+          ➕ Publicar nueva vacante
+        </Link>
+      </div>
+
+      {notice && (
+        <div className="card px-5 py-3 bg-emerald-50 border-emerald-100 text-sm text-emerald-800 flex items-center justify-between animate-fade-up">
+          <span>{notice}</span>
+          <button className="font-medium underline" onClick={() => setNotice(null)}>
+            Cerrar
+          </button>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map((s) => (
+          <div key={s.label} className="card p-5">
+            <p className="text-2xl font-bold text-primary-dark">{s.value}</p>
+            <p className="text-sm text-gray-500 mt-0.5">{s.label}</p>
+            {s.highlight && (
+              <p className="text-xs text-emerald-600 mt-1 font-medium">
+                ⚡ Mantené menos de 72 h para conservar tu sello
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <section className="card overflow-hidden">
+        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h2 className="font-semibold text-primary-dark">Mis vacantes</h2>
+          <span className="text-xs text-gray-400">
+            {jobs.length} en total
+          </span>
+        </div>
+        {jobs.length === 0 && (
+          <div className="p-8 text-center text-sm text-gray-400">
+            Todavía no publicaste ninguna vacante.{" "}
+            <Link
+              href="/empresa/vacantes/nueva"
+              className="text-primary font-medium"
+            >
+              Publicá la primera →
+            </Link>
+          </div>
+        )}
+        {jobs.length > 0 && (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm min-w-[860px]">
+              <thead>
+                <tr className="text-left text-xs text-gray-400 uppercase tracking-wide">
+                  <th className="px-5 py-3 font-medium">Puesto</th>
+                  <th className="px-5 py-3 font-medium">Estado</th>
+                  <th className="px-5 py-3 font-medium">Vistas</th>
+                  <th className="px-5 py-3 font-medium">Vence</th>
+                  <th className="px-5 py-3 font-medium text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {jobs.map((job) => (
+                  <tr key={job.id} className="hover:bg-surface/60 align-middle">
+                    <td className="px-5 py-3">
+                      <Link
+                        href={`/empresa/vacantes/${job.id}`}
+                        className="font-medium text-primary-dark hover:text-primary"
+                      >
+                        {job.title}
+                      </Link>
+                      <p className="text-xs text-gray-400">
+                        Publicada {formatDate(job.created_at)} ·{" "}
+                        {job.views_count} vistas
+                      </p>
+                    </td>
+                    <td className="px-5 py-3">
+                      <StatusChip status={job.status} />
+                    </td>
+                    <td className="px-5 py-3 text-gray-500">
+                      {job.views_count}
+                    </td>
+                    <td className="px-5 py-3 text-gray-500">
+                      {editingExpiry === job.id ? (
+                        <span className="flex items-center gap-1.5">
+                          <input
+                            type="date"
+                            className="input py-1.5 px-2 text-xs w-36"
+                            value={expiryValue}
+                            onChange={(e) => setExpiryValue(e.target.value)}
+                          />
+                          <button
+                            className="text-primary font-medium text-xs"
+                            onClick={() => handleExpiry(job.id)}
+                          >
+                            OK
+                          </button>
+                          <button
+                            className="text-gray-400 text-xs"
+                            onClick={() => setEditingExpiry(null)}
+                          >
+                            ✕
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          className="hover:text-primary underline decoration-dotted underline-offset-2"
+                          title="Cambiar fecha de vigencia"
+                          onClick={() => {
+                            setEditingExpiry(job.id);
+                            setExpiryValue(job.expires_at.slice(0, 10));
+                          }}
+                        >
+                          {formatDate(job.expires_at)} ✏️
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-5 py-3 text-right whitespace-nowrap space-x-2.5">
+                      <Link
+                        href={`/empresa/vacantes/${job.id}`}
+                        className="text-primary font-medium"
+                      >
+                        Candidatos
+                      </Link>
+                      {job.status === "Activo" && (
+                        <button
+                          className="text-gray-500 hover:text-amber-600 font-medium disabled:opacity-50"
+                          disabled={pending}
+                          onClick={() => handleStatus(job.id, "Pausado")}
+                        >
+                          Pausar
+                        </button>
+                      )}
+                      {job.status === "Pausado" && (
+                        <button
+                          className="text-gray-500 hover:text-emerald-600 font-medium disabled:opacity-50"
+                          disabled={pending}
+                          onClick={() => handleStatus(job.id, "Activo")}
+                        >
+                          Activar
+                        </button>
+                      )}
+                      {(job.status === "Activo" || job.status === "Pausado") && (
+                        <button
+                          className="text-gray-500 hover:text-primary font-medium disabled:opacity-50"
+                          disabled={pending}
+                          onClick={() => handleStatus(job.id, "Cerrado")}
+                        >
+                          Cerrar
+                        </button>
+                      )}
+                      <button
+                        className="text-gray-500 hover:text-primary font-medium disabled:opacity-50"
+                        disabled={pending}
+                        onClick={() => handleDuplicate(job)}
+                      >
+                        Duplicar
+                      </button>
+                      <button
+                        className="text-gray-400 hover:text-danger font-medium disabled:opacity-50"
+                        disabled={pending}
+                        onClick={() => setConfirmDelete(job.id)}
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* Consejos rotativos */}
+      <section className="card p-5 bg-blue-50 border-blue-100 flex items-start justify-between gap-4">
+        <div>
+          <h3 className="font-semibold text-primary-dark">
+            💡 Consejo para recibir más postulaciones
+          </h3>
+          <p className="text-sm text-gray-600 mt-1">{TIPS[tipIndex]}</p>
+        </div>
+        <button
+          className="btn-secondary text-xs shrink-0"
+          onClick={() => setTipIndex((i) => (i + 1) % TIPS.length)}
+        >
+          Otro consejo →
+        </button>
+      </section>
+
+      {/* Confirmación de eliminación */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-5 animate-fade-up">
+            <h4 className="font-semibold text-primary-dark">
+              ¿Eliminar esta vacante?
+            </h4>
+            <p className="text-sm text-gray-600 mt-2">
+              Se borra definitivamente junto con sus postulaciones. Si solo
+              terminaste la búsqueda, usá &ldquo;Cerrar&rdquo;: conservás las
+              métricas y podés duplicarla más adelante.
+            </p>
+            <div className="flex gap-2 mt-5">
+              <button
+                className="btn-secondary flex-1"
+                onClick={() => setConfirmDelete(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn bg-danger text-white hover:bg-red-600 flex-1"
+                onClick={() => handleDelete(confirmDelete)}
+              >
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

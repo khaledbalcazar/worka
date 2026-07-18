@@ -1,0 +1,211 @@
+// Tipos del modelo de datos de Worka (espejo del esquema de Supabase)
+
+export type Role = "candidate" | "company" | "admin";
+
+export type Modality = "Presencial" | "Híbrido" | "Remoto";
+
+export type JobStatus = "Activo" | "Pausado" | "Cerrado" | "Moderacion";
+
+export type ApplicationStatus =
+  | "Pendiente"
+  | "Revisado"
+  | "Contactado"
+  | "Rechazado";
+
+export type RejectionReason =
+  | "Buscamos más experiencia"
+  | "Puesto cubierto"
+  | "Perfil distinto al buscado";
+
+export type ContractType =
+  | "Tiempo completo"
+  | "Medio tiempo"
+  | "Por turnos"
+  | "Pasantía"
+  | "Freelance";
+
+// Insignias que una empresa puede desbloquear (o recibir desde el admin)
+export type BadgeId =
+  | "fundadora"
+  | "responde_rapido"
+  | "primer_empleo"
+  | "top_empleador"
+  | "inclusiva";
+
+export interface BadgeInfo {
+  id: BadgeId;
+  emoji: string;
+  label: string;
+  description: string;
+}
+
+export const BADGE_CATALOG: BadgeInfo[] = [
+  {
+    id: "fundadora",
+    emoji: "🌟",
+    label: "Empresa fundadora",
+    description: "Estuvo en Worka desde el primer día.",
+  },
+  {
+    id: "responde_rapido",
+    emoji: "⚡",
+    label: "Responde rápido",
+    description: "Responde a los postulantes en menos de 72 horas.",
+  },
+  {
+    id: "primer_empleo",
+    emoji: "✨",
+    label: "Impulsa primeros empleos",
+    description: "Publica vacantes sin requisito de experiencia.",
+  },
+  {
+    id: "top_empleador",
+    emoji: "🏆",
+    label: "Top empleador del mes",
+    description: "Reconocida por los candidatos este mes.",
+  },
+  {
+    id: "inclusiva",
+    emoji: "🤝",
+    label: "Empleadora inclusiva",
+    description: "Comprometida con la diversidad en sus contrataciones.",
+  },
+];
+
+export type IdentityStatus = "none" | "pending" | "verified";
+
+export interface Candidate {
+  id: string;
+  full_name: string;
+  phone_whatsapp: string;
+  phone_verified: boolean;
+  identity_status: IdentityStatus;
+  location_city: string;
+  cv_url: string | null;
+  cv_text: string | null;
+  preferences_industry: string[];
+  preferences_modality: string;
+  first_job_mode: boolean;
+  alerts_enabled: boolean;
+  visible_to_companies: boolean;
+  public_profile: boolean;
+  created_at: string;
+}
+
+// Referencia laboral: un ex-empleador confirma por WhatsApp
+export interface WorkReference {
+  id: string;
+  candidate_id: string;
+  referrer_name: string;
+  referrer_phone: string;
+  relationship: string; // ej: "Fui su encargado en Super Guaraní"
+  status: "pendiente" | "confirmada";
+  created_at: string;
+}
+
+export interface Interview {
+  id: string;
+  application_id: string;
+  proposed_at: string; // fecha y hora propuestas
+  location: string;
+  status: "propuesta" | "confirmada" | "rechazada";
+  created_at: string;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  icon: string;
+  title: string;
+  body: string;
+  href: string | null;
+  read: boolean;
+  created_at: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  application_id: string;
+  sender: "candidate" | "company";
+  content: string;
+  created_at: string;
+}
+
+export interface Company {
+  id: string;
+  company_name: string;
+  trade_name: string;
+  ruc: string;
+  logo_url: string | null;
+  banner_url: string | null;
+  description: string;
+  location_city: string;
+  website_url: string | null;
+  instagram_url: string | null;
+  facebook_url: string | null;
+  badges: BadgeId[];
+  is_verified: boolean;
+  ruc_check_status: "pendiente" | "coincide" | "no_coincide";
+  fast_responder: boolean;
+  created_at: string;
+}
+
+export interface CompanyPost {
+  id: string;
+  company_id: string;
+  content: string;
+  created_at: string;
+}
+
+export interface FilterQuestion {
+  id: string;
+  question: string;
+}
+
+export interface Job {
+  id: string;
+  company_id: string;
+  title: string;
+  description: string;
+  industry: string;
+  modality: Modality;
+  contract_type: ContractType | null;
+  salary_range: string | null;
+  schedule: string | null;
+  address: string | null;
+  nearby_transit: string | null;
+  requirements: string[];
+  benefits: string[];
+  vacancies_count: number;
+  status: JobStatus;
+  requires_experience: boolean;
+  urgent: boolean;
+  featured: boolean;
+  filter_questions: FilterQuestion[];
+  views_count: number;
+  created_at: string;
+  expires_at: string;
+}
+
+export interface Application {
+  id: string;
+  job_id: string;
+  candidate_id: string;
+  status: ApplicationStatus;
+  rejection_reason: RejectionReason | null;
+  answers: { question_id: string; answer: boolean }[];
+  applied_at: string;
+  reviewed_at: string | null;
+}
+
+export interface Report {
+  id: string;
+  job_id: string;
+  reporter_id: string;
+  reason: string;
+  created_at: string;
+}
+
+export interface JobWithCompany extends Job {
+  company: Company;
+}
