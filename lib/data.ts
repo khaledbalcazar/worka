@@ -669,6 +669,76 @@ export async function getIdentityDocUrls(
   return out;
 }
 
+// Listado de usuarios para el backoffice. Con la Service Role Key configurada
+// incluye el email de cada cuenta; sin ella, lista los perfiles de la app.
+export interface AdminUser {
+  id: string;
+  email: string | null;
+  role: string;
+  name: string;
+  created_at: string;
+}
+
+export async function getAdminUsers(): Promise<{
+  users: AdminUser[];
+  fullAccess: boolean;
+}> {
+  const supabase = await getServerClient();
+  if (!supabase)
+    return {
+      users: mock.talentPool.map((c) => ({
+        id: c.id,
+        email: `${c.full_name.split(" ")[0].toLowerCase()}@ejemplo.com`,
+        role: "candidate",
+        name: c.full_name,
+        created_at: c.created_at,
+      })),
+      fullAccess: true,
+    };
+
+  const { getAdminClient } = await import("./supabase/admin");
+  const admin = getAdminClient();
+
+  // Nombres visibles desde las tablas de la app
+  const [{ data: candidates }, { data: companies }, { data: profiles }] =
+    await Promise.all([
+      supabase.from("candidates").select("id, full_name"),
+      supabase.from("companies").select("id, trade_name"),
+      supabase.from("profiles").select("id, role, created_at"),
+    ]);
+  const names = new Map<string, string>();
+  for (const c of candidates ?? []) names.set(c.id, c.full_name);
+  for (const c of companies ?? []) names.set(c.id, c.trade_name);
+  const roles = new Map<string, { role: string; created_at: string }>();
+  for (const p of profiles ?? [])
+    roles.set(p.id, { role: p.role, created_at: p.created_at });
+
+  if (admin) {
+    const { data } = await admin.auth.admin.listUsers({ perPage: 200 });
+    return {
+      users: (data?.users ?? []).map((u) => ({
+        id: u.id,
+        email: u.email ?? null,
+        role: roles.get(u.id)?.role ?? "sin perfil",
+        name: names.get(u.id) ?? "—",
+        created_at: u.created_at,
+      })),
+      fullAccess: true,
+    };
+  }
+
+  return {
+    users: [...roles.entries()].map(([id, r]) => ({
+      id,
+      email: null,
+      role: r.role,
+      name: names.get(id) ?? "—",
+      created_at: r.created_at,
+    })),
+    fullAccess: false,
+  };
+}
+
 export async function getPendingIdentities(): Promise<Candidate[]> {
   const supabase = await getServerClient();
   if (!supabase)

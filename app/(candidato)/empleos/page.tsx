@@ -4,7 +4,9 @@ import {
   getCurrentCandidate,
   getMyAppliedJobIds,
   getMySavedJobIds,
+  getSiteSettings,
 } from "@/lib/data";
+import { CITIES, INDUSTRIES } from "@/lib/mock-data";
 import type { Candidate, JobWithCompany } from "@/lib/types";
 
 export const metadata = { title: "Empleos" };
@@ -24,13 +26,21 @@ export default async function JobFeedPage({
 }: {
   searchParams: Promise<{ q?: string; ciudad?: string; rubro?: string }>;
 }) {
-  const [jobs, candidate, appliedIds, savedIds, params] = await Promise.all([
-    getActiveJobs(),
-    getCurrentCandidate(),
-    getMyAppliedJobIds(),
-    getMySavedJobIds(),
-    searchParams,
-  ]);
+  const [jobs, candidate, appliedIds, savedIds, settings, params] =
+    await Promise.all([
+      getActiveJobs(),
+      getCurrentCandidate(),
+      getMyAppliedJobIds(),
+      getMySavedJobIds(),
+      getSiteSettings(),
+      searchParams,
+    ]);
+
+  // Listas del sitio: base + las que el admin agrega desde el backoffice.
+  const extra = (value: string | undefined) =>
+    (value ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  const industries = [...new Set([...INDUSTRIES, ...extra(settings.custom_industries)])];
+  const cities = [...new Set([...CITIES, ...extra(settings.custom_cities)])];
 
   const recommendedIds = candidate
     ? jobs
@@ -48,6 +58,8 @@ export default async function JobFeedPage({
       appliedJobIds={[...appliedIds]}
       savedJobIds={[...savedIds]}
       recommendedJobIds={recommendedIds}
+      industries={industries}
+      cities={cities}
       initialQuery={params.q ?? ""}
       initialCity={params.ciudad ?? ""}
       initialIndustry={params.rubro ?? ""}

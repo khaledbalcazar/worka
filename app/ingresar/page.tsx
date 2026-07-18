@@ -15,8 +15,11 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [signupSent, setSignupSent] = useState(false);
+  // El callback de auth manda el motivo real del fallo en ?error=
   const [error, setError] = useState<string | null>(
-    searchParams.get("error") ? "No pudimos completar el ingreso." : null
+    searchParams.get("error")
+      ? `No pudimos completar el ingreso: ${searchParams.get("error")}`
+      : null
   );
   const [pending, startTransition] = useTransition();
 
@@ -145,22 +148,29 @@ function LoginForm() {
         </button>
 
         {mode === "login" ? (
-          <p className="text-center text-sm text-gray-500">
-            ¿No tenés cuenta?{" "}
-            <button
-              className="text-primary font-medium"
-              onClick={() => {
-                setMode("signup");
-                setError(null);
-              }}
-            >
-              Registrate gratis
-            </button>
-            {" · "}
-            <Link href="/empresa/registro" className="text-primary font-medium">
-              Soy empresa
-            </Link>
-          </p>
+          <>
+            <p className="text-center text-sm">
+              <Link href="/recuperar" className="text-gray-500 underline">
+                Olvidé mi contraseña
+              </Link>
+            </p>
+            <p className="text-center text-sm text-gray-500">
+              ¿No tenés cuenta?{" "}
+              <button
+                className="text-primary font-medium"
+                onClick={() => {
+                  setMode("signup");
+                  setError(null);
+                }}
+              >
+                Registrate gratis
+              </button>
+              {" · "}
+              <Link href="/empresa/registro" className="text-primary font-medium">
+                Soy empresa
+              </Link>
+            </p>
+          </>
         ) : (
           <p className="text-center text-sm text-gray-500">
             ¿Ya tenés cuenta?{" "}

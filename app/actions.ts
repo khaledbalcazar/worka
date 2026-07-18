@@ -635,10 +635,10 @@ export async function updateCandidatePrefs(prefs: {
 export async function completeOnboarding(input: {
   full_name: string;
   phone_whatsapp: string;
-  phone_verified: boolean;
   location_city: string;
   preferences_industry: string[];
   first_job_mode: boolean;
+  bio?: string;
 }): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
@@ -654,6 +654,9 @@ export async function completeOnboarding(input: {
   const { error } = await supabase.from("candidates").upsert({
     id: user.id,
     ...input,
+    // La verificación de la cuenta es por email (confirmación de Supabase);
+    // el número de WhatsApp queda como dato de contacto, sin OTP.
+    phone_verified: true,
   });
   if (error) return { ok: false, error: "No pudimos guardar tus datos." };
   return { ok: true };
@@ -1097,6 +1100,56 @@ export async function resolveBoost(
 }
 
 // Configuración del sitio (CMS-lite del backoffice)
+// Verifica que quien llama sea admin (para las acciones del backoffice).
+async function assertAdmin(): Promise<boolean> {
+  const supabase = await getServerClient();
+  if (!supabase) return true; // demo
+  const user = await getCurrentUser();
+  if (!user) return false;
+  const { data } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+  return data?.role === "admin";
+}
+
+// Envía el correo de recuperación de contraseña a cualquier usuario (admin).
+export async function adminSendRecovery(email: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  const { SITE_URL } = await import("@/lib/supabase/config");
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${SITE_URL}/auth/callback?next=/restablecer`,
+  });
+  if (error) return { ok: false, error: friendlyAuthError(error) };
+  return { ok: true };
+}
+
+// Elimina una cuenta (usuario o empresa) desde el backoffice.
+// Con Service Role Key borra también la cuenta de auth; sin ella, borra el
+// perfil y todos los datos de la app (cascada).
+export async function adminDeleteUser(userId: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+
+  const { getAdminClient } = await import("@/lib/supabase/admin");
+  const admin = getAdminClient();
+  if (admin) {
+    const { error } = await admin.auth.admin.deleteUser(userId);
+    if (error)
+      return { ok: false, error: "No pudimos eliminar la cuenta de auth." };
+  }
+  // Borra el perfil de la app (si auth ya cascadeó, no pasa nada).
+  await supabase.from("profiles").delete().eq("id", userId);
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
 // Aprueba un rubro propuesto por una empresa: pasa a la lista oficial
 // (site_settings.custom_industries, separados por coma).
 export async function approveIndustryTag(tag: string): Promise<ActionResult> {
@@ -1278,6 +1331,31 @@ export async function signUpWithEmail(
     console.error("signUp error:", error);
     return { ok: false, error: friendlyAuthError(error) };
   }
+  return { ok: true };
+}
+
+// Recuperación de contraseña: envía el link (sirve para personas y empresas).
+export async function requestPasswordReset(
+  email: string
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const { SITE_URL } = await import("@/lib/supabase/config");
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${SITE_URL}/auth/callback?next=/restablecer`,
+  });
+  if (error) return { ok: false, error: friendlyAuthError(error) };
+  return { ok: true };
+}
+
+// Define la nueva contraseña (tras entrar por el link de recuperación).
+export async function updatePassword(
+  password: string
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { ok: false, error: friendlyAuthError(error) };
   return { ok: true };
 }
 

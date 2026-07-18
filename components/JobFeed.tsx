@@ -13,6 +13,8 @@ export default function JobFeed({
   appliedJobIds,
   savedJobIds = [],
   recommendedJobIds = [],
+  industries = INDUSTRIES,
+  cities = CITIES,
   initialQuery = "",
   initialCity = "",
   initialIndustry = "",
@@ -21,6 +23,8 @@ export default function JobFeed({
   appliedJobIds: string[];
   savedJobIds?: string[];
   recommendedJobIds?: string[];
+  industries?: string[];
+  cities?: string[];
   initialQuery?: string;
   initialCity?: string;
   initialIndustry?: string;
@@ -84,7 +88,7 @@ export default function JobFeed({
           onChange={(e) => setCity(e.target.value)}
         >
           <option value="">Toda ciudad</option>
-          {CITIES.map((c) => (
+          {cities.map((c) => (
             <option key={c}>{c}</option>
           ))}
         </select>
@@ -97,7 +101,7 @@ export default function JobFeed({
           onChange={(e) => setIndustry(e.target.value)}
         >
           <option value="">Todo rubro</option>
-          {INDUSTRIES.map((i) => (
+          {industries.map((i) => (
             <option key={i}>{i}</option>
           ))}
         </select>
@@ -227,7 +231,7 @@ export default function JobFeed({
               onChange={(e) => setCity(e.target.value)}
             >
               <option value="">Toda ciudad</option>
-              {CITIES.map((c) => (
+              {cities.map((c) => (
                 <option key={c}>{c}</option>
               ))}
             </select>
@@ -237,7 +241,7 @@ export default function JobFeed({
               onChange={(e) => setIndustry(e.target.value)}
             >
               <option value="">Todo rubro</option>
-              {INDUSTRIES.map((i) => (
+              {industries.map((i) => (
                 <option key={i}>{i}</option>
               ))}
             </select>

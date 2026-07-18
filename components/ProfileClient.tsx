@@ -35,7 +35,8 @@ function profileCompleteness(c: Candidate, hasCv: boolean) {
     { label: "WhatsApp", done: !!c.phone_whatsapp },
     { label: "Ciudad", done: !!c.location_city },
     { label: "Rubros de interés", done: c.preferences_industry.length > 0 },
-    { label: "WhatsApp verificado", done: c.phone_verified },
+    { label: "Foto de perfil", done: !!c.avatar_url },
+    { label: "Bio (sobre mí)", done: !!c.bio },
     { label: "CV cargado", done: hasCv },
   ];
   const pct = Math.round(

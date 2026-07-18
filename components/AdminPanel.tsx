@@ -14,6 +14,8 @@ import { BADGE_CATALOG } from "@/lib/types";
 import { StatusChip } from "@/components/Badges";
 import { formatDate, timeAgo } from "@/lib/format";
 import {
+  adminDeleteUser,
+  adminSendRecovery,
   approveIndustryTag,
   resolveBoost,
   resolveModeration,
@@ -23,6 +25,7 @@ import {
   uploadSiteLogo,
   verifyCompany,
 } from "@/app/actions";
+import type { AdminUser } from "@/lib/data";
 
 export type IdentityQueueItem = Candidate & {
   docs: { label: string; url: string }[];
@@ -39,6 +42,7 @@ export default function AdminPanel({
   boosts = [],
   settings = {},
   pendingIndustries = [],
+  adminUsers = { users: [], fullAccess: false },
 }: {
   moderationQueue: JobWithCompany[];
   reports: Report[];
@@ -50,12 +54,35 @@ export default function AdminPanel({
   boosts?: (BoostRequest & { job_title?: string; company_name?: string })[];
   settings?: Record<string, string>;
   pendingIndustries?: string[];
+  adminUsers?: { users: AdminUser[]; fullAccess: boolean };
 }) {
   const [resolved, setResolved] = useState<
     Record<string, "aprobada" | "eliminada">
   >({});
   const [verified, setVerified] = useState<Record<string, boolean>>({});
   const [approvedTags, setApprovedTags] = useState<Record<string, boolean>>({});
+  const [deletedUsers, setDeletedUsers] = useState<Record<string, boolean>>({});
+  const [recoverySent, setRecoverySent] = useState<Record<string, boolean>>({});
+  const [recoveryEmail, setRecoveryEmail] = useState("");
+  const [recoveryEmailSent, setRecoveryEmailSent] = useState(false);
+  const [confirmUserDelete, setConfirmUserDelete] = useState<AdminUser | null>(
+    null
+  );
+
+  function handleRecovery(email: string, key: string) {
+    setRecoverySent((s) => ({ ...s, [key]: true }));
+    startTransition(async () => {
+      await adminSendRecovery(email);
+    });
+  }
+
+  function handleDeleteUser(user: AdminUser) {
+    setConfirmUserDelete(null);
+    setDeletedUsers((s) => ({ ...s, [user.id]: true }));
+    startTransition(async () => {
+      await adminDeleteUser(user.id);
+    });
+  }
   const [badgeState, setBadgeState] = useState<Record<string, BadgeId[]>>(
     Object.fromEntries(allCompanies.map((c) => [c.id, c.badges]))
   );
@@ -515,11 +542,13 @@ export default function AdminPanel({
               ["contact_whatsapp", "WhatsApp de contacto"],
               ["payment_link", "Link de pago (potenciar empleo)"],
               ["help_text", "Texto de ayuda"],
+              ["custom_industries", "Rubros extra (separados por coma)"],
+              ["custom_cities", "Ciudades extra (separadas por coma)"],
             ] as const
           ).map(([key, label]) => (
-            <div key={key} className={key === "hero_subtitle" || key === "help_text" || key === "site_description" ? "lg:col-span-2" : ""}>
+            <div key={key} className={key === "hero_subtitle" || key === "help_text" || key === "site_description" || key === "custom_industries" || key === "custom_cities" ? "lg:col-span-2" : ""}>
               <label className="label">{label}</label>
-              {key === "hero_subtitle" || key === "help_text" || key === "site_description" ? (
+              {key === "hero_subtitle" || key === "help_text" || key === "site_description" || key === "custom_industries" || key === "custom_cities" ? (
                 <textarea
                   className="input min-h-20"
                   value={settingsDraft[key] ?? ""}
@@ -605,6 +634,112 @@ export default function AdminPanel({
         </div>
       </section>
 
+      {/* Gestión de usuarios */}
+      <section className="space-y-3">
+        <h2 className="font-bold text-primary-dark text-lg">👥 Usuarios</h2>
+        {!adminUsers.fullAccess && (
+          <p className="text-sm text-amber-700 bg-amber-50 rounded-xl px-4 py-3">
+            ⚠️ Para ver los emails y eliminar cuentas completas, agregá la
+            variable <code className="font-mono">SUPABASE_SERVICE_ROLE_KEY</code>{" "}
+            en Vercel (Supabase → Settings → API → service_role) y redeployá.
+            Mientras tanto podés enviar recuperaciones escribiendo el email.
+          </p>
+        )}
+
+        {/* Recuperación manual por email (funciona siempre) */}
+        <div className="card p-4 flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+          <p className="text-sm text-gray-600 shrink-0">
+            🔑 Enviar recuperación de contraseña a:
+          </p>
+          <input
+            className="input flex-1"
+            type="email"
+            placeholder="email@delusuario.com"
+            value={recoveryEmail}
+            onChange={(e) => {
+              setRecoveryEmail(e.target.value);
+              setRecoveryEmailSent(false);
+            }}
+          />
+          <button
+            className={recoveryEmailSent ? "btn-success" : "btn-primary"}
+            disabled={!recoveryEmail || pending}
+            onClick={() => {
+              handleRecovery(recoveryEmail, "__manual");
+              setRecoveryEmailSent(true);
+            }}
+          >
+            {recoveryEmailSent ? "✓ Enviado" : "Enviar"}
+          </button>
+        </div>
+
+        {adminUsers.users.length > 0 && (
+          <div className="card overflow-x-auto">
+            <table className="w-full text-sm min-w-[640px]">
+              <thead>
+                <tr className="text-left text-xs text-gray-400 uppercase tracking-wide">
+                  <th className="px-4 py-3 font-medium">Nombre</th>
+                  <th className="px-4 py-3 font-medium">Email</th>
+                  <th className="px-4 py-3 font-medium">Rol</th>
+                  <th className="px-4 py-3 font-medium">Alta</th>
+                  <th className="px-4 py-3 font-medium text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {adminUsers.users
+                  .filter((u) => !deletedUsers[u.id])
+                  .map((u) => (
+                    <tr key={u.id} className="hover:bg-surface/60">
+                      <td className="px-4 py-2.5 font-medium text-gray-700">
+                        {u.name}
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-500">
+                        {u.email ?? "—"}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span
+                          className={`chip ${
+                            u.role === "admin"
+                              ? "bg-purple-50 text-purple-700"
+                              : u.role === "company"
+                                ? "bg-blue-50 text-primary"
+                                : "bg-surface text-gray-600"
+                          }`}
+                        >
+                          {u.role}
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-500">
+                        {formatDate(u.created_at)}
+                      </td>
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap space-x-3">
+                        {u.email && (
+                          <button
+                            className="text-primary font-medium disabled:opacity-50"
+                            disabled={pending || recoverySent[u.id]}
+                            onClick={() => handleRecovery(u.email!, u.id)}
+                          >
+                            {recoverySent[u.id] ? "✓ Enviada" : "🔑 Recuperación"}
+                          </button>
+                        )}
+                        {u.role !== "admin" && (
+                          <button
+                            className="text-gray-400 hover:text-danger font-medium"
+                            disabled={pending}
+                            onClick={() => setConfirmUserDelete(u)}
+                          >
+                            Eliminar
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
       {/* Rubros propuestos por empresas */}
       <section className="space-y-3">
         <h2 className="font-bold text-primary-dark text-lg">
@@ -674,7 +809,22 @@ export default function AdminPanel({
                     {current.length === 1 ? "" : "s"}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  <button
+                    className="chip min-h-9 px-3 border border-gray-200 text-gray-400 hover:border-danger hover:text-danger"
+                    disabled={pending}
+                    onClick={() =>
+                      setConfirmUserDelete({
+                        id: c.id,
+                        email: null,
+                        role: "company",
+                        name: c.trade_name,
+                        created_at: c.created_at,
+                      })
+                    }
+                  >
+                    🗑️ Eliminar empresa
+                  </button>
                   {BADGE_CATALOG.map((badge) => {
                     const has = current.includes(badge.id);
                     return (
@@ -699,6 +849,34 @@ export default function AdminPanel({
           );
         })}
       </section>
+      {/* Confirmación de eliminación de cuenta */}
+      {confirmUserDelete && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-5 animate-fade-up">
+            <h4 className="font-semibold text-primary-dark">
+              ¿Eliminar la cuenta de {confirmUserDelete.name}?
+            </h4>
+            <p className="text-sm text-gray-600 mt-2">
+              Se borran su perfil, postulaciones, vacantes y archivos de forma
+              permanente. Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-2 mt-5">
+              <button
+                className="btn-secondary flex-1"
+                onClick={() => setConfirmUserDelete(null)}
+              >
+                Cancelar
+              </button>
+              <button
+                className="btn bg-danger text-white hover:bg-red-600 flex-1"
+                onClick={() => handleDeleteUser(confirmUserDelete)}
+              >
+                Sí, eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -12,6 +12,7 @@ import {
   getPendingCompanies,
   getPendingIdentities,
   getReports,
+  getAdminUsers,
   getPendingIndustryTags,
   getSiteSettings,
   isLive,
@@ -45,6 +46,7 @@ export default async function AdminPage() {
     boosts,
     settings,
     pendingIndustries,
+    adminUsers,
   ] = await Promise.all([
     getModerationQueue(),
     getReports(),
@@ -56,6 +58,7 @@ export default async function AdminPage() {
     getBoostRequests(),
     getSiteSettings(),
     getPendingIndustryTags(),
+    getAdminUsers(),
   ]);
 
   const identityQueue = await Promise.all(
@@ -87,6 +90,7 @@ export default async function AdminPage() {
         boosts={boosts}
         settings={settings}
         pendingIndustries={pendingIndustries}
+        adminUsers={adminUsers}
       />
     </div>
   );

@@ -490,6 +490,7 @@ export const defaultSiteSettings: Record<string, string> = {
   payment_link: "",
   help_text: "Escribinos por WhatsApp o email y te respondemos en el día.",
   custom_industries: "",
+  custom_cities: "",
 };
 
 export const interviews: Interview[] = [
