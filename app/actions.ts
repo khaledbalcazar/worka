@@ -249,9 +249,12 @@ export async function submitIdentityDocs(
       });
     if (error) {
       console.error("submitIdentityDocs upload error:", error);
+      const hint = error.message?.toLowerCase().includes("row-level security")
+        ? "Faltan aplicar las políticas de Storage: corré supabase/fix-storage.sql."
+        : "¿Existe el bucket 'identidad'? Corré supabase/fix-storage.sql.";
       return {
         ok: false,
-        error: `No pudimos subir la foto de ${label} (${error.message}). Si dice "Bucket not found", falta crear el bucket 'identidad' en Supabase.`,
+        error: `No pudimos subir la foto de ${label} (${error.message}). ${hint}`,
       };
     }
   }
@@ -898,6 +901,18 @@ export async function uploadSiteLogo(
 ): Promise<ActionResult & { url?: string }> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+  // Defensa en profundidad: el chequeo real vive en la política de Storage,
+  // pero también lo validamos acá para no depender solo de RLS.
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión como admin." };
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (profile?.role !== "admin")
+    return { ok: false, error: "Solo el admin puede cambiar el logo del sitio." };
+
   const file = formData.get("image") as File | null;
   if (!file || file.size === 0)
     return { ok: false, error: "Elegí una imagen." };
