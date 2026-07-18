@@ -4,7 +4,11 @@ import { useRef, useState, useTransition } from "react";
 import type { Company, CompanyPost } from "@/lib/types";
 import { BADGE_CATALOG } from "@/lib/types";
 import { FastResponderBadge, VerifiedBadge } from "@/components/Badges";
-import { createCompanyPost, updateCompanyProfile } from "@/app/actions";
+import {
+  createCompanyPost,
+  updateCompanyProfile,
+  uploadCompanyImage,
+} from "@/app/actions";
 import { timeAgo } from "@/lib/format";
 
 export default function CompanyProfileEditor({
@@ -38,17 +42,25 @@ export default function CompanyProfileEditor({
     setTimeout(() => setNotice(null), 5000);
   }
 
-  function previewFile(
-    file: File | undefined,
-    set: (url: string) => void
-  ) {
+  // Sube la imagen a Storage (con preview inmediato mientras carga).
+  function uploadImage(file: File | undefined, kind: "logo" | "banner") {
     if (!file) return;
+    const set = kind === "logo" ? setLogoPreview : setBannerPreview;
     const reader = new FileReader();
     reader.onload = () => set(reader.result as string);
     reader.readAsDataURL(file);
-    flash(
-      "🖼️ Imagen cargada como vista previa. La subida definitiva se activa al conectar el Storage de Supabase."
-    );
+
+    const fd = new FormData();
+    fd.append("image", file);
+    startTransition(async () => {
+      const result = await uploadCompanyImage(fd, kind);
+      if (result.ok) {
+        if (result.url) set(result.url);
+        flash(kind === "logo" ? "✅ Logo actualizado." : "✅ Banner actualizado.");
+      } else {
+        flash(result.error ?? "No pudimos subir la imagen.");
+      }
+    });
   }
 
   function saveProfile() {
@@ -135,7 +147,7 @@ export default function CompanyProfileEditor({
           type="file"
           accept="image/*"
           className="hidden"
-          onChange={(e) => previewFile(e.target.files?.[0], setBannerPreview)}
+          onChange={(e) => uploadImage(e.target.files?.[0], "banner")}
         />
         <div className="px-5 pb-5">
           <div className="flex items-end justify-between -mt-10">
@@ -166,7 +178,7 @@ export default function CompanyProfileEditor({
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={(e) => previewFile(e.target.files?.[0], setLogoPreview)}
+              onChange={(e) => uploadImage(e.target.files?.[0], "logo")}
             />
             <div className="flex items-center gap-2 pb-1">
               {company.is_verified && <VerifiedBadge />}

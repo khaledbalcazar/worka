@@ -679,6 +679,76 @@ export async function createCompanyPost(
   return { ok: true };
 }
 
+// Sube logo o banner de la empresa al bucket público y guarda la URL.
+export async function uploadCompanyImage(
+  formData: FormData,
+  kind: "logo" | "banner"
+): Promise<ActionResult & { url?: string }> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión como empresa." };
+
+  const file = formData.get("image") as File | null;
+  if (!file || file.size === 0)
+    return { ok: false, error: "Elegí una imagen." };
+  if (file.size > 5 * 1024 * 1024)
+    return { ok: false, error: "La imagen no puede pesar más de 5 MB." };
+
+  const ext = file.type === "image/png" ? "png" : "jpg";
+  const path = `${user.id}/${kind}.${ext}`;
+  const { error } = await supabase.storage
+    .from("publico")
+    .upload(path, file, { upsert: true, contentType: file.type });
+  if (error)
+    return {
+      ok: false,
+      error: "No pudimos subir la imagen. ¿Creaste el bucket 'publico'?",
+    };
+
+  // URL pública + timestamp para saltear la caché del navegador
+  const { data } = supabase.storage.from("publico").getPublicUrl(path);
+  const url = `${data.publicUrl}?v=${Date.now()}`;
+  await supabase
+    .from("companies")
+    .update({ [kind === "logo" ? "logo_url" : "banner_url"]: url })
+    .eq("id", user.id);
+
+  revalidatePath("/empresa/perfil");
+  revalidatePath(`/empresas/${user.id}`);
+  return { ok: true, url };
+}
+
+// Sube el logo del sitio (solo admin) al bucket público y lo guarda en settings.
+export async function uploadSiteLogo(
+  formData: FormData
+): Promise<ActionResult & { url?: string }> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const file = formData.get("image") as File | null;
+  if (!file || file.size === 0)
+    return { ok: false, error: "Elegí una imagen." };
+  if (file.size > 2 * 1024 * 1024)
+    return { ok: false, error: "El logo no puede pesar más de 2 MB." };
+
+  const ext = file.type === "image/png" ? "png" : "jpg";
+  const path = `site/logo.${ext}`;
+  const { error } = await supabase.storage
+    .from("publico")
+    .upload(path, file, { upsert: true, contentType: file.type });
+  if (error)
+    return { ok: false, error: "No pudimos subir el logo del sitio." };
+
+  const { data } = supabase.storage.from("publico").getPublicUrl(path);
+  const url = `${data.publicUrl}?v=${Date.now()}`;
+  await supabase
+    .from("site_settings")
+    .upsert({ key: "logo_url", value: url, updated_at: new Date().toISOString() });
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return { ok: true, url };
+}
+
 export async function registerCompany(input: {
   company_name: string;
   trade_name: string;

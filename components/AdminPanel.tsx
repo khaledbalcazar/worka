@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import type {
   BadgeId,
   BoostRequest,
@@ -19,6 +19,7 @@ import {
   saveSiteSettings,
   setIdentityStatus,
   toggleCompanyBadge,
+  uploadSiteLogo,
   verifyCompany,
 } from "@/app/actions";
 
@@ -58,7 +59,19 @@ export default function AdminPanel({
   const [boostDone, setBoostDone] = useState<Record<string, string>>({});
   const [settingsDraft, setSettingsDraft] = useState(settings);
   const [settingsSaved, setSettingsSaved] = useState(false);
+  const logoInput = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
+
+  function handleSiteLogo(file: File | undefined) {
+    if (!file) return;
+    const fd = new FormData();
+    fd.append("image", file);
+    startTransition(async () => {
+      const result = await uploadSiteLogo(fd);
+      if (result.ok && result.url)
+        setSettingsDraft((s) => ({ ...s, logo_url: result.url! }));
+    });
+  }
 
   function handleIdentity(candidateId: string, approve: boolean) {
     startTransition(async () => {
@@ -502,6 +515,42 @@ export default function AdminPanel({
                     setSettingsDraft((s) => ({ ...s, [key]: e.target.value }))
                   }
                 />
+              ) : key === "logo_url" ? (
+                <div className="flex items-center gap-2">
+                  {settingsDraft.logo_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={settingsDraft.logo_url}
+                      alt="Logo"
+                      className="h-9 w-9 rounded object-contain bg-surface"
+                    />
+                  )}
+                  <input
+                    className="input flex-1"
+                    placeholder="Pegá una URL o subí una imagen →"
+                    value={settingsDraft.logo_url ?? ""}
+                    onChange={(e) =>
+                      setSettingsDraft((s) => ({
+                        ...s,
+                        logo_url: e.target.value,
+                      }))
+                    }
+                  />
+                  <input
+                    ref={logoInput}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleSiteLogo(e.target.files?.[0])}
+                  />
+                  <button
+                    className="btn-secondary shrink-0 text-xs"
+                    disabled={pending}
+                    onClick={() => logoInput.current?.click()}
+                  >
+                    📤 Subir
+                  </button>
+                </div>
               ) : (
                 <input
                   className="input"
