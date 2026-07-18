@@ -669,6 +669,103 @@ export async function getIdentityDocUrls(
   return out;
 }
 
+// Estadísticas globales del negocio para el backoffice.
+export interface GlobalStats {
+  candidates: number;
+  companies: number;
+  activeJobs: number;
+  totalJobs: number;
+  applications: number;
+  applicationsThisWeek: number;
+  contactedRate: number; // % de postulaciones que llegaron a Contactado
+  signupsByDay: { day: string; count: number }[]; // últimos 14 días
+}
+
+export async function getGlobalStats(): Promise<GlobalStats> {
+  const supabase = await getServerClient();
+  if (!supabase) {
+    const today = new Date();
+    return {
+      candidates: 128,
+      companies: 34,
+      activeJobs: mock.getActiveJobs().length,
+      totalJobs: mock.jobs.length,
+      applications: 512,
+      applicationsThisWeek: 87,
+      contactedRate: 41,
+      signupsByDay: Array.from({ length: 14 }, (_, i) => {
+        const d = new Date(today.getTime() - (13 - i) * 86400000);
+        return {
+          day: d.toLocaleDateString("es-PY", { day: "2-digit", month: "2-digit" }),
+          count: [3, 5, 2, 8, 6, 4, 9, 7, 5, 11, 8, 6, 10, 12][i],
+        };
+      }),
+    };
+  }
+
+  const count = async (
+    table: string,
+    filter?: (q: any) => any
+  ): Promise<number> => {
+    let q = supabase.from(table).select("id", { count: "exact", head: true });
+    if (filter) q = filter(q);
+    const { count: c } = await q;
+    return c ?? 0;
+  };
+
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+  const [
+    candidates,
+    companies,
+    activeJobs,
+    totalJobs,
+    applications,
+    applicationsThisWeek,
+    contacted,
+  ] = await Promise.all([
+    count("candidates"),
+    count("companies"),
+    count("jobs", (q) => q.eq("status", "Activo")),
+    count("jobs"),
+    count("applications"),
+    count("applications", (q) => q.gte("applied_at", weekAgo)),
+    count("applications", (q) => q.eq("status", "Contactado")),
+  ]);
+
+  // Registros por día (últimos 14) desde profiles.created_at.
+  const since = new Date(Date.now() - 14 * 86400000).toISOString();
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("created_at")
+    .gte("created_at", since);
+  const byDay = new Map<string, number>();
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 86400000);
+    byDay.set(
+      d.toLocaleDateString("es-PY", { day: "2-digit", month: "2-digit" }),
+      0
+    );
+  }
+  for (const p of profiles ?? []) {
+    const key = new Date(p.created_at).toLocaleDateString("es-PY", {
+      day: "2-digit",
+      month: "2-digit",
+    });
+    if (byDay.has(key)) byDay.set(key, (byDay.get(key) ?? 0) + 1);
+  }
+
+  return {
+    candidates,
+    companies,
+    activeJobs,
+    totalJobs,
+    applications,
+    applicationsThisWeek,
+    contactedRate: applications > 0 ? Math.round((contacted / applications) * 100) : 0,
+    signupsByDay: [...byDay.entries()].map(([day, c]) => ({ day, count: c })),
+  };
+}
+
 // Listado de usuarios para el backoffice. Con la Service Role Key configurada
 // incluye el email de cada cuenta; sin ella, lista los perfiles de la app.
 export interface AdminUser {

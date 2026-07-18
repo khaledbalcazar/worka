@@ -739,32 +739,6 @@ export async function createJob(input: {
 }
 
 // Novedad de la app: el admin la envía a todos (o a un rol). Aparece en la campanita.
-export async function broadcastNotification(input: {
-  title: string;
-  body: string;
-  href?: string;
-}): Promise<ActionResult> {
-  const supabase = await getServerClient();
-  if (!supabase) return DEMO;
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("id")
-    .limit(2000);
-  if (profiles && profiles.length > 0) {
-    await supabase.from("notifications").insert(
-      profiles.map((p: { id: string }) => ({
-        user_id: p.id,
-        icon: "📣",
-        title: input.title,
-        body: input.body,
-        href: input.href ?? null,
-      }))
-    );
-  }
-  revalidatePath("/admin");
-  return { ok: true };
-}
-
 export async function setApplicationStatus(
   applicationId: string,
   status: ApplicationStatus,
@@ -1148,6 +1122,45 @@ export async function adminDeleteUser(userId: string): Promise<ActionResult> {
   await supabase.from("profiles").delete().eq("id", userId);
   revalidatePath("/admin");
   return { ok: true };
+}
+
+// Notificación masiva desde el admin: cae en la campanita de la audiencia.
+export async function broadcastNotification(input: {
+  audience: "candidates" | "companies" | "all";
+  title: string;
+  body: string;
+  href?: string;
+  icon?: string;
+}): Promise<ActionResult & { sent?: number }> {
+  const supabase = await getServerClient();
+  if (!supabase) return { ...DEMO, sent: 0 };
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+
+  let q = supabase.from("profiles").select("id");
+  if (input.audience !== "all") {
+    q = q.eq("role", input.audience === "candidates" ? "candidate" : "company");
+  }
+  const { data: profiles, error: qErr } = await q;
+  if (qErr) return { ok: false, error: "No pudimos obtener los destinatarios." };
+
+  const rows = (profiles ?? []).map((p: { id: string }) => ({
+    user_id: p.id,
+    icon: input.icon || "📢",
+    title: input.title,
+    body: input.body,
+    href: input.href || null,
+  }));
+  if (rows.length === 0) return { ok: true, sent: 0 };
+
+  // Inserción en lotes por si hay muchos usuarios.
+  for (let i = 0; i < rows.length; i += 500) {
+    const { error } = await supabase
+      .from("notifications")
+      .insert(rows.slice(i, i + 500));
+    if (error) return { ok: false, error: "No pudimos enviar la notificación." };
+  }
+  return { ok: true, sent: rows.length };
 }
 
 // Aprueba un rubro propuesto por una empresa: pasa a la lista oficial

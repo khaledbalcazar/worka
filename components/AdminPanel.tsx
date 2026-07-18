@@ -17,6 +17,7 @@ import {
   adminDeleteUser,
   adminSendRecovery,
   approveIndustryTag,
+  broadcastNotification,
   resolveBoost,
   resolveModeration,
   saveSiteSettings,
@@ -25,7 +26,7 @@ import {
   uploadSiteLogo,
   verifyCompany,
 } from "@/app/actions";
-import type { AdminUser } from "@/lib/data";
+import type { AdminUser, GlobalStats } from "@/lib/data";
 
 export type IdentityQueueItem = Candidate & {
   docs: { label: string; url: string }[];
@@ -43,6 +44,7 @@ export default function AdminPanel({
   settings = {},
   pendingIndustries = [],
   adminUsers = { users: [], fullAccess: false },
+  globalStats,
 }: {
   moderationQueue: JobWithCompany[];
   reports: Report[];
@@ -55,6 +57,7 @@ export default function AdminPanel({
   settings?: Record<string, string>;
   pendingIndustries?: string[];
   adminUsers?: { users: AdminUser[]; fullAccess: boolean };
+  globalStats?: GlobalStats;
 }) {
   const [resolved, setResolved] = useState<
     Record<string, "aprobada" | "eliminada">
@@ -68,6 +71,15 @@ export default function AdminPanel({
   const [confirmUserDelete, setConfirmUserDelete] = useState<AdminUser | null>(
     null
   );
+  // Notificación masiva
+  const [broadcastAudience, setBroadcastAudience] = useState<
+    "candidates" | "companies" | "all"
+  >("all");
+  const [broadcastIcon, setBroadcastIcon] = useState("📢");
+  const [broadcastTitle, setBroadcastTitle] = useState("");
+  const [broadcastBody, setBroadcastBody] = useState("");
+  const [broadcastHref, setBroadcastHref] = useState("");
+  const [broadcastSent, setBroadcastSent] = useState<number | null>(null);
 
   function handleRecovery(email: string, key: string) {
     setRecoverySent((s) => ({ ...s, [key]: true }));
@@ -182,6 +194,190 @@ export default function AdminPanel({
           </div>
         ))}
       </div>
+
+      {/* Estadísticas globales del negocio */}
+      {globalStats && (
+        <section className="space-y-3">
+          <h2 className="font-bold text-primary-dark text-lg">
+            📊 Estadísticas globales
+          </h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: "Candidatos", value: globalStats.candidates, icon: "👤" },
+              { label: "Empresas", value: globalStats.companies, icon: "🏢" },
+              {
+                label: "Vacantes activas",
+                value: `${globalStats.activeJobs}/${globalStats.totalJobs}`,
+                icon: "💼",
+              },
+              {
+                label: "Postulaciones",
+                value: globalStats.applications,
+                icon: "📨",
+              },
+              {
+                label: "Postulaciones (7 días)",
+                value: globalStats.applicationsThisWeek,
+                icon: "🗓️",
+              },
+              {
+                label: "% que llega a Contactado",
+                value: `${globalStats.contactedRate}%`,
+                icon: "✅",
+                highlight: true,
+              },
+            ].map((s) => (
+              <div key={s.label} className="card p-5">
+                <p className="text-2xl font-bold text-primary-dark">
+                  {s.icon} {s.value}
+                </p>
+                <p
+                  className={`text-sm mt-0.5 ${s.highlight ? "text-emerald-600 font-medium" : "text-gray-500"}`}
+                >
+                  {s.label}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Registros por día (últimos 14) */}
+          <div className="card p-5">
+            <h3 className="font-semibold text-primary-dark text-sm mb-4">
+              Registros por día (últimos 14)
+            </h3>
+            <div className="flex items-end gap-1.5 h-32">
+              {globalStats.signupsByDay.map((d) => {
+                const max = Math.max(
+                  ...globalStats.signupsByDay.map((x) => x.count),
+                  1
+                );
+                return (
+                  <div
+                    key={d.day}
+                    className="flex-1 flex flex-col items-center gap-1 group"
+                  >
+                    <span className="text-[10px] text-gray-400 opacity-0 group-hover:opacity-100">
+                      {d.count}
+                    </span>
+                    <div
+                      className="w-full bg-primary rounded-t transition-all hover:bg-primary-dark"
+                      style={{
+                        height: `${Math.max((d.count / max) * 100, d.count > 0 ? 8 : 2)}%`,
+                      }}
+                      title={`${d.day}: ${d.count}`}
+                    />
+                    <span className="text-[9px] text-gray-400 rotate-45 origin-left whitespace-nowrap mt-1">
+                      {d.day}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Notificación masiva */}
+      <section className="card p-5 space-y-3">
+        <h2 className="font-bold text-primary-dark text-lg">
+          📢 Enviar notificación masiva
+        </h2>
+        <p className="text-sm text-gray-500 -mt-1">
+          Cae en la campanita 🔔 de la audiencia elegida. Ideal para novedades,
+          nuevas funciones o avisos importantes.
+        </p>
+        {broadcastSent !== null ? (
+          <div className="bg-emerald-50 rounded-xl px-4 py-3 flex items-center justify-between animate-pop">
+            <p className="text-sm text-emerald-700">
+              ✅ Notificación enviada a {broadcastSent} usuario
+              {broadcastSent === 1 ? "" : "s"}.
+            </p>
+            <button
+              className="text-sm text-emerald-700 font-medium underline"
+              onClick={() => {
+                setBroadcastSent(null);
+                setBroadcastTitle("");
+                setBroadcastBody("");
+              }}
+            >
+              Enviar otra
+            </button>
+          </div>
+        ) : (
+          <div className="grid lg:grid-cols-2 gap-3">
+            <div>
+              <label className="label">Audiencia</label>
+              <select
+                className="input"
+                value={broadcastAudience}
+                onChange={(e) =>
+                  setBroadcastAudience(e.target.value as typeof broadcastAudience)
+                }
+              >
+                <option value="all">Todos</option>
+                <option value="candidates">Solo candidatos</option>
+                <option value="companies">Solo empresas</option>
+              </select>
+            </div>
+            <div>
+              <label className="label">Ícono (emoji)</label>
+              <input
+                className="input"
+                value={broadcastIcon}
+                onChange={(e) => setBroadcastIcon(e.target.value)}
+                maxLength={2}
+              />
+            </div>
+            <div className="lg:col-span-2">
+              <label className="label">Título</label>
+              <input
+                className="input"
+                placeholder="Ej: ¡Nueva función en Worka!"
+                value={broadcastTitle}
+                onChange={(e) => setBroadcastTitle(e.target.value)}
+              />
+            </div>
+            <div className="lg:col-span-2">
+              <label className="label">Mensaje</label>
+              <textarea
+                className="input min-h-20"
+                placeholder="Contales la novedad en pocas líneas…"
+                value={broadcastBody}
+                onChange={(e) => setBroadcastBody(e.target.value)}
+              />
+            </div>
+            <div className="lg:col-span-2">
+              <label className="label">Link (opcional)</label>
+              <input
+                className="input"
+                placeholder="Ej: /empleos"
+                value={broadcastHref}
+                onChange={(e) => setBroadcastHref(e.target.value)}
+              />
+            </div>
+            <div className="lg:col-span-2 flex justify-end">
+              <button
+                className="btn-primary"
+                disabled={pending || !broadcastTitle || !broadcastBody}
+                onClick={() =>
+                  startTransition(async () => {
+                    const result = await broadcastNotification({
+                      audience: broadcastAudience,
+                      title: broadcastTitle,
+                      body: broadcastBody,
+                      href: broadcastHref || undefined,
+                      icon: broadcastIcon || undefined,
+                    });
+                    if (result.ok) setBroadcastSent(result.sent ?? 0);
+                  })
+                }
+              >
+                {pending ? "Enviando…" : "📢 Enviar a todos"}
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
 
       <section className="space-y-3">
         <h2 className="font-bold text-primary-dark text-lg">
