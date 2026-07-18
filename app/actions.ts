@@ -11,7 +11,12 @@ import type {
   Modality,
 } from "@/lib/types";
 
-export type ActionResult = { ok: boolean; error?: string; demo?: boolean };
+export type ActionResult = {
+  ok: boolean;
+  error?: string;
+  demo?: boolean;
+  token?: string;
+};
 
 const DEMO: ActionResult = { ok: true, demo: true };
 
@@ -160,7 +165,77 @@ export async function toggleSaveJob(
   return { ok: true };
 }
 
-// Identidad verificada (opcional): sube cédula → revisión manual del admin.
+// Subida real del CV al bucket privado 'cvs'
+export async function uploadCv(formData: FormData): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión primero." };
+  const file = formData.get("cv") as File | null;
+  if (!file || file.size === 0)
+    return { ok: false, error: "Elegí un archivo PDF." };
+  if (file.size > 5 * 1024 * 1024)
+    return { ok: false, error: "El CV no puede pesar más de 5 MB." };
+
+  const path = `${user.id}/cv.pdf`;
+  const { error } = await supabase.storage
+    .from("cvs")
+    .upload(path, file, { upsert: true, contentType: "application/pdf" });
+  if (error)
+    return {
+      ok: false,
+      error:
+        "No pudimos subir el CV. Verificá que el bucket 'cvs' exista (migration-002.sql).",
+    };
+
+  await supabase.from("candidates").update({ cv_url: path }).eq("id", user.id);
+  revalidatePath("/perfil");
+  return { ok: true };
+}
+
+// Identidad verificada: sube frente y dorso de cédula + selfie sosteniéndola.
+// Quedan en el bucket privado 'identidad' (solo el admin puede verlas) y el
+// perfil pasa a 'pending' hasta la aprobación en el backoffice.
+export async function submitIdentityDocs(
+  formData: FormData
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión primero." };
+
+  const parts: [string, string][] = [
+    ["front", "frente"],
+    ["back", "dorso"],
+    ["selfie", "selfie"],
+  ];
+  for (const [field, label] of parts) {
+    const file = formData.get(field) as File | null;
+    if (!file || file.size === 0)
+      return { ok: false, error: `Falta la foto: ${label}.` };
+    if (file.size > 8 * 1024 * 1024)
+      return { ok: false, error: `La foto de ${label} pesa más de 8 MB.` };
+    const ext = file.type === "image/png" ? "png" : "jpg";
+    const { error } = await supabase.storage
+      .from("identidad")
+      .upload(`${user.id}/${field}.${ext}`, file, {
+        upsert: true,
+        contentType: file.type || "image/jpeg",
+      });
+    if (error)
+      return { ok: false, error: `No pudimos subir la foto de ${label}.` };
+  }
+
+  const { error } = await supabase
+    .from("candidates")
+    .update({ identity_status: "pending" })
+    .eq("id", user.id);
+  if (error) return { ok: false, error: "No pudimos enviar la solicitud." };
+  revalidatePath("/perfil");
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
 export async function requestIdentityVerification(): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
@@ -196,15 +271,63 @@ export async function addWorkReference(input: {
   relationship: string;
 }): Promise<ActionResult> {
   const supabase = await getServerClient();
-  if (!supabase) return DEMO;
+  if (!supabase) return { ...DEMO, token: `demo-${Date.now()}` };
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Iniciá sesión primero." };
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("work_references")
-    .insert({ candidate_id: user.id, ...input });
+    .insert({ candidate_id: user.id, ...input })
+    .select("token")
+    .single();
   if (error) return { ok: false, error: "No pudimos agregar la referencia." };
   revalidatePath("/perfil");
+  return { ok: true, token: data.token as string };
+}
+
+// Confirmación pública de referencia vía link único (RPC security definer)
+export async function confirmReferenceByToken(
+  token: string
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const { data, error } = await supabase.rpc("confirm_reference", {
+    ref_token: token,
+  });
+  if (error || !data)
+    return { ok: false, error: "El link no es válido o ya venció." };
   return { ok: true };
+}
+
+// Configuración del candidato: edición completa de datos
+export async function updateCandidateProfile(input: {
+  full_name: string;
+  phone_whatsapp: string;
+  location_city: string;
+  preferences_industry: string[];
+}): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sesión no válida." };
+  const { error } = await supabase
+    .from("candidates")
+    .update(input)
+    .eq("id", user.id);
+  if (error) return { ok: false, error: "No pudimos guardar tus datos." };
+  revalidatePath("/perfil");
+  return { ok: true };
+}
+
+// Eliminación de cuenta: borra el perfil (cascada a todos los datos) y cierra sesión.
+export async function deleteAccount(): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sesión no válida." };
+  const { error } = await supabase.from("profiles").delete().eq("id", user.id);
+  if (error) return { ok: false, error: "No pudimos eliminar la cuenta." };
+  await supabase.auth.signOut();
+  redirect("/");
 }
 
 export async function toggleFollowCompany(
@@ -561,6 +684,78 @@ export async function registerCompany(input: {
   return { ok: true };
 }
 
+// Potenciar empleo: la empresa solicita el destaque, el admin confirma el pago.
+export async function requestBoost(
+  jobId: string,
+  plan: string,
+  priceGs: number
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión como empresa." };
+  const { error } = await supabase.from("boost_requests").insert({
+    job_id: jobId,
+    company_id: user.id,
+    plan,
+    price_gs: priceGs,
+  });
+  if (error) return { ok: false, error: "No pudimos registrar la solicitud." };
+  return { ok: true };
+}
+
+export async function resolveBoost(
+  boostId: string,
+  approve: boolean
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const { data: boost } = await supabase
+    .from("boost_requests")
+    .select("job_id, plan")
+    .eq("id", boostId)
+    .single();
+  if (!boost) return { ok: false, error: "Solicitud no encontrada." };
+
+  const { error } = await supabase
+    .from("boost_requests")
+    .update({ status: approve ? "activo" : "rechazado" })
+    .eq("id", boostId);
+  if (error) return { ok: false, error: "No pudimos actualizar la solicitud." };
+
+  if (approve) {
+    const days = Number(boost.plan.match(/\d+/)?.[0] ?? 7);
+    await supabase
+      .from("jobs")
+      .update({
+        featured: true,
+        featured_until: new Date(Date.now() + days * 86400000).toISOString(),
+      })
+      .eq("id", boost.job_id);
+  }
+  revalidatePath("/admin");
+  revalidatePath("/empleos");
+  return { ok: true };
+}
+
+// Configuración del sitio (CMS-lite del backoffice)
+export async function saveSiteSettings(
+  settings: Record<string, string>
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const rows = Object.entries(settings).map(([key, value]) => ({
+    key,
+    value,
+    updated_at: new Date().toISOString(),
+  }));
+  const { error } = await supabase.from("site_settings").upsert(rows);
+  if (error) return { ok: false, error: "No pudimos guardar la configuración." };
+  revalidatePath("/");
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
 // --- Admin ---
 
 export async function resolveModeration(
@@ -618,6 +813,47 @@ export async function verifyCompany(companyId: string): Promise<ActionResult> {
 
 // --- Auth ---
 
+// Eleva a admin a los emails listados en la env var ADMIN_EMAILS
+// (separados por coma). Así el backoffice se habilita sin tocar SQL.
+async function maybeElevateAdmin(
+  supabase: NonNullable<Awaited<ReturnType<typeof getServerClient>>>,
+  userId: string,
+  email: string | undefined
+) {
+  const admins = (process.env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  if (email && admins.includes(email.toLowerCase())) {
+    await supabase
+      .from("profiles")
+      .upsert({ id: userId, role: "admin" });
+  }
+}
+
+// A cada rol, su casa: empresa → panel, admin → backoffice, candidato → feed.
+export async function getRoleHome(): Promise<string> {
+  const supabase = await getServerClient();
+  if (!supabase) return "/empleos";
+  const user = await getCurrentUser();
+  if (!user) return "/empleos";
+  await maybeElevateAdmin(supabase, user.id, user.email);
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (profile?.role === "admin") return "/admin";
+  if (profile?.role === "company") return "/empresa";
+  // Candidato sin perfil todavía → onboarding
+  const { data: candidate } = await supabase
+    .from("candidates")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle();
+  return candidate ? "/empleos" : "/onboarding";
+}
+
 export async function signInWithEmail(
   email: string,
   password: string,
@@ -627,16 +863,27 @@ export async function signInWithEmail(
   if (!supabase) return DEMO;
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { ok: false, error: "Email o contraseña incorrectos." };
-  redirect(next || "/empleos");
+  const home = await getRoleHome();
+  // Si pidieron una página específica se respeta; si no, según el rol.
+  redirect(next && next !== "/empleos" ? next : home);
 }
 
 export async function signUpWithEmail(
   email: string,
-  password: string
+  password: string,
+  metadata?: Record<string, string>
 ): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
-  const { error } = await supabase.auth.signUp({ email, password });
+  const { SITE_URL } = await import("@/lib/supabase/config");
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${SITE_URL}/auth/callback`,
+      data: metadata ?? {},
+    },
+  });
   if (error) return { ok: false, error: error.message };
   return { ok: true };
 }

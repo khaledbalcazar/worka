@@ -3,7 +3,11 @@
 import { useState, useTransition } from "react";
 import type { KanbanApplicant } from "@/lib/data";
 import type { JobWithCompany, RejectionReason } from "@/lib/types";
-import { setApplicationStatus } from "@/app/actions";
+import {
+  proposeInterview,
+  setApplicationNote,
+  setApplicationStatus,
+} from "@/app/actions";
 import { timeAgo } from "@/lib/format";
 
 type Column = "Nuevos" | "En proceso" | "Descartados";
@@ -40,6 +44,12 @@ export default function ApplicantsKanban({
   const [dragged, setDragged] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState<string | null>(null);
   const [detail, setDetail] = useState<Item | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [noteSaved, setNoteSaved] = useState(false);
+  const [interviewOpen, setInterviewOpen] = useState(false);
+  const [interviewAt, setInterviewAt] = useState("");
+  const [interviewPlace, setInterviewPlace] = useState("");
+  const [interviewSent, setInterviewSent] = useState(false);
   const [, startTransition] = useTransition();
 
   function showToast(message: string) {
@@ -124,7 +134,13 @@ export default function ApplicantsKanban({
                     <div className="flex items-start justify-between gap-2">
                       <button
                         className="text-left"
-                        onClick={() => setDetail(a)}
+                        onClick={() => {
+                          setDetail(a);
+                          setNoteDraft(a.internal_note);
+                          setNoteSaved(false);
+                          setInterviewOpen(false);
+                          setInterviewSent(false);
+                        }}
                         title="Ver detalle del candidato"
                       >
                         <p className="font-semibold text-primary-dark text-sm hover:text-primary">
@@ -283,13 +299,90 @@ export default function ApplicantsKanban({
               </div>
             </div>
 
-            <div className="bg-blue-50 rounded-xl px-4 py-3 mt-3 text-xs text-primary-dark">
-              📄 El CV completo del candidato se habilita al conectar el
-              Storage de Supabase. Mientras tanto, contactalo directo por
-              WhatsApp.
+            {/* Nota interna del reclutador */}
+            <div className="mt-3">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                📝 Nota interna (solo la ve tu equipo)
+              </p>
+              <textarea
+                className="input min-h-16 text-sm"
+                placeholder="Ej: Buen perfil, llamar el lunes…"
+                value={noteDraft}
+                onChange={(e) => {
+                  setNoteDraft(e.target.value);
+                  setNoteSaved(false);
+                }}
+              />
+              <div className="flex justify-end mt-1">
+                <button
+                  className="text-xs text-primary font-medium"
+                  onClick={() =>
+                    startTransition(async () => {
+                      await setApplicationNote(detail.id, noteDraft);
+                      setNoteSaved(true);
+                      setItems((prev) =>
+                        prev.map((x) =>
+                          x.id === detail.id
+                            ? { ...x, internal_note: noteDraft }
+                            : x
+                        )
+                      );
+                    })
+                  }
+                >
+                  {noteSaved ? "✓ Guardada" : "Guardar nota"}
+                </button>
+              </div>
             </div>
 
-            <div className="flex gap-2 mt-5">
+            {/* Proponer entrevista */}
+            {interviewSent ? (
+              <p className="text-sm text-emerald-700 bg-emerald-50 rounded-xl px-3 py-2.5 mt-2 animate-pop">
+                📅 Entrevista propuesta. El candidato la confirma desde sus
+                postulaciones y le llega la notificación.
+              </p>
+            ) : interviewOpen ? (
+              <div className="mt-2 space-y-2 bg-surface rounded-xl p-3">
+                <input
+                  type="datetime-local"
+                  className="input text-sm"
+                  value={interviewAt}
+                  onChange={(e) => setInterviewAt(e.target.value)}
+                />
+                <input
+                  className="input text-sm"
+                  placeholder="Lugar (ej: nuestra oficina, o videollamada)"
+                  value={interviewPlace}
+                  onChange={(e) => setInterviewPlace(e.target.value)}
+                />
+                <button
+                  className="btn-primary w-full text-sm"
+                  disabled={!interviewAt}
+                  onClick={() =>
+                    startTransition(async () => {
+                      await proposeInterview(
+                        detail.id,
+                        interviewAt,
+                        interviewPlace
+                      );
+                      setInterviewSent(true);
+                      moveTo(detail.id, "En proceso");
+                    })
+                  }
+                >
+                  Proponer entrevista
+                </button>
+              </div>
+            ) : (
+              <button
+                className="btn-secondary w-full mt-2 text-sm"
+                onClick={() => setInterviewOpen(true)}
+              >
+                📅 Proponer entrevista
+              </button>
+            )}
+
+            <div className="flex gap-2 mt-4">
               <button
                 className="btn-secondary flex-1"
                 onClick={() => setDetail(null)}

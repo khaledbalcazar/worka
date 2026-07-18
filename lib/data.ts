@@ -334,6 +334,7 @@ export interface KanbanApplicant {
   applied_at: string;
   answers_ok: number;
   answers_total: number;
+  internal_note: string;
 }
 
 export async function getCurrentCompany(): Promise<Company | null> {
@@ -357,6 +358,7 @@ export async function getApplicantsForJob(
     return mock.companyApplicants.map((a) => ({
       ...a,
       candidate_phone: "595981234567",
+      internal_note: "",
     }));
   const { data } = await supabase
     .from("applications")
@@ -374,6 +376,77 @@ export async function getApplicantsForJob(
     applied_at: row.applied_at,
     answers_ok: (row.answers ?? []).filter((x: any) => x.answer).length,
     answers_total: (row.answers ?? []).length,
+    internal_note: row.internal_note ?? "",
+  }));
+}
+
+// Configuración del sitio (editable desde /admin)
+export async function getSiteSettings(): Promise<Record<string, string>> {
+  const supabase = await getServerClient();
+  if (!supabase) return mock.defaultSiteSettings;
+  const { data } = await supabase.from("site_settings").select("key, value");
+  const out = { ...mock.defaultSiteSettings };
+  for (const row of data ?? []) out[row.key] = row.value;
+  return out;
+}
+
+export async function getReferenceByToken(token: string): Promise<{
+  referrer_name: string;
+  relationship: string;
+  status: string;
+  candidate_name: string;
+} | null> {
+  const supabase = await getServerClient();
+  if (!supabase) {
+    const ref = mock.workReferences.find((r) => r.token === token);
+    if (!ref) return null;
+    return {
+      referrer_name: ref.referrer_name,
+      relationship: ref.relationship,
+      status: ref.status,
+      candidate_name: mock.currentCandidate.full_name,
+    };
+  }
+  const { data } = await supabase.rpc("get_reference_by_token", {
+    ref_token: token,
+  });
+  return data?.[0] ?? null;
+}
+
+export async function getAllReferences(): Promise<
+  (WorkReference & { candidate_name?: string })[]
+> {
+  const supabase = await getServerClient();
+  if (!supabase)
+    return mock.workReferences.map((r) => ({
+      ...r,
+      candidate_name: mock.currentCandidate.full_name,
+    }));
+  const { data } = await supabase
+    .from("work_references")
+    .select("*, candidate:candidates(full_name)")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  return (data ?? []).map((r: any) => ({
+    ...r,
+    candidate_name: r.candidate?.full_name,
+  }));
+}
+
+export async function getBoostRequests(): Promise<
+  (import("./types").BoostRequest & { job_title?: string; company_name?: string })[]
+> {
+  const supabase = await getServerClient();
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("boost_requests")
+    .select("*, job:jobs(title), company:companies(trade_name)")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  return (data ?? []).map((b: any) => ({
+    ...b,
+    job_title: b.job?.title,
+    company_name: b.company?.trade_name,
   }));
 }
 
@@ -391,6 +464,34 @@ export async function getTalentPool(): Promise<Candidate[]> {
 }
 
 // --- Admin ---
+
+// URLs firmadas de las fotos de cédula (solo funciona con rol admin)
+export async function getIdentityDocUrls(
+  candidateId: string
+): Promise<{ label: string; url: string }[]> {
+  const supabase = await getServerClient();
+  if (!supabase) return [];
+  const { data: files } = await supabase.storage
+    .from("identidad")
+    .list(candidateId);
+  if (!files?.length) return [];
+  const out: { label: string; url: string }[] = [];
+  for (const f of files) {
+    const { data } = await supabase.storage
+      .from("identidad")
+      .createSignedUrl(`${candidateId}/${f.name}`, 3600);
+    if (data?.signedUrl)
+      out.push({
+        label: f.name.startsWith("front")
+          ? "Frente"
+          : f.name.startsWith("back")
+            ? "Dorso"
+            : "Selfie",
+        url: data.signedUrl,
+      });
+  }
+  return out;
+}
 
 export async function getPendingIdentities(): Promise<Candidate[]> {
   const supabase = await getServerClient();

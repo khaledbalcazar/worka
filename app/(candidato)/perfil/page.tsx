@@ -1,6 +1,10 @@
 import Link from "next/link";
 import ProfileClient from "@/components/ProfileClient";
-import { getCurrentCandidate, getMyReferences } from "@/lib/data";
+import {
+  getCurrentCandidate,
+  getMyReferences,
+  getSiteSettings,
+} from "@/lib/data";
 
 export const metadata = { title: "Mi perfil" };
 
@@ -24,6 +28,15 @@ export default async function ProfilePage() {
     );
   }
 
-  const references = await getMyReferences();
-  return <ProfileClient candidate={candidate} references={references} />;
+  const [references, settings] = await Promise.all([
+    getMyReferences(),
+    getSiteSettings(),
+  ]);
+  return (
+    <ProfileClient
+      candidate={candidate}
+      references={references}
+      settings={settings}
+    />
+  );
 }

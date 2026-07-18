@@ -1,14 +1,25 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import type { Candidate, IdentityStatus, WorkReference } from "@/lib/types";
 import {
   addWorkReference,
-  requestIdentityVerification,
+  deleteAccount,
   signOut,
+  submitIdentityDocs,
   updateCandidatePrefs,
+  updateCandidateProfile,
+  uploadCv,
 } from "@/app/actions";
+import { CITIES, INDUSTRIES } from "@/lib/mock-data";
+
+function refWhatsAppUrl(ref: WorkReference, candidateName: string): string {
+  const phone = ref.referrer_phone.replace(/\D/g, "");
+  const link = `${typeof window !== "undefined" ? window.location.origin : ""}/ref/${ref.token}`;
+  const text = `Hola ${ref.referrer_name.split(" ")[0]}! Soy ${candidateName}. ¿Me confirmás como referencia laboral en Worka? Solo tenés que tocar este link: ${link}`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+}
 
 // Medidor de perfil: cada dato completado mejora la visibilidad del candidato.
 function profileCompleteness(c: Candidate, hasCv: boolean) {
@@ -29,10 +40,22 @@ function profileCompleteness(c: Candidate, hasCv: boolean) {
 export default function ProfileClient({
   candidate,
   references: initialReferences = [],
+  settings = {},
 }: {
   candidate: Candidate;
   references?: WorkReference[];
+  settings?: Record<string, string>;
 }) {
+  const [configModal, setConfigModal] = useState<
+    null | "editar" | "notificaciones" | "privacidad" | "ayuda"
+  >(null);
+  const [editDraft, setEditDraft] = useState({
+    full_name: candidate.full_name,
+    phone_whatsapp: candidate.phone_whatsapp,
+    location_city: candidate.location_city,
+    preferences_industry: candidate.preferences_industry,
+  });
+  const [editSaved, setEditSaved] = useState(false);
   const [firstJobMode, setFirstJobMode] = useState(candidate.first_job_mode);
   const [alertsEnabled, setAlertsEnabled] = useState(candidate.alerts_enabled);
   const [visibleToCompanies, setVisibleToCompanies] = useState(
@@ -50,8 +73,42 @@ export default function ProfileClient({
   });
   const [refFormOpen, setRefFormOpen] = useState(false);
   const [hasCv, setHasCv] = useState(!!candidate.cv_url);
+  const [cvError, setCvError] = useState<string | null>(null);
+  const [idFiles, setIdFiles] = useState<{
+    front: File | null;
+    back: File | null;
+    selfie: File | null;
+  }>({ front: null, back: null, selfie: null });
+  const [idError, setIdError] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [, startTransition] = useTransition();
+  const cvInput = useRef<HTMLInputElement>(null);
+  const [pending, startTransition] = useTransition();
+
+  function handleCvFile(file: File | undefined) {
+    if (!file) return;
+    setCvError(null);
+    const fd = new FormData();
+    fd.append("cv", file);
+    startTransition(async () => {
+      const result = await uploadCv(fd);
+      if (result.ok) setHasCv(true);
+      else setCvError(result.error ?? "No pudimos subir el CV.");
+    });
+  }
+
+  function submitIdentity() {
+    if (!idFiles.front || !idFiles.back || !idFiles.selfie) return;
+    setIdError(null);
+    const fd = new FormData();
+    fd.append("front", idFiles.front);
+    fd.append("back", idFiles.back);
+    fd.append("selfie", idFiles.selfie);
+    startTransition(async () => {
+      const result = await submitIdentityDocs(fd);
+      if (result.ok) setIdentityStatus("pending");
+      else setIdError(result.error ?? "No pudimos enviar la solicitud.");
+    });
+  }
 
   function togglePref(
     key: "visible_to_companies" | "public_profile",
@@ -64,27 +121,26 @@ export default function ProfileClient({
     });
   }
 
-  function requestIdentity() {
-    setIdentityStatus("pending");
-    startTransition(() => {
-      requestIdentityVerification();
-    });
-  }
-
   function submitReference() {
     if (!refDraft.referrer_name || !refDraft.referrer_phone) return;
-    const local: WorkReference = {
-      id: `local-${Date.now()}`,
-      candidate_id: candidate.id,
-      ...refDraft,
-      status: "pendiente",
-      created_at: new Date().toISOString(),
-    };
-    setReferences((prev) => [local, ...prev]);
+    const draft = { ...refDraft };
     setRefFormOpen(false);
     setRefDraft({ referrer_name: "", referrer_phone: "", relationship: "" });
-    startTransition(() => {
-      addWorkReference(refDraft);
+    startTransition(async () => {
+      const result = await addWorkReference(draft);
+      const local: WorkReference = {
+        id: `local-${Date.now()}`,
+        candidate_id: candidate.id,
+        ...draft,
+        status: "pendiente",
+        token: result.token ?? "",
+        created_at: new Date().toISOString(),
+      };
+      setReferences((prev) => [local, ...prev]);
+      // Abre WhatsApp con el link único listo para enviar
+      if (result.token) {
+        window.open(refWhatsAppUrl(local, candidate.full_name), "_blank");
+      }
     });
   }
 
@@ -194,23 +250,32 @@ export default function ProfileClient({
             ) : (
               <>
                 <p className="text-sm text-gray-500">
-                  Todavía no cargaste tu CV. Podés subir un PDF o{" "}
+                  Todavía no cargaste tu CV. Podés subir un PDF (máx. 5 MB) o{" "}
                   <span className="font-medium text-primary-dark">
                     generar uno gratis con Worka
                   </span>{" "}
                   usando los datos de tu perfil.
                 </p>
+                <input
+                  ref={cvInput}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => handleCvFile(e.target.files?.[0])}
+                />
                 <div className="flex gap-2">
                   <button
                     className="btn-secondary flex-1"
-                    onClick={() => setHasCv(true)}
+                    disabled={pending}
+                    onClick={() => cvInput.current?.click()}
                   >
-                    Subir PDF
+                    {pending ? "Subiendo…" : "📤 Subir PDF"}
                   </button>
                   <Link href="/cv" className="btn-primary flex-1">
                     ✨ Generar mi CV
                   </Link>
                 </div>
+                {cvError && <p className="text-xs text-danger">{cvError}</p>}
               </>
             )}
           </div>
@@ -404,15 +469,29 @@ export default function ProfileClient({
                   </p>
                   <p className="text-xs text-gray-500">{r.relationship}</p>
                 </div>
-                <span
-                  className={`chip shrink-0 ${
-                    r.status === "confirmada"
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "bg-amber-50 text-amber-700"
-                  }`}
-                >
-                  {r.status === "confirmada" ? "✓ confirmada" : "⏳ pendiente"}
-                </span>
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                  <span
+                    className={`chip ${
+                      r.status === "confirmada"
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-amber-50 text-amber-700"
+                    }`}
+                  >
+                    {r.status === "confirmada"
+                      ? "✓ confirmada"
+                      : "⏳ pendiente"}
+                  </span>
+                  {r.status === "pendiente" && r.token && (
+                    <a
+                      href={refWhatsAppUrl(r, candidate.full_name)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary font-medium"
+                    >
+                      📤 Reenviar link
+                    </a>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -431,21 +510,71 @@ export default function ProfileClient({
                 tus postulaciones.
               </p>
             ) : identityStatus === "pending" ? (
-              <p className="text-sm text-amber-700 bg-amber-50 rounded-xl px-3 py-2.5 mt-2">
-                ⏳ Solicitud en revisión. Te avisamos en menos de 48 h.
-              </p>
+              <div className="text-center py-4 animate-pop">
+                <div className="w-10 h-10 mx-auto border-4 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm font-semibold text-amber-700 mt-3">
+                  Tu solicitud está en revisión
+                </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Nuestro equipo revisa tus fotos y te avisamos en menos de
+                  48 h. Tus documentos no se comparten con nadie.
+                </p>
+              </div>
             ) : (
               <>
                 <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                  Subí una foto de tu cédula y ganá el sello 🪪. Los perfiles
-                  verificados destacan frente a las empresas. Es opcional y tus
-                  datos no se comparten.
+                  Subí 3 fotos: <strong>frente</strong> y{" "}
+                  <strong>dorso</strong> de tu cédula, y una{" "}
+                  <strong>selfie sosteniéndola</strong>. Ganás el sello 🪪 que
+                  destaca tu perfil ante las empresas. Es opcional y solo lo ve
+                  nuestro equipo de revisión.
                 </p>
+                <div className="space-y-2 mt-3">
+                  {(
+                    [
+                      ["front", "🪪 Frente de la cédula"],
+                      ["back", "🔄 Dorso de la cédula"],
+                      ["selfie", "🤳 Selfie sosteniendo la cédula"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <label
+                      key={key}
+                      className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-sm cursor-pointer ${
+                        idFiles[key]
+                          ? "border-emerald-300 bg-emerald-50 text-emerald-700"
+                          : "border-gray-200 text-gray-600 hover:border-primary"
+                      }`}
+                    >
+                      <span>{idFiles[key] ? `✓ ${label}` : label}</span>
+                      <span className="text-xs text-primary font-medium">
+                        {idFiles[key] ? "Cambiar" : "Elegir foto"}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        onChange={(e) =>
+                          setIdFiles((f) => ({
+                            ...f,
+                            [key]: e.target.files?.[0] ?? null,
+                          }))
+                        }
+                      />
+                    </label>
+                  ))}
+                </div>
+                {idError && (
+                  <p className="text-xs text-danger mt-2">{idError}</p>
+                )}
                 <button
                   className="btn-primary w-full mt-3 text-sm"
-                  onClick={requestIdentity}
+                  disabled={
+                    pending || !idFiles.front || !idFiles.back || !idFiles.selfie
+                  }
+                  onClick={submitIdentity}
                 >
-                  Verificar mi identidad
+                  {pending ? "Enviando…" : "Enviar para revisión"}
                 </button>
               </>
             )}
@@ -455,14 +584,20 @@ export default function ProfileClient({
             <h2 className="font-semibold text-primary-dark mb-2">
               ⚙️ Configuración
             </h2>
-            {[
-              { icon: "✏️", label: "Editar mis datos" },
-              { icon: "🔔", label: "Notificaciones" },
-              { icon: "🔒", label: "Privacidad y datos" },
-              { icon: "❓", label: "Ayuda y contacto" },
-            ].map((item) => (
+            {(
+              [
+                { icon: "✏️", label: "Editar mis datos", key: "editar" },
+                { icon: "🔔", label: "Notificaciones", key: "notificaciones" },
+                { icon: "🔒", label: "Privacidad y datos", key: "privacidad" },
+                { icon: "❓", label: "Ayuda y contacto", key: "ayuda" },
+              ] as const
+            ).map((item) => (
               <button
-                key={item.label}
+                key={item.key}
+                onClick={() => {
+                  setEditSaved(false);
+                  setConfigModal(item.key);
+                }}
                 className="w-full flex items-center justify-between px-3 py-3 rounded-xl text-sm text-gray-700 hover:bg-surface text-left"
               >
                 <span>
@@ -507,6 +642,262 @@ export default function ProfileClient({
         </div>
       </div>
 
+      {/* Modales de configuración */}
+      {configModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          onClick={() => setConfigModal(null)}
+        >
+          <div
+            className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-5 animate-fade-up max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {configModal === "editar" && (
+              <div className="space-y-3">
+                <h4 className="font-semibold text-primary-dark">
+                  ✏️ Editar mis datos
+                </h4>
+                <div>
+                  <label className="label">Nombre completo</label>
+                  <input
+                    className="input"
+                    value={editDraft.full_name}
+                    onChange={(e) =>
+                      setEditDraft((d) => ({ ...d, full_name: e.target.value }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="label">WhatsApp</label>
+                  <input
+                    className="input"
+                    value={editDraft.phone_whatsapp}
+                    onChange={(e) =>
+                      setEditDraft((d) => ({
+                        ...d,
+                        phone_whatsapp: e.target.value,
+                      }))
+                    }
+                  />
+                </div>
+                <div>
+                  <label className="label">Ciudad</label>
+                  <select
+                    className="input"
+                    value={editDraft.location_city}
+                    onChange={(e) =>
+                      setEditDraft((d) => ({
+                        ...d,
+                        location_city: e.target.value,
+                      }))
+                    }
+                  >
+                    {CITIES.map((c) => (
+                      <option key={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Rubros de interés</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {INDUSTRIES.map((ind) => {
+                      const on = editDraft.preferences_industry.includes(ind);
+                      return (
+                        <button
+                          key={ind}
+                          onClick={() =>
+                            setEditDraft((d) => ({
+                              ...d,
+                              preferences_industry: on
+                                ? d.preferences_industry.filter(
+                                    (x) => x !== ind
+                                  )
+                                : [...d.preferences_industry, ind],
+                            }))
+                          }
+                          className={`chip min-h-9 px-3 ${
+                            on
+                              ? "bg-primary text-white"
+                              : "bg-surface text-gray-600"
+                          }`}
+                        >
+                          {ind}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                {editSaved && (
+                  <p className="text-sm text-emerald-700 bg-emerald-50 rounded-xl px-3 py-2">
+                    ✅ Datos guardados.
+                  </p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    className="btn-secondary flex-1"
+                    onClick={() => setConfigModal(null)}
+                  >
+                    Cerrar
+                  </button>
+                  <button
+                    className="btn-primary flex-1"
+                    disabled={pending}
+                    onClick={() =>
+                      startTransition(async () => {
+                        const result = await updateCandidateProfile(editDraft);
+                        if (result.ok) setEditSaved(true);
+                      })
+                    }
+                  >
+                    {pending ? "Guardando…" : "Guardar"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {configModal === "notificaciones" && (
+              <div className="space-y-4">
+                <h4 className="font-semibold text-primary-dark">
+                  🔔 Notificaciones
+                </h4>
+                <label className="flex items-center justify-between gap-3 cursor-pointer">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">
+                      💬 Alertas por WhatsApp
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Vacantes nuevas de tus rubros y avisos de perfil visto.
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={alertsEnabled}
+                    onChange={(e) => toggleAlerts(e.target.checked)}
+                    className="w-5 h-5 accent-primary"
+                  />
+                </label>
+                <p className="text-xs text-gray-400">
+                  Las notificaciones dentro de la app (🔔) están siempre
+                  activas: son tu historial de avisos.
+                </p>
+                <button
+                  className="btn-primary w-full"
+                  onClick={() => setConfigModal(null)}
+                >
+                  Listo
+                </button>
+              </div>
+            )}
+
+            {configModal === "privacidad" && (
+              <div className="space-y-4">
+                <h4 className="font-semibold text-primary-dark">
+                  🔒 Privacidad y datos
+                </h4>
+                <label className="flex items-center justify-between gap-3 cursor-pointer">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">
+                      🔎 Visible para empresas
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={visibleToCompanies}
+                    onChange={(e) =>
+                      togglePref(
+                        "visible_to_companies",
+                        e.target.checked,
+                        setVisibleToCompanies
+                      )
+                    }
+                    className="w-5 h-5 accent-primary"
+                  />
+                </label>
+                <label className="flex items-center justify-between gap-3 cursor-pointer">
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">
+                      🔗 Perfil público
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={publicProfile}
+                    onChange={(e) =>
+                      togglePref(
+                        "public_profile",
+                        e.target.checked,
+                        setPublicProfile
+                      )
+                    }
+                    className="w-5 h-5 accent-primary"
+                  />
+                </label>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  Tus datos se usan solo para conectarte con empresas. Nunca
+                  vendemos tu información. Podés descargar o borrar todo cuando
+                  quieras, conforme a la ley de protección de datos personales.
+                </p>
+                <button
+                  className="w-full text-sm font-medium text-danger py-2 rounded-xl hover:bg-red-50"
+                  onClick={() => {
+                    setConfigModal(null);
+                    setDeleteOpen(true);
+                  }}
+                >
+                  🗑️ Eliminar mi cuenta y todos mis datos
+                </button>
+                <button
+                  className="btn-primary w-full"
+                  onClick={() => setConfigModal(null)}
+                >
+                  Listo
+                </button>
+              </div>
+            )}
+
+            {configModal === "ayuda" && (
+              <div className="space-y-3 text-center">
+                <h4 className="font-semibold text-primary-dark">
+                  ❓ Ayuda y contacto
+                </h4>
+                <p className="text-sm text-gray-600">
+                  {settings.help_text ??
+                    "Escribinos y te respondemos en el día."}
+                </p>
+                {settings.contact_whatsapp && (
+                  <a
+                    href={`https://wa.me/${settings.contact_whatsapp.replace(/\D/g, "")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-success w-full"
+                  >
+                    💬 WhatsApp: {settings.contact_whatsapp}
+                  </a>
+                )}
+                {settings.contact_email && (
+                  <a
+                    href={`mailto:${settings.contact_email}`}
+                    className="btn-secondary w-full"
+                  >
+                    ✉️ {settings.contact_email}
+                  </a>
+                )}
+                <p className="text-xs text-gray-400">
+                  Recordá: nunca pagues para conseguir un trabajo, y denunciá
+                  cualquier oferta sospechosa.
+                </p>
+                <button
+                  className="btn-primary w-full"
+                  onClick={() => setConfigModal(null)}
+                >
+                  Cerrar
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Confirmación de borrado de cuenta */}
       {deleteOpen && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -528,9 +919,14 @@ export default function ProfileClient({
               </button>
               <button
                 className="btn bg-danger text-white hover:bg-red-600 flex-1"
-                onClick={() => setDeleteOpen(false)}
+                disabled={pending}
+                onClick={() =>
+                  startTransition(async () => {
+                    await deleteAccount();
+                  })
+                }
               >
-                Sí, eliminar todo
+                {pending ? "Eliminando…" : "Sí, eliminar todo"}
               </button>
             </div>
           </div>

@@ -452,9 +452,23 @@ export const workReferences: WorkReference[] = [
     referrer_phone: "+595 985 777 888",
     relationship: "Fue mi encargada en la despensa familiar (2024-2025)",
     status: "confirmada",
+    token: "demo-token-ref1",
     created_at: "2026-07-10T10:00:00Z",
   },
 ];
+
+// Configuración del sitio (en live vive en la tabla site_settings)
+export const defaultSiteSettings: Record<string, string> = {
+  site_name: "Worka",
+  logo_url: "",
+  hero_title: "Tu próximo paso empieza acá.",
+  hero_subtitle:
+    "La plataforma de empleo pensada para Paraguay: empresas verificadas, alertas por WhatsApp y hasta las líneas de colectivo para llegar a tu entrevista.",
+  contact_email: "hola@worka.com.py",
+  contact_whatsapp: "+595 981 000 000",
+  payment_link: "",
+  help_text: "Escribinos por WhatsApp o email y te respondemos en el día.",
+};
 
 export const interviews: Interview[] = [
   {

@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import type { Company, JobStatus, JobWithCompany } from "@/lib/types";
+import { BOOST_PLANS } from "@/lib/types";
 import { StatusChip } from "@/components/Badges";
 import { formatDate } from "@/lib/format";
 import {
   deleteJob,
   duplicateJob,
+  requestBoost,
   setJobStatus,
   updateJobExpiry,
 } from "@/app/actions";
@@ -24,17 +26,33 @@ const TIPS = [
 export default function CompanyDashboard({
   company,
   jobs: initialJobs,
+  paymentLink = "",
 }: {
   company: Company;
   jobs: JobWithCompany[];
+  paymentLink?: string;
 }) {
   const [jobs, setJobs] = useState(initialJobs);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [editingExpiry, setEditingExpiry] = useState<string | null>(null);
   const [expiryValue, setExpiryValue] = useState("");
+  const [boosting, setBoosting] = useState<JobWithCompany | null>(null);
+  const [boostSent, setBoostSent] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
   const [pending, startTransition] = useTransition();
+
+  function handleBoost(plan: string, priceGs: number) {
+    if (!boosting) return;
+    startTransition(async () => {
+      const result = await requestBoost(boosting.id, plan, priceGs);
+      if (result.ok) setBoostSent(true);
+      else {
+        setBoosting(null);
+        flash(result.error ?? "No pudimos registrar la solicitud.");
+      }
+    });
+  }
 
   const stats = [
     {
@@ -289,6 +307,23 @@ export default function CompanyDashboard({
                           Cerrar
                         </button>
                       )}
+                      {job.status === "Activo" && !job.featured && (
+                        <button
+                          className="text-amber-500 hover:text-amber-600 font-medium disabled:opacity-50"
+                          disabled={pending}
+                          onClick={() => {
+                            setBoostSent(false);
+                            setBoosting(job);
+                          }}
+                        >
+                          ⚡ Potenciar
+                        </button>
+                      )}
+                      {job.featured && (
+                        <span className="chip bg-amber-50 text-amber-700">
+                          ⭐ Destacada
+                        </span>
+                      )}
                       <button
                         className="text-gray-500 hover:text-primary font-medium disabled:opacity-50"
                         disabled={pending}
@@ -327,6 +362,76 @@ export default function CompanyDashboard({
           Otro consejo →
         </button>
       </section>
+
+      {/* Potenciar empleo */}
+      {boosting && (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 animate-fade-up">
+            {boostSent ? (
+              <div className="text-center py-4 animate-pop">
+                <p className="text-4xl mb-2">⚡</p>
+                <p className="font-bold text-primary-dark">
+                  ¡Solicitud registrada!
+                </p>
+                <p className="text-sm text-gray-500 mt-2">
+                  {paymentLink
+                    ? "Completá el pago con el botón de abajo. Apenas lo confirmemos, tu vacante aparece destacada arriba del feed."
+                    : "Nuestro equipo te contacta para coordinar el pago. Apenas se confirme, tu vacante aparece destacada arriba del feed."}
+                </p>
+                {paymentLink && (
+                  <a
+                    href={paymentLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-primary w-full mt-4"
+                  >
+                    💳 Ir a pagar
+                  </a>
+                )}
+                <button
+                  className="btn-secondary w-full mt-2"
+                  onClick={() => setBoosting(null)}
+                >
+                  Cerrar
+                </button>
+              </div>
+            ) : (
+              <>
+                <h4 className="font-semibold text-primary-dark">
+                  ⚡ Potenciar &ldquo;{boosting.title}&rdquo;
+                </h4>
+                <p className="text-sm text-gray-500 mt-1">
+                  Tu vacante aparece <strong>destacada arriba del feed</strong>{" "}
+                  con la etiqueta ⭐ y recibe en promedio 3 veces más vistas.
+                </p>
+                <div className="space-y-2 mt-4">
+                  {BOOST_PLANS.map((p) => (
+                    <button
+                      key={p.plan}
+                      disabled={pending}
+                      onClick={() => handleBoost(p.plan, p.price_gs)}
+                      className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-gray-200 hover:border-amber-400 hover:bg-amber-50 text-sm"
+                    >
+                      <span className="font-medium text-gray-700">
+                        {p.plan}
+                      </span>
+                      <span className="font-bold text-primary-dark">
+                        Gs. {p.price_gs.toLocaleString("es-PY")}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  className="btn-secondary w-full mt-3"
+                  onClick={() => setBoosting(null)}
+                >
+                  Cancelar
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Confirmación de eliminación */}
       {confirmDelete && (

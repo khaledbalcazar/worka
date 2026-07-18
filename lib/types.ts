@@ -92,7 +92,7 @@ export interface Candidate {
   created_at: string;
 }
 
-// Referencia laboral: un ex-empleador confirma por WhatsApp
+// Referencia laboral: un ex-empleador confirma por WhatsApp mediante un link único
 export interface WorkReference {
   id: string;
   candidate_id: string;
@@ -100,8 +100,26 @@ export interface WorkReference {
   referrer_phone: string;
   relationship: string; // ej: "Fui su encargado en Super Guaraní"
   status: "pendiente" | "confirmada";
+  token: string; // link único /ref/[token]
   created_at: string;
 }
+
+// Potenciar empleo: vacante destacada paga
+export interface BoostRequest {
+  id: string;
+  job_id: string;
+  company_id: string;
+  plan: string;
+  price_gs: number;
+  status: "pendiente_pago" | "activo" | "rechazado";
+  created_at: string;
+}
+
+export const BOOST_PLANS = [
+  { plan: "7 días destacada", days: 7, price_gs: 150000 },
+  { plan: "15 días destacada", days: 15, price_gs: 250000 },
+  { plan: "30 días destacada", days: 30, price_gs: 400000 },
+] as const;
 
 export interface Interview {
   id: string;

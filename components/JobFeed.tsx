@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import JobCard from "@/components/JobCard";
 import { CITIES, INDUSTRIES } from "@/lib/mock-data";
 import type { JobWithCompany, Modality } from "@/lib/types";
@@ -163,28 +164,50 @@ export default function JobFeed({
   );
 
   return (
-    <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-6 lg:items-start">
+    <div className="lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-6 lg:items-start">
       {/* Filtros: sidebar fija en escritorio */}
-      <aside className="hidden lg:block card p-5 space-y-4 sticky top-20">
-        <h2 className="font-semibold text-primary-dark text-sm flex items-center justify-between">
-          Filtros
-          {activeFilters > 0 && (
-            <button
-              className="text-xs text-primary font-medium"
-              onClick={() => {
-                setCity("");
-                setIndustry("");
-                setModality("");
-                setFirstJobOnly(false);
-                setOnlyVerified(false);
-                setWithSalary(false);
-              }}
-            >
-              Limpiar ({activeFilters})
-            </button>
-          )}
-        </h2>
-        {filterControls}
+      <aside className="hidden lg:block space-y-4 sticky top-20">
+        <div className="card p-5 space-y-4">
+          <h2 className="font-semibold text-primary-dark text-sm flex items-center justify-between">
+            Filtros
+            {activeFilters > 0 && (
+              <button
+                className="text-xs text-primary font-medium"
+                onClick={() => {
+                  setCity("");
+                  setIndustry("");
+                  setModality("");
+                  setFirstJobOnly(false);
+                  setOnlyVerified(false);
+                  setWithSalary(false);
+                }}
+              >
+                Limpiar ({activeFilters})
+              </button>
+            )}
+          </h2>
+          {filterControls}
+        </div>
+        <div className="card p-4 space-y-1">
+          <Link
+            href="/salarios"
+            className="block px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-surface"
+          >
+            💰 ¿Cuánto se paga en tu rubro?
+          </Link>
+          <Link
+            href="/juegos"
+            className="block px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-surface"
+          >
+            🎮 Worka Play: juegos y tips
+          </Link>
+          <Link
+            href="/cv"
+            className="block px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-surface"
+          >
+            📄 Generar mi CV gratis
+          </Link>
+        </div>
       </aside>
 
       <div className="space-y-4">
@@ -219,16 +242,30 @@ export default function JobFeed({
               ))}
             </select>
           </div>
-          <button
-            onClick={() => setFirstJobOnly((v) => !v)}
-            className={`lg:hidden chip min-h-9 px-4 ${
-              firstJobOnly
-                ? "bg-purple-600 text-white"
-                : "bg-white text-purple-700 border border-purple-200"
-            }`}
-          >
-            ✨ Modo primer empleo {firstJobOnly ? "activado" : ""}
-          </button>
+          <div className="lg:hidden flex gap-2 overflow-x-auto scroll-thin pb-1">
+            <button
+              onClick={() => setFirstJobOnly((v) => !v)}
+              className={`chip min-h-9 px-4 shrink-0 ${
+                firstJobOnly
+                  ? "bg-purple-600 text-white"
+                  : "bg-white text-purple-700 border border-purple-200"
+              }`}
+            >
+              ✨ Primer empleo {firstJobOnly ? "✓" : ""}
+            </button>
+            <Link
+              href="/salarios"
+              className="chip min-h-9 px-4 shrink-0 bg-white text-gray-600 border border-gray-200"
+            >
+              💰 Salarios
+            </Link>
+            <Link
+              href="/juegos"
+              className="chip min-h-9 px-4 shrink-0 bg-white text-gray-600 border border-gray-200"
+            >
+              🎮 Worka Play
+            </Link>
+          </div>
         </div>
 
         <p className="text-sm text-gray-500">

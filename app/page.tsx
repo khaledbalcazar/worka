@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Logo from "@/components/Logo";
-import { getActiveJobsCount } from "@/lib/data";
+import { getActiveJobsCount, getSiteSettings } from "@/lib/data";
 import LandingSearch from "@/components/LandingSearch";
 
 const DIFFERENTIATORS = [
@@ -99,7 +99,10 @@ const FAQS = [
 export const revalidate = 300;
 
 export default async function LandingPage() {
-  const jobsCount = await getActiveJobsCount();
+  const [jobsCount, settings] = await Promise.all([
+    getActiveJobsCount(),
+    getSiteSettings(),
+  ]);
 
   return (
     <main className="flex-1 flex flex-col bg-white">
@@ -139,13 +142,10 @@ export default async function LandingPage() {
             🇵🇾 Hecho en Paraguay · 100% gratis para candidatos
           </p>
           <h1 className="text-4xl sm:text-6xl font-extrabold text-primary-dark leading-tight animate-fade-up">
-            Tu próximo paso
-            <span className="text-primary"> empieza acá.</span>
+            {settings.hero_title}
           </h1>
           <p className="mt-4 text-gray-600 text-base sm:text-xl max-w-2xl mx-auto animate-fade-up">
-            La plataforma de empleo pensada para Paraguay: empresas verificadas,
-            alertas por WhatsApp y hasta las líneas de colectivo para llegar a tu
-            entrevista.
+            {settings.hero_subtitle}
           </p>
 
           <LandingSearch jobsCount={jobsCount} />

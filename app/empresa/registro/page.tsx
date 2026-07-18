@@ -5,6 +5,7 @@ import Link from "next/link";
 import Logo from "@/components/Logo";
 import { CITIES } from "@/lib/mock-data";
 import { registerCompany, signUpWithEmail } from "@/app/actions";
+import { validateRucFormat } from "@/lib/ruc";
 
 export default function CompanyRegisterPage() {
   const [sent, setSent] = useState<null | "demo" | "confirm" | "ok">(null);
@@ -20,7 +21,15 @@ export default function CompanyRegisterPage() {
   function submit() {
     setError(null);
     startTransition(async () => {
-      const signUp = await signUpWithEmail(email, password);
+      // Los datos de la empresa viajan en el metadata del alta: un trigger en
+      // la base crea el perfil y la empresa aunque el email se confirme después.
+      const signUp = await signUpWithEmail(email, password, {
+        worka_role: "company",
+        company_name: companyName,
+        trade_name: tradeName,
+        ruc,
+        location_city: city,
+      });
       if (signUp.demo) {
         setSent("demo");
         return;
@@ -29,15 +38,14 @@ export default function CompanyRegisterPage() {
         setError(signUp.error ?? "No pudimos crear la cuenta.");
         return;
       }
-      const company = await registerCompany({
+      // Por si la confirmación de email está desactivada y ya hay sesión:
+      await registerCompany({
         company_name: companyName,
         trade_name: tradeName,
         ruc,
         location_city: city,
       });
-      // Si Supabase exige confirmación por email, todavía no hay sesión:
-      // la empresa se completa al primer ingreso.
-      setSent(company.ok ? "ok" : "confirm");
+      setSent("confirm");
     });
   }
 
@@ -63,11 +71,11 @@ export default function CompanyRegisterPage() {
             </p>
             <p className="text-sm text-gray-500">
               {sent === "confirm"
-                ? "Revisá tu email para confirmar la cuenta. Al ingresar, completamos el registro de tu empresa y verificamos el RUC."
+                ? "Revisá tu email y hacé clic en el link de confirmación: te lleva directo a tu panel de empresa. Mientras tanto verificamos tu RUC."
                 : "Vamos a verificar tu RUC contra el registro público de la DNIT. Te avisamos por email en menos de 24 horas."}
             </p>
-            <Link href="/empresa" className="btn-primary w-full mt-3">
-              Ir al panel de empresa
+            <Link href="/ingresar?next=/empresa" className="btn-primary w-full mt-3">
+              Ya confirmé — Ingresar
             </Link>
           </div>
         ) : (
@@ -98,6 +106,21 @@ export default function CompanyRegisterPage() {
                 value={ruc}
                 onChange={(e) => setRuc(e.target.value)}
               />
+              {ruc.length >= 6 &&
+                (() => {
+                  const check = validateRucFormat(ruc);
+                  return (
+                    <p
+                      className={`text-xs mt-1 ${
+                        check.valid ? "text-emerald-600" : "text-danger"
+                      }`}
+                    >
+                      {check.valid
+                        ? "✓ Dígito verificador correcto. El contraste final con la DNIT lo hace nuestro equipo."
+                        : `✕ ${check.reason}`}
+                    </p>
+                  );
+                })()}
             </div>
             <div>
               <label className="label">Ciudad *</label>
@@ -144,6 +167,7 @@ export default function CompanyRegisterPage() {
                 !companyName ||
                 !tradeName ||
                 !ruc ||
+                !validateRucFormat(ruc).valid ||
                 !city ||
                 !email ||
                 !password

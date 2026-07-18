@@ -11,6 +11,7 @@ interface Experience {
   role: string;
   place: string;
   period: string;
+  description: string;
 }
 
 export default function CvBuilder({ candidate }: { candidate: Candidate }) {
@@ -24,6 +25,7 @@ export default function CvBuilder({ candidate }: { candidate: Candidate }) {
     role: "",
     place: "",
     period: "",
+    description: "",
   });
   const [education, setEducation] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
@@ -32,7 +34,7 @@ export default function CvBuilder({ candidate }: { candidate: Candidate }) {
   function addExperience() {
     if (!expDraft.role || !expDraft.place) return;
     setExperiences((prev) => [...prev, expDraft]);
-    setExpDraft({ role: "", place: "", period: "" });
+    setExpDraft({ role: "", place: "", period: "", description: "" });
   }
 
   function addSkill() {
@@ -121,6 +123,14 @@ export default function CvBuilder({ candidate }: { candidate: Candidate }) {
               value={expDraft.period}
               onChange={(e) =>
                 setExpDraft((d) => ({ ...d, period: e.target.value }))
+              }
+            />
+            <textarea
+              className="input text-sm min-h-16"
+              placeholder="¿Qué hacías? (opcional) Ej: Atención al cliente, manejo de caja y cierre diario."
+              value={expDraft.description}
+              onChange={(e) =>
+                setExpDraft((d) => ({ ...d, description: e.target.value }))
               }
             />
             <button className="btn-secondary w-full text-xs" onClick={addExperience}>
@@ -227,6 +237,11 @@ export default function CvBuilder({ candidate }: { candidate: Candidate }) {
                     </p>
                     {exp.period && (
                       <p className="text-xs text-gray-400">{exp.period}</p>
+                    )}
+                    {exp.description && (
+                      <p className="text-sm text-gray-600 mt-0.5 leading-relaxed">
+                        {exp.description}
+                      </p>
                     )}
                   </div>
                 ))}

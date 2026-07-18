@@ -7,6 +7,7 @@ import Logo from "@/components/Logo";
 const NAV = [
   { href: "/empresa", label: "Panel", icon: "📊", exact: true },
   { href: "/empresa/vacantes/nueva", label: "Nueva vacante", icon: "➕" },
+  { href: "/empresa/talento", label: "Buscar talento", icon: "🔎" },
   { href: "/empresa/perfil", label: "Perfil de empresa", icon: "🏢" },
 ];
 

@@ -5,9 +5,14 @@ import AdminPanel from "@/components/AdminPanel";
 import {
   getActiveJobsCount,
   getAllCompanies,
+  getAllReferences,
+  getBoostRequests,
+  getIdentityDocUrls,
   getModerationQueue,
   getPendingCompanies,
+  getPendingIdentities,
   getReports,
+  getSiteSettings,
   isLive,
 } from "@/lib/data";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
@@ -28,14 +33,34 @@ export default async function AdminPage() {
     if (profile?.role !== "admin") redirect("/");
   }
 
-  const [moderationQueue, reports, pendingCompanies, allCompanies, activeJobsCount] =
-    await Promise.all([
-      getModerationQueue(),
-      getReports(),
-      getPendingCompanies(),
-      getAllCompanies(),
-      getActiveJobsCount(),
-    ]);
+  const [
+    moderationQueue,
+    reports,
+    pendingCompanies,
+    allCompanies,
+    activeJobsCount,
+    pendingIdentities,
+    references,
+    boosts,
+    settings,
+  ] = await Promise.all([
+    getModerationQueue(),
+    getReports(),
+    getPendingCompanies(),
+    getAllCompanies(),
+    getActiveJobsCount(),
+    getPendingIdentities(),
+    getAllReferences(),
+    getBoostRequests(),
+    getSiteSettings(),
+  ]);
+
+  const identityQueue = await Promise.all(
+    pendingIdentities.map(async (c) => ({
+      ...c,
+      docs: await getIdentityDocUrls(c.id),
+    }))
+  );
 
   return (
     <div className="flex-1 bg-surface min-h-screen">
@@ -54,6 +79,10 @@ export default async function AdminPage() {
         pendingCompanies={pendingCompanies}
         allCompanies={allCompanies}
         activeJobsCount={activeJobsCount}
+        identityQueue={identityQueue}
+        references={references}
+        boosts={boosts}
+        settings={settings}
       />
     </div>
   );

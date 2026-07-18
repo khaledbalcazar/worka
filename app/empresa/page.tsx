@@ -1,6 +1,10 @@
 import Link from "next/link";
 import CompanyDashboard from "@/components/CompanyDashboard";
-import { getCurrentCompany, getJobsByCompany } from "@/lib/data";
+import {
+  getCurrentCompany,
+  getJobsByCompany,
+  getSiteSettings,
+} from "@/lib/data";
 
 export const metadata = { title: "Panel de empresa" };
 
@@ -24,6 +28,15 @@ export default async function CompanyDashboardPage() {
     );
   }
 
-  const jobs = await getJobsByCompany(company.id);
-  return <CompanyDashboard company={company} jobs={jobs} />;
+  const [jobs, settings] = await Promise.all([
+    getJobsByCompany(company.id),
+    getSiteSettings(),
+  ]);
+  return (
+    <CompanyDashboard
+      company={company}
+      jobs={jobs}
+      paymentLink={settings.payment_link}
+    />
+  );
 }

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import Logo from "@/components/Logo";
 import { getBrowserClient } from "@/lib/supabase/client";
-import { signInWithEmail } from "@/app/actions";
+import { signInWithEmail, signUpWithEmail } from "@/app/actions";
 
 function LoginForm() {
   const router = useRouter();
@@ -13,6 +13,8 @@ function LoginForm() {
   const next = searchParams.get("next") ?? "/empleos";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [signupSent, setSignupSent] = useState(false);
   const [error, setError] = useState<string | null>(
     searchParams.get("error") ? "No pudimos completar el ingreso." : null
   );
@@ -37,6 +39,15 @@ function LoginForm() {
   function handleEmail() {
     setError(null);
     startTransition(async () => {
+      if (mode === "signup") {
+        const result = await signUpWithEmail(email, password, {
+          worka_role: "candidate",
+        });
+        if (result.demo) router.push("/onboarding");
+        else if (!result.ok) setError(result.error ?? "Ocurrió un error.");
+        else setSignupSent(true);
+        return;
+      }
       const result = await signInWithEmail(email, password, next);
       if (result.demo) router.push("/empleos");
       else if (!result.ok) setError(result.error ?? "Ocurrió un error.");
@@ -48,8 +59,26 @@ function LoginForm() {
       <div className="card w-full max-w-sm p-6 space-y-4">
         <div className="text-center">
           <Logo />
-          <p className="text-sm text-gray-500 mt-1">Ingresá a tu cuenta</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {mode === "login" ? "Ingresá a tu cuenta" : "Creá tu cuenta gratis"}
+          </p>
         </div>
+
+        {signupSent && (
+          <div className="text-center py-4 animate-pop">
+            <p className="text-4xl mb-2">📨</p>
+            <p className="font-semibold text-primary-dark">
+              ¡Revisá tu email!
+            </p>
+            <p className="text-sm text-gray-500 mt-1">
+              Te enviamos un link de confirmación. Al hacer clic, entrás directo
+              a completar tu perfil.
+            </p>
+          </div>
+        )}
+
+        {!signupSent && (
+        <>
 
         {demoMode && (
           <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2">
@@ -108,15 +137,46 @@ function LoginForm() {
           disabled={pending || (!demoMode && (!email || !password))}
           onClick={handleEmail}
         >
-          {pending ? "Ingresando…" : "Ingresar"}
+          {pending
+            ? "Un momento…"
+            : mode === "login"
+              ? "Ingresar"
+              : "Crear mi cuenta"}
         </button>
 
-        <p className="text-center text-sm text-gray-500">
-          ¿No tenés cuenta?{" "}
-          <Link href="/registro" className="text-primary font-medium">
-            Registrate gratis
-          </Link>
-        </p>
+        {mode === "login" ? (
+          <p className="text-center text-sm text-gray-500">
+            ¿No tenés cuenta?{" "}
+            <button
+              className="text-primary font-medium"
+              onClick={() => {
+                setMode("signup");
+                setError(null);
+              }}
+            >
+              Registrate gratis
+            </button>
+            {" · "}
+            <Link href="/empresa/registro" className="text-primary font-medium">
+              Soy empresa
+            </Link>
+          </p>
+        ) : (
+          <p className="text-center text-sm text-gray-500">
+            ¿Ya tenés cuenta?{" "}
+            <button
+              className="text-primary font-medium"
+              onClick={() => {
+                setMode("login");
+                setError(null);
+              }}
+            >
+              Ingresá
+            </button>
+          </p>
+        )}
+        </>
+        )}
       </div>
     </main>
   );

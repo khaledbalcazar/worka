@@ -1,7 +1,12 @@
 import Link from "next/link";
-import { getMyApplications, getMySavedJobs } from "@/lib/data";
+import {
+  getMyApplications,
+  getMyInterviews,
+  getMySavedJobs,
+} from "@/lib/data";
 import { StatusChip } from "@/components/Badges";
 import JobCard from "@/components/JobCard";
+import InterviewCard from "@/components/InterviewCard";
 import { formatDate } from "@/lib/format";
 import type { ApplicationStatus } from "@/lib/types";
 
@@ -18,9 +23,10 @@ function stepIndex(status: ApplicationStatus): number {
 }
 
 export default async function ApplicationsPage() {
-  const [apps, savedJobs] = await Promise.all([
+  const [apps, savedJobs, interviews] = await Promise.all([
     getMyApplications(),
     getMySavedJobs(),
+    getMyInterviews(),
   ]);
   const appliedIds = new Set(apps.map((a) => a.job_id));
   const inProcess = apps.filter(
@@ -151,6 +157,9 @@ export default async function ApplicationsPage() {
               <p className="mt-3 text-xs text-emerald-700 bg-emerald-50 rounded-xl px-3 py-2">
                 🎉 ¡La empresa te contactó! Revisá tu WhatsApp.
               </p>
+            )}
+            {interviews[app.id] && (
+              <InterviewCard interview={interviews[app.id]} />
             )}
           </div>
         );
