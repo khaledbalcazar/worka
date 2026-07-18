@@ -11,6 +11,29 @@ import type {
   Modality,
 } from "@/lib/types";
 
+// Convierte cualquier error de Supabase/Auth en un texto legible en español.
+// Nunca devuelve "{}" ni un objeto: eso era lo que se veía en pantalla.
+function friendlyAuthError(err: unknown): string {
+  const raw =
+    err && typeof err === "object" && "message" in err
+      ? String((err as { message: unknown }).message ?? "")
+      : String(err ?? "");
+  const msg = raw.trim();
+  const lower = msg.toLowerCase();
+
+  if (!msg || msg === "{}" || msg === "[object Object]")
+    return "No pudimos conectar con el servidor. Revisá tu conexión y volvé a intentar.";
+  if (lower.includes("already registered") || lower.includes("already exists"))
+    return "Ese email ya tiene una cuenta. Iniciá sesión en su lugar.";
+  if (lower.includes("password") && lower.includes("least"))
+    return "La contraseña debe tener al menos 6 caracteres.";
+  if (lower.includes("invalid") && lower.includes("email"))
+    return "El email no es válido. Revisalo e intentá de nuevo.";
+  if (lower.includes("rate limit") || lower.includes("too many"))
+    return "Demasiados intentos. Esperá un minuto y probá otra vez.";
+  return msg;
+}
+
 export type ActionResult = {
   ok: boolean;
   error?: string;
@@ -876,15 +899,25 @@ export async function signUpWithEmail(
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
   const { SITE_URL } = await import("@/lib/supabase/config");
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: `${SITE_URL}/auth/callback`,
-      data: metadata ?? {},
-    },
-  });
-  if (error) return { ok: false, error: error.message };
+  let error;
+  try {
+    ({ error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${SITE_URL}/auth/callback`,
+        data: metadata ?? {},
+      },
+    }));
+  } catch (e) {
+    // Falla de red / configuración: queda en los logs de Vercel.
+    console.error("signUp threw:", e);
+    return { ok: false, error: friendlyAuthError(e) };
+  }
+  if (error) {
+    console.error("signUp error:", error);
+    return { ok: false, error: friendlyAuthError(error) };
+  }
   return { ok: true };
 }
 

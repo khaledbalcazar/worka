@@ -157,7 +157,9 @@ export default function CompanyRegisterPage() {
             </div>
 
             {error && (
-              <p className="text-sm text-danger text-center">{error}</p>
+              <p className="text-sm text-danger text-center bg-red-50 rounded-xl px-4 py-3">
+                {String(error)}
+              </p>
             )}
 
             <button
