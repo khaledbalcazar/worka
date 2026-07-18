@@ -460,6 +460,20 @@ export async function toggleFollowCompany(
   return { ok: true };
 }
 
+// La empresa abre el CV del candidato (URL firmada; RLS: solo si se postuló).
+export async function getApplicantCvUrl(
+  candidateId: string
+): Promise<ActionResult & { url?: string }> {
+  const supabase = await getServerClient();
+  if (!supabase) return { ok: true, url: "#demo-cv" };
+  const { data, error } = await supabase.storage
+    .from("cvs")
+    .createSignedUrl(`${candidateId}/cv.pdf`, 300);
+  if (error || !data)
+    return { ok: false, error: "Este candidato no cargó un CV." };
+  return { ok: true, url: data.signedUrl };
+}
+
 export async function proposeInterview(
   applicationId: string,
   proposedAt: string,
@@ -467,12 +481,36 @@ export async function proposeInterview(
 ): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+
+  // Datos para la notificación del candidato.
+  const { data: app } = await supabase
+    .from("applications")
+    .select("candidate_id, job:jobs(title, company:companies(trade_name))")
+    .eq("id", applicationId)
+    .maybeSingle();
+
+  // Reemplaza cualquier entrevista previa (reprogramar / posponer).
+  await supabase.from("interviews").delete().eq("application_id", applicationId);
   const { error } = await supabase.from("interviews").insert({
     application_id: applicationId,
     proposed_at: new Date(proposedAt).toISOString(),
     location,
   });
   if (error) return { ok: false, error: "No pudimos proponer la entrevista." };
+
+  // Notificación al candidato (campanita + queda en su historial).
+  const a = app as any;
+  if (a?.candidate_id) {
+    const empresa = a.job?.company?.trade_name ?? "Una empresa";
+    await supabase.from("notifications").insert({
+      user_id: a.candidate_id,
+      icon: "📅",
+      title: "Te propusieron una entrevista",
+      body: `${empresa} te propuso una entrevista para "${a.job?.title ?? "una vacante"}". Confirmá desde tus postulaciones.`,
+      href: "/postulaciones",
+    });
+  }
+  revalidatePath("/postulaciones");
   return { ok: true };
 }
 
@@ -627,8 +665,59 @@ export async function createJob(input: {
     );
   }
 
+  // Alertas de empleo: notifica a candidatos con alertas activas cuyo rubro
+  // coincide (medida best-effort; no bloquea la publicación si falla).
+  try {
+    const { data: matches } = await supabase
+      .from("candidates")
+      .select("id")
+      .eq("alerts_enabled", true)
+      .contains("preferences_industry", [input.industry])
+      .limit(300);
+    if (matches && matches.length > 0) {
+      await supabase.from("notifications").insert(
+        matches.map((c: { id: string }) => ({
+          user_id: c.id,
+          icon: "✨",
+          title: `Nueva vacante de ${input.industry}`,
+          body: `${input.title} — coincide con tus rubros de interés.`,
+          href: `/empleo/${job.id}`,
+        }))
+      );
+    }
+  } catch {
+    // silencioso: la publicación ya se hizo
+  }
+
   revalidatePath("/empresa");
   revalidatePath("/empleos");
+  return { ok: true };
+}
+
+// Novedad de la app: el admin la envía a todos (o a un rol). Aparece en la campanita.
+export async function broadcastNotification(input: {
+  title: string;
+  body: string;
+  href?: string;
+}): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id")
+    .limit(2000);
+  if (profiles && profiles.length > 0) {
+    await supabase.from("notifications").insert(
+      profiles.map((p: { id: string }) => ({
+        user_id: p.id,
+        icon: "📣",
+        title: input.title,
+        body: input.body,
+        href: input.href ?? null,
+      }))
+    );
+  }
+  revalidatePath("/admin");
   return { ok: true };
 }
 

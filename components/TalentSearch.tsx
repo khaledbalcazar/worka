@@ -4,15 +4,18 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Candidate } from "@/lib/types";
 import { CITIES, INDUSTRIES } from "@/lib/mock-data";
+import { toPyWhatsapp } from "@/lib/format";
 
 export default function TalentSearch({
   candidates,
 }: {
   candidates: Candidate[];
 }) {
+  const [query, setQuery] = useState("");
   const [city, setCity] = useState("");
   const [industry, setIndustry] = useState("");
   const [firstJobOnly, setFirstJobOnly] = useState(false);
+  const [verifiedOnly, setVerifiedOnly] = useState(false);
 
   const filtered = useMemo(
     () =>
@@ -21,9 +24,17 @@ export default function TalentSearch({
         if (industry && !c.preferences_industry.includes(industry))
           return false;
         if (firstJobOnly && !c.first_job_mode) return false;
+        if (verifiedOnly && c.identity_status !== "verified") return false;
+        if (
+          query &&
+          !`${c.full_name} ${c.bio ?? ""} ${c.preferences_industry.join(" ")}`
+            .toLowerCase()
+            .includes(query.toLowerCase())
+        )
+          return false;
         return true;
       }),
-    [candidates, city, industry, firstJobOnly]
+    [candidates, query, city, industry, firstJobOnly, verifiedOnly]
   );
 
   return (
@@ -39,6 +50,13 @@ export default function TalentSearch({
       </div>
 
       <div className="card p-4 flex flex-wrap gap-3 items-center">
+        <input
+          type="search"
+          className="input flex-1 min-w-48"
+          placeholder="Buscar por nombre, rubro o palabra de la bio…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
         <select
           className="input w-44"
           value={city}
@@ -68,6 +86,15 @@ export default function TalentSearch({
           />
           ✨ Primer empleo
         </label>
+        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={verifiedOnly}
+            onChange={(e) => setVerifiedOnly(e.target.checked)}
+            className="w-4 h-4 accent-primary"
+          />
+          🪪 Identidad verificada
+        </label>
         <span className="text-sm text-gray-400 ml-auto">
           {filtered.length} candidato{filtered.length === 1 ? "" : "s"}
         </span>
@@ -77,12 +104,21 @@ export default function TalentSearch({
         {filtered.map((c) => (
           <div key={c.id} className="card p-5">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center font-bold shrink-0">
-                {c.full_name
-                  .split(" ")
-                  .slice(0, 2)
-                  .map((n) => n[0])
-                  .join("")}
+              <div className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center font-bold shrink-0 overflow-hidden">
+                {c.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={c.avatar_url}
+                    alt={c.full_name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  c.full_name
+                    .split(" ")
+                    .slice(0, 2)
+                    .map((n) => n[0])
+                    .join("")
+                )}
               </div>
               <div className="min-w-0">
                 <p className="font-semibold text-primary-dark truncate">
@@ -91,6 +127,9 @@ export default function TalentSearch({
                 <p className="text-xs text-gray-500">📍 {c.location_city}</p>
               </div>
             </div>
+            {c.bio && (
+              <p className="text-xs text-gray-500 mt-2 line-clamp-2">{c.bio}</p>
+            )}
             <div className="flex flex-wrap gap-1.5 mt-3">
               {c.phone_verified && (
                 <span className="chip bg-emerald-50 text-emerald-700">
@@ -125,7 +164,7 @@ export default function TalentSearch({
                 </Link>
               )}
               <a
-                href={`https://wa.me/${c.phone_whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(
+                href={`https://wa.me/${toPyWhatsapp(c.phone_whatsapp)}?text=${encodeURIComponent(
                   `Hola ${c.full_name.split(" ")[0]}! Te encontramos en Worka y nos interesa tu perfil.`
                 )}`}
                 target="_blank"

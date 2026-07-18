@@ -1,6 +1,7 @@
 import Link from "next/link";
 import CompanyDashboard from "@/components/CompanyDashboard";
 import {
+  getCompanyStats,
   getCurrentCompany,
   getJobsByCompany,
   getSiteSettings,
@@ -28,15 +29,17 @@ export default async function CompanyDashboardPage() {
     );
   }
 
-  const [jobs, settings] = await Promise.all([
+  const [jobs, settings, stats] = await Promise.all([
     getJobsByCompany(company.id),
     getSiteSettings(),
+    getCompanyStats(company.id),
   ]);
   return (
     <CompanyDashboard
       company={company}
       jobs={jobs}
       paymentLink={settings.payment_link}
+      stats={stats}
     />
   );
 }

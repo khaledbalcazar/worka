@@ -327,14 +327,20 @@ export async function getSalaryStats(): Promise<SalaryStat[]> {
 
 export interface KanbanApplicant {
   id: string;
+  candidate_id: string;
   candidate_name: string;
   candidate_city: string;
   candidate_phone: string;
+  avatar_url: string | null;
+  bio: string | null;
+  identity_verified: boolean;
+  has_cv: boolean;
   status: ApplicationStatus;
   applied_at: string;
   answers_ok: number;
   answers_total: number;
   internal_note: string;
+  interview: { id: string; proposed_at: string; status: string } | null;
 }
 
 export async function getCurrentCompany(): Promise<Company | null> {
@@ -357,27 +363,107 @@ export async function getApplicantsForJob(
   if (!supabase)
     return mock.companyApplicants.map((a) => ({
       ...a,
+      candidate_id: a.id,
       candidate_phone: "595981234567",
+      avatar_url: null,
+      bio:
+        "Con experiencia en atención al cliente. Responsable y con ganas de sumar.",
+      identity_verified: false,
+      has_cv: true,
       internal_note: "",
+      interview: null,
     }));
   const { data } = await supabase
     .from("applications")
     .select(
-      "*, candidate:candidates(full_name, location_city, phone_whatsapp), answers:application_answers(answer)"
+      "*, candidate:candidates(id, full_name, location_city, phone_whatsapp, avatar_url, bio, identity_status, cv_url), answers:application_answers(answer), interview:interviews(id, proposed_at, status)"
     )
     .eq("job_id", jobId)
     .order("applied_at", { ascending: false });
   return (data ?? []).map((row: any) => ({
     id: row.id,
+    candidate_id: row.candidate?.id ?? "",
     candidate_name: row.candidate?.full_name ?? "Candidato",
     candidate_city: row.candidate?.location_city ?? "",
     candidate_phone: (row.candidate?.phone_whatsapp ?? "").replace(/\D/g, ""),
+    avatar_url: row.candidate?.avatar_url ?? null,
+    bio: row.candidate?.bio ?? null,
+    identity_verified: row.candidate?.identity_status === "verified",
+    has_cv: !!row.candidate?.cv_url,
     status: row.status,
     applied_at: row.applied_at,
     answers_ok: (row.answers ?? []).filter((x: any) => x.answer).length,
     answers_total: (row.answers ?? []).length,
     internal_note: row.internal_note ?? "",
+    interview: row.interview?.[0] ?? null,
   }));
+}
+
+// URL firmada del CV de un candidato para la empresa (RLS: solo si se postuló).
+export async function getCandidateCvUrl(
+  candidateId: string
+): Promise<string | null> {
+  const supabase = await getServerClient();
+  if (!supabase) return "#demo-cv";
+  const { data } = await supabase.storage
+    .from("cvs")
+    .createSignedUrl(`${candidateId}/cv.pdf`, 300);
+  return data?.signedUrl ?? null;
+}
+
+// Stats reales del panel de empresa.
+export interface CompanyStats {
+  activeJobs: number;
+  applicationsThisWeek: number;
+  totalViews: number;
+  avgResponseHours: number | null;
+}
+
+export async function getCompanyStats(
+  companyId: string
+): Promise<CompanyStats> {
+  const supabase = await getServerClient();
+  const jobs = await getJobsByCompany(companyId);
+  const activeJobs = jobs.filter((j) => j.status === "Activo").length;
+  const totalViews = jobs.reduce((s, j) => s + j.views_count, 0);
+  if (!supabase)
+    return { activeJobs, applicationsThisWeek: 23, totalViews, avgResponseHours: 31 };
+
+  const jobIds = jobs.map((j) => j.id);
+  if (jobIds.length === 0)
+    return { activeJobs, applicationsThisWeek: 0, totalViews, avgResponseHours: null };
+
+  const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
+  const { count } = await supabase
+    .from("applications")
+    .select("id", { count: "exact", head: true })
+    .in("job_id", jobIds)
+    .gte("applied_at", weekAgo);
+
+  // Tiempo medio de respuesta: promedio de reviewed_at - applied_at.
+  const { data: reviewed } = await supabase
+    .from("applications")
+    .select("applied_at, reviewed_at")
+    .in("job_id", jobIds)
+    .not("reviewed_at", "is", null)
+    .limit(200);
+  let avgResponseHours: number | null = null;
+  if (reviewed && reviewed.length > 0) {
+    const hours = reviewed.map(
+      (r: any) =>
+        (new Date(r.reviewed_at).getTime() - new Date(r.applied_at).getTime()) /
+        3600000
+    );
+    avgResponseHours = Math.round(
+      hours.reduce((a, b) => a + b, 0) / hours.length
+    );
+  }
+  return {
+    activeJobs,
+    applicationsThisWeek: count ?? 0,
+    totalViews,
+    avgResponseHours,
+  };
 }
 
 // Configuración del sitio (editable desde /admin)

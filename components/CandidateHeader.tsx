@@ -143,6 +143,24 @@ export default function CandidateHeader({
           )}
         </div>
       </div>
+
+      {/* Aviso cuando no hay sesión (incluye sesión expirada por inactividad) */}
+      {!loggedIn && (
+        <div className="bg-amber-50 border-t border-amber-100 px-4 py-2.5">
+          <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
+            <p className="text-xs text-amber-800">
+              🔒 Iniciá sesión para postularte, guardar vacantes y ver tu
+              perfil.
+            </p>
+            <Link
+              href="/ingresar"
+              className="btn-primary text-xs shrink-0 py-1.5"
+            >
+              Iniciar sesión
+            </Link>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

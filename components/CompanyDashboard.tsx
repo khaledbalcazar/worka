@@ -23,14 +23,23 @@ const TIPS = [
   "¿Buscás el mismo puesto cada tanto? Usá «Duplicar» y publicá en 1 clic.",
 ];
 
+interface DashStats {
+  activeJobs: number;
+  applicationsThisWeek: number;
+  totalViews: number;
+  avgResponseHours: number | null;
+}
+
 export default function CompanyDashboard({
   company,
   jobs: initialJobs,
   paymentLink = "",
+  stats: realStats,
 }: {
   company: Company;
   jobs: JobWithCompany[];
   paymentLink?: string;
+  stats?: DashStats;
 }) {
   const [jobs, setJobs] = useState(initialJobs);
   const [notice, setNotice] = useState<string | null>(null);
@@ -57,14 +66,24 @@ export default function CompanyDashboard({
   const stats = [
     {
       label: "Vacantes activas",
-      value: jobs.filter((j) => j.status === "Activo").length,
+      value: realStats?.activeJobs ?? jobs.filter((j) => j.status === "Activo").length,
     },
-    { label: "Postulaciones esta semana", value: 23 },
+    {
+      label: "Postulaciones esta semana",
+      value: realStats?.applicationsThisWeek ?? 0,
+    },
     {
       label: "Vistas totales",
-      value: jobs.reduce((s, j) => s + j.views_count, 0),
+      value: realStats?.totalViews ?? jobs.reduce((s, j) => s + j.views_count, 0),
     },
-    { label: "Tiempo medio de respuesta", value: "31 h", highlight: true },
+    {
+      label: "Tiempo medio de respuesta",
+      value:
+        realStats?.avgResponseHours != null
+          ? `${realStats.avgResponseHours} h`
+          : "—",
+      highlight: true,
+    },
   ];
 
   function flash(message: string) {

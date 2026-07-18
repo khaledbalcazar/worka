@@ -4,11 +4,12 @@ import { useState, useTransition } from "react";
 import type { KanbanApplicant } from "@/lib/data";
 import type { JobWithCompany, RejectionReason } from "@/lib/types";
 import {
+  getApplicantCvUrl,
   proposeInterview,
   setApplicationNote,
   setApplicationStatus,
 } from "@/app/actions";
-import { timeAgo } from "@/lib/format";
+import { formatDate, timeAgo } from "@/lib/format";
 
 type Column = "Nuevos" | "En proceso" | "Descartados";
 
@@ -50,6 +51,7 @@ export default function ApplicantsKanban({
   const [interviewAt, setInterviewAt] = useState("");
   const [interviewPlace, setInterviewPlace] = useState("");
   const [interviewSent, setInterviewSent] = useState(false);
+  const [cvLoading, setCvLoading] = useState(false);
   const [, startTransition] = useTransition();
 
   function showToast(message: string) {
@@ -150,19 +152,36 @@ export default function ApplicantsKanban({
                           {a.candidate_city} · {timeAgo(a.applied_at)}
                         </p>
                       </button>
-                      {a.answers_total > 0 && (
-                        <span
-                          className={`chip ${
-                            a.answers_ok === a.answers_total
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-amber-50 text-amber-700"
-                          }`}
-                          title="Respuestas correctas a tus preguntas de filtro"
-                        >
-                          {a.answers_ok}/{a.answers_total} ✓
-                        </span>
-                      )}
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        {a.answers_total > 0 && (
+                          <span
+                            className={`chip ${
+                              a.answers_ok === a.answers_total
+                                ? "bg-emerald-50 text-emerald-700"
+                                : "bg-amber-50 text-amber-700"
+                            }`}
+                            title="Respuestas correctas a tus preguntas de filtro"
+                          >
+                            {a.answers_ok}/{a.answers_total} ✓
+                          </span>
+                        )}
+                        {a.identity_verified && (
+                          <span className="chip bg-blue-50 text-primary" title="Identidad verificada">
+                            🪪
+                          </span>
+                        )}
+                        {a.interview && (
+                          <span className="chip bg-purple-50 text-purple-700" title="Entrevista agendada">
+                            📅 {formatDate(a.interview.proposed_at)}
+                          </span>
+                        )}
+                      </div>
                     </div>
+                    {a.internal_note && (
+                      <p className="text-xs text-gray-400 mt-2 line-clamp-1 italic">
+                        📝 {a.internal_note}
+                      </p>
+                    )}
 
                     {rejecting === a.id ? (
                       <div className="mt-3 space-y-1.5">
@@ -253,22 +272,61 @@ export default function ApplicantsKanban({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center text-lg font-bold shrink-0">
-                {detail.candidate_name
-                  .split(" ")
-                  .slice(0, 2)
-                  .map((n) => n[0])
-                  .join("")}
+              <div className="w-14 h-14 rounded-full bg-primary text-white flex items-center justify-center text-lg font-bold shrink-0 overflow-hidden">
+                {detail.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={detail.avatar_url}
+                    alt={detail.candidate_name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  detail.candidate_name
+                    .split(" ")
+                    .slice(0, 2)
+                    .map((n) => n[0])
+                    .join("")
+                )}
               </div>
-              <div>
-                <h3 className="font-bold text-primary-dark">
+              <div className="min-w-0">
+                <h3 className="font-bold text-primary-dark flex items-center gap-1.5">
                   {detail.candidate_name}
+                  {detail.identity_verified && (
+                    <span title="Identidad verificada">🪪</span>
+                  )}
                 </h3>
                 <p className="text-sm text-gray-500">
                   📍 {detail.candidate_city} · Postuló{" "}
                   {timeAgo(detail.applied_at)}
                 </p>
               </div>
+            </div>
+
+            {detail.bio && (
+              <p className="text-sm text-gray-600 mt-3 bg-surface rounded-xl px-3 py-2.5">
+                {detail.bio}
+              </p>
+            )}
+
+            <div className="flex gap-2 mt-3">
+              <button
+                className="btn-secondary flex-1 text-sm disabled:opacity-50"
+                disabled={!detail.has_cv || cvLoading}
+                onClick={() =>
+                  startTransition(async () => {
+                    setCvLoading(true);
+                    const r = await getApplicantCvUrl(detail.candidate_id);
+                    setCvLoading(false);
+                    if (r.ok && r.url) window.open(r.url, "_blank");
+                  })
+                }
+              >
+                {detail.has_cv
+                  ? cvLoading
+                    ? "Abriendo…"
+                    : "📄 Ver CV"
+                  : "Sin CV cargado"}
+              </button>
             </div>
 
             <div className="grid grid-cols-2 gap-2.5 mt-4">
@@ -371,6 +429,25 @@ export default function ApplicantsKanban({
                   }
                 >
                   Proponer entrevista
+                </button>
+              </div>
+            ) : detail.interview ? (
+              <div className="mt-2 bg-purple-50 rounded-xl px-3 py-2.5">
+                <p className="text-sm font-medium text-purple-800">
+                  📅 Entrevista {detail.interview.status === "confirmada" ? "confirmada" : "propuesta"}
+                </p>
+                <p className="text-xs text-purple-600">
+                  {formatDate(detail.interview.proposed_at)} ·{" "}
+                  {new Date(detail.interview.proposed_at).toLocaleTimeString(
+                    "es-PY",
+                    { hour: "2-digit", minute: "2-digit" }
+                  )}
+                </p>
+                <button
+                  className="text-xs text-primary font-medium mt-1"
+                  onClick={() => setInterviewOpen(true)}
+                >
+                  Reprogramar / posponer
                 </button>
               </div>
             ) : (
