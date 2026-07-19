@@ -14,8 +14,11 @@ import { BADGE_CATALOG } from "@/lib/types";
 import { StatusChip } from "@/components/Badges";
 import { formatDate, timeAgo } from "@/lib/format";
 import {
+  adminDeleteJob,
   adminDeleteUser,
   adminSendRecovery,
+  adminSetJobFeatured,
+  adminSetJobStatus,
   approveIndustryTag,
   broadcastNotification,
   dismissReport,
@@ -61,6 +64,7 @@ export default function AdminPanel({
   adminUsers = { users: [], fullAccess: false },
   globalStats,
   detailedReports = [],
+  allJobs = [],
 }: {
   moderationQueue: JobWithCompany[];
   reports: Report[];
@@ -75,6 +79,7 @@ export default function AdminPanel({
   adminUsers?: { users: AdminUser[]; fullAccess: boolean };
   globalStats?: GlobalStats;
   detailedReports?: DetailedReport[];
+  allJobs?: JobWithCompany[];
 }) {
   const [resolved, setResolved] = useState<
     Record<string, "aprobada" | "eliminada">
@@ -97,6 +102,38 @@ export default function AdminPanel({
   const [broadcastBody, setBroadcastBody] = useState("");
   const [broadcastHref, setBroadcastHref] = useState("");
   const [broadcastSent, setBroadcastSent] = useState<number | null>(null);
+  // Gestión de vacantes
+  const [jobState, setJobState] = useState<
+    Record<string, { featured: boolean; status: string; deleted?: boolean }>
+  >(
+    Object.fromEntries(
+      allJobs.map((j) => [j.id, { featured: j.featured, status: j.status }])
+    )
+  );
+  const [jobFilter, setJobFilter] = useState("");
+
+  function toggleFeatured(job: JobWithCompany) {
+    const next = !jobState[job.id]?.featured;
+    setJobState((s) => ({ ...s, [job.id]: { ...s[job.id], featured: next } }));
+    startTransition(async () => {
+      await adminSetJobFeatured(job.id, next);
+    });
+  }
+
+  function closeJob(job: JobWithCompany) {
+    setJobState((s) => ({ ...s, [job.id]: { ...s[job.id], status: "Cerrado" } }));
+    startTransition(async () => {
+      await adminSetJobStatus(job.id, "Cerrado");
+    });
+  }
+
+  function removeJob(job: JobWithCompany) {
+    setJobState((s) => ({ ...s, [job.id]: { ...s[job.id], deleted: true } }));
+    startTransition(async () => {
+      await adminDeleteJob(job.id);
+    });
+  }
+
   // Bandeja de denuncias
   const [dismissedReports, setDismissedReports] = useState<
     Record<string, boolean>
@@ -886,6 +923,106 @@ export default function AdminPanel({
               {pending ? "Guardando…" : "Guardar configuración"}
             </button>
           </div>
+        </div>
+      </section>
+
+      {/* Gestión de vacantes */}
+      <section className="space-y-3">
+        <h2 className="font-bold text-primary-dark text-lg">
+          💼 Gestión de vacantes
+        </h2>
+        <p className="text-sm text-gray-500 -mt-2">
+          Todas las vacantes de la plataforma. Destacalas en el feed, cerralas o
+          eliminalas.
+        </p>
+        <input
+          className="input max-w-sm"
+          placeholder="Buscar por puesto o empresa…"
+          value={jobFilter}
+          onChange={(e) => setJobFilter(e.target.value)}
+        />
+        <div className="card overflow-x-auto">
+          <table className="w-full text-sm min-w-[720px]">
+            <thead>
+              <tr className="text-left text-xs text-gray-400 uppercase tracking-wide">
+                <th className="px-4 py-3 font-medium">Puesto</th>
+                <th className="px-4 py-3 font-medium">Empresa</th>
+                <th className="px-4 py-3 font-medium">Estado</th>
+                <th className="px-4 py-3 font-medium">Vistas</th>
+                <th className="px-4 py-3 font-medium text-right">Acciones</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {allJobs
+                .filter(
+                  (j) =>
+                    !jobState[j.id]?.deleted &&
+                    `${j.title} ${j.company.trade_name}`
+                      .toLowerCase()
+                      .includes(jobFilter.toLowerCase())
+                )
+                .slice(0, 60)
+                .map((j) => {
+                  const st = jobState[j.id] ?? {
+                    featured: j.featured,
+                    status: j.status,
+                  };
+                  return (
+                    <tr key={j.id} className="hover:bg-surface/60">
+                      <td className="px-4 py-2.5">
+                        <a
+                          href={`/empleo/${j.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium text-primary-dark hover:text-primary"
+                        >
+                          {j.title}
+                        </a>
+                        {st.featured && (
+                          <span className="chip bg-amber-50 text-amber-700 ml-2">
+                            ⭐ Destacada
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-500">
+                        {j.company.trade_name}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <StatusChip status={st.status as never} />
+                      </td>
+                      <td className="px-4 py-2.5 text-gray-500">
+                        {j.views_count}
+                      </td>
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap space-x-3">
+                        <button
+                          className="text-amber-600 font-medium disabled:opacity-50"
+                          disabled={pending}
+                          onClick={() => toggleFeatured(j)}
+                        >
+                          {st.featured ? "Quitar ⭐" : "Destacar"}
+                        </button>
+                        {st.status !== "Cerrado" && (
+                          <button
+                            className="text-gray-500 hover:text-primary font-medium disabled:opacity-50"
+                            disabled={pending}
+                            onClick={() => closeJob(j)}
+                          >
+                            Cerrar
+                          </button>
+                        )}
+                        <button
+                          className="text-gray-400 hover:text-danger font-medium disabled:opacity-50"
+                          disabled={pending}
+                          onClick={() => removeJob(j)}
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
         </div>
       </section>
 

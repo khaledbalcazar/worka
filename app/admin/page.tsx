@@ -13,6 +13,7 @@ import {
   getPendingIdentities,
   getReports,
   getAdminUsers,
+  getAllJobsForAdmin,
   getDetailedReports,
   getGlobalStats,
   getPendingIndustryTags,
@@ -51,6 +52,7 @@ export default async function AdminPage() {
     adminUsers,
     globalStats,
     detailedReports,
+    allJobs,
   ] = await Promise.all([
     getModerationQueue(),
     getReports(),
@@ -65,6 +67,7 @@ export default async function AdminPage() {
     getAdminUsers(),
     getGlobalStats(),
     getDetailedReports(),
+    getAllJobsForAdmin(),
   ]);
 
   const identityQueue = await Promise.all(
@@ -99,6 +102,7 @@ export default async function AdminPage() {
         adminUsers={adminUsers}
         globalStats={globalStats}
         detailedReports={detailedReports}
+        allJobs={allJobs}
       />
     </div>
   );

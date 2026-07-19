@@ -894,6 +894,18 @@ export async function getModerationQueue(): Promise<JobWithCompany[]> {
   return (data ?? []).map(mapJob);
 }
 
+// Todas las vacantes para la gestión del admin (más recientes primero).
+export async function getAllJobsForAdmin(): Promise<JobWithCompany[]> {
+  const supabase = await getServerClient();
+  if (!supabase) return mock.getJobsWithCompany();
+  const { data } = await supabase
+    .from("jobs")
+    .select(JOB_SELECT)
+    .order("created_at", { ascending: false })
+    .limit(200);
+  return (data ?? []).map(mapJob);
+}
+
 // Denuncias con el detalle de la vacante y empresa (bandeja del admin).
 export interface DetailedReport extends Report {
   job_title: string;

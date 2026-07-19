@@ -1166,6 +1166,61 @@ export async function removeTeamMember(id: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+// --- Gestión de vacantes desde el admin ---
+
+export async function adminSetJobFeatured(
+  jobId: string,
+  featured: boolean
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  const { error } = await supabase
+    .from("jobs")
+    .update({
+      featured,
+      featured_until: featured
+        ? new Date(Date.now() + 30 * 86400000).toISOString()
+        : null,
+    })
+    .eq("id", jobId);
+  if (error) return { ok: false, error: "No pudimos actualizar la vacante." };
+  revalidatePath("/admin");
+  revalidatePath("/empleos");
+  return { ok: true };
+}
+
+export async function adminSetJobStatus(
+  jobId: string,
+  status: JobStatus
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  const { error } = await supabase
+    .from("jobs")
+    .update({ status })
+    .eq("id", jobId);
+  if (error) return { ok: false, error: "No pudimos cambiar el estado." };
+  revalidatePath("/admin");
+  revalidatePath("/empleos");
+  return { ok: true };
+}
+
+export async function adminDeleteJob(jobId: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  const { error } = await supabase.from("jobs").delete().eq("id", jobId);
+  if (error) return { ok: false, error: "No pudimos eliminar la vacante." };
+  revalidatePath("/admin");
+  revalidatePath("/empleos");
+  return { ok: true };
+}
+
 // Descarta una denuncia (bandeja del admin).
 export async function dismissReport(reportId: string): Promise<ActionResult> {
   const supabase = await getServerClient();

@@ -431,6 +431,11 @@ create policy notifications_own on notifications
   for select using (user_id = auth.uid());
 create policy notifications_own_update on notifications
   for update using (user_id = auth.uid());
+-- Cualquier usuario autenticado puede crear notificaciones para otro (empresa
+-- avisa a candidato, admin envía masivas, alertas de empleo). Leerlas sigue
+-- restringido al dueño por la política de arriba.
+create policy notifications_insert on notifications
+  for insert with check (auth.uid() is not null);
 
 -- messages: solo las dos partes de la postulación
 alter table messages enable row level security;
