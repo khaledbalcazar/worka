@@ -13,6 +13,7 @@ export default function JobFeed({
   appliedJobIds,
   savedJobIds = [],
   recommendedJobIds = [],
+  matchScores = {},
   industries = INDUSTRIES,
   cities = CITIES,
   initialQuery = "",
@@ -23,6 +24,7 @@ export default function JobFeed({
   appliedJobIds: string[];
   savedJobIds?: string[];
   recommendedJobIds?: string[];
+  matchScores?: Record<string, number>;
   industries?: string[];
   cities?: string[];
   initialQuery?: string;
@@ -194,6 +196,12 @@ export default function JobFeed({
         </div>
         <div className="card p-4 space-y-1">
           <Link
+            href="/test-perfil"
+            className="block px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-surface"
+          >
+            🎯 Test de perfil: afiná tu match
+          </Link>
+          <Link
             href="/salarios"
             className="block px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-surface"
           >
@@ -297,7 +305,10 @@ export default function JobFeed({
               ✨ Para vos
             </h2>
             <p className="text-xs text-gray-400 -mt-2">
-              Según tus rubros, tu ciudad y tu perfil.
+              Según tus rubros, tu ciudad y tu perfil.{" "}
+              <Link href="/test-perfil" className="text-primary font-medium">
+                Afinalo con el test 🎯
+              </Link>
             </p>
             <div className="grid gap-3 xl:grid-cols-2">
               {recommended.map((job) => (
@@ -306,6 +317,7 @@ export default function JobFeed({
                   job={job}
                   alreadyApplied={applied.has(job.id)}
                   initiallySaved={savedSet.has(job.id)}
+                  matchPercent={matchScores[job.id]}
                 />
               ))}
             </div>

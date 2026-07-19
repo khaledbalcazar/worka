@@ -426,8 +426,29 @@ export const currentCandidate: Candidate = {
   alerts_enabled: true,
   visible_to_companies: true,
   public_profile: true,
+  open_to_other_cities: false,
   created_at: "2026-07-05T16:00:00Z",
 };
+
+// Equipo de reclutamiento de la empresa demo
+export const companyMembers = [
+  {
+    id: "cm1",
+    company_id: "c1",
+    email: "rrhh@superguarani.com.py",
+    member_id: "u-rrhh",
+    status: "activa" as const,
+    created_at: "2026-07-01T09:00:00Z",
+  },
+  {
+    id: "cm2",
+    company_id: "c1",
+    email: "seleccion@superguarani.com.py",
+    member_id: null,
+    status: "invitada" as const,
+    created_at: "2026-07-15T10:00:00Z",
+  },
+];
 
 // Candidatos visibles para la búsqueda activa de talento (lado empresa)
 export const talentPool: Candidate[] = [
@@ -495,6 +516,9 @@ export const defaultSiteSettings: Record<string, string> = {
   help_text: "Escribinos por WhatsApp o email y te respondemos en el día.",
   custom_industries: "",
   custom_cities: "",
+  landing_differentiators: "",
+  landing_steps: "",
+  landing_faqs: "",
   banner_enabled: "",
   banner_text: "",
   banner_link: "",

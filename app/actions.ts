@@ -43,6 +43,28 @@ export type ActionResult = {
 
 const DEMO: ActionResult = { ok: true, demo: true };
 
+// Empresa efectiva del usuario: su propia empresa, o aquella de la que es
+// miembro activo del equipo de reclutamiento (invitado por el dueño).
+async function getEffectiveCompanyId(
+  supabase: NonNullable<Awaited<ReturnType<typeof getServerClient>>>,
+  userId: string
+): Promise<string | null> {
+  const { data: own } = await supabase
+    .from("companies")
+    .select("id")
+    .eq("id", userId)
+    .maybeSingle();
+  if (own) return own.id;
+  const { data: membership } = await supabase
+    .from("company_members")
+    .select("company_id")
+    .eq("member_id", userId)
+    .eq("status", "activa")
+    .limit(1)
+    .maybeSingle();
+  return membership?.company_id ?? null;
+}
+
 // --- Candidato ---
 
 // Límite diario de postulaciones: frena bots y postulaciones masivas sin sentido.
@@ -640,6 +662,9 @@ export async function updateCandidatePrefs(prefs: {
   alerts_enabled?: boolean;
   visible_to_companies?: boolean;
   public_profile?: boolean;
+  preferences_modality?: string;
+  open_to_other_cities?: boolean;
+  preferences_industry?: string[];
 }): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
@@ -709,12 +734,16 @@ export async function createJob(input: {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Iniciá sesión como empresa." };
 
+  const companyId = await getEffectiveCompanyId(supabase, user.id);
+  if (!companyId)
+    return { ok: false, error: "Tu cuenta no tiene una empresa asociada." };
+
   const { questions, expires_at, ...jobFields } = input;
   const { data: job, error } = await supabase
     .from("jobs")
     .insert({
       ...jobFields,
-      company_id: user.id,
+      company_id: companyId,
       ...(expires_at ? { expires_at } : {}),
     })
     .select("id")
@@ -1097,6 +1126,46 @@ export async function resolveBoost(
 }
 
 // Configuración del sitio (CMS-lite del backoffice)
+// Invita a un reclutador al equipo de la empresa (por email).
+export async function inviteTeamMember(email: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión como empresa." };
+  const clean = email.trim().toLowerCase();
+  if (!clean.includes("@"))
+    return { ok: false, error: "Escribí un email válido." };
+
+  const { error } = await supabase
+    .from("company_members")
+    .insert({ company_id: user.id, email: clean });
+  if (error) {
+    if (error.code === "23505")
+      return { ok: false, error: "Ese email ya está invitado." };
+    return {
+      ok: false,
+      error: "No pudimos invitar (¿corriste migration-005.sql?).",
+    };
+  }
+  revalidatePath("/empresa/perfil");
+  return { ok: true };
+}
+
+export async function removeTeamMember(id: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sesión no válida." };
+  const { error } = await supabase
+    .from("company_members")
+    .delete()
+    .eq("id", id)
+    .eq("company_id", user.id);
+  if (error) return { ok: false, error: "No pudimos quitar al miembro." };
+  revalidatePath("/empresa/perfil");
+  return { ok: true };
+}
+
 // Descarta una denuncia (bandeja del admin).
 export async function dismissReport(reportId: string): Promise<ActionResult> {
   const supabase = await getServerClient();

@@ -31,6 +31,18 @@ import {
 } from "@/app/actions";
 import type { AdminUser, DetailedReport, GlobalStats } from "@/lib/data";
 
+// Ajustes del CMS que se editan como texto multilínea
+const TEXTAREA_SETTINGS = new Set<string>([
+  "hero_subtitle",
+  "help_text",
+  "site_description",
+  "custom_industries",
+  "custom_cities",
+  "landing_differentiators",
+  "landing_steps",
+  "landing_faqs",
+]);
+
 export type IdentityQueueItem = Candidate & {
   docs: { label: string; url: string }[];
 };
@@ -775,11 +787,23 @@ export default function AdminPanel({
               ["banner_link", "Link del banner (opcional, ej: /empleos)"],
               ["maintenance_mode", "Modo mantenimiento (escribí 'true' para activar)"],
               ["maintenance_text", "Texto de la pantalla de mantenimiento"],
+              [
+                "landing_differentiators",
+                "Portada: diferenciadores (1 por línea: emoji|título|texto)",
+              ],
+              [
+                "landing_steps",
+                "Portada: pasos de cómo funciona (1 por línea: título|texto)",
+              ],
+              [
+                "landing_faqs",
+                "Portada: preguntas frecuentes (1 por línea: pregunta|respuesta)",
+              ],
             ] as const
           ).map(([key, label]) => (
-            <div key={key} className={key === "hero_subtitle" || key === "help_text" || key === "site_description" || key === "custom_industries" || key === "custom_cities" ? "lg:col-span-2" : ""}>
+            <div key={key} className={TEXTAREA_SETTINGS.has(key) ? "lg:col-span-2" : ""}>
               <label className="label">{label}</label>
-              {key === "hero_subtitle" || key === "help_text" || key === "site_description" || key === "custom_industries" || key === "custom_cities" ? (
+              {TEXTAREA_SETTINGS.has(key) ? (
                 <textarea
                   className="input min-h-20"
                   value={settingsDraft[key] ?? ""}

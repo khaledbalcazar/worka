@@ -91,6 +91,17 @@ export interface Candidate {
   alerts_enabled: boolean;
   visible_to_companies: boolean;
   public_profile: boolean;
+  open_to_other_cities: boolean;
+  created_at: string;
+}
+
+// Miembro del equipo de reclutamiento de una empresa
+export interface CompanyMember {
+  id: string;
+  company_id: string;
+  email: string;
+  member_id: string | null;
+  status: "invitada" | "activa";
   created_at: string;
 }
 

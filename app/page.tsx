@@ -98,11 +98,41 @@ const FAQS = [
 
 export const revalidate = 300;
 
+// Secciones editables desde /admin con formato de una línea por ítem,
+// campos separados por "|". Si el ajuste está vacío, se usan los textos base.
+function parseLines<T>(
+  value: string | undefined,
+  map: (parts: string[]) => T | null
+): T[] {
+  return (value ?? "")
+    .split("\n")
+    .map((line) => map(line.split("|").map((p) => p.trim())))
+    .filter((x): x is T => x !== null);
+}
+
 export default async function LandingPage() {
   const [jobsCount, settings] = await Promise.all([
     getActiveJobsCount(),
     getSiteSettings(),
   ]);
+
+  const customDiffs = parseLines(settings.landing_differentiators, (p) =>
+    p.length >= 3 ? { icon: p[0], title: p[1], text: p[2] } : null
+  );
+  const differentiators = customDiffs.length > 0 ? customDiffs : DIFFERENTIATORS;
+
+  const customSteps = parseLines(settings.landing_steps, (p) =>
+    p.length >= 2 ? { title: p[0], text: p[1] } : null
+  );
+  const candidateSteps =
+    customSteps.length > 0
+      ? customSteps.map((s, i) => ({ n: `${i + 1}`, ...s }))
+      : CANDIDATE_STEPS;
+
+  const customFaqs = parseLines(settings.landing_faqs, (p) =>
+    p.length >= 2 ? { q: p[0], a: p.slice(1).join(" | ") } : null
+  );
+  const faqs = customFaqs.length > 0 ? customFaqs : FAQS;
 
   return (
     <main className="flex-1 flex flex-col bg-white">
@@ -177,7 +207,7 @@ export default async function LandingPage() {
             Tres pasos. Nada de formularios eternos ni CVs a ciegas.
           </p>
           <div className="grid sm:grid-cols-3 gap-4 sm:gap-6 mt-10">
-            {CANDIDATE_STEPS.map((step) => (
+            {candidateSteps.map((step) => (
               <div key={step.n} className="card p-6 relative">
                 <span className="absolute -top-4 left-6 w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center font-bold shadow-md">
                   {step.n}
@@ -209,7 +239,7 @@ export default async function LandingPage() {
           se busca trabajo en Paraguay.
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-10">
-          {DIFFERENTIATORS.map((f) => (
+          {differentiators.map((f) => (
             <div
               key={f.title}
               className="card p-5 hover:shadow-md hover:-translate-y-0.5 transition-all"
@@ -339,7 +369,7 @@ export default async function LandingPage() {
             Preguntas frecuentes
           </h2>
           <div className="mt-8 space-y-3">
-            {FAQS.map((f) => (
+            {faqs.map((f) => (
               <details key={f.q} className="card px-5 py-4 group">
                 <summary className="font-medium text-primary-dark cursor-pointer list-none flex items-center justify-between gap-3 min-h-8">
                   {f.q}

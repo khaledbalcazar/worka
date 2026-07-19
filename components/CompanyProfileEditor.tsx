@@ -1,11 +1,13 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import type { Company, CompanyPost } from "@/lib/types";
+import type { Company, CompanyMember, CompanyPost } from "@/lib/types";
 import { BADGE_CATALOG } from "@/lib/types";
 import { FastResponderBadge, VerifiedBadge } from "@/components/Badges";
 import {
   createCompanyPost,
+  inviteTeamMember,
+  removeTeamMember,
   updateCompanyProfile,
   uploadCompanyImage,
 } from "@/app/actions";
@@ -15,9 +17,11 @@ import { timeAgo } from "@/lib/format";
 export default function CompanyProfileEditor({
   company,
   posts: initialPosts,
+  members: initialMembers = [],
 }: {
   company: Company;
   posts: CompanyPost[];
+  members?: CompanyMember[];
 }) {
   const [tradeName, setTradeName] = useState(company.trade_name);
   const [description, setDescription] = useState(company.description ?? "");
@@ -32,6 +36,42 @@ export default function CompanyProfileEditor({
   );
   const [posts, setPosts] = useState(initialPosts);
   const [newPost, setNewPost] = useState("");
+  const [members, setMembers] = useState(initialMembers);
+  const [inviteEmail, setInviteEmail] = useState("");
+
+  function invite() {
+    const email = inviteEmail.trim().toLowerCase();
+    if (!email) return;
+    startTransition(async () => {
+      const result = await inviteTeamMember(email);
+      if (!result.ok) {
+        flash(result.error ?? "No pudimos invitar.");
+        return;
+      }
+      setMembers((prev) => [
+        ...prev,
+        {
+          id: `local-${Date.now()}`,
+          company_id: company.id,
+          email,
+          member_id: null,
+          status: "invitada" as const,
+          created_at: new Date().toISOString(),
+        },
+      ]);
+      setInviteEmail("");
+      flash(
+        `📨 Invitación registrada. Cuando ${email} cree su cuenta (o ingrese) con ese email, accede automáticamente a este panel.`
+      );
+    });
+  }
+
+  function removeMember(id: string) {
+    setMembers((prev) => prev.filter((m) => m.id !== id));
+    startTransition(() => {
+      removeTeamMember(id);
+    });
+  }
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -313,6 +353,63 @@ export default function CompanyProfileEditor({
 
           {/* Insignias */}
           <section className="card p-5">
+            <h2 className="font-semibold text-primary-dark mb-3">
+              👥 Equipo de reclutamiento
+            </h2>
+            <p className="text-xs text-gray-400 -mt-2 mb-3">
+              Invitá a otras personas de tu empresa: acceden a este panel con
+              su propia cuenta (candidatos, kanban, mensajes).
+            </p>
+            <div className="flex gap-2 mb-3">
+              <input
+                className="input flex-1"
+                type="email"
+                placeholder="email@tuempresa.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && invite()}
+              />
+              <button
+                className="btn-primary shrink-0"
+                disabled={!inviteEmail.trim() || pending}
+                onClick={invite}
+              >
+                Invitar
+              </button>
+            </div>
+            <div className="space-y-2 mb-5">
+              {members.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-2">
+                  Todavía no invitaste a nadie.
+                </p>
+              )}
+              {members.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-center justify-between gap-2 bg-surface rounded-xl px-4 py-2.5"
+                >
+                  <p className="text-sm text-gray-700 truncate">{m.email}</p>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span
+                      className={`chip ${
+                        m.status === "activa"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-amber-50 text-amber-700"
+                      }`}
+                    >
+                      {m.status === "activa" ? "✓ activa" : "⏳ invitada"}
+                    </span>
+                    <button
+                      className="text-xs text-gray-400 hover:text-danger"
+                      onClick={() => removeMember(m.id)}
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
             <h2 className="font-semibold text-primary-dark">🏅 Insignias</h2>
             <p className="text-xs text-gray-400 mt-0.5 mb-3">
               Se desbloquean con tu actividad en Worka y aparecen en todas tus

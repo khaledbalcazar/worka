@@ -357,7 +357,39 @@ export async function getCurrentCompany(): Promise<Company | null> {
     .select("*")
     .eq("id", user.id)
     .maybeSingle();
-  return data ? mapCompany(data) : null;
+  if (data) return mapCompany(data);
+
+  // ¿Es miembro del equipo de alguna empresa? (invitado por el dueño)
+  // Primero reclama invitaciones pendientes que coincidan con su email.
+  if (user.email) {
+    await supabase
+      .from("company_members")
+      .update({ member_id: user.id, status: "activa" })
+      .ilike("email", user.email)
+      .is("member_id", null);
+  }
+  const { data: membership } = await supabase
+    .from("company_members")
+    .select("company:companies(*)")
+    .eq("member_id", user.id)
+    .eq("status", "activa")
+    .limit(1)
+    .maybeSingle();
+  const company = (membership as any)?.company;
+  return company ? mapCompany(company) : null;
+}
+
+export async function getCompanyMembers(
+  companyId: string
+): Promise<import("./types").CompanyMember[]> {
+  const supabase = await getServerClient();
+  if (!supabase) return mock.companyMembers;
+  const { data } = await supabase
+    .from("company_members")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("created_at");
+  return (data ?? []) as import("./types").CompanyMember[];
 }
 
 export async function getApplicantsForJob(
@@ -427,7 +459,7 @@ export async function getCompanyThreads(): Promise<CompanyThread[]> {
     .select(
       "id, job:jobs!inner(title, company_id), candidate:candidates(full_name), messages(id, application_id, sender, content, created_at)"
     )
-    .eq("job.company_id", user.id)
+    .eq("job.company_id", (await getCurrentCompany())?.id ?? user.id)
     .order("applied_at", { ascending: false })
     .limit(50);
   return ((data ?? []) as any[]).map((row) => ({

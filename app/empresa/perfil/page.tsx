@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { getCompanyPosts, getCurrentCompany } from "@/lib/data";
+import {
+  getCompanyMembers,
+  getCompanyPosts,
+  getCurrentCompany,
+} from "@/lib/data";
 import CompanyProfileEditor from "@/components/CompanyProfileEditor";
 
 export const metadata = { title: "Perfil de empresa" };
@@ -20,6 +24,11 @@ export default async function CompanyProfilePage() {
     );
   }
 
-  const posts = await getCompanyPosts(company.id);
-  return <CompanyProfileEditor company={company} posts={posts} />;
+  const [posts, members] = await Promise.all([
+    getCompanyPosts(company.id),
+    getCompanyMembers(company.id),
+  ]);
+  return (
+    <CompanyProfileEditor company={company} posts={posts} members={members} />
+  );
 }

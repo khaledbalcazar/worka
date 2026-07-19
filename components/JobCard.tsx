@@ -26,10 +26,12 @@ export default function JobCard({
   job,
   alreadyApplied = false,
   initiallySaved = false,
+  matchPercent,
 }: {
   job: JobWithCompany;
   alreadyApplied?: boolean;
   initiallySaved?: boolean;
+  matchPercent?: number;
 }) {
   const [applied, setApplied] = useState(alreadyApplied);
   const [saved, setSaved] = useState(initiallySaved);
@@ -145,6 +147,14 @@ export default function JobCard({
       </div>
 
       <div className="flex flex-wrap gap-1.5 mt-3">
+        {matchPercent !== undefined && (
+          <span
+            className="chip bg-purple-50 text-purple-700"
+            title="Qué tanto encaja esta vacante con tu perfil (según el test)"
+          >
+            🎯 {matchPercent}% match
+          </span>
+        )}
         <ModalityChip modality={job.modality} />
         {!job.requires_experience && <FirstJobBadge />}
         {job.urgent && <UrgentBadge />}
