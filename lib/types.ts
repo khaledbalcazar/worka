@@ -39,6 +39,22 @@ export interface BadgeInfo {
   description: string;
 }
 
+// Artículo del blog (SEO). audience define el CTA que se muestra al final.
+export interface BlogPost {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  content: string; // markdown liviano
+  cover_url: string | null;
+  audience: "personas" | "empresas";
+  status: "borrador" | "publicado";
+  author: string;
+  created_at: string;
+  updated_at: string;
+  published_at: string | null;
+}
+
 // Insignia creada por el admin. Su id (uuid) se guarda en companies.badges
 // igual que las del catálogo fijo.
 export interface CustomBadge {

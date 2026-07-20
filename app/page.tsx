@@ -150,6 +150,9 @@ export default async function LandingPage() {
             <Link href="/para-empresas" className="hover:text-primary">
               Para empresas
             </Link>
+            <Link href="/blog" className="hover:text-primary">
+              Blog
+            </Link>
             <a href="#faq" className="hover:text-primary">
               Preguntas
             </a>
@@ -433,6 +436,11 @@ export default async function LandingPage() {
               <li>
                 <Link href="/postulaciones" className="hover:text-white">
                   Mis postulaciones
+                </Link>
+              </li>
+              <li>
+                <Link href="/blog" className="hover:text-white">
+                  Blog
                 </Link>
               </li>
             </ul>

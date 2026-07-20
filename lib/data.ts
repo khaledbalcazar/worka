@@ -883,6 +883,48 @@ export async function getPendingIdentities(): Promise<Candidate[]> {
   return (data ?? []) as Candidate[];
 }
 
+// ── Blog ──
+
+export async function getPublishedPosts(): Promise<
+  import("./types").BlogPost[]
+> {
+  const supabase = await getServerClient();
+  if (!supabase) return mock.blogPosts;
+  const { data } = await supabase
+    .from("blog_posts")
+    .select("*")
+    .eq("status", "publicado")
+    .order("published_at", { ascending: false });
+  return (data ?? []) as import("./types").BlogPost[];
+}
+
+export async function getBlogPost(
+  slug: string
+): Promise<import("./types").BlogPost | null> {
+  const supabase = await getServerClient();
+  if (!supabase)
+    return mock.blogPosts.find((p) => p.slug === slug) ?? null;
+  const { data } = await supabase
+    .from("blog_posts")
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
+  return (data as import("./types").BlogPost) ?? null;
+}
+
+// Todos los posts (borradores incluidos) para el editor del admin.
+export async function getAllBlogPosts(): Promise<
+  import("./types").BlogPost[]
+> {
+  const supabase = await getServerClient();
+  if (!supabase) return mock.blogPosts;
+  const { data } = await supabase
+    .from("blog_posts")
+    .select("*")
+    .order("updated_at", { ascending: false });
+  return (data ?? []) as import("./types").BlogPost[];
+}
+
 export async function getCustomBadges(): Promise<
   import("./types").CustomBadge[]
 > {

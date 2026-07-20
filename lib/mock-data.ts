@@ -1,5 +1,6 @@
 import type {
   Application,
+  BlogPost,
   Candidate,
   ChatMessage,
   Company,
@@ -11,6 +12,58 @@ import type {
   Report,
   WorkReference,
 } from "./types";
+
+// Artículos de ejemplo (modo demo). En producción vienen de la tabla blog_posts.
+export const blogPosts: BlogPost[] = [
+  {
+    id: "b1",
+    slug: "salario-minimo-paraguay-2026",
+    title: "Salario mínimo en Paraguay 2026: cuánto es y para quién aplica",
+    excerpt:
+      "Qué es el salario mínimo legal vigente, cómo se ajusta cada año y en qué casos corresponde.",
+    content:
+      "El **salario mínimo** es el monto más bajo que, por ley, una empresa puede pagar por una jornada completa.\n\n## ¿A quién le corresponde?\n\nAplica a la mayoría de los trabajadores del sector privado en relación de dependencia.\n\n- Aguinaldo\n- IPS desde el día 1\n- Horas extra con recargo",
+    cover_url: null,
+    audience: "personas",
+    status: "publicado",
+    author: "Equipo Worka",
+    created_at: "2026-07-19T10:00:00Z",
+    updated_at: "2026-07-19T10:00:00Z",
+    published_at: "2026-07-19T10:00:00Z",
+  },
+  {
+    id: "b2",
+    slug: "trabajos-en-maquiladoras-paraguay",
+    title: "Trabajos en maquiladoras de Paraguay: qué son y cómo postular",
+    excerpt:
+      "El régimen de maquila genera miles de empleos. Qué puestos hay, qué piden y cómo postularte.",
+    content:
+      "Las **maquiladoras** producen o ensamblan productos para exportar.\n\n## Puestos más comunes\n\n- Operarios de producción\n- Control de calidad\n- Logística y depósito",
+    cover_url: null,
+    audience: "personas",
+    status: "publicado",
+    author: "Equipo Worka",
+    created_at: "2026-07-18T10:00:00Z",
+    updated_at: "2026-07-18T10:00:00Z",
+    published_at: "2026-07-18T10:00:00Z",
+  },
+  {
+    id: "b3",
+    slug: "como-buscar-trabajo-en-paraguay-2026",
+    title: "Cómo buscar trabajo en Paraguay en 2026: guía paso a paso",
+    excerpt:
+      "Una guía práctica para conseguir empleo más rápido: desde el CV hasta la entrevista.",
+    content:
+      "Buscar trabajo con método rinde más.\n\n## 1. Definí qué buscás\n\nRubro, ciudad y horario.\n\n## 2. Armá un buen CV\n\nEn Worka lo generás gratis.",
+    cover_url: null,
+    audience: "personas",
+    status: "publicado",
+    author: "Equipo Worka",
+    created_at: "2026-07-17T10:00:00Z",
+    updated_at: "2026-07-17T10:00:00Z",
+    published_at: "2026-07-17T10:00:00Z",
+  },
+];
 
 // Datos de ejemplo para navegar la app sin Supabase.
 // Al conectar Supabase, la capa lib/data.ts consulta la base real.

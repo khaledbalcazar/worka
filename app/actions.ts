@@ -1496,6 +1496,113 @@ export async function resolveModeration(
   return { ok: true };
 }
 
+// ── Blog (solo admin) ──
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // saca tildes
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .slice(0, 80);
+}
+
+export async function saveBlogPost(input: {
+  id?: string;
+  slug?: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  cover_url: string | null;
+  audience: "personas" | "empresas";
+  status: "borrador" | "publicado";
+}): Promise<ActionResult & { slug?: string }> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  if (!input.title.trim())
+    return { ok: false, error: "Ponele un título al artículo." };
+
+  const slug = (input.slug?.trim() || slugify(input.title)) || `post-${Date.now()}`;
+  const now = new Date().toISOString();
+  const row = {
+    slug,
+    title: input.title.trim(),
+    excerpt: input.excerpt.trim(),
+    content: input.content,
+    cover_url: input.cover_url,
+    audience: input.audience,
+    status: input.status,
+    updated_at: now,
+    ...(input.status === "publicado" ? { published_at: now } : {}),
+  };
+
+  let error;
+  if (input.id) {
+    ({ error } = await supabase.from("blog_posts").update(row).eq("id", input.id));
+  } else {
+    ({ error } = await supabase.from("blog_posts").insert(row));
+  }
+  if (error) {
+    if (error.code === "23505")
+      return { ok: false, error: "Ya existe un artículo con ese enlace (slug)." };
+    return {
+      ok: false,
+      error: "No pudimos guardar (¿corriste migration-009.sql?).",
+    };
+  }
+
+  // Avisar a Bing/Yandex del artículo nuevo o actualizado.
+  if (input.status === "publicado") {
+    const { pingIndexNow } = await import("@/lib/indexnow");
+    const { SITE_URL } = await import("@/lib/supabase/config");
+    pingIndexNow(`${SITE_URL.replace(/\/$/, "")}/blog/${slug}`);
+  }
+
+  revalidatePath("/blog");
+  revalidatePath(`/blog/${slug}`);
+  revalidatePath("/admin/blog");
+  return { ok: true, slug };
+}
+
+export async function deleteBlogPost(id: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  const { error } = await supabase.from("blog_posts").delete().eq("id", id);
+  if (error) return { ok: false, error: "No pudimos eliminar el artículo." };
+  revalidatePath("/blog");
+  revalidatePath("/admin/blog");
+  return { ok: true };
+}
+
+// Sube la portada de un artículo al bucket público (solo admin).
+export async function uploadBlogCover(
+  formData: FormData
+): Promise<ActionResult & { url?: string }> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  const file = formData.get("image") as File | null;
+  if (!file || file.size === 0) return { ok: false, error: "Elegí una imagen." };
+  if (file.size > 5 * 1024 * 1024)
+    return { ok: false, error: "La imagen no puede pesar más de 5 MB." };
+
+  const ext = file.type === "image/png" ? "png" : "jpg";
+  const path = `blog/${Date.now()}.${ext}`;
+  const { error } = await supabase.storage
+    .from("publico")
+    .upload(path, file, { upsert: true, contentType: file.type });
+  if (error) return { ok: false, error: "No pudimos subir la portada." };
+  const { data } = supabase.storage.from("publico").getPublicUrl(path);
+  return { ok: true, url: data.publicUrl };
+}
+
 // Crea una insignia personalizada (solo admin).
 export async function createCustomBadge(input: {
   emoji: string;

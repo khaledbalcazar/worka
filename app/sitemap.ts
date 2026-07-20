@@ -1,5 +1,9 @@
 import type { MetadataRoute } from "next";
-import { getActiveJobs, getAllCompanies } from "@/lib/data";
+import {
+  getActiveJobs,
+  getAllCompanies,
+  getPublishedPosts,
+} from "@/lib/data";
 import { SITE_URL } from "@/lib/supabase/config";
 
 // Sitemap DINÁMICO: incluye automáticamente cada vacante activa y cada
@@ -15,6 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "", priority: 1 },
     { path: "/empleos", priority: 0.9 },
     { path: "/para-empresas", priority: 0.8 },
+    { path: "/blog", priority: 0.8 },
     { path: "/registro", priority: 0.7 },
     { path: "/ingresar", priority: 0.6 },
     { path: "/empresa/registro", priority: 0.7 },

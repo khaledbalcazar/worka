@@ -87,9 +87,14 @@ export default async function AdminPage() {
           <Logo light href="/admin" />
           <span className="chip bg-white/10 text-blue-200">Backoffice</span>
         </div>
-        <Link href="/" className="text-sm text-blue-200 underline">
-          Salir
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link href="/admin/blog" className="text-sm text-blue-200 underline">
+            📝 Blog
+          </Link>
+          <Link href="/" className="text-sm text-blue-200 underline">
+            Salir
+          </Link>
+        </div>
       </header>
       <AdminPanel
         moderationQueue={moderationQueue}
