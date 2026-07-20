@@ -10,6 +10,7 @@ import type {
   Report,
   WorkReference,
 } from "@/lib/types";
+import type { CustomBadge } from "@/lib/types";
 import { BADGE_CATALOG } from "@/lib/types";
 import { StatusChip } from "@/components/Badges";
 import { formatDate, timeAgo } from "@/lib/format";
@@ -21,6 +22,8 @@ import {
   adminSetJobStatus,
   approveIndustryTag,
   broadcastNotification,
+  createCustomBadge,
+  deleteCustomBadge,
   dismissReport,
   hideJobForReview,
   indexNowSubmitAll,
@@ -45,6 +48,8 @@ const TEXTAREA_SETTINGS = new Set<string>([
   "landing_differentiators",
   "landing_steps",
   "landing_faqs",
+  "legal_terms",
+  "legal_privacy",
 ]);
 
 export type IdentityQueueItem = Candidate & {
@@ -66,6 +71,7 @@ export default function AdminPanel({
   globalStats,
   detailedReports = [],
   allJobs = [],
+  customBadges = [],
 }: {
   moderationQueue: JobWithCompany[];
   reports: Report[];
@@ -81,6 +87,7 @@ export default function AdminPanel({
   globalStats?: GlobalStats;
   detailedReports?: DetailedReport[];
   allJobs?: JobWithCompany[];
+  customBadges?: CustomBadge[];
 }) {
   const [resolved, setResolved] = useState<
     Record<string, "aprobada" | "eliminada">
@@ -176,7 +183,7 @@ export default function AdminPanel({
       await adminDeleteUser(user.id);
     });
   }
-  const [badgeState, setBadgeState] = useState<Record<string, BadgeId[]>>(
+  const [badgeState, setBadgeState] = useState<Record<string, string[]>>(
     Object.fromEntries(allCompanies.map((c) => [c.id, c.badges]))
   );
   const [identityDone, setIdentityDone] = useState<Record<string, string>>({});
@@ -226,7 +233,42 @@ export default function AdminPanel({
     });
   }
 
-  function handleBadge(companyId: string, badge: BadgeId) {
+  // Catálogo fijo + insignias personalizadas creadas por el admin.
+  const [localBadges, setLocalBadges] = useState<CustomBadge[]>(customBadges);
+  const allBadges = [...BADGE_CATALOG, ...localBadges];
+  const [badgeDraft, setBadgeDraft] = useState({
+    emoji: "🏅",
+    label: "",
+    description: "",
+  });
+
+  function addCustomBadge() {
+    if (!badgeDraft.label.trim()) return;
+    const draft = { ...badgeDraft };
+    startTransition(async () => {
+      const result = await createCustomBadge(draft);
+      if (result.ok) {
+        setLocalBadges((prev) => [
+          ...prev,
+          {
+            id: `local-${Date.now()}`,
+            ...draft,
+            created_at: new Date().toISOString(),
+          },
+        ]);
+        setBadgeDraft({ emoji: "🏅", label: "", description: "" });
+      }
+    });
+  }
+
+  function removeCustomBadge(id: string) {
+    setLocalBadges((prev) => prev.filter((b) => b.id !== id));
+    startTransition(() => {
+      deleteCustomBadge(id);
+    });
+  }
+
+  function handleBadge(companyId: string, badge: string) {
     const current = badgeState[companyId] ?? [];
     const grant = !current.includes(badge);
     setBadgeState((s) => ({
@@ -838,6 +880,8 @@ export default function AdminPanel({
                 "landing_faqs",
                 "Portada: preguntas frecuentes (1 por línea: pregunta|respuesta)",
               ],
+              ["legal_terms", "Términos y condiciones (texto legal)"],
+              ["legal_privacy", "Política de privacidad (texto legal)"],
             ] as const
           ).map(([key, label]) => (
             <div key={key} className={TEXTAREA_SETTINGS.has(key) ? "lg:col-span-2" : ""}>
@@ -1278,6 +1322,78 @@ export default function AdminPanel({
         </div>
       </section>
 
+      {/* Crear insignias personalizadas */}
+      <section className="space-y-3">
+        <h2 className="font-bold text-primary-dark text-lg">
+          🎖️ Crear insignias
+        </h2>
+        <p className="text-sm text-gray-500 -mt-2">
+          Además de las 5 fijas, creá las tuyas. Aparecen abajo para otorgarlas
+          a cualquier empresa.
+        </p>
+        <div className="card p-4 flex flex-col sm:flex-row gap-2 sm:items-end">
+          <div className="w-20">
+            <label className="label">Emoji</label>
+            <input
+              className="input text-center text-xl"
+              maxLength={4}
+              value={badgeDraft.emoji}
+              onChange={(e) =>
+                setBadgeDraft((d) => ({ ...d, emoji: e.target.value }))
+              }
+            />
+          </div>
+          <div className="flex-1">
+            <label className="label">Nombre</label>
+            <input
+              className="input"
+              placeholder="Ej: Empresa del mes"
+              value={badgeDraft.label}
+              onChange={(e) =>
+                setBadgeDraft((d) => ({ ...d, label: e.target.value }))
+              }
+            />
+          </div>
+          <div className="flex-1">
+            <label className="label">Descripción</label>
+            <input
+              className="input"
+              placeholder="Ej: Destacada por la comunidad"
+              value={badgeDraft.description}
+              onChange={(e) =>
+                setBadgeDraft((d) => ({ ...d, description: e.target.value }))
+              }
+            />
+          </div>
+          <button
+            className="btn-primary shrink-0"
+            disabled={!badgeDraft.label.trim() || pending}
+            onClick={addCustomBadge}
+          >
+            Crear
+          </button>
+        </div>
+        {localBadges.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {localBadges.map((b) => (
+              <span
+                key={b.id}
+                className="chip bg-amber-50 text-amber-700 border border-amber-200"
+                title={b.description}
+              >
+                {b.emoji} {b.label}
+                <button
+                  className="ml-1.5 text-amber-400 hover:text-danger"
+                  onClick={() => removeCustomBadge(b.id)}
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </section>
+
       {/* Insignias por empresa */}
       <section className="space-y-3">
         <h2 className="font-bold text-primary-dark text-lg">
@@ -1317,7 +1433,7 @@ export default function AdminPanel({
                   >
                     🗑️ Eliminar empresa
                   </button>
-                  {BADGE_CATALOG.map((badge) => {
+                  {allBadges.map((badge) => {
                     const has = current.includes(badge.id);
                     return (
                       <button

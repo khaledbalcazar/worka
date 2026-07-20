@@ -883,6 +883,18 @@ export async function getPendingIdentities(): Promise<Candidate[]> {
   return (data ?? []) as Candidate[];
 }
 
+export async function getCustomBadges(): Promise<
+  import("./types").CustomBadge[]
+> {
+  const supabase = await getServerClient();
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("custom_badges")
+    .select("*")
+    .order("created_at");
+  return (data ?? []) as import("./types").CustomBadge[];
+}
+
 export async function getModerationQueue(): Promise<JobWithCompany[]> {
   const supabase = await getServerClient();
   if (!supabase)

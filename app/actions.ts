@@ -1496,9 +1496,46 @@ export async function resolveModeration(
   return { ok: true };
 }
 
+// Crea una insignia personalizada (solo admin).
+export async function createCustomBadge(input: {
+  emoji: string;
+  label: string;
+  description: string;
+}): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  if (!input.label.trim())
+    return { ok: false, error: "Ponele un nombre a la insignia." };
+  const { error } = await supabase.from("custom_badges").insert({
+    emoji: input.emoji.trim() || "🏅",
+    label: input.label.trim(),
+    description: input.description.trim(),
+  });
+  if (error)
+    return {
+      ok: false,
+      error: "No pudimos crear la insignia (¿corriste migration-008.sql?).",
+    };
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+export async function deleteCustomBadge(id: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  const { error } = await supabase.from("custom_badges").delete().eq("id", id);
+  if (error) return { ok: false, error: "No pudimos eliminar la insignia." };
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
 export async function toggleCompanyBadge(
   companyId: string,
-  badge: BadgeId,
+  badge: string, // id del catálogo fijo o uuid de una insignia personalizada
   grant: boolean
 ): Promise<ActionResult> {
   const supabase = await getServerClient();

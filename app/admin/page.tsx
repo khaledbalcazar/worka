@@ -14,6 +14,7 @@ import {
   getReports,
   getAdminUsers,
   getAllJobsForAdmin,
+  getCustomBadges,
   getDetailedReports,
   getGlobalStats,
   getPendingIndustryTags,
@@ -53,6 +54,7 @@ export default async function AdminPage() {
     globalStats,
     detailedReports,
     allJobs,
+    customBadges,
   ] = await Promise.all([
     getModerationQueue(),
     getReports(),
@@ -68,6 +70,7 @@ export default async function AdminPage() {
     getGlobalStats(),
     getDetailedReports(),
     getAllJobsForAdmin(),
+    getCustomBadges(),
   ]);
 
   const identityQueue = await Promise.all(
@@ -103,6 +106,7 @@ export default async function AdminPage() {
         globalStats={globalStats}
         detailedReports={detailedReports}
         allJobs={allJobs}
+        customBadges={customBadges}
       />
     </div>
   );

@@ -1,6 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCompanyById, getCompanyPosts, getJobsByCompany } from "@/lib/data";
+import {
+  getCompanyById,
+  getCompanyPosts,
+  getCustomBadges,
+  getJobsByCompany,
+} from "@/lib/data";
 import { formatDate, timeAgo } from "@/lib/format";
 import {
   FastResponderBadge,
@@ -8,7 +13,7 @@ import {
   VerifiedBadge,
 } from "@/components/Badges";
 import EntityAvatar from "@/components/EntityAvatar";
-import { BADGE_CATALOG } from "@/lib/types";
+import { resolveBadges } from "@/lib/types";
 
 // Página pública de empresa: funciona como referencia verificable para candidatos.
 export default async function CompanyPublicPage({
@@ -20,13 +25,14 @@ export default async function CompanyPublicPage({
   const company = await getCompanyById(id);
   if (!company) notFound();
 
-  const [companyJobsAll, posts] = await Promise.all([
+  const [companyJobsAll, posts, customBadges] = await Promise.all([
     getJobsByCompany(id),
     getCompanyPosts(id),
+    getCustomBadges(),
   ]);
   const companyJobs = companyJobsAll.filter((j) => j.status !== "Moderacion");
   const active = companyJobs.filter((j) => j.status === "Activo");
-  const badges = BADGE_CATALOG.filter((b) => company.badges.includes(b.id));
+  const badges = resolveBadges(company.badges, customBadges);
   const links = [
     company.website_url && { icon: "🌐", label: "Sitio web", url: company.website_url },
     company.instagram_url && { icon: "📸", label: "Instagram", url: company.instagram_url },

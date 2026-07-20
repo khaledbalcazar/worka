@@ -519,6 +519,8 @@ export const defaultSiteSettings: Record<string, string> = {
   landing_differentiators: "",
   landing_steps: "",
   landing_faqs: "",
+  legal_terms: "",
+  legal_privacy: "",
   banner_enabled: "",
   banner_text: "",
   banner_link: "",

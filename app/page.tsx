@@ -461,7 +461,15 @@ export default async function LandingPage() {
         <div className="border-t border-white/10">
           <div className="max-w-6xl mx-auto px-4 py-4 text-xs text-blue-300 flex flex-col sm:flex-row justify-between gap-2">
             <span>Worka © 2026 · Hecho en Paraguay 🇵🇾</span>
-            <span>Nunca pagues para conseguir un trabajo.</span>
+            <div className="flex gap-4">
+              <Link href="/terminos" className="hover:text-white">
+                Términos
+              </Link>
+              <Link href="/privacidad" className="hover:text-white">
+                Privacidad
+              </Link>
+              <span>Nunca pagues para conseguir un trabajo.</span>
+            </div>
           </div>
         </div>
       </footer>

@@ -3,7 +3,9 @@ import {
   getCompanyMembers,
   getCompanyPosts,
   getCurrentCompany,
+  getCustomBadges,
 } from "@/lib/data";
+import { resolveBadges } from "@/lib/types";
 import CompanyProfileEditor from "@/components/CompanyProfileEditor";
 
 export const metadata = { title: "Perfil de empresa" };
@@ -24,11 +26,22 @@ export default async function CompanyProfilePage() {
     );
   }
 
-  const [posts, members] = await Promise.all([
+  const [posts, members, customBadges] = await Promise.all([
     getCompanyPosts(company.id),
     getCompanyMembers(company.id),
+    getCustomBadges(),
   ]);
+  // Solo las personalizadas que esta empresa tiene otorgadas.
+  const earnedCustom = resolveBadges(
+    company.badges,
+    customBadges
+  ).filter((b) => customBadges.some((c) => c.id === b.id));
   return (
-    <CompanyProfileEditor company={company} posts={posts} members={members} />
+    <CompanyProfileEditor
+      company={company}
+      posts={posts}
+      members={members}
+      earnedCustomBadges={earnedCustom}
+    />
   );
 }

@@ -39,6 +39,41 @@ export interface BadgeInfo {
   description: string;
 }
 
+// Insignia creada por el admin. Su id (uuid) se guarda en companies.badges
+// igual que las del catálogo fijo.
+export interface CustomBadge {
+  id: string;
+  emoji: string;
+  label: string;
+  description: string;
+  created_at: string;
+}
+
+// Insignia ya resuelta a datos visibles (fija o personalizada).
+export type ResolvedBadge = {
+  id: string;
+  emoji: string;
+  label: string;
+  description: string;
+};
+
+// Combina el catálogo fijo + las personalizadas en un solo lookup por id.
+export function resolveBadges(
+  ids: string[],
+  custom: CustomBadge[] = []
+): ResolvedBadge[] {
+  const lookup = new Map<string, ResolvedBadge>();
+  for (const b of BADGE_CATALOG) lookup.set(b.id, b);
+  for (const b of custom)
+    lookup.set(b.id, {
+      id: b.id,
+      emoji: b.emoji,
+      label: b.label,
+      description: b.description,
+    });
+  return ids.map((id) => lookup.get(id)).filter((b): b is ResolvedBadge => !!b);
+}
+
 export const BADGE_CATALOG: BadgeInfo[] = [
   {
     id: "fundadora",

@@ -1,7 +1,12 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
-import type { Company, CompanyMember, CompanyPost } from "@/lib/types";
+import type {
+  Company,
+  CompanyMember,
+  CompanyPost,
+  ResolvedBadge,
+} from "@/lib/types";
 import { BADGE_CATALOG } from "@/lib/types";
 import { FastResponderBadge, VerifiedBadge } from "@/components/Badges";
 import {
@@ -18,10 +23,12 @@ export default function CompanyProfileEditor({
   company,
   posts: initialPosts,
   members: initialMembers = [],
+  earnedCustomBadges = [],
 }: {
   company: Company;
   posts: CompanyPost[];
   members?: CompanyMember[];
+  earnedCustomBadges?: ResolvedBadge[];
 }) {
   const [tradeName, setTradeName] = useState(company.trade_name);
   const [description, setDescription] = useState(company.description ?? "");
@@ -441,6 +448,22 @@ export default function CompanyProfileEditor({
                   </div>
                 );
               })}
+              {earnedCustomBadges.map((badge) => (
+                <div
+                  key={badge.id}
+                  className="flex items-start gap-3 rounded-xl px-3 py-2.5 border bg-amber-50/60 border-amber-200"
+                >
+                  <span className="text-xl" aria-hidden>
+                    {badge.emoji}
+                  </span>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">
+                      {badge.label}
+                    </p>
+                    <p className="text-xs text-gray-500">{badge.description}</p>
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
         </div>
