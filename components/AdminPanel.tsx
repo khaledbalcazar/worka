@@ -23,6 +23,7 @@ import {
   broadcastNotification,
   dismissReport,
   hideJobForReview,
+  indexNowSubmitAll,
   warnCompany,
   resolveBoost,
   resolveModeration,
@@ -111,6 +112,7 @@ export default function AdminPanel({
     )
   );
   const [jobFilter, setJobFilter] = useState("");
+  const [indexNowResult, setIndexNowResult] = useState<string | null>(null);
 
   function toggleFeatured(job: JobWithCompany) {
     const next = !jobState[job.id]?.featured;
@@ -923,6 +925,35 @@ export default function AdminPanel({
               {pending ? "Guardando…" : "Guardar configuración"}
             </button>
           </div>
+        </div>
+      </section>
+
+      {/* SEO / IndexNow */}
+      <section className="space-y-3">
+        <h2 className="font-bold text-primary-dark text-lg">
+          🔎 Indexación (Bing / Yandex)
+        </h2>
+        <div className="card p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <p className="text-sm text-gray-600">
+            Envía el catálogo completo (vacantes activas + empresas
+            verificadas) a IndexNow para que Bing y Yandex lo indexen ya, sin
+            esperar el rastreo normal. Las vacantes nuevas se avisan solas al
+            publicarlas.
+          </p>
+          <button
+            className={indexNowResult ? "btn-success shrink-0" : "btn-primary shrink-0"}
+            disabled={pending}
+            onClick={() =>
+              startTransition(async () => {
+                const r = await indexNowSubmitAll();
+                setIndexNowResult(
+                  r.ok ? `✓ ${r.sent} URLs enviadas` : r.error ?? "Error"
+                );
+              })
+            }
+          >
+            {indexNowResult ?? "📡 Enviar catálogo ahora"}
+          </button>
         </div>
       </section>
 

@@ -785,6 +785,10 @@ export async function createJob(input: {
     // silencioso: la publicación ya se hizo
   }
 
+  // Avisa a Bing/Yandex (IndexNow) que hay una URL nueva para indexar ya.
+  const { pingIndexNow, jobUrl } = await import("@/lib/indexnow");
+  pingIndexNow(jobUrl(job.id));
+
   revalidatePath("/empresa");
   revalidatePath("/empleos");
   return { ok: true };
@@ -875,6 +879,10 @@ export async function updateJob(
     .eq("id", jobId)
     .eq("company_id", user.id);
   if (error) return { ok: false, error: "No pudimos guardar los cambios." };
+
+  const { pingIndexNow, jobUrl } = await import("@/lib/indexnow");
+  pingIndexNow(jobUrl(jobId));
+
   revalidatePath("/empresa");
   revalidatePath(`/empleo/${jobId}`);
   revalidatePath("/empleos");
@@ -892,6 +900,10 @@ export async function setJobStatus(
     .update({ status })
     .eq("id", jobId);
   if (error) return { ok: false, error: "No pudimos cambiar el estado." };
+
+  const { pingIndexNow, jobUrl } = await import("@/lib/indexnow");
+  pingIndexNow(jobUrl(jobId));
+
   revalidatePath("/empresa");
   revalidatePath("/empleos");
   return { ok: true };
@@ -902,6 +914,10 @@ export async function deleteJob(jobId: string): Promise<ActionResult> {
   if (!supabase) return DEMO;
   const { error } = await supabase.from("jobs").delete().eq("id", jobId);
   if (error) return { ok: false, error: "No pudimos eliminar la vacante." };
+
+  const { pingIndexNow, jobUrl } = await import("@/lib/indexnow");
+  pingIndexNow(jobUrl(jobId));
+
   revalidatePath("/empresa");
   revalidatePath("/empleos");
   return { ok: true };
@@ -1166,6 +1182,41 @@ export async function removeTeamMember(id: string): Promise<ActionResult> {
   return { ok: true };
 }
 
+// Envía a IndexNow (Bing/Yandex) todas las URLs públicas ya existentes:
+// vacantes activas + páginas de empresas verificadas + home. Se usa una sola
+// vez para que el catálogo entero se indexe rápido en lugar de esperar a que
+// cada vacante se re-publique.
+export async function indexNowSubmitAll(): Promise<ActionResult & { sent?: number }> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+
+  const { pingIndexNow } = await import("@/lib/indexnow");
+  const { SITE_URL } = await import("@/lib/supabase/config");
+  const base = SITE_URL.replace(/\/$/, "");
+
+  const { data: jobs } = await supabase
+    .from("jobs")
+    .select("id")
+    .eq("status", "Activo");
+  const { data: companies } = await supabase
+    .from("companies")
+    .select("id")
+    .eq("is_verified", true);
+
+  const urls = [
+    base,
+    `${base}/empleos`,
+    ...(jobs ?? []).map((j: { id: string }) => `${base}/empleo/${j.id}`),
+    ...(companies ?? []).map((c: { id: string }) => `${base}/empresas/${c.id}`),
+  ];
+
+  // La API acepta hasta 10.000 URLs por request; nuestro catálogo entra de sobra.
+  await pingIndexNow(urls);
+  return { ok: true, sent: urls.length };
+}
+
 // --- Gestión de vacantes desde el admin ---
 
 export async function adminSetJobFeatured(
@@ -1186,6 +1237,8 @@ export async function adminSetJobFeatured(
     })
     .eq("id", jobId);
   if (error) return { ok: false, error: "No pudimos actualizar la vacante." };
+  const { pingIndexNow, jobUrl } = await import("@/lib/indexnow");
+  pingIndexNow(jobUrl(jobId));
   revalidatePath("/admin");
   revalidatePath("/empleos");
   return { ok: true };
@@ -1204,6 +1257,8 @@ export async function adminSetJobStatus(
     .update({ status })
     .eq("id", jobId);
   if (error) return { ok: false, error: "No pudimos cambiar el estado." };
+  const { pingIndexNow, jobUrl } = await import("@/lib/indexnow");
+  pingIndexNow(jobUrl(jobId));
   revalidatePath("/admin");
   revalidatePath("/empleos");
   return { ok: true };
@@ -1216,6 +1271,8 @@ export async function adminDeleteJob(jobId: string): Promise<ActionResult> {
     return { ok: false, error: "Solo el admin puede hacer esto." };
   const { error } = await supabase.from("jobs").delete().eq("id", jobId);
   if (error) return { ok: false, error: "No pudimos eliminar la vacante." };
+  const { pingIndexNow, jobUrl } = await import("@/lib/indexnow");
+  pingIndexNow(jobUrl(jobId));
   revalidatePath("/admin");
   revalidatePath("/empleos");
   return { ok: true };
@@ -1248,6 +1305,8 @@ export async function hideJobForReview(jobId: string): Promise<ActionResult> {
     .update({ status: "Moderacion" })
     .eq("id", jobId);
   if (error) return { ok: false, error: "No pudimos ocultar la vacante." };
+  const { pingIndexNow, jobUrl } = await import("@/lib/indexnow");
+  pingIndexNow(jobUrl(jobId));
   revalidatePath("/admin");
   revalidatePath("/empleos");
   return { ok: true };
