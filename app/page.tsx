@@ -147,9 +147,9 @@ export default async function LandingPage() {
             <a href="#como-funciona" className="hover:text-primary">
               Cómo funciona
             </a>
-            <a href="#empresas" className="hover:text-primary">
+            <Link href="/para-empresas" className="hover:text-primary">
               Para empresas
-            </a>
+            </Link>
             <a href="#faq" className="hover:text-primary">
               Preguntas
             </a>
@@ -285,10 +285,10 @@ export default async function LandingPage() {
                 Registrar mi empresa
               </Link>
               <Link
-                href="/empresa"
+                href="/para-empresas"
                 className="btn border border-white/30 text-white hover:bg-white/10"
               >
-                Ver el panel de ejemplo
+                Conocé Worka para empresas →
               </Link>
             </div>
           </div>
