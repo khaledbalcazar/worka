@@ -124,7 +124,7 @@ export default function JobCard({
                 💬 Compartir por WhatsApp
               </a>
               <a
-                href={`/empleo/${job.id}/opengraph-image`}
+                href={`/empleo/${job.id}/og`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="block w-full text-left px-3 py-2.5 text-sm rounded-lg hover:bg-surface"

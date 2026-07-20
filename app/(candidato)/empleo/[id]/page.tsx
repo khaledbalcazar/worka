@@ -1,6 +1,8 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getJobById, getMyAppliedJobIds } from "@/lib/data";
+import { SITE_URL } from "@/lib/supabase/config";
 import { formatDate, timeAgo } from "@/lib/format";
 import ApplyPanel from "@/components/ApplyPanel";
 import EntityAvatar from "@/components/EntityAvatar";
@@ -12,6 +14,39 @@ import {
   UrgentBadge,
   VerifiedBadge,
 } from "@/components/Badges";
+
+// Metadata por vacante: título, descripción y la imagen para redes (og:image),
+// clave para el preview al compartir por WhatsApp/Facebook y para el SEO.
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const job = await getJobById(id);
+  if (!job) return { title: "Vacante no encontrada" };
+  const title = `${job.title} — ${job.company.trade_name}`;
+  const description = `${job.company.location_city}${job.salary_range ? ` · ${job.salary_range}` : ""}. Postulate gratis en Worka.`;
+  const ogImage = `/empleo/${job.id}/og`;
+  return {
+    title,
+    description,
+    alternates: { canonical: `/empleo/${job.id}` },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url: `/empleo/${job.id}`,
+      images: [{ url: ogImage, width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [ogImage],
+    },
+  };
+}
 
 export default async function JobDetailPage({
   params,
@@ -47,25 +82,68 @@ export default async function JobDetailPage({
   ].filter(Boolean) as { icon: string; label: string; value: string }[];
 
   // JSON-LD para Google for Jobs: hace que la vacante aparezca en el buscador.
+  const employmentTypeMap: Record<string, string> = {
+    "Tiempo completo": "FULL_TIME",
+    "Medio tiempo": "PART_TIME",
+    "Por turnos": "PART_TIME",
+    Pasantía: "INTERN",
+    Freelance: "CONTRACTOR",
+  };
+  // Salario mínimo aproximado (para baseSalary) a partir del rango en guaraníes.
+  const salaryNums = (job.salary_range ?? "")
+    .replace(/\./g, "")
+    .match(/\d{6,}/g)
+    ?.map(Number);
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "JobPosting",
     title: job.title,
-    description: job.description,
+    description: `<p>${job.description.replace(/\n/g, "<br/>")}</p>`,
     datePosted: job.created_at,
     validThrough: job.expires_at,
-    employmentType: "FULL_TIME",
+    employmentType:
+      employmentTypeMap[job.contract_type ?? ""] ?? "FULL_TIME",
+    identifier: {
+      "@type": "PropertyValue",
+      name: job.company.trade_name,
+      value: job.id,
+    },
+    directApply: true,
     hiringOrganization: {
       "@type": "Organization",
       name: job.company.trade_name,
+      sameAs: `${SITE_URL.replace(/\/$/, "")}/empresas/${job.company.id}`,
+      ...(job.company.logo_url ? { logo: job.company.logo_url } : {}),
     },
+    ...(salaryNums && salaryNums.length > 0
+      ? {
+          baseSalary: {
+            "@type": "MonetaryAmount",
+            currency: "PYG",
+            value: {
+              "@type": "QuantitativeValue",
+              minValue: Math.min(...salaryNums),
+              maxValue: Math.max(...salaryNums),
+              unitText: "MONTH",
+            },
+          },
+        }
+      : {}),
+    ...(job.modality === "Remoto" ? { jobLocationType: "TELECOMMUTE" } : {}),
     jobLocation: {
       "@type": "Place",
       address: {
         "@type": "PostalAddress",
+        streetAddress: job.address ?? undefined,
         addressLocality: job.company.location_city,
+        addressRegion: job.company.location_city,
         addressCountry: "PY",
       },
+    },
+    applicantLocationRequirements: {
+      "@type": "Country",
+      name: "Paraguay",
     },
   };
 

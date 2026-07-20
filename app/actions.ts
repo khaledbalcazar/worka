@@ -1284,11 +1284,18 @@ export async function dismissReport(reportId: string): Promise<ActionResult> {
   if (!supabase) return DEMO;
   if (!(await assertAdmin()))
     return { ok: false, error: "Solo el admin puede hacer esto." };
-  const { error } = await supabase.from("reports").delete().eq("id", reportId);
-  if (error)
+  // .select() devuelve las filas borradas: si es 0, la RLS bloqueó el borrado
+  // (falta la política reports_admin_delete → correr migration-004/007).
+  const { data, error } = await supabase
+    .from("reports")
+    .delete()
+    .eq("id", reportId)
+    .select("id");
+  if (error || !data || data.length === 0)
     return {
       ok: false,
-      error: "No pudimos descartar (¿corriste migration-004.sql?).",
+      error:
+        "No pudimos descartar la denuncia. Corré supabase/migration-007.sql en Supabase.",
     };
   revalidatePath("/admin");
   return { ok: true };
@@ -1476,7 +1483,16 @@ export async function resolveModeration(
     .update({ status: decision === "aprobar" ? "Activo" : "Cerrado" })
     .eq("id", jobId);
   if (error) return { ok: false, error: "No pudimos resolver la moderación." };
+
+  // Resolver la moderación limpia las denuncias de ese empleo: si no, la
+  // bandeja las sigue mostrando ("vuelven") y con una denuncia más el empleo
+  // se re-modera automáticamente.
+  await supabase.from("reports").delete().eq("job_id", jobId);
+
+  const { pingIndexNow, jobUrl } = await import("@/lib/indexnow");
+  pingIndexNow(jobUrl(jobId));
   revalidatePath("/admin");
+  revalidatePath("/empleos");
   return { ok: true };
 }
 

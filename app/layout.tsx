@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { getSiteSettings } from "@/lib/data";
+import { SITE_URL } from "@/lib/supabase/config";
 import GlobalBanner from "@/components/GlobalBanner";
 import "./globals.css";
 
@@ -13,6 +14,9 @@ const inter = Inter({
 export async function generateMetadata(): Promise<Metadata> {
   const settings = await getSiteSettings();
   return {
+    // Base para todas las URLs relativas de metadata (og:image, etc.). Sin
+    // esto, en producción los previews de redes apuntan a localhost.
+    metadataBase: new URL(SITE_URL),
     title: {
       default: settings.site_title || "Worka — Tu próximo paso",
       template: `%s | ${settings.site_name || "Worka"}`,
