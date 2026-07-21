@@ -6,7 +6,9 @@
       "PowerShell(git commit -F \"C:\\\\Users\\\\khale\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-khale-OneDrive-Desktop-worka\\\\46eba7ec-107a-44d3-ae32-21933dc1ea6b\\\\scratchpad\\\\commit-fix2.txt\")",
       "PowerShell(git push 2>&1)",
       "Bash(curl -s \"http://127.0.0.1:3000/api/dev-test-discover?url=http%3A%2F%2F127.0.0.1%3A3000%2Fempleo%2F2b44b247-552f-41ff-9ad2-87e48e49ab47\")",
-      "Bash(curl -s \"http://127.0.0.1:3000/api/dev-test-discover?url=http%3A%2F%2F127.0.0.1%3A3000%2F\")"
+      "Bash(curl -s \"http://127.0.0.1:3000/api/dev-test-discover?url=http%3A%2F%2F127.0.0.1%3A3000%2F\")",
+      "Bash(curl -s -X POST \"https://jooble.org/api/8e4efa12-3dc0-4c50-898e-6709f92f41c6\" -H \"Content-Type: application/json\" -H \"User-Agent: Mozilla/5.0 \\(Windows NT 10.0; Win64; x64\\) AppleWebKit/537.36 \\(KHTML, like Gecko\\) Chrome/120.0 Safari/537.36\" -d '{\"keywords\":\"ventas\",\"location\":\"Paraguay\"}')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" -X POST \"https://jooble.org/api/8e4efa12-3dc0-4c50-898e-6709f92f41c6\" -H \"Content-Type: application/json\" -H \"User-Agent: Mozilla/5.0\" -d '{\"keywords\":\"ventas\",\"location\":\"Paraguay\"}')"
     ]
   }
 }

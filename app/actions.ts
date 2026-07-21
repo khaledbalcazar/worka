@@ -1512,7 +1512,7 @@ export async function resolveModeration(
 export async function saveJobSource(input: {
   id?: string;
   name: string;
-  kind: "auto" | "feed" | "html" | "serpapi";
+  kind: "auto" | "feed" | "html" | "serpapi" | "jooble";
   url: string;
   enabled: boolean;
   expire_days?: number;
@@ -1530,10 +1530,13 @@ export async function saveJobSource(input: {
   if (!supabase) return DEMO;
   if (!(await assertAdmin()))
     return { ok: false, error: "Solo el admin puede hacer esto." };
-  if (!input.name.trim() || !input.url.trim())
-    return { ok: false, error: "Poné un nombre y una URL (o búsqueda)." };
-  // En serpapi, `url` es el texto de búsqueda, no una URL real.
-  if (input.kind !== "serpapi") {
+  if (!input.name.trim())
+    return { ok: false, error: "Poné un nombre." };
+  // Jooble admite búsqueda vacía (todo Paraguay); el resto necesita url/búsqueda.
+  if (input.kind !== "jooble" && !input.url.trim())
+    return { ok: false, error: "Poné una URL o una búsqueda." };
+  // En serpapi y jooble, `url` es el texto de búsqueda, no una URL real.
+  if (input.kind !== "serpapi" && input.kind !== "jooble") {
     try {
       new URL(input.url);
     } catch {

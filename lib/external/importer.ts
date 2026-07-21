@@ -235,6 +235,10 @@ export async function fetchSource(
     const { fetchSerpApi } = await import("./providers/serpapi");
     jobs = await fetchSerpApi(source);
     method = "Google Jobs (SerpApi)";
+  } else if (source.kind === "jooble") {
+    const { fetchJooble } = await import("./providers/jooble");
+    jobs = await fetchJooble(source);
+    method = "Jooble";
   } else if (source.kind === "auto") {
     // Detección en cascada: JSON-LD → feed → sitemap → heurística.
     const { autoDiscover } = await import("./discover");

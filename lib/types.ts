@@ -43,7 +43,7 @@ export interface BadgeInfo {
 export interface JobSource {
   id: string;
   name: string;
-  kind: "auto" | "feed" | "html" | "serpapi";
+  kind: "auto" | "feed" | "html" | "serpapi" | "jooble";
   url: string;
   enabled: boolean;
   expire_days: number;

@@ -15,7 +15,7 @@ import {
 const EMPTY_SOURCE = {
   id: undefined as string | undefined,
   name: "",
-  kind: "serpapi" as "auto" | "feed" | "html" | "serpapi",
+  kind: "serpapi" as "auto" | "feed" | "html" | "serpapi" | "jooble",
   url: "",
   enabled: true,
   expire_days: 30,
@@ -229,13 +229,15 @@ export default function ExternalJobsAdmin({
                         | "auto"
                         | "feed"
                         | "html"
-                        | "serpapi",
+                        | "serpapi"
+                        | "jooble",
                     }))
                   }
                 >
                   <option value="serpapi">
                     🤖 Agente Google Jobs (LinkedIn y más · recomendado)
                   </option>
+                  <option value="jooble">🔎 Agente Jooble (Paraguay)</option>
                   <option value="auto">Automático por link (JSON-LD/feed)</option>
                   <option value="feed">Feed XML / RSS puntual</option>
                   <option value="html">Manual, por selectores CSS</option>
@@ -244,7 +246,7 @@ export default function ExternalJobsAdmin({
             </div>
             <div>
               <label className="label">
-                {sourceDraft.kind === "serpapi"
+                {sourceDraft.kind === "serpapi" || sourceDraft.kind === "jooble"
                   ? "Qué buscar"
                   : "URL"}
               </label>
@@ -253,7 +255,9 @@ export default function ExternalJobsAdmin({
                 placeholder={
                   sourceDraft.kind === "serpapi"
                     ? "Ej: ventas, cajero, administrativo…"
-                    : "https://… (la página que lista los empleos)"
+                    : sourceDraft.kind === "jooble"
+                      ? "Ej: ventas (vacío = todo Paraguay)"
+                      : "https://… (la página que lista los empleos)"
                 }
                 value={sourceDraft.url}
                 onChange={(e) =>
@@ -268,6 +272,13 @@ export default function ExternalJobsAdmin({
                   <b>SERPAPI_KEY</b> cargada en Vercel.
                 </p>
               )}
+              {sourceDraft.kind === "jooble" && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Trae empleos de Jooble en Paraguay. Dejalo vacío para traer
+                  todo, o poné un rubro. Necesita la variable <b>JOOBLE_KEY</b>{" "}
+                  cargada en Vercel.
+                </p>
+              )}
               {sourceDraft.kind === "auto" && (
                 <p className="text-xs text-gray-500 mt-1">
                   Detecta solo de dónde sacar los avisos: primero busca datos
@@ -277,7 +288,8 @@ export default function ExternalJobsAdmin({
               )}
             </div>
 
-            {sourceDraft.kind === "serpapi" && (
+            {(sourceDraft.kind === "serpapi" ||
+              sourceDraft.kind === "jooble") && (
               <div>
                 <label className="label">Traer avisos publicados en…</label>
                 <select
