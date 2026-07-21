@@ -573,6 +573,7 @@ export const defaultSiteSettings: Record<string, string> = {
   landing_steps: "",
   landing_faqs: "",
   hero_image_url: "",
+  external_jobs_enabled: "",
   landing_categories: "",
   landing_stats: "",
   landing_testimonials: "",

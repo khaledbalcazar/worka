@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import JobCard from "@/components/JobCard";
+import ExternalJobCard from "@/components/ExternalJobCard";
 import { CITIES, INDUSTRIES } from "@/lib/mock-data";
-import type { JobWithCompany, Modality } from "@/lib/types";
+import type { ExternalJob, JobWithCompany, Modality } from "@/lib/types";
 
 const MODALITIES: Modality[] = ["Presencial", "Híbrido", "Remoto"];
 
@@ -22,6 +23,7 @@ export default function JobFeed({
   initialModality = "",
   initialContract = "",
   initialFirstJob = false,
+  externalJobs = [],
 }: {
   jobs: JobWithCompany[];
   appliedJobIds: string[];
@@ -36,6 +38,7 @@ export default function JobFeed({
   initialModality?: string;
   initialContract?: string;
   initialFirstJob?: boolean;
+  externalJobs?: ExternalJob[];
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [city, setCity] = useState(initialCity);
@@ -68,6 +71,25 @@ export default function JobFeed({
       return true;
     });
   }, [jobs, query, city, industry, modality, contract, firstJobOnly, onlyVerified, withSalary]);
+
+  // Las externas solo respetan los filtros que realmente tienen datos.
+  // Si el usuario pide "solo verificadas", desaparecen (no lo están).
+  const filteredExternal = useMemo(() => {
+    if (onlyVerified) return [];
+    return externalJobs.filter((job) => {
+      if (city && job.city !== city) return false;
+      if (industry && job.industry !== industry) return false;
+      if (withSalary && !job.salary_range) return false;
+      if (
+        query &&
+        !`${job.title} ${job.company_name} ${job.industry ?? ""}`
+          .toLowerCase()
+          .includes(query.toLowerCase())
+      )
+        return false;
+      return true;
+    });
+  }, [externalJobs, query, city, industry, onlyVerified, withSalary]);
 
   const hasActiveFilter =
     query || city || industry || modality || contract || firstJobOnly || onlyVerified || withSalary;
@@ -383,6 +405,27 @@ export default function JobFeed({
                   alreadyApplied={applied.has(job.id)}
                   initiallySaved={savedSet.has(job.id)}
                 />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Vacantes de otras fuentes. Van al final y separadas a propósito:
+            las de Worka (empresas verificadas) tienen prioridad. */}
+        {filteredExternal.length > 0 && (
+          <section className="space-y-3 pt-2">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                Otras vacantes de Paraguay
+              </h2>
+              <p className="text-xs text-gray-400 mt-1">
+                Avisos de otras fuentes. Estas empresas no están verificadas por
+                Worka.
+              </p>
+            </div>
+            <div className="grid gap-3 xl:grid-cols-2">
+              {filteredExternal.map((job) => (
+                <ExternalJobCard key={job.id} job={job} />
               ))}
             </div>
           </section>

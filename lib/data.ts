@@ -883,6 +883,85 @@ export async function getPendingIdentities(): Promise<Candidate[]> {
   return (data ?? []) as Candidate[];
 }
 
+// ── Vacantes externas (agregador) ──
+
+// Interruptor general: si está apagado, las externas no existen para nadie.
+export async function externalJobsEnabled(): Promise<boolean> {
+  const settings = await getSiteSettings();
+  return settings.external_jobs_enabled === "true";
+}
+
+// Quita los datos de contacto salvo que haya sesión iniciada. El filtrado
+// vive acá (servidor) para que el correo nunca viaje al cliente anónimo.
+function gateContact(
+  job: import("./types").ExternalJob,
+  loggedIn: boolean
+): import("./types").ExternalJob {
+  if (loggedIn) return job;
+  return { ...job, apply_email: null, apply_url: null };
+}
+
+export async function getExternalJobs(): Promise<
+  import("./types").ExternalJob[]
+> {
+  if (!(await externalJobsEnabled())) return [];
+  const supabase = await getServerClient();
+  if (!supabase) return [];
+  const user = await getCurrentUser();
+  const { data } = await supabase
+    .from("external_jobs")
+    .select("*")
+    .eq("status", "activa")
+    .order("imported_at", { ascending: false })
+    .limit(200);
+  return ((data ?? []) as import("./types").ExternalJob[]).map((j) =>
+    gateContact(j, !!user)
+  );
+}
+
+export async function getExternalJob(
+  id: string
+): Promise<import("./types").ExternalJob | null> {
+  if (!(await externalJobsEnabled())) return null;
+  const supabase = await getServerClient();
+  if (!supabase) return null;
+  const user = await getCurrentUser();
+  const { data } = await supabase
+    .from("external_jobs")
+    .select("*")
+    .eq("id", id)
+    .eq("status", "activa")
+    .maybeSingle();
+  if (!data) return null;
+  return gateContact(data as import("./types").ExternalJob, !!user);
+}
+
+// Para el admin: ve todo, incluidas las ocultas y con los contactos.
+export async function getAllExternalJobs(): Promise<
+  import("./types").ExternalJob[]
+> {
+  const supabase = await getServerClient();
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("external_jobs")
+    .select("*")
+    .order("imported_at", { ascending: false })
+    .limit(300);
+  return (data ?? []) as import("./types").ExternalJob[];
+}
+
+export async function getJobSources(): Promise<
+  import("./types").JobSource[]
+> {
+  const supabase = await getServerClient();
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("job_sources")
+    .select("*")
+    .order("created_at", { ascending: false });
+  return (data ?? []) as import("./types").JobSource[];
+}
+
 // ── Blog ──
 
 export async function getPublishedPosts(): Promise<

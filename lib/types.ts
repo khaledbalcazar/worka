@@ -39,6 +39,52 @@ export interface BadgeInfo {
   description: string;
 }
 
+// Fuente de vacantes externas configurada desde el admin.
+export interface JobSource {
+  id: string;
+  name: string;
+  kind: "feed" | "html";
+  url: string;
+  enabled: boolean;
+  sel_item: string | null;
+  sel_title: string | null;
+  sel_company: string | null;
+  sel_city: string | null;
+  sel_link: string | null;
+  sel_description: string | null;
+  default_city: string | null;
+  default_industry: string | null;
+  last_run_at: string | null;
+  last_result: string | null;
+  last_count: number;
+  created_at: string;
+}
+
+// Vacante que no viene de una empresa registrada en Worka.
+// apply_email/apply_url llegan en null si el visitante no inició sesión.
+export interface ExternalJob {
+  id: string;
+  source_id: string | null;
+  external_key: string | null;
+  title: string;
+  company_name: string;
+  company_logo_url: string | null;
+  description: string;
+  industry: string | null;
+  city: string | null;
+  modality: string | null;
+  contract_type: string | null;
+  salary_range: string | null;
+  apply_email: string | null;
+  apply_url: string | null;
+  source_name: string;
+  source_url: string | null;
+  status: "activa" | "oculta";
+  imported_at: string;
+  expires_at: string | null;
+  created_at: string;
+}
+
 // Artículo del blog (SEO). audience define el CTA que se muestra al final.
 export interface BlogPost {
   id: string;

@@ -1507,6 +1507,246 @@ export async function resolveModeration(
   return { ok: true };
 }
 
+// ── Vacantes externas (solo admin) ──
+
+export async function saveJobSource(input: {
+  id?: string;
+  name: string;
+  kind: "feed" | "html";
+  url: string;
+  enabled: boolean;
+  sel_item?: string;
+  sel_title?: string;
+  sel_company?: string;
+  sel_city?: string;
+  sel_link?: string;
+  sel_description?: string;
+  default_city?: string;
+  default_industry?: string;
+}): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  if (!input.name.trim() || !input.url.trim())
+    return { ok: false, error: "Poné un nombre y una URL." };
+  try {
+    new URL(input.url);
+  } catch {
+    return { ok: false, error: "Esa URL no es válida." };
+  }
+
+  const row = {
+    name: input.name.trim(),
+    kind: input.kind,
+    url: input.url.trim(),
+    enabled: input.enabled,
+    sel_item: input.sel_item?.trim() || null,
+    sel_title: input.sel_title?.trim() || null,
+    sel_company: input.sel_company?.trim() || null,
+    sel_city: input.sel_city?.trim() || null,
+    sel_link: input.sel_link?.trim() || null,
+    sel_description: input.sel_description?.trim() || null,
+    default_city: input.default_city?.trim() || null,
+    default_industry: input.default_industry?.trim() || null,
+  };
+
+  const { error } = input.id
+    ? await supabase.from("job_sources").update(row).eq("id", input.id)
+    : await supabase.from("job_sources").insert(row);
+  if (error)
+    return {
+      ok: false,
+      error: "No pudimos guardar (¿corriste migration-010.sql?).",
+    };
+  revalidatePath("/admin/externas");
+  return { ok: true };
+}
+
+export async function deleteJobSource(id: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  const { error } = await supabase.from("job_sources").delete().eq("id", id);
+  if (error) return { ok: false, error: "No pudimos eliminar la fuente." };
+  revalidatePath("/admin/externas");
+  return { ok: true };
+}
+
+// Trae las vacantes de una fuente y las guarda. Reimportar no duplica:
+// el índice (source_id, external_key) hace que se actualicen.
+export async function runImport(
+  sourceId: string
+): Promise<ActionResult & { count?: number }> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+
+  const { data: source } = await supabase
+    .from("job_sources")
+    .select("*")
+    .eq("id", sourceId)
+    .maybeSingle();
+  if (!source) return { ok: false, error: "No encontramos esa fuente." };
+
+  const { fetchSource } = await import("@/lib/external/importer");
+  let parsed;
+  try {
+    parsed = await fetchSource(source as import("@/lib/types").JobSource);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Error desconocido";
+    await supabase
+      .from("job_sources")
+      .update({
+        last_run_at: new Date().toISOString(),
+        last_result: `Error: ${message}`,
+        last_count: 0,
+      })
+      .eq("id", sourceId);
+    revalidatePath("/admin/externas");
+    return { ok: false, error: message };
+  }
+
+  if (parsed.length === 0) {
+    await supabase
+      .from("job_sources")
+      .update({
+        last_run_at: new Date().toISOString(),
+        last_result: "No se encontraron avisos (revisá la URL o los selectores).",
+        last_count: 0,
+      })
+      .eq("id", sourceId);
+    revalidatePath("/admin/externas");
+    return { ok: false, error: "No se encontró ningún aviso en esa fuente." };
+  }
+
+  const rows = parsed.map((j) => ({
+    source_id: sourceId,
+    external_key: j.external_key,
+    title: j.title,
+    company_name: j.company_name,
+    description: j.description,
+    city: j.city,
+    industry: j.industry,
+    apply_email: j.apply_email,
+    apply_url: j.apply_url,
+    source_name: source.name,
+    source_url: j.source_url,
+    status: "activa",
+    imported_at: new Date().toISOString(),
+  }));
+
+  const { error } = await supabase
+    .from("external_jobs")
+    .upsert(rows, { onConflict: "source_id,external_key" });
+  if (error)
+    return { ok: false, error: "No pudimos guardar las vacantes importadas." };
+
+  await supabase
+    .from("job_sources")
+    .update({
+      last_run_at: new Date().toISOString(),
+      last_result: `OK: ${rows.length} avisos`,
+      last_count: rows.length,
+    })
+    .eq("id", sourceId);
+
+  revalidatePath("/admin/externas");
+  revalidatePath("/empleos");
+  return { ok: true, count: rows.length };
+}
+
+// Carga manual: sirve para "crear" una empresa sin registro, ya que la
+// vacante externa guarda el nombre y logo de la empresa como texto.
+export async function saveExternalJob(input: {
+  id?: string;
+  title: string;
+  company_name: string;
+  company_logo_url?: string;
+  description: string;
+  city?: string;
+  industry?: string;
+  salary_range?: string;
+  apply_email?: string;
+  apply_url?: string;
+  source_name?: string;
+  source_url?: string;
+  status: "activa" | "oculta";
+}): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  if (!input.title.trim() || !input.company_name.trim())
+    return { ok: false, error: "Poné al menos el puesto y la empresa." };
+  if (!input.apply_email?.trim() && !input.apply_url?.trim())
+    return {
+      ok: false,
+      error: "Poné un correo o un link para que la gente pueda postularse.",
+    };
+
+  const row = {
+    title: input.title.trim(),
+    company_name: input.company_name.trim(),
+    company_logo_url: input.company_logo_url?.trim() || null,
+    description: input.description.trim(),
+    city: input.city?.trim() || null,
+    industry: input.industry?.trim() || null,
+    salary_range: input.salary_range?.trim() || null,
+    apply_email: input.apply_email?.trim() || null,
+    apply_url: input.apply_url?.trim() || null,
+    source_name: input.source_name?.trim() || "Cargada por Worka",
+    source_url: input.source_url?.trim() || null,
+    status: input.status,
+  };
+
+  const { error } = input.id
+    ? await supabase.from("external_jobs").update(row).eq("id", input.id)
+    : await supabase.from("external_jobs").insert(row);
+  if (error)
+    return {
+      ok: false,
+      error: "No pudimos guardar (¿corriste migration-010.sql?).",
+    };
+  revalidatePath("/admin/externas");
+  revalidatePath("/empleos");
+  return { ok: true };
+}
+
+export async function deleteExternalJob(id: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  const { error } = await supabase.from("external_jobs").delete().eq("id", id);
+  if (error) return { ok: false, error: "No pudimos eliminar la vacante." };
+  revalidatePath("/admin/externas");
+  revalidatePath("/empleos");
+  return { ok: true };
+}
+
+// Interruptor general de todo el agregador.
+export async function setExternalJobsEnabled(
+  enabled: boolean
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  const { error } = await supabase.from("site_settings").upsert({
+    key: "external_jobs_enabled",
+    value: enabled ? "true" : "",
+    updated_at: new Date().toISOString(),
+  });
+  if (error) return { ok: false, error: "No pudimos cambiar el interruptor." };
+  revalidatePath("/admin/externas");
+  revalidatePath("/empleos");
+  revalidatePath("/");
+  return { ok: true };
+}
+
 // ── Blog (solo admin) ──
 
 function slugify(text: string): string {

@@ -2,6 +2,7 @@ import JobFeed from "@/components/JobFeed";
 import {
   getActiveJobs,
   getCurrentCandidate,
+  getExternalJobs,
   getMyAppliedJobIds,
   getMySavedJobIds,
   getSiteSettings,
@@ -48,9 +49,10 @@ export default async function JobFeedPage({
     primerEmpleo?: string;
   }>;
 }) {
-  const [jobs, candidate, appliedIds, savedIds, settings, params] =
+  const [jobs, externalJobs, candidate, appliedIds, savedIds, settings, params] =
     await Promise.all([
       getActiveJobs(),
+      getExternalJobs(),
       getCurrentCandidate(),
       getMyAppliedJobIds(),
       getMySavedJobIds(),
@@ -93,6 +95,7 @@ export default async function JobFeedPage({
       initialModality={params.modalidad ?? ""}
       initialContract={params.contrato ?? ""}
       initialFirstJob={params.primerEmpleo === "1"}
+      externalJobs={externalJobs}
     />
   );
 }

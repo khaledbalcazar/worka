@@ -91,6 +91,12 @@ export default async function AdminPage() {
           <Link href="/admin/blog" className="text-sm text-blue-200 underline">
             📝 Blog
           </Link>
+          <Link
+            href="/admin/externas"
+            className="text-sm text-blue-200 underline"
+          >
+            🌐 Externas
+          </Link>
           <Link href="/" className="text-sm text-blue-200 underline">
             Salir
           </Link>
