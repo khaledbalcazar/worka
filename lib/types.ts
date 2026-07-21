@@ -43,9 +43,10 @@ export interface BadgeInfo {
 export interface JobSource {
   id: string;
   name: string;
-  kind: "feed" | "html";
+  kind: "auto" | "feed" | "html";
   url: string;
   enabled: boolean;
+  expire_days: number;
   sel_item: string | null;
   sel_title: string | null;
   sel_company: string | null;
@@ -56,6 +57,7 @@ export interface JobSource {
   default_industry: string | null;
   last_run_at: string | null;
   last_result: string | null;
+  last_method: string | null;
   last_count: number;
   created_at: string;
 }

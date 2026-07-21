@@ -15,9 +15,10 @@ import {
 const EMPTY_SOURCE = {
   id: undefined as string | undefined,
   name: "",
-  kind: "feed" as "feed" | "html",
+  kind: "auto" as "auto" | "feed" | "html",
   url: "",
   enabled: true,
+  expire_days: 30,
   sel_item: "",
   sel_title: "",
   sel_company: "",
@@ -104,7 +105,11 @@ export default function ExternalJobsAdmin({
     startTransition(async () => {
       const r = await runImport(source.id);
       if (!r.ok) return setError(r.error ?? "Falló la importación.");
-      flash(`✅ Importadas ${r.count} vacantes de ${source.name}.`);
+      flash(
+        `✅ Importadas ${r.count} vacantes de ${source.name}${
+          r.method ? ` — método: ${r.method}` : ""
+        }.`
+      );
       location.reload();
     });
   }
@@ -219,12 +224,15 @@ export default function ExternalJobsAdmin({
                   onChange={(e) =>
                     setSourceDraft((s) => ({
                       ...s,
-                      kind: e.target.value as "feed" | "html",
+                      kind: e.target.value as "auto" | "feed" | "html",
                     }))
                   }
                 >
-                  <option value="feed">Feed XML / RSS (recomendado)</option>
-                  <option value="html">Página HTML (por selectores)</option>
+                  <option value="auto">
+                    Automático — solo pegá el link (recomendado)
+                  </option>
+                  <option value="feed">Feed XML / RSS puntual</option>
+                  <option value="html">Manual, por selectores CSS</option>
                 </select>
               </div>
             </div>
@@ -232,12 +240,19 @@ export default function ExternalJobsAdmin({
               <label className="label">URL</label>
               <input
                 className="input"
-                placeholder="https://…"
+                placeholder="https://… (la página que lista los empleos)"
                 value={sourceDraft.url}
                 onChange={(e) =>
                   setSourceDraft((s) => ({ ...s, url: e.target.value }))
                 }
               />
+              {sourceDraft.kind === "auto" && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Detecta solo de dónde sacar los avisos: primero busca datos
+                  estructurados (JSON-LD), después un feed RSS, después el
+                  sitemap, y como último recurso los enlaces de la página.
+                </p>
+              )}
             </div>
 
             {sourceDraft.kind === "html" && (
@@ -313,6 +328,24 @@ export default function ExternalJobsAdmin({
                   ))}
                 </select>
               </div>
+              <div>
+                <label className="label">Los avisos caducan a los…</label>
+                <select
+                  className="input"
+                  value={sourceDraft.expire_days}
+                  onChange={(e) =>
+                    setSourceDraft((s) => ({
+                      ...s,
+                      expire_days: Number(e.target.value),
+                    }))
+                  }
+                >
+                  <option value={15}>15 días</option>
+                  <option value={30}>30 días</option>
+                  <option value={60}>60 días</option>
+                  <option value={90}>90 días</option>
+                </select>
+              </div>
             </div>
 
             <div className="flex justify-end">
@@ -349,6 +382,7 @@ export default function ExternalJobsAdmin({
                   {s.last_run_at && (
                     <p className="text-xs text-gray-400 mt-0.5">
                       Última corrida: {s.last_result}
+                      {s.last_method ? ` · ${s.last_method}` : ""}
                     </p>
                   )}
                 </div>

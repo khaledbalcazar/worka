@@ -1512,9 +1512,10 @@ export async function resolveModeration(
 export async function saveJobSource(input: {
   id?: string;
   name: string;
-  kind: "feed" | "html";
+  kind: "auto" | "feed" | "html";
   url: string;
   enabled: boolean;
+  expire_days?: number;
   sel_item?: string;
   sel_title?: string;
   sel_company?: string;
@@ -1541,6 +1542,7 @@ export async function saveJobSource(input: {
     kind: input.kind,
     url: input.url.trim(),
     enabled: input.enabled,
+    expire_days: input.expire_days ?? 30,
     sel_item: input.sel_item?.trim() || null,
     sel_title: input.sel_title?.trim() || null,
     sel_company: input.sel_company?.trim() || null,
@@ -1578,7 +1580,7 @@ export async function deleteJobSource(id: string): Promise<ActionResult> {
 // el índice (source_id, external_key) hace que se actualicen.
 export async function runImport(
   sourceId: string
-): Promise<ActionResult & { count?: number }> {
+): Promise<ActionResult & { count?: number; method?: string }> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
   if (!(await assertAdmin()))
@@ -1592,7 +1594,7 @@ export async function runImport(
   if (!source) return { ok: false, error: "No encontramos esa fuente." };
 
   const { fetchSource } = await import("@/lib/external/importer");
-  let parsed;
+  let parsed: Awaited<ReturnType<typeof fetchSource>>;
   try {
     parsed = await fetchSource(source as import("@/lib/types").JobSource);
   } catch (e) {
@@ -1609,12 +1611,13 @@ export async function runImport(
     return { ok: false, error: message };
   }
 
-  if (parsed.length === 0) {
+  if (parsed.jobs.length === 0) {
     await supabase
       .from("job_sources")
       .update({
         last_run_at: new Date().toISOString(),
         last_result: "No se encontraron avisos (revisá la URL o los selectores).",
+        last_method: parsed.method,
         last_count: 0,
       })
       .eq("id", sourceId);
@@ -1622,7 +1625,13 @@ export async function runImport(
     return { ok: false, error: "No se encontró ningún aviso en esa fuente." };
   }
 
-  const rows = parsed.map((j) => ({
+  // Los avisos importados caducan solos para no dejar vacantes muertas.
+  const days = source.expire_days ?? 30;
+  const expiresAt = new Date(
+    Date.now() + days * 24 * 60 * 60 * 1000
+  ).toISOString();
+
+  const rows = parsed.jobs.map((j) => ({
     source_id: sourceId,
     external_key: j.external_key,
     title: j.title,
@@ -1630,12 +1639,14 @@ export async function runImport(
     description: j.description,
     city: j.city,
     industry: j.industry,
+    salary_range: j.salary_range,
     apply_email: j.apply_email,
     apply_url: j.apply_url,
     source_name: source.name,
     source_url: j.source_url,
     status: "activa",
     imported_at: new Date().toISOString(),
+    expires_at: expiresAt,
   }));
 
   const { error } = await supabase
@@ -1649,13 +1660,14 @@ export async function runImport(
     .update({
       last_run_at: new Date().toISOString(),
       last_result: `OK: ${rows.length} avisos`,
+      last_method: parsed.method,
       last_count: rows.length,
     })
     .eq("id", sourceId);
 
   revalidatePath("/admin/externas");
   revalidatePath("/empleos");
-  return { ok: true, count: rows.length };
+  return { ok: true, count: rows.length, method: parsed.method };
 }
 
 // Carga manual: sirve para "crear" una empresa sin registro, ya que la

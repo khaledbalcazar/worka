@@ -13,6 +13,7 @@ export type ParsedJob = {
   apply_email: string | null;
   apply_url: string | null;
   source_url: string | null;
+  salary_range: string | null;
 };
 
 const UA =
@@ -20,7 +21,7 @@ const UA =
 const TIMEOUT_MS = 15000;
 const MAX_ITEMS = 60;
 
-async function fetchText(url: string): Promise<string> {
+export async function fetchText(url: string): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
@@ -77,7 +78,7 @@ export async function robotsAllows(url: string): Promise<boolean> {
 
 // ── Utilidades de texto ──
 
-function clean(html: string | undefined | null): string {
+export function clean(html: string | undefined | null): string {
   if (!html) return "";
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, "")
@@ -95,7 +96,7 @@ function clean(html: string | undefined | null): string {
 
 // Guardamos un resumen, no el aviso completo: la fuente conserva su
 // contenido y siempre enlazamos de vuelta al original.
-function excerpt(text: string, max = 600): string {
+export function excerpt(text: string, max = 600): string {
   const t = clean(text);
   return t.length <= max ? t : `${t.slice(0, max).trimEnd()}…`;
 }
@@ -156,6 +157,7 @@ export function parseFeed(xml: string, source: JobSource): ParsedJob[] {
       apply_email: findEmail(`${rawDesc} ${pick("email", "applyemail")}`),
       apply_url: absolute(link, source.url),
       source_url: absolute(link, source.url),
+      salary_range: pick("salary", "basesalary") || null,
     });
   });
   return jobs;
@@ -201,6 +203,7 @@ export function parseHtml(html: string, source: JobSource): ParsedJob[] {
         apply_email: findEmail(node.text()),
         apply_url: link,
         source_url: link,
+        salary_range: null,
       });
     });
 
@@ -211,8 +214,11 @@ export function parseHtml(html: string, source: JobSource): ParsedJob[] {
  * Trae y normaliza las vacantes de una fuente.
  * Para fuentes HTML exige que robots.txt no lo prohíba.
  */
-export async function fetchSource(source: JobSource): Promise<ParsedJob[]> {
-  if (source.kind === "html") {
+export async function fetchSource(
+  source: JobSource
+): Promise<{ jobs: ParsedJob[]; method: string }> {
+  // Leer HTML de un sitio ajeno requiere que robots.txt no lo prohíba.
+  if (source.kind === "html" || source.kind === "auto") {
     const allowed = await robotsAllows(source.url);
     if (!allowed) {
       throw new Error(
@@ -220,16 +226,32 @@ export async function fetchSource(source: JobSource): Promise<ParsedJob[]> {
       );
     }
   }
-  const body = await fetchText(source.url);
-  const jobs =
-    source.kind === "feed" ? parseFeed(body, source) : parseHtml(body, source);
+
+  let jobs: ParsedJob[];
+  let method: string;
+
+  if (source.kind === "auto") {
+    // Detección en cascada: JSON-LD → feed → sitemap → heurística.
+    const { autoDiscover } = await import("./discover");
+    const result = await autoDiscover(source);
+    jobs = result.jobs;
+    method = result.method;
+  } else if (source.kind === "feed") {
+    jobs = parseFeed(await fetchText(source.url), source);
+    method = "Feed XML/RSS";
+  } else {
+    jobs = parseHtml(await fetchText(source.url), source);
+    method = "Selectores CSS";
+  }
 
   // Descarta títulos vacíos o repetidos dentro de la misma corrida.
   const seen = new Set<string>();
-  return jobs.filter((j) => {
+  const unique = jobs.filter((j) => {
     const key = j.external_key ?? j.title;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+
+  return { jobs: unique, method };
 }
