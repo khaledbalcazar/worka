@@ -572,6 +572,7 @@ export const defaultSiteSettings: Record<string, string> = {
   landing_differentiators: "",
   landing_steps: "",
   landing_faqs: "",
+  hero_image_url: "",
   landing_categories: "",
   landing_stats: "",
   landing_testimonials: "",

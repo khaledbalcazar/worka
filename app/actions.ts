@@ -1017,7 +1017,7 @@ export async function uploadCompanyImage(
 // Sube el logo o favicon del sitio (solo admin) y lo guarda en settings.
 export async function uploadSiteLogo(
   formData: FormData,
-  kind: "logo" | "favicon" = "logo"
+  kind: "logo" | "favicon" | "hero" = "logo"
 ): Promise<ActionResult & { url?: string }> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
@@ -1031,13 +1031,18 @@ export async function uploadSiteLogo(
     .eq("id", user.id)
     .maybeSingle();
   if (profile?.role !== "admin")
-    return { ok: false, error: "Solo el admin puede cambiar el logo del sitio." };
+    return { ok: false, error: "Solo el admin puede cambiar las imágenes del sitio." };
 
   const file = formData.get("image") as File | null;
   if (!file || file.size === 0)
     return { ok: false, error: "Elegí una imagen." };
-  if (file.size > 2 * 1024 * 1024)
-    return { ok: false, error: "El logo no puede pesar más de 2 MB." };
+  // La imagen del hero es grande (foto de portada); el logo debe ser liviano.
+  const maxMb = kind === "hero" ? 5 : 2;
+  if (file.size > maxMb * 1024 * 1024)
+    return {
+      ok: false,
+      error: `La imagen no puede pesar más de ${maxMb} MB.`,
+    };
 
   const ext = file.type === "image/png" ? "png" : "jpg";
   const path = `site/${kind}.${ext}`;
@@ -1049,8 +1054,14 @@ export async function uploadSiteLogo(
 
   const { data } = supabase.storage.from("publico").getPublicUrl(path);
   const url = `${data.publicUrl}?v=${Date.now()}`;
+  const settingKey =
+    kind === "logo"
+      ? "logo_url"
+      : kind === "favicon"
+        ? "favicon_url"
+        : "hero_image_url";
   await supabase.from("site_settings").upsert({
-    key: kind === "logo" ? "logo_url" : "favicon_url",
+    key: settingKey,
     value: url,
     updated_at: new Date().toISOString(),
   });

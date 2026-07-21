@@ -300,10 +300,23 @@ export default async function LandingPage() {
 
           {/* Tarjetas flotantes (desktop) */}
           <div className="relative hidden lg:block">
-            <div className="rounded-3xl bg-gradient-to-br from-primary to-primary-dark aspect-[4/3.4] shadow-[0_30px_70px_rgba(27,37,89,0.18)] flex items-center justify-center">
-              <span className="text-white/95 text-7xl font-extrabold tracking-tight">
-                w.
-              </span>
+            {/* Foto de portada: se sube desde /admin. Sin imagen, cae en la
+                tarjeta de marca para que el hero nunca quede vacío. */}
+            <div className="rounded-3xl overflow-hidden aspect-[4/3.4] shadow-[0_30px_70px_rgba(27,37,89,0.18)]">
+              {settings.hero_image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={settings.hero_image_url}
+                  alt="Personas buscando empleo en Worka"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center">
+                  <span className="text-white/95 text-7xl font-extrabold tracking-tight">
+                    w.
+                  </span>
+                </div>
+              )}
             </div>
             <div className="absolute top-6 -left-7 bg-white rounded-2xl px-4 py-3 shadow-[0_14px_40px_rgba(27,37,89,0.16)] flex items-center gap-2.5">
               <div className="w-8.5 h-8.5 rounded-lg bg-success/15 flex items-center justify-center">

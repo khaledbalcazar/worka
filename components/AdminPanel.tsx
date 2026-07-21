@@ -197,9 +197,20 @@ export default function AdminPanel({
   const [settingsSaved, setSettingsSaved] = useState(false);
   const logoInput = useRef<HTMLInputElement>(null);
   const faviconInput = useRef<HTMLInputElement>(null);
+  const heroInput = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
 
-  function handleSiteLogo(file: File | undefined, kind: "logo" | "favicon") {
+  // Imágenes del sitio: logo, favicon y la foto de portada del hero.
+  const IMAGE_SETTINGS: Record<string, "logo" | "favicon" | "hero"> = {
+    logo_url: "logo",
+    favicon_url: "favicon",
+    hero_image_url: "hero",
+  };
+
+  function handleSiteLogo(
+    file: File | undefined,
+    kind: "logo" | "favicon" | "hero"
+  ) {
     if (!file) return;
     const fd = new FormData();
     fd.append("image", file);
@@ -208,7 +219,11 @@ export default function AdminPanel({
       if (result.ok && result.url)
         setSettingsDraft((s) => ({
           ...s,
-          [kind === "logo" ? "logo_url" : "favicon_url"]: result.url!,
+          [kind === "logo"
+            ? "logo_url"
+            : kind === "favicon"
+              ? "favicon_url"
+              : "hero_image_url"]: result.url!,
         }));
     });
   }
@@ -859,6 +874,10 @@ export default function AdminPanel({
               ["site_description", "Descripción para Google (SEO)"],
               ["logo_url", "Logo del sitio"],
               ["favicon_url", "Ícono de la pestaña (favicon)"],
+              [
+                "hero_image_url",
+                "Imagen de la portada (hero). Ideal horizontal, ~1200×1000px",
+              ],
               ["hero_badge", "Chip de la portada"],
               ["hero_title", "Título de la portada"],
               ["hero_subtitle", "Subtítulo de la portada"],
@@ -919,14 +938,18 @@ export default function AdminPanel({
                     setSettingsDraft((s) => ({ ...s, [key]: e.target.value }))
                   }
                 />
-              ) : key === "logo_url" || key === "favicon_url" ? (
+              ) : IMAGE_SETTINGS[key] ? (
                 <div className="flex items-center gap-2">
                   {settingsDraft[key] && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={settingsDraft[key]}
                       alt={label}
-                      className="h-9 w-9 rounded object-contain bg-surface"
+                      className={
+                        key === "hero_image_url"
+                          ? "h-9 w-14 rounded object-cover bg-surface"
+                          : "h-9 w-9 rounded object-contain bg-surface"
+                      }
                     />
                   )}
                   <input
@@ -941,22 +964,30 @@ export default function AdminPanel({
                     }
                   />
                   <input
-                    ref={key === "logo_url" ? logoInput : faviconInput}
+                    ref={
+                      key === "logo_url"
+                        ? logoInput
+                        : key === "favicon_url"
+                          ? faviconInput
+                          : heroInput
+                    }
                     type="file"
                     accept="image/*"
                     className="hidden"
                     onChange={(e) =>
-                      handleSiteLogo(
-                        e.target.files?.[0],
-                        key === "logo_url" ? "logo" : "favicon"
-                      )
+                      handleSiteLogo(e.target.files?.[0], IMAGE_SETTINGS[key])
                     }
                   />
                   <button
                     className="btn-secondary shrink-0 text-xs"
                     disabled={pending}
                     onClick={() =>
-                      (key === "logo_url" ? logoInput : faviconInput).current?.click()
+                      (key === "logo_url"
+                        ? logoInput
+                        : key === "favicon_url"
+                          ? faviconInput
+                          : heroInput
+                      ).current?.click()
                     }
                   >
                     📤 Subir
