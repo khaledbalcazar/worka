@@ -15,10 +15,11 @@ import {
 const EMPTY_SOURCE = {
   id: undefined as string | undefined,
   name: "",
-  kind: "auto" as "auto" | "feed" | "html",
+  kind: "serpapi" as "auto" | "feed" | "html" | "serpapi",
   url: "",
   enabled: true,
   expire_days: 30,
+  max_age_hours: 24,
   sel_item: "",
   sel_title: "",
   sel_company: "",
@@ -224,28 +225,49 @@ export default function ExternalJobsAdmin({
                   onChange={(e) =>
                     setSourceDraft((s) => ({
                       ...s,
-                      kind: e.target.value as "auto" | "feed" | "html",
+                      kind: e.target.value as
+                        | "auto"
+                        | "feed"
+                        | "html"
+                        | "serpapi",
                     }))
                   }
                 >
-                  <option value="auto">
-                    Automático — solo pegá el link (recomendado)
+                  <option value="serpapi">
+                    🤖 Agente Google Jobs (LinkedIn y más · recomendado)
                   </option>
+                  <option value="auto">Automático por link (JSON-LD/feed)</option>
                   <option value="feed">Feed XML / RSS puntual</option>
                   <option value="html">Manual, por selectores CSS</option>
                 </select>
               </div>
             </div>
             <div>
-              <label className="label">URL</label>
+              <label className="label">
+                {sourceDraft.kind === "serpapi"
+                  ? "Qué buscar"
+                  : "URL"}
+              </label>
               <input
                 className="input"
-                placeholder="https://… (la página que lista los empleos)"
+                placeholder={
+                  sourceDraft.kind === "serpapi"
+                    ? "Ej: ventas, cajero, administrativo…"
+                    : "https://… (la página que lista los empleos)"
+                }
                 value={sourceDraft.url}
                 onChange={(e) =>
                   setSourceDraft((s) => ({ ...s, url: e.target.value }))
                 }
               />
+              {sourceDraft.kind === "serpapi" && (
+                <p className="text-xs text-gray-500 mt-1">
+                  El agente busca eso en Google Jobs (incluye avisos de
+                  LinkedIn, Computrabajo, etc.), limitado a Paraguay. Creá una
+                  fuente por rubro para cubrir más. Necesita la variable{" "}
+                  <b>SERPAPI_KEY</b> cargada en Vercel.
+                </p>
+              )}
               {sourceDraft.kind === "auto" && (
                 <p className="text-xs text-gray-500 mt-1">
                   Detecta solo de dónde sacar los avisos: primero busca datos
@@ -254,6 +276,26 @@ export default function ExternalJobsAdmin({
                 </p>
               )}
             </div>
+
+            {sourceDraft.kind === "serpapi" && (
+              <div>
+                <label className="label">Traer avisos publicados en…</label>
+                <select
+                  className="input"
+                  value={sourceDraft.max_age_hours}
+                  onChange={(e) =>
+                    setSourceDraft((s) => ({
+                      ...s,
+                      max_age_hours: Number(e.target.value),
+                    }))
+                  }
+                >
+                  <option value={24}>Las últimas 24 horas</option>
+                  <option value={72}>Los últimos 3 días</option>
+                  <option value={168}>La última semana</option>
+                </select>
+              </div>
+            )}
 
             {sourceDraft.kind === "html" && (
               <div className="space-y-3 pt-1">

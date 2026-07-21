@@ -218,6 +218,7 @@ export async function fetchSource(
   source: JobSource
 ): Promise<{ jobs: ParsedJob[]; method: string }> {
   // Leer HTML de un sitio ajeno requiere que robots.txt no lo prohíba.
+  // Las fuentes serpapi consultan una API licenciada, no scrapean.
   if (source.kind === "html" || source.kind === "auto") {
     const allowed = await robotsAllows(source.url);
     if (!allowed) {
@@ -230,7 +231,11 @@ export async function fetchSource(
   let jobs: ParsedJob[];
   let method: string;
 
-  if (source.kind === "auto") {
+  if (source.kind === "serpapi") {
+    const { fetchSerpApi } = await import("./providers/serpapi");
+    jobs = await fetchSerpApi(source);
+    method = "Google Jobs (SerpApi)";
+  } else if (source.kind === "auto") {
     // Detección en cascada: JSON-LD → feed → sitemap → heurística.
     const { autoDiscover } = await import("./discover");
     const result = await autoDiscover(source);

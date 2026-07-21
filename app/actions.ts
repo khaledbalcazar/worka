@@ -1512,10 +1512,11 @@ export async function resolveModeration(
 export async function saveJobSource(input: {
   id?: string;
   name: string;
-  kind: "auto" | "feed" | "html";
+  kind: "auto" | "feed" | "html" | "serpapi";
   url: string;
   enabled: boolean;
   expire_days?: number;
+  max_age_hours?: number;
   sel_item?: string;
   sel_title?: string;
   sel_company?: string;
@@ -1530,11 +1531,14 @@ export async function saveJobSource(input: {
   if (!(await assertAdmin()))
     return { ok: false, error: "Solo el admin puede hacer esto." };
   if (!input.name.trim() || !input.url.trim())
-    return { ok: false, error: "Poné un nombre y una URL." };
-  try {
-    new URL(input.url);
-  } catch {
-    return { ok: false, error: "Esa URL no es válida." };
+    return { ok: false, error: "Poné un nombre y una URL (o búsqueda)." };
+  // En serpapi, `url` es el texto de búsqueda, no una URL real.
+  if (input.kind !== "serpapi") {
+    try {
+      new URL(input.url);
+    } catch {
+      return { ok: false, error: "Esa URL no es válida." };
+    }
   }
 
   const row = {
@@ -1543,6 +1547,7 @@ export async function saveJobSource(input: {
     url: input.url.trim(),
     enabled: input.enabled,
     expire_days: input.expire_days ?? 30,
+    max_age_hours: input.max_age_hours ?? 24,
     sel_item: input.sel_item?.trim() || null,
     sel_title: input.sel_title?.trim() || null,
     sel_company: input.sel_company?.trim() || null,
