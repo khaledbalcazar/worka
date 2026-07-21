@@ -48,6 +48,11 @@ const TEXTAREA_SETTINGS = new Set<string>([
   "landing_differentiators",
   "landing_steps",
   "landing_faqs",
+  "landing_categories",
+  "landing_stats",
+  "landing_testimonials",
+  "landing_activity",
+  "landing_company_features",
   "legal_terms",
   "legal_privacy",
 ]);
@@ -879,6 +884,26 @@ export default function AdminPanel({
               [
                 "landing_faqs",
                 "Portada: preguntas frecuentes (1 por línea: pregunta|respuesta)",
+              ],
+              [
+                "landing_categories",
+                "Portada: rubros (1 por línea: icono|nombre|rubro|color). Iconos: ventas, gastronomia, atencion, logistica, administracion, produccion, salud, construccion",
+              ],
+              [
+                "landing_stats",
+                "Portada: estadísticas de la franja (1 por línea: valor|etiqueta). Vacío = usa las vacantes activas reales",
+              ],
+              [
+                "landing_testimonials",
+                "Portada: historias reales (1 por línea: nombre|rol|testimonio|url de foto opcional). Vacío = la sección no se muestra",
+              ],
+              [
+                "landing_activity",
+                "Portada: feed EN VIVO (1 por línea: tipo|texto). Tipos: registro, vista, vacante, verificado, mensaje, destacado",
+              ],
+              [
+                "landing_company_features",
+                "Portada: beneficios para empresas (1 por línea)",
               ],
               ["legal_terms", "Términos y condiciones (texto legal)"],
               ["legal_privacy", "Política de privacidad (texto legal)"],

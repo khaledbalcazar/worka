@@ -39,7 +39,14 @@ function matchScore(job: JobWithCompany, candidate: Candidate): number {
 export default async function JobFeedPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; ciudad?: string; rubro?: string }>;
+  searchParams: Promise<{
+    q?: string;
+    ciudad?: string;
+    rubro?: string;
+    modalidad?: string;
+    contrato?: string;
+    primerEmpleo?: string;
+  }>;
 }) {
   const [jobs, candidate, appliedIds, savedIds, settings, params] =
     await Promise.all([
@@ -83,6 +90,9 @@ export default async function JobFeedPage({
       initialQuery={params.q ?? ""}
       initialCity={params.ciudad ?? ""}
       initialIndustry={params.rubro ?? ""}
+      initialModality={params.modalidad ?? ""}
+      initialContract={params.contrato ?? ""}
+      initialFirstJob={params.primerEmpleo === "1"}
     />
   );
 }

@@ -19,6 +19,9 @@ export default function JobFeed({
   initialQuery = "",
   initialCity = "",
   initialIndustry = "",
+  initialModality = "",
+  initialContract = "",
+  initialFirstJob = false,
 }: {
   jobs: JobWithCompany[];
   appliedJobIds: string[];
@@ -30,12 +33,16 @@ export default function JobFeed({
   initialQuery?: string;
   initialCity?: string;
   initialIndustry?: string;
+  initialModality?: string;
+  initialContract?: string;
+  initialFirstJob?: boolean;
 }) {
   const [query, setQuery] = useState(initialQuery);
   const [city, setCity] = useState(initialCity);
   const [industry, setIndustry] = useState(initialIndustry);
-  const [modality, setModality] = useState("");
-  const [firstJobOnly, setFirstJobOnly] = useState(false);
+  const [modality, setModality] = useState(initialModality);
+  const [contract, setContract] = useState(initialContract);
+  const [firstJobOnly, setFirstJobOnly] = useState(initialFirstJob);
   const [onlyVerified, setOnlyVerified] = useState(false);
   const [withSalary, setWithSalary] = useState(false);
 
@@ -50,6 +57,7 @@ export default function JobFeed({
       if (city && job.company.location_city !== city) return false;
       if (industry && job.industry !== industry) return false;
       if (modality && job.modality !== modality) return false;
+      if (contract && job.contract_type !== contract) return false;
       if (
         query &&
         !`${job.title} ${job.company.trade_name} ${job.industry}`
@@ -59,10 +67,10 @@ export default function JobFeed({
         return false;
       return true;
     });
-  }, [jobs, query, city, industry, modality, firstJobOnly, onlyVerified, withSalary]);
+  }, [jobs, query, city, industry, modality, contract, firstJobOnly, onlyVerified, withSalary]);
 
   const hasActiveFilter =
-    query || city || industry || modality || firstJobOnly || onlyVerified || withSalary;
+    query || city || industry || modality || contract || firstJobOnly || onlyVerified || withSalary;
   // "Para vos" solo se muestra sin filtros activos (es el punto de partida).
   const recommendedSet = new Set(hasActiveFilter ? [] : recommendedJobIds);
   const recommended = recommendedJobIds
@@ -75,7 +83,7 @@ export default function JobFeed({
     (j) => !j.featured && !recommendedSet.has(j.id)
   );
   const activeFilters =
-    [city, industry, modality].filter(Boolean).length +
+    [city, industry, modality, contract].filter(Boolean).length +
     Number(firstJobOnly) +
     Number(onlyVerified) +
     Number(withSalary);
@@ -122,6 +130,24 @@ export default function JobFeed({
               }`}
             >
               {m}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <label className="label">Tipo de contrato</label>
+        <div className="flex flex-wrap gap-1.5">
+          {["Tiempo completo", "Medio tiempo", "Por turnos"].map((c) => (
+            <button
+              key={c}
+              onClick={() => setContract(contract === c ? "" : c)}
+              className={`chip min-h-9 px-3 border ${
+                contract === c
+                  ? "bg-primary text-white border-primary"
+                  : "bg-white text-gray-600 border-gray-200"
+              }`}
+            >
+              {c}
             </button>
           ))}
         </div>

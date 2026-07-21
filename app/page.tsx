@@ -1,113 +1,176 @@
 import Link from "next/link";
+import {
+  ArrowRight,
+  Shield,
+  Bus,
+  CheckCircle,
+  Zap,
+  Star,
+  FileText,
+  TrendingUp,
+  MessageCircle,
+  Briefcase,
+  Building2,
+  Users,
+  Quote,
+  ShoppingBag,
+  UtensilsCrossed,
+  Headphones,
+  Truck,
+  ClipboardList,
+  Factory,
+  HeartPulse,
+  HardHat,
+} from "lucide-react";
 import Logo from "@/components/Logo";
 import { getActiveJobsCount, getSiteSettings } from "@/lib/data";
-import LandingSearch from "@/components/LandingSearch";
-
-const DIFFERENTIATORS = [
-  {
-    icon: "🚌",
-    title: "Sabés cómo llegar",
-    text: "Cada vacante presencial muestra las líneas de colectivo cercanas y se abre directo en Google Maps o Moovit.",
-  },
-  {
-    icon: "✅",
-    title: "Empresas con RUC verificado",
-    text: "Contrastamos el RUC de cada empresa contra el registro público antes de darle el sello de verificada.",
-  },
-  {
-    icon: "💬",
-    title: "Alertas por WhatsApp",
-    text: "Te avisamos cuando una empresa ve tu perfil y cuando aparecen vacantes de tu rubro en tu ciudad.",
-  },
-  {
-    icon: "⚡",
-    title: "Postulación en segundos",
-    text: "Sin formularios eternos: 1 clic y hasta 3 preguntas simples que la empresa realmente necesita saber.",
-  },
-  {
-    icon: "✨",
-    title: "Modo primer empleo",
-    text: "Un interruptor que filtra solo vacantes sin requisito de experiencia. Nadie más lo hace en Paraguay.",
-  },
-  {
-    icon: "📄",
-    title: "CV gratis hecho por Worka",
-    text: "¿No tenés CV? Respondé unas preguntas y te generamos uno profesional en PDF, sin costo.",
-  },
-  {
-    icon: "🛡️",
-    title: "Cero estafas laborales",
-    text: "Bloqueamos ofertas que piden dinero y la comunidad puede denunciar: con 3 denuncias, la vacante se oculta sola.",
-  },
-  {
-    icon: "📈",
-    title: "Seguimiento real",
-    text: "Ves cuándo la empresa miró tu perfil y por qué no avanzaste. Basta de postular al vacío.",
-  },
-];
-
-const CANDIDATE_STEPS = [
-  {
-    n: "1",
-    title: "Creá tu perfil en 2 minutos",
-    text: "Con tu WhatsApp y tu ciudad alcanza. Si tenés CV lo leemos nosotros; si no, te lo generamos gratis.",
-  },
-  {
-    n: "2",
-    title: "Postulate con 1 clic",
-    text: "Filtrá por ciudad, rubro o modo primer empleo. Cada tarjeta te dice el salario y cómo llegar en colectivo.",
-  },
-  {
-    n: "3",
-    title: "Recibí novedades por WhatsApp",
-    text: "Te avisamos cuando la empresa revisa tu perfil. Sin apps raras: todo llega a tu teléfono.",
-  },
-];
-
-const COMPANY_FEATURES = [
-  "Publicá vacantes ilimitadas, gratis",
-  "Plantillas para publicar en 2 minutos",
-  "Preguntas de filtro: leé solo CVs que aplican",
-  "Kanban de candidatos con contacto directo por WhatsApp",
-  "Sello de empresa verificada e insignias que generan confianza",
-  "Métricas de cada búsqueda: vistas, postulaciones y contactados",
-];
-
-const FAQS = [
-  {
-    q: "¿Worka es realmente gratis?",
-    a: "Sí. Para candidatos es gratis para siempre. Para empresas, publicar vacantes y gestionar candidatos tampoco tiene costo; más adelante habrá opciones pagas de visibilidad extra (vacantes destacadas), pero lo esencial no se cobra.",
-  },
-  {
-    q: "¿Cómo sé que una empresa es real?",
-    a: "Toda empresa registra su RUC y lo contrastamos con el registro público de la DNIT antes de darle el sello ✓ Verificada. Además, cada empresa tiene una página pública con su historial en Worka.",
-  },
-  {
-    q: "¿Qué pasa si veo una oferta sospechosa?",
-    a: "Denunciala desde el menú de la tarjeta. Con 3 denuncias válidas la vacante se oculta automáticamente y nuestro equipo la revisa. Y recordá: en Worka ninguna oferta puede pedirte dinero.",
-  },
-  {
-    q: "¿Necesito CV para postularme?",
-    a: "No. Podés crear tu perfil respondiendo unas preguntas y Worka te genera un CV profesional en PDF, gratis. Si ya tenés CV, lo subís y completamos tu perfil automáticamente.",
-  },
-  {
-    q: "¿Funciona bien con pocos datos?",
-    a: "Sí. Worka está pensada para celulares y conexiones inestables: pantallas livianas, sin videos pesados y con lo importante primero.",
-  },
-];
+import HomeNav from "@/components/home/HomeNav";
+import HeroSearch from "@/components/home/HeroSearch";
+import ActivityFeed, { type ActivityItem } from "@/components/home/ActivityFeed";
+import FaqAccordion from "@/components/home/FaqAccordion";
 
 export const revalidate = 300;
 
-// Secciones editables desde /admin con formato de una línea por ítem,
-// campos separados por "|". Si el ajuste está vacío, se usan los textos base.
+/* ── Contenido base (se puede sobrescribir desde /admin) ── */
+
+const ICON_MAP = {
+  bus: Bus,
+  check: CheckCircle,
+  whatsapp: MessageCircle,
+  rayo: Zap,
+  estrella: Star,
+  cv: FileText,
+  escudo: Shield,
+  grafico: TrendingUp,
+  ventas: ShoppingBag,
+  gastronomia: UtensilsCrossed,
+  atencion: Headphones,
+  logistica: Truck,
+  administracion: ClipboardList,
+  produccion: Factory,
+  salud: HeartPulse,
+  construccion: HardHat,
+} as const;
+type IconKey = keyof typeof ICON_MAP;
+
+const CATEGORIES: { icon: IconKey; color: string; name: string; rubro: string }[] = [
+  { icon: "ventas", color: "#2563EB", name: "Ventas y Comercio", rubro: "Ventas" },
+  { icon: "gastronomia", color: "#F59E0B", name: "Gastronomía", rubro: "Gastronomía" },
+  { icon: "atencion", color: "#10B981", name: "Atención al Cliente", rubro: "Atención al Cliente" },
+  { icon: "logistica", color: "#7C5CFC", name: "Logística y Transporte", rubro: "Logística" },
+  { icon: "administracion", color: "#2563EB", name: "Administración", rubro: "Administración" },
+  { icon: "produccion", color: "#F59E0B", name: "Producción / Operario", rubro: "Producción" },
+  { icon: "salud", color: "#E11D6C", name: "Salud", rubro: "Salud" },
+  { icon: "construccion", color: "#10B981", name: "Construcción", rubro: "Construcción" },
+];
+
+const DIFFERENTIATORS: { icon: IconKey; color: string; title: string; text: string }[] = [
+  { icon: "bus", color: "#2563EB", title: "Sabés cómo llegar", text: "Cada vacante presencial muestra las líneas de colectivo y abre en Google Maps o Moovit." },
+  { icon: "check", color: "#10B981", title: "RUC verificado", text: "Contrastamos el RUC de cada empresa contra el registro público de la DNIT." },
+  { icon: "whatsapp", color: "#10B981", title: "Alertas por WhatsApp", text: "Te avisamos cuando una empresa ve tu perfil o aparecen vacantes de tu rubro." },
+  { icon: "rayo", color: "#F59E0B", title: "Postulación en segundos", text: "1 clic y hasta 3 preguntas simples. Sin formularios eternos." },
+  { icon: "estrella", color: "#7C5CFC", title: "Modo primer empleo", text: "Filtrá solo vacantes sin requisito de experiencia. Nadie más lo hace en Paraguay." },
+  { icon: "cv", color: "#2563EB", title: "CV gratis", text: "Respondé unas preguntas y generamos un PDF profesional sin costo alguno." },
+  { icon: "escudo", color: "#10B981", title: "Cero estafas", text: "Bloqueamos ofertas que piden dinero. Con 3 denuncias la vacante se oculta sola." },
+  { icon: "grafico", color: "#F59E0B", title: "Seguimiento real", text: "Sabés cuándo la empresa revisó tu perfil y por qué no avanzaste." },
+];
+
+const STEPS = [
+  { title: "Creá tu perfil", text: "Con tu WhatsApp y tu ciudad alcanza. Si tenés CV lo leemos; si no, te lo generamos gratis en PDF." },
+  { title: "Postulate con 1 clic", text: "Filtrá por ciudad, rubro o «primer empleo». Cada tarjeta muestra el salario y cómo llegar." },
+  { title: "Recibí novedades", text: "Te avisamos por WhatsApp cuando la empresa revisa tu perfil. Sin apps raras." },
+];
+
+const COMPANY_FEATURES = [
+  "Vacantes ilimitadas, sin costo",
+  "Plantillas para publicar en 2 minutos",
+  "Preguntas de filtro personalizadas",
+  "Panel Kanban con WhatsApp directo",
+  "Sello de empresa verificada con RUC",
+  "Métricas por vacante: vistas, postulantes, contactados",
+];
+
+const FAQS = [
+  { q: "¿Worka es gratis?", a: "Sí, para candidatos es gratis para siempre. Para empresas, publicar y gestionar candidatos tampoco tiene costo. Habrá opciones de visibilidad extra pagas, pero lo esencial no se cobra." },
+  { q: "¿Cómo sé que la empresa es real?", a: "Toda empresa registra su RUC y lo contrastamos con la DNIT antes de darle el sello ✓ Verificada. Cada empresa tiene una página pública con su historial en Worka." },
+  { q: "¿Necesito CV para postularme?", a: "No. Podés crear tu perfil respondiendo preguntas y Worka genera un CV profesional en PDF sin costo. Si ya tenés CV, lo subís y completamos tu perfil automáticamente." },
+  { q: "¿Qué hago si veo una oferta sospechosa?", a: "Denunciala desde el menú de la tarjeta. Con 3 denuncias la vacante se oculta y nuestro equipo la revisa. En Worka ninguna oferta puede pedirte dinero." },
+  { q: "¿Funciona bien con poca señal?", a: "Sí. Worka está optimizada para celulares y conexiones inestables: pantallas livianas, sin videos pesados, con lo más importante primero." },
+];
+
+const ACTIVITY: ActivityItem[] = [
+  { kind: "registro", text: "Rocío se registró desde Encarnación" },
+  { kind: "vista", text: "Supermercado Stock revisó 3 perfiles" },
+  { kind: "vacante", text: "Nueva vacante: Cajero/a en Asunción" },
+  { kind: "verificado", text: "Frigorífico Concepción verificó su RUC" },
+  { kind: "mensaje", text: "José recibió un mensaje por WhatsApp" },
+  { kind: "destacado", text: "12 vacantes de primer empleo publicadas hoy" },
+  { kind: "vacante", text: "Nueva vacante: Repartidor/a en San Lorenzo" },
+  { kind: "vista", text: "Clínica Santa Rosa vio tu rubro" },
+  { kind: "registro", text: "Diego se registró desde Ciudad del Este" },
+];
+
+/* ── Utilidades ── */
+
+// Secciones editables desde /admin: una línea por ítem, campos separados por "|".
 function parseLines<T>(
   value: string | undefined,
   map: (parts: string[]) => T | null
 ): T[] {
   return (value ?? "")
     .split("\n")
-    .map((line) => map(line.split("|").map((p) => p.trim())))
+    .map((line) => (line.trim() ? map(line.split("|").map((p) => p.trim())) : null))
     .filter((x): x is T => x !== null);
+}
+
+function Eyebrow({ children, light }: { children: string; light?: boolean }) {
+  return (
+    <p
+      className={`text-[0.7rem] font-semibold tracking-[0.12em] uppercase mb-2.5 ${
+        light ? "text-blue-300" : "text-primary"
+      }`}
+    >
+      {children}
+    </p>
+  );
+}
+
+function SectionHead({
+  eyebrow,
+  title,
+  sub,
+  center,
+  light,
+}: {
+  eyebrow: string;
+  title: React.ReactNode;
+  sub?: string;
+  center?: boolean;
+  light?: boolean;
+}) {
+  return (
+    <div
+      className={`mb-10 ${center ? "text-center max-w-lg mx-auto" : "max-w-xl"}`}
+    >
+      <Eyebrow light={light}>{eyebrow}</Eyebrow>
+      <h2
+        className={`font-extrabold text-[clamp(1.6rem,4vw,2.6rem)] leading-[1.12] tracking-tight mb-3 ${
+          light ? "text-white" : "text-primary-dark"
+        }`}
+      >
+        {title}
+      </h2>
+      {sub && (
+        <p
+          className={`text-[0.95rem] leading-relaxed ${
+            light ? "text-white/60" : "text-gray-500"
+          }`}
+        >
+          {sub}
+        </p>
+      )}
+    </div>
+  );
 }
 
 export default async function LandingPage() {
@@ -116,368 +179,649 @@ export default async function LandingPage() {
     getSiteSettings(),
   ]);
 
+  // Cada bloque usa lo configurado en el admin; si está vacío, el texto base.
   const customDiffs = parseLines(settings.landing_differentiators, (p) =>
-    p.length >= 3 ? { icon: p[0], title: p[1], text: p[2] } : null
+    p.length >= 3
+      ? { icon: (p[0] as IconKey) in ICON_MAP ? (p[0] as IconKey) : ("estrella" as IconKey), color: "#2563EB", title: p[1], text: p[2] }
+      : null
   );
   const differentiators = customDiffs.length > 0 ? customDiffs : DIFFERENTIATORS;
 
   const customSteps = parseLines(settings.landing_steps, (p) =>
     p.length >= 2 ? { title: p[0], text: p[1] } : null
   );
-  const candidateSteps =
-    customSteps.length > 0
-      ? customSteps.map((s, i) => ({ n: `${i + 1}`, ...s }))
-      : CANDIDATE_STEPS;
+  const steps = customSteps.length > 0 ? customSteps : STEPS;
 
   const customFaqs = parseLines(settings.landing_faqs, (p) =>
     p.length >= 2 ? { q: p[0], a: p.slice(1).join(" | ") } : null
   );
   const faqs = customFaqs.length > 0 ? customFaqs : FAQS;
 
+  const customCats = parseLines(settings.landing_categories, (p) =>
+    p.length >= 2
+      ? {
+          icon: ((p[0] as IconKey) in ICON_MAP ? p[0] : "ventas") as IconKey,
+          color: p[3] || "#2563EB",
+          name: p[1],
+          rubro: p[2] || p[1],
+        }
+      : null
+  );
+  const categories = customCats.length > 0 ? customCats : CATEGORIES;
+
+  const customFeatures = parseLines(settings.landing_company_features, (p) =>
+    p[0] ? p[0] : null
+  );
+  const companyFeatures =
+    customFeatures.length > 0 ? customFeatures : COMPANY_FEATURES;
+
+  const customActivity = parseLines(settings.landing_activity, (p) =>
+    p.length >= 2 ? ({ kind: p[0], text: p[1] } as ActivityItem) : null
+  );
+  const activity = customActivity.length > 0 ? customActivity : ACTIVITY;
+
+  // Historias: se cargan desde el admin (nombre | rol | testimonio | foto).
+  const testimonials = parseLines(settings.landing_testimonials, (p) =>
+    p.length >= 3
+      ? { name: p[0], role: p[1], quote: p[2], photo: p[3] || "" }
+      : null
+  );
+
+  // Estadísticas: la de vacantes sale de la base; el resto se edita en el admin.
+  const customStats = parseLines(settings.landing_stats, (p) =>
+    p.length >= 2 ? { value: p[0], label: p[1] } : null
+  );
+  const stats =
+    customStats.length > 0
+      ? customStats
+      : [
+          { value: `${jobsCount}`, label: "vacantes activas" },
+          { value: "RUC ✓", label: "empresas verificadas" },
+          { value: "100%", label: "gratis, sin comisiones" },
+        ];
+  const statIcons = [Briefcase, Building2, Bus, Users];
+
   return (
-    <main className="flex-1 flex flex-col bg-white">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-100">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <Logo />
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-gray-600">
-            <Link href="/empleos" className="hover:text-primary">
-              Buscar empleo
-            </Link>
-            <a href="#como-funciona" className="hover:text-primary">
-              Cómo funciona
-            </a>
-            <Link href="/para-empresas" className="hover:text-primary">
-              Para empresas
-            </Link>
-            <Link href="/blog" className="hover:text-primary">
-              Blog
-            </Link>
-            <a href="#faq" className="hover:text-primary">
-              Preguntas
-            </a>
-          </nav>
-          <div className="flex items-center gap-2">
-            <Link href="/ingresar" className="btn-secondary">
-              Ingresar
-            </Link>
-            <Link href="/registro" className="btn-primary hidden sm:inline-flex">
-              Crear cuenta
-            </Link>
-          </div>
-        </div>
-      </header>
+    <main className="flex-1 bg-surface min-h-screen">
+      <HomeNav />
 
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-blue-50 via-white to-white">
-        <div className="max-w-6xl mx-auto px-4 pt-14 pb-10 sm:pt-24 sm:pb-16 text-center">
-          <p className="inline-flex items-center gap-2 chip bg-blue-100 text-primary-dark mb-4 animate-fade-up">
-            {settings.hero_badge}
-          </p>
-          <h1 className="text-4xl sm:text-6xl font-extrabold text-primary-dark leading-tight animate-fade-up">
-            {settings.hero_title}
-          </h1>
-          <p className="mt-4 text-gray-600 text-base sm:text-xl max-w-2xl mx-auto animate-fade-up">
-            {settings.hero_subtitle}
-          </p>
-
-          <LandingSearch jobsCount={jobsCount} />
-
-          <div className="mt-10 grid grid-cols-3 max-w-lg mx-auto divide-x divide-gray-200 animate-fade-up">
-            {[
-              { value: `${jobsCount}`, label: "vacantes activas" },
-              { value: "100%", label: "gratis, sin comisiones" },
-              { value: "RUC ✓", label: "empresas verificadas" },
-            ].map((s) => (
-              <div key={s.label} className="px-3">
-                <p className="text-2xl sm:text-3xl font-extrabold text-primary-dark">
-                  {s.value}
-                </p>
-                <p className="text-xs sm:text-sm text-gray-500">{s.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Cómo funciona */}
-      <section id="como-funciona" className="bg-surface">
-        <div className="max-w-6xl mx-auto px-4 py-14 sm:py-20">
-          <h2 className="text-2xl sm:text-4xl font-bold text-primary-dark text-center">
-            Conseguir trabajo, sin vueltas
-          </h2>
-          <p className="text-center text-gray-500 mt-2 max-w-xl mx-auto">
-            Tres pasos. Nada de formularios eternos ni CVs a ciegas.
-          </p>
-          <div className="grid sm:grid-cols-3 gap-4 sm:gap-6 mt-10">
-            {candidateSteps.map((step) => (
-              <div key={step.n} className="card p-6 relative">
-                <span className="absolute -top-4 left-6 w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center font-bold shadow-md">
-                  {step.n}
-                </span>
-                <h3 className="font-semibold text-primary-dark mt-3">
-                  {step.title}
-                </h3>
-                <p className="text-sm text-gray-500 mt-2 leading-relaxed">
-                  {step.text}
-                </p>
-              </div>
-            ))}
-          </div>
-          <div className="text-center mt-8">
-            <Link href="/onboarding" className="btn-primary text-base px-8 py-3">
-              Crear mi perfil gratis
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Diferenciadores */}
-      <section className="max-w-6xl mx-auto px-4 py-14 sm:py-20 w-full">
-        <h2 className="text-2xl sm:text-4xl font-bold text-primary-dark text-center">
-          Lo que solo vas a encontrar en Worka
-        </h2>
-        <p className="text-center text-gray-500 mt-2 max-w-xl mx-auto">
-          No somos un portal de empleo más: cada detalle está pensado para cómo
-          se busca trabajo en Paraguay.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-10">
-          {differentiators.map((f) => (
-            <div
-              key={f.title}
-              className="card p-5 hover:shadow-md hover:-translate-y-0.5 transition-all"
-            >
-              <p className="text-3xl" aria-hidden>
-                {f.icon}
-              </p>
-              <h3 className="font-semibold text-primary-dark mt-3">{f.title}</h3>
-              <p className="text-sm text-gray-500 mt-1.5 leading-relaxed">
-                {f.text}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Para empresas */}
-      <section id="empresas" className="bg-primary-dark text-white">
-        <div className="max-w-6xl mx-auto px-4 py-14 sm:py-20 grid lg:grid-cols-2 gap-10 items-center">
+      {/* ── HERO ── */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#EEF1FC] to-surface">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-1/4 -right-[10%] w-[600px] h-[600px] rounded-full"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(37,99,235,0.10) 0%, transparent 70%)",
+          }}
+        />
+        <div className="relative max-w-6xl mx-auto grid lg:grid-cols-2 gap-10 lg:gap-16 items-center px-5 pt-[clamp(36px,7vw,64px)] pb-[clamp(44px,8vw,72px)]">
           <div>
-            <p className="chip bg-white/10 text-blue-200 mb-4">Para empresas</p>
-            <h2 className="text-2xl sm:text-4xl font-bold leading-tight">
-              Encontrá talento local, verificado y sin pagar un guaraní
-            </h2>
-            <p className="text-blue-200 mt-3 leading-relaxed">
-              Desde la pyme del barrio hasta la cadena nacional: publicá en
-              minutos, filtrá con preguntas inteligentes y contactá por WhatsApp
-              al candidato correcto.
+            <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/[0.06] px-3.5 py-1.5 mb-5">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+              <span className="text-[0.7rem] text-primary tracking-wide">
+                {settings.hero_badge ||
+                  "🇵🇾 Plataforma de empleo · 100% gratuita"}
+              </span>
+            </div>
+
+            <h1 className="font-extrabold text-[clamp(2.1rem,6vw,4rem)] leading-[1.05] tracking-[-0.025em] text-primary-dark mb-4">
+              Tu próximo trabajo
+              <br />
+              <span className="text-primary">está en Worka.</span>
+            </h1>
+
+            <p className="text-[clamp(0.95rem,2vw,1.1rem)] text-gray-500 max-w-md leading-relaxed mb-7">
+              {settings.hero_subtitle ||
+                "La única plataforma diseñada para Paraguay. Sin estafas, sin comisiones, con líneas de colectivo incluidas."}
             </p>
-            <ul className="mt-6 space-y-2.5">
-              {COMPANY_FEATURES.map((f) => (
-                <li key={f} className="flex items-start gap-2.5 text-sm">
-                  <span className="text-emerald-400 mt-0.5">✓</span>
-                  <span className="text-blue-100">{f}</span>
+
+            <HeroSearch />
+
+            <div className="flex items-center gap-3 mt-6">
+              <div className="flex items-center">
+                {["A", "R", "J", "M"].map((ini, i) => (
+                  <div
+                    key={ini}
+                    className="w-9 h-9 rounded-full border-2 border-surface bg-primary/15 text-primary flex items-center justify-center text-xs font-bold"
+                    style={{ marginLeft: i === 0 ? 0 : -12 }}
+                  >
+                    {ini}
+                  </div>
+                ))}
+              </div>
+              <span className="text-[0.82rem] text-gray-500 leading-snug">
+                Sumate a los paraguayos que
+                <br />
+                ya buscan trabajo en Worka.
+              </span>
+            </div>
+          </div>
+
+          {/* Tarjetas flotantes (desktop) */}
+          <div className="relative hidden lg:block">
+            <div className="rounded-3xl bg-gradient-to-br from-primary to-primary-dark aspect-[4/3.4] shadow-[0_30px_70px_rgba(27,37,89,0.18)] flex items-center justify-center">
+              <span className="text-white/95 text-7xl font-extrabold tracking-tight">
+                w.
+              </span>
+            </div>
+            <div className="absolute top-6 -left-7 bg-white rounded-2xl px-4 py-3 shadow-[0_14px_40px_rgba(27,37,89,0.16)] flex items-center gap-2.5">
+              <div className="w-8.5 h-8.5 rounded-lg bg-success/15 flex items-center justify-center">
+                <CheckCircle size={17} className="text-success" />
+              </div>
+              <div>
+                <p className="font-bold text-[0.8rem] text-primary-dark">
+                  Empresa verificada
+                </p>
+                <p className="text-[0.62rem] text-gray-400 mt-0.5">
+                  RUC contrastado ✓ DNIT
+                </p>
+              </div>
+            </div>
+            <div className="absolute bottom-6 -right-6 bg-primary-dark rounded-2xl px-4 py-3 shadow-[0_14px_40px_rgba(0,0,0,0.25)] flex items-center gap-2.5">
+              <div className="w-8.5 h-8.5 rounded-lg bg-primary/40 flex items-center justify-center">
+                <MessageCircle size={17} className="text-blue-200" />
+              </div>
+              <div>
+                <p className="font-bold text-[0.8rem] text-white">
+                  ¡Te vieron el perfil!
+                </p>
+                <p className="text-[0.62rem] text-white/60 mt-0.5">
+                  Aviso por WhatsApp
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Franja de estadísticas */}
+        <div className="border-t border-primary-dark/10 bg-white/50">
+          <div className="max-w-6xl mx-auto grid grid-cols-2 md:flex md:flex-wrap md:justify-center gap-x-8 gap-y-5 md:gap-x-12 p-5">
+            {stats.map((s, i) => {
+              const Icon = statIcons[i % statIcons.length];
+              return (
+                <div key={s.label} className="flex items-center gap-2.5">
+                  <Icon size={18} className="text-primary/90 shrink-0" />
+                  <div>
+                    <p className="font-extrabold text-[1.15rem] text-primary-dark leading-none">
+                      {s.value}
+                    </p>
+                    <p className="text-[0.64rem] text-gray-500 mt-1 tracking-wide">
+                      {s.label}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── NOVEDADES ── */}
+      <section
+        id="novedades"
+        className="max-w-6xl mx-auto px-5 py-[clamp(56px,9vw,80px)]"
+      >
+        <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+          <div>
+            <SectionHead
+              eyebrow="Lo que pasa ahora"
+              title={
+                <>
+                  Worka está <span className="text-primary">vivo</span> las 24
+                  horas.
+                </>
+              }
+              sub="Empresas revisando perfiles, gente consiguiendo trabajo y vacantes nuevas cada minuto."
+            />
+            <Link
+              href="/registro"
+              className="inline-flex items-center gap-2 bg-primary text-white font-bold text-sm px-6 py-3.5 rounded-xl hover:bg-primary-hover transition-colors"
+            >
+              Unirme ahora <ArrowRight size={16} />
+            </Link>
+          </div>
+          <ActivityFeed pool={activity} />
+        </div>
+      </section>
+
+      {/* ── RUBROS ── */}
+      <section
+        id="rubros"
+        className="bg-white border-y border-primary-dark/10 py-[clamp(56px,9vw,80px)]"
+      >
+        <div className="max-w-6xl mx-auto px-5">
+          <SectionHead
+            center
+            eyebrow="Explorá por rubro"
+            title="¿En qué querés trabajar?"
+            sub="Elegí tu rubro y encontrá vacantes cerca tuyo, con salario y cómo llegar."
+          />
+          <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr))]">
+            {categories.map((c) => {
+              const Icon = ICON_MAP[c.icon] ?? ShoppingBag;
+              return (
+                <Link
+                  key={c.name}
+                  href={`/empleos?rubro=${encodeURIComponent(c.rubro)}`}
+                  className="group flex items-center gap-4 bg-surface border border-primary-dark/10 rounded-2xl px-4.5 py-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_12px_30px_rgba(27,37,89,0.08)]"
+                >
+                  <div
+                    className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: `${c.color}18` }}
+                  >
+                    <Icon size={20} style={{ color: c.color }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-[0.9rem] text-primary-dark">
+                      {c.name}
+                    </p>
+                    <p className="text-[0.68rem] text-gray-500 mt-0.5">
+                      Ver vacantes
+                    </p>
+                  </div>
+                  <ArrowRight
+                    size={16}
+                    className="text-gray-400 shrink-0 transition-transform group-hover:translate-x-1"
+                  />
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CÓMO FUNCIONA ── */}
+      <section id="como-funciona" className="py-[clamp(56px,9vw,80px)]">
+        <div className="max-w-6xl mx-auto px-5">
+          <SectionHead
+            eyebrow="Para candidatos"
+            title={
+              <>
+                Conseguí trabajo,
+                <br />
+                sin vueltas.
+              </>
+            }
+            sub="Tres pasos. Nada de formularios eternos ni CVs enviados al vacío."
+          />
+          <div className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))]">
+            {steps.map((s, i) => (
+              <div
+                key={s.title}
+                className="relative bg-white rounded-3xl border border-primary-dark/10 px-6 py-8"
+              >
+                <div className="absolute -top-3.5 left-6 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-extrabold text-[0.8rem] shadow-[0_4px_14px_rgba(37,99,235,0.35)]">
+                  {i + 1}
+                </div>
+                <h3 className="font-bold text-base text-primary-dark mt-4 mb-2.5">
+                  {s.title}
+                </h3>
+                <p className="text-[0.85rem] text-gray-500 leading-relaxed">
+                  {s.text}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-10">
+            <Link
+              href="/onboarding"
+              className="inline-flex items-center gap-2 bg-primary text-white font-bold text-sm px-7 py-3.5 rounded-xl hover:bg-primary-hover transition-colors"
+            >
+              Crear mi perfil gratis <ArrowRight size={16} />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── DIFERENCIADORES ── */}
+      <section className="bg-white border-t border-primary-dark/10 py-[clamp(56px,9vw,80px)]">
+        <div className="max-w-6xl mx-auto px-5">
+          <SectionHead
+            center
+            eyebrow="Lo que nos hace distintos"
+            title="Solo en Worka."
+            sub="Cada detalle está pensado para cómo se busca trabajo en Paraguay."
+          />
+          <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr))]">
+            {differentiators.map((d) => {
+              const Icon = ICON_MAP[d.icon] ?? Star;
+              return (
+                <div
+                  key={d.title}
+                  className="bg-surface border border-primary-dark/10 rounded-2xl px-5 py-5.5 transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(27,37,89,0.08)]"
+                >
+                  <div
+                    className="w-10 h-10 rounded-xl flex items-center justify-center mb-3.5"
+                    style={{ background: `${d.color}18` }}
+                  >
+                    <Icon size={18} style={{ color: d.color }} />
+                  </div>
+                  <h3 className="font-bold text-[0.9rem] text-primary-dark mb-2">
+                    {d.title}
+                  </h3>
+                  <p className="text-[0.78rem] text-gray-500 leading-relaxed">
+                    {d.text}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── PARA EMPRESAS ── */}
+      <section
+        id="empresas"
+        className="relative overflow-hidden bg-primary-dark py-[clamp(56px,9vw,80px)]"
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-1/5 -right-[8%] w-[500px] h-[500px] rounded-full"
+          style={{
+            background:
+              "radial-gradient(circle, rgba(37,99,235,0.25) 0%, transparent 70%)",
+          }}
+        />
+        <div className="relative max-w-6xl mx-auto px-5 grid gap-12 items-center [grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))]">
+          <div>
+            <SectionHead
+              light
+              eyebrow="Para empresas"
+              title={
+                <>
+                  Talento local,
+                  <br />
+                  verificado y sin pagar un guaraní.
+                </>
+              }
+              sub="Desde la pyme del barrio hasta la cadena nacional. Publicá en minutos y contactá al candidato ideal por WhatsApp."
+            />
+            <ul className="flex flex-col gap-3 mb-8">
+              {companyFeatures.map((f) => (
+                <li
+                  key={f}
+                  className="flex items-start gap-3 text-[0.875rem] text-white/85"
+                >
+                  <div className="w-5 h-5 rounded-full bg-primary/40 flex items-center justify-center shrink-0 mt-0.5">
+                    <CheckCircle size={11} className="text-blue-200" />
+                  </div>
+                  {f}
                 </li>
               ))}
             </ul>
-            <div className="flex flex-wrap gap-3 mt-8">
+            <div className="flex flex-wrap gap-3">
               <Link
                 href="/empresa/registro"
-                className="btn bg-white text-primary-dark hover:bg-blue-50"
+                className="inline-flex items-center gap-2 bg-white text-primary-dark font-bold text-[0.875rem] px-6 py-3 rounded-xl hover:bg-white/90 transition-colors"
               >
-                Registrar mi empresa
+                Registrar mi empresa <ArrowRight size={14} />
               </Link>
               <Link
                 href="/para-empresas"
-                className="btn border border-white/30 text-white hover:bg-white/10"
+                className="inline-flex items-center gap-2 text-white font-semibold text-[0.875rem] px-6 py-3 rounded-xl border border-white/25 hover:bg-white/10 transition-colors"
               >
-                Conocé Worka para empresas →
+                Conocé Worka para empresas
               </Link>
             </div>
           </div>
 
-          {/* Mini mockup del panel */}
-          <div className="card bg-white text-foreground p-5 shadow-2xl rotate-1 hover:rotate-0 transition-transform">
-            <div className="flex items-center justify-between">
-              <p className="font-semibold text-primary-dark text-sm">
-                Cajero/a para sucursal centro
+          {/* Panel simulado */}
+          <div className="rounded-3xl overflow-hidden bg-white shadow-[0_24px_60px_rgba(0,0,0,0.28)]">
+            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
+              <div className="min-w-0">
+                <p className="text-[0.64rem] text-gray-400 tracking-widest uppercase mb-1">
+                  Vacante activa
+                </p>
+                <p className="font-bold text-[0.92rem] text-primary-dark">
+                  Cajero/a — Sucursal Centro
+                </p>
+              </div>
+              <span className="text-[0.62rem] bg-success/15 text-emerald-700 px-2.5 py-1 rounded-full tracking-wide shrink-0">
+                ACTIVA
+              </span>
+            </div>
+            <div className="p-5">
+              <div className="grid grid-cols-3 gap-2.5 mb-5">
+                {[
+                  { v: "342", l: "Vistas" },
+                  { v: "23", l: "Postulantes" },
+                  { v: "5", l: "Contactados" },
+                ].map((s) => (
+                  <div
+                    key={s.l}
+                    className="bg-surface rounded-xl py-3.5 px-2 text-center"
+                  >
+                    <p className="font-extrabold text-[1.25rem] text-primary-dark">
+                      {s.v}
+                    </p>
+                    <p className="text-[0.62rem] text-gray-500 mt-1">{s.l}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[0.64rem] text-gray-400 tracking-widest uppercase mb-2.5">
+                Candidatos
               </p>
-              <span className="chip bg-emerald-50 text-emerald-700">Activo</span>
+              <div className="flex flex-col gap-2">
+                {[
+                  { name: "Carlos Benítez", score: "2/2 ✓", c: "#10B981" },
+                  { name: "Lucía Martínez", score: "1/2 ✓", c: "#F59E0B" },
+                  { name: "Miguel Rodríguez", score: "2/2 ✓", c: "#10B981" },
+                ].map((c) => (
+                  <div
+                    key={c.name}
+                    className="flex items-center justify-between gap-2 bg-surface rounded-xl px-3 py-2.5"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-7.5 h-7.5 rounded-full bg-primary text-white flex items-center justify-center font-extrabold text-[0.72rem] shrink-0">
+                        {c.name[0]}
+                      </div>
+                      <span className="font-semibold text-[0.82rem] text-primary-dark truncate">
+                        {c.name}
+                      </span>
+                    </div>
+                    <div className="flex gap-1.5 shrink-0">
+                      <span
+                        className="text-[0.62rem] px-2 py-0.5 rounded-full"
+                        style={{ background: `${c.c}18`, color: c.c }}
+                      >
+                        {c.score}
+                      </span>
+                      <span className="text-[0.62rem] bg-success/12 text-emerald-700 px-2 py-0.5 rounded-full">
+                        💬
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-3 gap-2 mt-4 text-center">
-              {[
-                { v: "342", l: "vistas" },
-                { v: "23", l: "postulantes" },
-                { v: "5", l: "contactados" },
-              ].map((s) => (
-                <div key={s.l} className="bg-surface rounded-xl py-3">
-                  <p className="font-bold text-primary-dark">{s.v}</p>
-                  <p className="text-[11px] text-gray-500">{s.l}</p>
-                </div>
-              ))}
-            </div>
-            <div className="mt-4 space-y-2">
-              {[
-                { name: "Carlos B.", tag: "2/2 ✓", tagClass: "bg-emerald-50 text-emerald-700" },
-                { name: "Lucía M.", tag: "1/2 ✓", tagClass: "bg-amber-50 text-amber-700" },
-              ].map((c) => (
+          </div>
+        </div>
+      </section>
+
+      {/* ── HISTORIAS (se cargan desde el admin) ── */}
+      {testimonials.length > 0 && (
+        <section id="historias" className="py-[clamp(56px,9vw,80px)]">
+          <div className="max-w-6xl mx-auto px-5">
+            <SectionHead
+              center
+              eyebrow="Historias reales"
+              title="Ya encontraron trabajo."
+              sub="Paraguayos que consiguieron empleo en Worka."
+            />
+            <div className="grid gap-4.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))]">
+              {testimonials.map((t) => (
                 <div
-                  key={c.name}
-                  className="flex items-center justify-between bg-surface rounded-xl px-3 py-2.5"
+                  key={t.name}
+                  className="bg-white border border-primary-dark/10 rounded-3xl px-6 py-6 flex flex-col gap-4"
                 >
-                  <p className="text-sm font-medium text-gray-700">{c.name}</p>
-                  <div className="flex items-center gap-2">
-                    <span className={`chip ${c.tagClass}`}>{c.tag}</span>
-                    <span className="chip bg-emerald-500 text-white">
-                      💬 WhatsApp
-                    </span>
+                  <Quote size={24} className="text-primary/35" />
+                  <p className="text-[0.9rem] text-primary-dark leading-relaxed flex-1">
+                    “{t.quote}”
+                  </p>
+                  <div className="flex items-center gap-3 pt-1.5 border-t border-gray-100">
+                    {t.photo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={t.photo}
+                        alt={t.name}
+                        className="w-11 h-11 rounded-full object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="w-11 h-11 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold shrink-0">
+                        {t.name[0]}
+                      </div>
+                    )}
+                    <div>
+                      <p className="font-bold text-[0.85rem] text-primary-dark">
+                        {t.name}
+                      </p>
+                      <p className="text-[0.68rem] text-gray-500 mt-0.5">
+                        {t.role}
+                      </p>
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-            <p className="text-[11px] text-gray-400 mt-3 text-center">
-              Así se ve tu panel de candidatos en Worka
-            </p>
+          </div>
+        </section>
+      )}
+
+      {/* ── CONFIANZA ── */}
+      <section className="bg-white border-t border-primary-dark/10 px-5 py-[clamp(44px,8vw,56px)]">
+        <div className="max-w-4xl mx-auto">
+          <div className="rounded-3xl border border-primary-dark/10 bg-gradient-to-br from-primary/8 to-success/8 p-[clamp(24px,5vw,36px)] flex flex-wrap items-center gap-5">
+            <div className="w-14 h-14 rounded-2xl bg-primary/15 flex items-center justify-center shrink-0">
+              <Shield size={26} className="text-primary" />
+            </div>
+            <div className="flex-1 min-w-[220px]">
+              <h3 className="font-extrabold text-[1.2rem] text-primary-dark mb-2">
+                El portal donde no te estafan.
+              </h3>
+              <p className="text-[0.875rem] text-gray-500 leading-relaxed">
+                Bloqueamos automáticamente ofertas que piden dinero, verificamos
+                el RUC y la comunidad puede denunciar vacantes sospechosas.{" "}
+                <span className="text-primary-dark font-semibold">
+                  Nunca pagues para conseguir un trabajo.
+                </span>
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Confianza / anti-estafa */}
-      <section className="max-w-6xl mx-auto px-4 py-14 sm:py-20 w-full">
-        <div className="card p-6 sm:p-10 bg-gradient-to-r from-blue-50 to-emerald-50 border-blue-100 grid sm:grid-cols-[auto_1fr] gap-6 items-center">
-          <p className="text-6xl text-center" aria-hidden>
-            🛡️
-          </p>
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-primary-dark">
-              El portal donde no te estafan
-            </h2>
-            <p className="text-gray-600 mt-2 leading-relaxed text-sm sm:text-base">
-              Bloqueamos automáticamente las ofertas que piden dinero o
-              &ldquo;inversión inicial&rdquo;, verificamos el RUC de cada empresa
-              y la comunidad puede denunciar cualquier vacante sospechosa.
-              Nuestra regla es simple:{" "}
-              <span className="font-semibold text-primary-dark">
-                nunca pagues para conseguir un trabajo.
-              </span>
-            </p>
-          </div>
+      {/* ── FAQ ── */}
+      <section
+        id="faq"
+        className="border-t border-primary-dark/10 py-[clamp(56px,9vw,80px)]"
+      >
+        <div className="max-w-3xl mx-auto px-5">
+          <SectionHead center eyebrow="Soporte" title="Preguntas frecuentes" />
+          <FaqAccordion faqs={faqs} />
         </div>
       </section>
 
-      {/* FAQ */}
-      <section id="faq" className="bg-surface">
-        <div className="max-w-3xl mx-auto px-4 py-14 sm:py-20">
-          <h2 className="text-2xl sm:text-4xl font-bold text-primary-dark text-center">
-            Preguntas frecuentes
+      {/* ── CTA FINAL ── */}
+      <section className="relative overflow-hidden bg-white border-t border-primary-dark/10 px-5 py-[clamp(64px,10vw,96px)] text-center">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] rounded-full"
+          style={{
+            background:
+              "radial-gradient(ellipse, rgba(37,99,235,0.08) 0%, transparent 70%)",
+          }}
+        />
+        <div className="relative max-w-xl mx-auto">
+          <Eyebrow>Tu próximo paso</Eyebrow>
+          <h2 className="font-extrabold text-[clamp(1.9rem,6vw,3.4rem)] leading-[1.08] tracking-tight text-primary-dark mb-4">
+            Las mejores oportunidades
+            <br />
+            <span className="text-primary">te están esperando.</span>
           </h2>
-          <div className="mt-8 space-y-3">
-            {faqs.map((f) => (
-              <details key={f.q} className="card px-5 py-4 group">
-                <summary className="font-medium text-primary-dark cursor-pointer list-none flex items-center justify-between gap-3 min-h-8">
-                  {f.q}
-                  <span className="text-gray-400 group-open:rotate-45 transition-transform text-xl leading-none">
-                    +
-                  </span>
-                </summary>
-                <p className="text-sm text-gray-600 mt-3 leading-relaxed">
-                  {f.a}
-                </p>
-              </details>
-            ))}
+          <p className="text-[0.95rem] text-gray-500 mb-9">
+            Registrate gratis. En 2 minutos ya podés postularte.
+          </p>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <Link
+              href="/onboarding"
+              className="inline-flex items-center gap-2 bg-primary text-white font-extrabold text-[0.95rem] px-8 py-4 rounded-xl hover:bg-primary-hover transition-colors"
+            >
+              Buscar empleo <ArrowRight size={16} />
+            </Link>
+            <Link
+              href="/empresa/registro"
+              className="inline-flex items-center gap-2 text-primary-dark font-semibold text-[0.95rem] px-8 py-4 rounded-xl border border-primary-dark/10 hover:bg-surface transition-colors"
+            >
+              Publicar una vacante
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* CTA final */}
-      <section className="max-w-6xl mx-auto px-4 py-14 sm:py-20 w-full text-center">
-        <h2 className="text-2xl sm:text-4xl font-bold text-primary-dark">
-          Tu próximo paso te está esperando
-        </h2>
-        <p className="text-gray-500 mt-2">
-          Sumate gratis. En 2 minutos ya podés postularte.
-        </p>
-        <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-          <Link href="/onboarding" className="btn-primary text-base px-8 py-3">
-            Buscar empleo
-          </Link>
-          <Link
-            href="/empresa/registro"
-            className="btn-secondary text-base px-8 py-3"
-          >
-            Publicar una vacante
-          </Link>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-primary-dark text-blue-200 mt-auto">
-        <div className="max-w-6xl mx-auto px-4 py-10 grid sm:grid-cols-4 gap-8 text-sm">
-          <div className="sm:col-span-2">
+      {/* ── FOOTER ── */}
+      <footer className="bg-primary-dark">
+        <div className="max-w-6xl mx-auto px-5 py-12 grid gap-9 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
+          <div className="col-span-2">
             <Logo light />
-            <p className="mt-3 text-blue-300 max-w-xs leading-relaxed">
-              La plataforma de empleo 100% gratuita de Paraguay. Tu próximo
-              paso.
+            <p className="text-[0.82rem] text-white/50 leading-relaxed mt-3.5 max-w-[240px]">
+              La plataforma de empleo 100% gratuita de Paraguay. Tu próximo paso.
             </p>
           </div>
-          <div>
-            <p className="font-semibold text-white mb-3">Candidatos</p>
-            <ul className="space-y-2">
-              <li>
-                <Link href="/empleos" className="hover:text-white">
-                  Buscar empleo
-                </Link>
-              </li>
-              <li>
-                <Link href="/onboarding" className="hover:text-white">
-                  Crear mi perfil
-                </Link>
-              </li>
-              <li>
-                <Link href="/postulaciones" className="hover:text-white">
-                  Mis postulaciones
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog" className="hover:text-white">
-                  Blog
-                </Link>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <p className="font-semibold text-white mb-3">Empresas</p>
-            <ul className="space-y-2">
-              <li>
-                <Link href="/empresa/registro" className="hover:text-white">
-                  Registrar empresa
-                </Link>
-              </li>
-              <li>
-                <Link href="/empresa" className="hover:text-white">
-                  Panel de empresa
-                </Link>
-              </li>
-              <li>
-                <Link href="/empresa/vacantes/nueva" className="hover:text-white">
-                  Publicar vacante
-                </Link>
-              </li>
-            </ul>
-          </div>
+          {[
+            {
+              title: "Candidatos",
+              links: [
+                ["Buscar empleo", "/empleos"],
+                ["Crear mi perfil", "/onboarding"],
+                ["Mis postulaciones", "/postulaciones"],
+                ["Blog", "/blog"],
+              ],
+            },
+            {
+              title: "Empresas",
+              links: [
+                ["Registrar empresa", "/empresa/registro"],
+                ["Para empresas", "/para-empresas"],
+                ["Publicar vacante", "/empresa/vacantes/nueva"],
+              ],
+            },
+            {
+              title: "Legal",
+              links: [
+                ["Términos", "/terminos"],
+                ["Privacidad", "/privacidad"],
+              ],
+            },
+          ].map((col) => (
+            <div key={col.title}>
+              <p className="text-[0.67rem] text-white/40 tracking-widest uppercase mb-4">
+                {col.title}
+              </p>
+              <ul className="flex flex-col gap-3">
+                {col.links.map(([label, href]) => (
+                  <li key={label}>
+                    <Link
+                      href={href}
+                      className="text-[0.82rem] text-white/55 hover:text-white transition-colors"
+                    >
+                      {label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
         <div className="border-t border-white/10">
-          <div className="max-w-6xl mx-auto px-4 py-4 text-xs text-blue-300 flex flex-col sm:flex-row justify-between gap-2">
-            <span>Worka © 2026 · Hecho en Paraguay 🇵🇾</span>
-            <div className="flex gap-4">
-              <Link href="/terminos" className="hover:text-white">
-                Términos
-              </Link>
-              <Link href="/privacidad" className="hover:text-white">
-                Privacidad
-              </Link>
-              <span>Nunca pagues para conseguir un trabajo.</span>
-            </div>
+          <div className="max-w-6xl mx-auto px-5 py-4.5 flex flex-wrap justify-between gap-2">
+            <span className="text-[0.67rem] text-white/40">
+              {settings.site_name || "Worka"} © {new Date().getFullYear()} ·
+              Hecho en Paraguay 🇵🇾
+            </span>
+            <span className="text-[0.67rem] text-white/40">
+              Nunca pagues para conseguir un trabajo.
+            </span>
           </div>
         </div>
       </footer>
