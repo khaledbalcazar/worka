@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 import {
   getActiveJobs,
   getAllCompanies,
+  getExternalJobs,
   getPublishedPosts,
 } from "@/lib/data";
 import { SITE_URL } from "@/lib/supabase/config";
@@ -45,6 +46,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         lastModified: new Date(job.created_at),
         changeFrequency: "daily",
         priority: 0.9,
+      });
+    }
+
+    // Vacantes externas activas: también llevan JSON-LD de JobPosting, así
+    // que Google for Jobs las puede indexar y traen tráfico a la plataforma.
+    const external = await getExternalJobs();
+    for (const job of external) {
+      entries.push({
+        url: `${base}/empleo/externo/${job.id}`,
+        lastModified: new Date(job.imported_at),
+        changeFrequency: "daily",
+        priority: 0.6,
       });
     }
 
