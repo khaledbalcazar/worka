@@ -1661,7 +1661,10 @@ export async function runImport(
     .from("external_jobs")
     .upsert(rows, { onConflict: "source_id,external_key" });
   if (error)
-    return { ok: false, error: "No pudimos guardar las vacantes importadas." };
+    return {
+      ok: false,
+      error: `No pudimos guardar las vacantes importadas: ${error.message} (¿corriste migration-014.sql?)`,
+    };
 
   await supabase
     .from("job_sources")
