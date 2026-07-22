@@ -89,6 +89,32 @@ export default async function ExternalJobPage({
       )}&body=${encodeURIComponent(mailBody)}`
     : null;
 
+  // Tipo de empleo para Google (mapeo desde el contrato; por defecto jornada
+  // completa, que es lo más común y lo que Google recomienda tener siempre).
+  const employmentTypeMap: Record<string, string> = {
+    "Tiempo completo": "FULL_TIME",
+    "Medio tiempo": "PART_TIME",
+    "Por turnos": "PER_DIEM",
+    Pasantía: "INTERN",
+    Temporal: "TEMPORARY",
+    "Por contrato": "CONTRACTOR",
+  };
+  const employmentType =
+    employmentTypeMap[job.contract_type ?? ""] ?? "FULL_TIME";
+
+  // validThrough siempre presente: si no hay vencimiento guardado, damos 30
+  // días desde que se importó (Google penaliza avisos sin fecha de cierre).
+  const validThrough =
+    job.expires_at ??
+    new Date(
+      new Date(job.imported_at).getTime() + 30 * 24 * 60 * 60 * 1000
+    ).toISOString();
+
+  // Salario para el marcado: sacamos los números del texto ("2.800.000 Gs").
+  const salaryNums = (job.salary_range?.match(/[\d.]+/g) ?? [])
+    .map((s) => parseInt(s.replace(/\./g, ""), 10))
+    .filter((n) => !isNaN(n) && n > 1000);
+
   // Datos estructurados para Google for Jobs. Solo marcamos lo que está
   // visible en la página: la descripción es pública y únicamente el
   // contacto queda detrás del registro, así no violamos sus políticas.
@@ -98,7 +124,8 @@ export default async function ExternalJobPage({
     title: job.title,
     description: `<p>${(job.description || job.title).replace(/\n/g, "<br/>")}</p>`,
     datePosted: job.imported_at,
-    ...(job.expires_at ? { validThrough: job.expires_at } : {}),
+    validThrough,
+    employmentType,
     identifier: {
       "@type": "PropertyValue",
       name: job.company_name,
@@ -112,12 +139,29 @@ export default async function ExternalJobPage({
       ...(job.company_logo_url ? { logo: job.company_logo_url } : {}),
       ...(job.source_url ? { sameAs: job.source_url } : {}),
     },
+    ...(salaryNums.length > 0
+      ? {
+          baseSalary: {
+            "@type": "MonetaryAmount",
+            currency: "PYG",
+            value: {
+              "@type": "QuantitativeValue",
+              minValue: Math.min(...salaryNums),
+              maxValue: Math.max(...salaryNums),
+              unitText: "MONTH",
+            },
+          },
+        }
+      : {}),
+    ...(job.modality === "Remoto"
+      ? { jobLocationType: "TELECOMMUTE" }
+      : {}),
     jobLocation: {
       "@type": "Place",
       address: {
         "@type": "PostalAddress",
         addressLocality: job.city ?? "Asunción",
-        addressRegion: job.city ?? "Paraguay",
+        addressRegion: job.city ?? "Central",
         addressCountry: "PY",
       },
     },
