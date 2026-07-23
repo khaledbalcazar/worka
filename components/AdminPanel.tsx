@@ -55,6 +55,11 @@ const TEXTAREA_SETTINGS = new Set<string>([
   "landing_company_features",
   "legal_terms",
   "legal_privacy",
+  "seo_ar",
+  "seo_mx",
+  "seo_co",
+  "seo_cl",
+  "seo_bo",
 ]);
 
 export type IdentityQueueItem = Candidate & {
@@ -892,6 +897,12 @@ export default function AdminPanel({
               ["banner_link", "Link del banner (opcional, ej: /empleos)"],
               ["maintenance_mode", "Modo mantenimiento (escribí 'true' para activar)"],
               ["maintenance_text", "Texto de la pantalla de mantenimiento"],
+              // SEO regional: "título | descripción". Vacío = texto automático.
+              ["seo_ar", "🇦🇷 SEO Argentina (título | descripción)"],
+              ["seo_mx", "🇲🇽 SEO México (título | descripción)"],
+              ["seo_co", "🇨🇴 SEO Colombia (título | descripción)"],
+              ["seo_cl", "🇨🇱 SEO Chile (título | descripción)"],
+              ["seo_bo", "🇧🇴 SEO Bolivia (título | descripción)"],
               [
                 "landing_differentiators",
                 "Portada: diferenciadores (1 por línea: emoji|título|texto)",

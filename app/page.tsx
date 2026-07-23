@@ -66,51 +66,142 @@ const CATEGORIES: { icon: IconKey; color: string; name: string; rubro: string }[
   { icon: "construccion", color: "#10B981", name: "Construcción", rubro: "Construcción" },
 ];
 
-const DIFFERENTIATORS: { icon: IconKey; color: string; title: string; text: string }[] = [
-  { icon: "bus", color: "#2563EB", title: "Sabés cómo llegar", text: "Cada vacante presencial muestra las líneas de colectivo y abre en Google Maps o Moovit." },
-  { icon: "check", color: "#10B981", title: "RUC verificado", text: "Contrastamos el RUC de cada empresa contra el registro público de la DNIT." },
-  { icon: "whatsapp", color: "#10B981", title: "Alertas por WhatsApp", text: "Te avisamos cuando una empresa ve tu perfil o aparecen vacantes de tu rubro." },
-  { icon: "rayo", color: "#F59E0B", title: "Postulación en segundos", text: "1 clic y hasta 3 preguntas simples. Sin formularios eternos." },
-  { icon: "estrella", color: "#7C5CFC", title: "Modo primer empleo", text: "Filtrá solo vacantes sin requisito de experiencia. Nadie más lo hace en Paraguay." },
-  { icon: "cv", color: "#2563EB", title: "CV gratis", text: "Respondé unas preguntas y generamos un PDF profesional sin costo alguno." },
-  { icon: "escudo", color: "#10B981", title: "Cero estafas", text: "Bloqueamos ofertas que piden dinero. Con 3 denuncias la vacante se oculta sola." },
-  { icon: "grafico", color: "#F59E0B", title: "Seguimiento real", text: "Sabés cuándo la empresa revisó tu perfil y por qué no avanzaste." },
-];
+// ── Contenido en el contexto de cada país ──
+// PY y AR hablan de vos ("Sabés", "Filtrá"); MX/CO/CL/BO de tú ("Sabes",
+// "Filtra"). Además cambian la etiqueta fiscal (RUC/CUIT/RFC…), la moneda
+// y las ciudades. Paraguay puede sobrescribir todo desde el admin.
+import type { Country } from "@/lib/countries";
 
-const STEPS = [
-  { title: "Creá tu perfil", text: "Con tu WhatsApp y tu ciudad alcanza. Si tenés CV lo leemos; si no, te lo generamos gratis en PDF." },
-  { title: "Postulate con 1 clic", text: "Filtrá por ciudad, rubro o «primer empleo». Cada tarjeta muestra el salario y cómo llegar." },
-  { title: "Recibí novedades", text: "Te avisamos por WhatsApp cuando la empresa revisa tu perfil. Sin apps raras." },
-];
+const usesVoseo = (c: Country) => c.code === "py" || c.code === "ar";
 
-const COMPANY_FEATURES = [
-  "Vacantes ilimitadas, sin costo",
-  "Plantillas para publicar en 2 minutos",
-  "Preguntas de filtro personalizadas",
-  "Panel Kanban con WhatsApp directo",
-  "Sello de empresa verificada con RUC",
-  "Métricas por vacante: vistas, postulantes, contactados",
-];
+function buildDifferentiators(
+  c: Country
+): { icon: IconKey; color: string; title: string; text: string }[] {
+  const vos = usesVoseo(c);
+  return [
+    {
+      icon: "bus",
+      color: "#2563EB",
+      title: vos ? "Sabés cómo llegar" : "Sabes cómo llegar",
+      text:
+        c.code === "py"
+          ? "Cada vacante presencial muestra las líneas de colectivo y abre en Google Maps o Moovit."
+          : "Cada vacante presencial muestra la dirección y abre en Google Maps para planear tu viaje.",
+    },
+    {
+      icon: "check",
+      color: "#10B981",
+      title: `${c.taxIdLabel} verificado`,
+      text:
+        c.code === "py"
+          ? "Contrastamos el RUC de cada empresa contra el registro público de la DNIT."
+          : `Contrastamos el ${c.taxIdLabel} de cada empresa contra los registros públicos antes de verificarla.`,
+    },
+    { icon: "whatsapp", color: "#10B981", title: "Alertas por WhatsApp", text: "Te avisamos cuando una empresa ve tu perfil o aparecen vacantes de tu rubro." },
+    { icon: "rayo", color: "#F59E0B", title: "Postulación en segundos", text: "1 clic y hasta 3 preguntas simples. Sin formularios eternos." },
+    {
+      icon: "estrella",
+      color: "#7C5CFC",
+      title: "Modo primer empleo",
+      text: vos
+        ? `Filtrá solo vacantes sin requisito de experiencia. Nadie más lo hace en ${c.name}.`
+        : `Filtra solo vacantes sin requisito de experiencia. Nadie más lo hace en ${c.name}.`,
+    },
+    {
+      icon: "cv",
+      color: "#2563EB",
+      title: "CV gratis",
+      text: vos
+        ? "Respondé unas preguntas y generamos un PDF profesional sin costo alguno."
+        : "Responde unas preguntas y generamos un PDF profesional sin costo alguno.",
+    },
+    { icon: "escudo", color: "#10B981", title: "Cero estafas", text: "Bloqueamos ofertas que piden dinero. Con 3 denuncias la vacante se oculta sola." },
+    {
+      icon: "grafico",
+      color: "#F59E0B",
+      title: "Seguimiento real",
+      text: vos
+        ? "Sabés cuándo la empresa revisó tu perfil y por qué no avanzaste."
+        : "Sabes cuándo la empresa revisó tu perfil y por qué no avanzaste.",
+    },
+  ];
+}
 
-const FAQS = [
-  { q: "¿Worka es gratis?", a: "Sí, para candidatos es gratis para siempre. Para empresas, publicar y gestionar candidatos tampoco tiene costo. Habrá opciones de visibilidad extra pagas, pero lo esencial no se cobra." },
-  { q: "¿Cómo sé que la empresa es real?", a: "Toda empresa registra su RUC y lo contrastamos con la DNIT antes de darle el sello ✓ Verificada. Cada empresa tiene una página pública con su historial en Worka." },
-  { q: "¿Necesito CV para postularme?", a: "No. Podés crear tu perfil respondiendo preguntas y Worka genera un CV profesional en PDF sin costo. Si ya tenés CV, lo subís y completamos tu perfil automáticamente." },
-  { q: "¿Qué hago si veo una oferta sospechosa?", a: "Denunciala desde el menú de la tarjeta. Con 3 denuncias la vacante se oculta y nuestro equipo la revisa. En Worka ninguna oferta puede pedirte dinero." },
-  { q: "¿Funciona bien con poca señal?", a: "Sí. Worka está optimizada para celulares y conexiones inestables: pantallas livianas, sin videos pesados, con lo más importante primero." },
-];
+function buildSteps(c: Country) {
+  const vos = usesVoseo(c);
+  return [
+    {
+      title: vos ? "Creá tu perfil" : "Crea tu perfil",
+      text: vos
+        ? "Con tu WhatsApp y tu ciudad alcanza. Si tenés CV lo leemos; si no, te lo generamos gratis en PDF."
+        : "Con tu WhatsApp y tu ciudad alcanza. Si tienes CV lo leemos; si no, te lo generamos gratis en PDF.",
+    },
+    {
+      title: vos ? "Postulate con 1 clic" : "Postúlate con 1 clic",
+      text: vos
+        ? "Filtrá por ciudad, rubro o «primer empleo». Cada tarjeta muestra el salario y cómo llegar."
+        : "Filtra por ciudad, rubro o «primer empleo». Cada tarjeta muestra el salario y cómo llegar.",
+    },
+    {
+      title: vos ? "Recibí novedades" : "Recibe novedades",
+      text: "Te avisamos por WhatsApp cuando la empresa revisa tu perfil. Sin apps raras.",
+    },
+  ];
+}
 
-const ACTIVITY: ActivityItem[] = [
-  { kind: "registro", text: "Rocío se registró desde Encarnación" },
-  { kind: "vista", text: "Supermercado Stock revisó 3 perfiles" },
-  { kind: "vacante", text: "Nueva vacante: Cajero/a en Asunción" },
-  { kind: "verificado", text: "Frigorífico Concepción verificó su RUC" },
-  { kind: "mensaje", text: "José recibió un mensaje por WhatsApp" },
-  { kind: "destacado", text: "12 vacantes de primer empleo publicadas hoy" },
-  { kind: "vacante", text: "Nueva vacante: Repartidor/a en San Lorenzo" },
-  { kind: "vista", text: "Clínica Santa Rosa vio tu rubro" },
-  { kind: "registro", text: "Diego se registró desde Ciudad del Este" },
-];
+function buildCompanyFeatures(c: Country) {
+  return [
+    "Vacantes ilimitadas, sin costo",
+    "Plantillas para publicar en 2 minutos",
+    "Preguntas de filtro personalizadas",
+    "Panel Kanban con WhatsApp directo",
+    `Sello de empresa verificada con ${c.taxIdLabel}`,
+    "Métricas por vacante: vistas, postulantes, contactados",
+  ];
+}
+
+function buildFaqs(c: Country) {
+  const vos = usesVoseo(c);
+  return [
+    { q: "¿Worka es gratis?", a: "Sí, para candidatos es gratis para siempre. Para empresas, publicar y gestionar candidatos tampoco tiene costo. Habrá opciones de visibilidad extra pagas, pero lo esencial no se cobra." },
+    {
+      q: "¿Cómo sé que la empresa es real?",
+      a:
+        c.code === "py"
+          ? "Toda empresa registra su RUC y lo contrastamos con la DNIT antes de darle el sello ✓ Verificada. Cada empresa tiene una página pública con su historial en Worka."
+          : `Toda empresa registra su ${c.taxIdLabel} y lo contrastamos con los registros públicos antes de darle el sello ✓ Verificada. Cada empresa tiene una página pública con su historial en Worka.`,
+    },
+    {
+      q: "¿Necesito CV para postularme?",
+      a: vos
+        ? "No. Podés crear tu perfil respondiendo preguntas y Worka genera un CV profesional en PDF sin costo. Si ya tenés CV, lo subís y completamos tu perfil automáticamente."
+        : "No. Puedes crear tu perfil respondiendo preguntas y Worka genera un CV profesional en PDF sin costo. Si ya tienes CV, lo subes y completamos tu perfil automáticamente.",
+    },
+    {
+      q: "¿Qué hago si veo una oferta sospechosa?",
+      a: vos
+        ? "Denunciala desde el menú de la tarjeta. Con 3 denuncias la vacante se oculta y nuestro equipo la revisa. En Worka ninguna oferta puede pedirte dinero."
+        : "Denúnciala desde el menú de la tarjeta. Con 3 denuncias la vacante se oculta y nuestro equipo la revisa. En Worka ninguna oferta puede pedirte dinero.",
+    },
+    { q: "¿Funciona bien con poca señal?", a: "Sí. Worka está optimizada para celulares y conexiones inestables: pantallas livianas, sin videos pesados, con lo más importante primero." },
+  ];
+}
+
+// El feed EN VIVO usa las ciudades reales del país.
+function buildActivity(c: Country): ActivityItem[] {
+  const [a, b, d] = [c.cities[0], c.cities[1] ?? c.cities[0], c.cities[2] ?? c.cities[0]];
+  return [
+    { kind: "registro", text: `Rocío se registró desde ${b}` },
+    { kind: "vista", text: "Un supermercado revisó 3 perfiles" },
+    { kind: "vacante", text: `Nueva vacante: Cajero/a en ${a}` },
+    { kind: "verificado", text: `Una empresa de ${d} verificó su ${c.taxIdLabel}` },
+    { kind: "mensaje", text: "José recibió un mensaje por WhatsApp" },
+    { kind: "destacado", text: "12 vacantes de primer empleo publicadas hoy" },
+    { kind: "vacante", text: `Nueva vacante: Repartidor/a en ${d}` },
+    { kind: "vista", text: "Una clínica está mirando tu rubro" },
+    { kind: "registro", text: `Diego se registró desde ${a}` },
+  ];
+}
 
 /* ── Utilidades ── */
 
@@ -182,23 +273,29 @@ export default async function LandingPage() {
     getActiveCountry(),
   ]);
 
-  // Cada bloque usa lo configurado en el admin; si está vacío, el texto base.
+  // Los textos del admin (pensados para Paraguay) solo aplican cuando el
+  // país activo es Paraguay; los demás países usan el contenido generado
+  // en su propio contexto (moneda, RUC/CUIT, voseo o tuteo, ciudades).
+  const isPy = country.code === "py";
+
   const customDiffs = parseLines(settings.landing_differentiators, (p) =>
     p.length >= 3
       ? { icon: (p[0] as IconKey) in ICON_MAP ? (p[0] as IconKey) : ("estrella" as IconKey), color: "#2563EB", title: p[1], text: p[2] }
       : null
   );
-  const differentiators = customDiffs.length > 0 ? customDiffs : DIFFERENTIATORS;
+  const differentiators =
+    isPy && customDiffs.length > 0 ? customDiffs : buildDifferentiators(country);
 
   const customSteps = parseLines(settings.landing_steps, (p) =>
     p.length >= 2 ? { title: p[0], text: p[1] } : null
   );
-  const steps = customSteps.length > 0 ? customSteps : STEPS;
+  const steps =
+    isPy && customSteps.length > 0 ? customSteps : buildSteps(country);
 
   const customFaqs = parseLines(settings.landing_faqs, (p) =>
     p.length >= 2 ? { q: p[0], a: p.slice(1).join(" | ") } : null
   );
-  const faqs = customFaqs.length > 0 ? customFaqs : FAQS;
+  const faqs = isPy && customFaqs.length > 0 ? customFaqs : buildFaqs(country);
 
   const customCats = parseLines(settings.landing_categories, (p) =>
     p.length >= 2
@@ -216,12 +313,15 @@ export default async function LandingPage() {
     p[0] ? p[0] : null
   );
   const companyFeatures =
-    customFeatures.length > 0 ? customFeatures : COMPANY_FEATURES;
+    isPy && customFeatures.length > 0
+      ? customFeatures
+      : buildCompanyFeatures(country);
 
   const customActivity = parseLines(settings.landing_activity, (p) =>
     p.length >= 2 ? ({ kind: p[0], text: p[1] } as ActivityItem) : null
   );
-  const activity = customActivity.length > 0 ? customActivity : ACTIVITY;
+  const activity =
+    isPy && customActivity.length > 0 ? customActivity : buildActivity(country);
 
   // Historias: se cargan desde el admin (nombre | rol | testimonio | foto).
   const testimonials = parseLines(settings.landing_testimonials, (p) =>
@@ -239,7 +339,7 @@ export default async function LandingPage() {
       ? customStats
       : [
           { value: `${jobsCount}`, label: "vacantes activas" },
-          { value: "RUC ✓", label: "empresas verificadas" },
+          { value: `${country.taxIdLabel} ✓`, label: "empresas verificadas" },
           { value: "100%", label: "gratis, sin comisiones" },
         ];
   const statIcons = [Briefcase, Building2, Bus, Users];
@@ -296,7 +396,8 @@ export default async function LandingPage() {
                 ))}
               </div>
               <span className="text-[0.82rem] text-gray-500 leading-snug">
-                Sumate a los paraguayos que
+                {usesVoseo(country) ? "Sumate" : "Súmate"} a los{" "}
+                {country.demonym} que
                 <br />
                 ya buscan trabajo en Worka.
               </span>
@@ -332,7 +433,9 @@ export default async function LandingPage() {
                   Empresa verificada
                 </p>
                 <p className="text-[0.62rem] text-gray-400 mt-0.5">
-                  RUC contrastado ✓ DNIT
+                  {country.code === "py"
+                    ? "RUC contrastado ✓ DNIT"
+                    : `${country.taxIdLabel} contrastado ✓`}
                 </p>
               </div>
             </div>
@@ -499,7 +602,7 @@ export default async function LandingPage() {
             center
             eyebrow="Lo que nos hace distintos"
             title="Solo en Worka."
-            sub="Cada detalle está pensado para cómo se busca trabajo en Paraguay."
+            sub={`Cada detalle está pensado para cómo se busca trabajo en ${country.name}.`}
           />
           <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr))]">
             {differentiators.map((d) => {
@@ -550,7 +653,7 @@ export default async function LandingPage() {
                 <>
                   Talento local,
                   <br />
-                  verificado y sin pagar un guaraní.
+                  verificado y sin pagar un {country.currencyName}.
                 </>
               }
               sub="Desde la pyme del barrio hasta la cadena nacional. Publicá en minutos y contactá al candidato ideal por WhatsApp."
@@ -665,7 +768,7 @@ export default async function LandingPage() {
               center
               eyebrow="Historias reales"
               title="Ya encontraron trabajo."
-              sub="Paraguayos que consiguieron empleo en Worka."
+              sub={`${country.demonym[0].toUpperCase()}${country.demonym.slice(1)} que consiguieron empleo en Worka.`}
             />
             <div className="grid gap-4.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))]">
               {testimonials.map((t) => (
@@ -783,7 +886,8 @@ export default async function LandingPage() {
           <div className="col-span-2">
             <Logo light />
             <p className="text-[0.82rem] text-white/50 leading-relaxed mt-3.5 max-w-[240px]">
-              La plataforma de empleo 100% gratuita de Paraguay. Tu próximo paso.
+              La plataforma de empleo 100% gratuita de {country.name}. Tu
+              próximo paso.
             </p>
           </div>
           {[

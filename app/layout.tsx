@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { getSiteSettings } from "@/lib/data";
+import { getActiveCountry } from "@/lib/country-context";
 import { SITE_URL } from "@/lib/supabase/config";
 import GlobalBanner from "@/components/GlobalBanner";
 import "./globals.css";
@@ -10,20 +11,40 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-// Metadata dinámica: el título, descripción y favicon se editan desde /admin.
+// Metadata dinámica por país: Paraguay usa los textos del /admin; los demás
+// países usan su propio título/descripción (con override opcional seo_XX).
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getSiteSettings();
+  const [settings, country] = await Promise.all([
+    getSiteSettings(),
+    getActiveCountry(),
+  ]);
+
+  // Override regional: la clave seo_ar / seo_mx… guarda "título | descripción".
+  const [ovTitle, ovDesc] = (settings[`seo_${country.code}`] ?? "")
+    .split("|")
+    .map((s) => s.trim());
+
+  const isPy = country.code === "py";
+  const verb = country.code === "ar" || isPy ? "Encontrá" : "Encuentra";
+  const title = isPy
+    ? settings.site_title || "Worka — Tu próximo paso"
+    : ovTitle ||
+      `Worka — Empleos en ${country.name} ${country.flag} | Tu próximo paso`;
+  const description = isPy
+    ? settings.site_description ||
+      "La plataforma de empleo 100% gratuita de Paraguay. Encontrá tu próximo trabajo o publicá tu vacante sin costo."
+    : ovDesc ||
+      `La plataforma de empleo 100% gratuita de ${country.name}. ${verb} tu próximo trabajo o publica tu vacante sin costo.`;
+
   return {
     // Base para todas las URLs relativas de metadata (og:image, etc.). Sin
     // esto, en producción los previews de redes apuntan a localhost.
     metadataBase: new URL(SITE_URL),
     title: {
-      default: settings.site_title || "Worka — Tu próximo paso",
+      default: title,
       template: `%s | ${settings.site_name || "Worka"}`,
     },
-    description:
-      settings.site_description ||
-      "La plataforma de empleo 100% gratuita de Paraguay. Encontrá tu próximo trabajo o publicá tu vacante sin costo.",
+    description,
     ...(settings.favicon_url
       ? {
           icons: {

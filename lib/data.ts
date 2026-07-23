@@ -663,13 +663,17 @@ export async function getBoostRequests(): Promise<
 }
 
 // Búsqueda activa de talento: solo perfiles con visible_to_companies
-export async function getTalentPool(): Promise<Candidate[]> {
+export async function getTalentPool(country?: string): Promise<Candidate[]> {
   const supabase = await getServerClient();
-  if (!supabase) return mock.talentPool.filter((c) => c.visible_to_companies);
-  const { data } = await supabase
+  if (!supabase)
+    return mock.talentPool.filter((c) => c.visible_to_companies);
+  let q = supabase
     .from("candidates")
     .select("*")
-    .eq("visible_to_companies", true)
+    .eq("visible_to_companies", true);
+  // Una empresa solo ve candidatos de su propio país.
+  if (country) q = q.eq("country", country);
+  const { data } = await q
     .order("created_at", { ascending: false })
     .limit(100);
   return (data ?? []) as Candidate[];

@@ -582,6 +582,12 @@ export const defaultSiteSettings: Record<string, string> = {
   landing_faqs: "",
   hero_image_url: "",
   external_jobs_enabled: "",
+  // SEO regional: "título | descripción" por país. Vacío = texto automático.
+  seo_ar: "",
+  seo_mx: "",
+  seo_co: "",
+  seo_cl: "",
+  seo_bo: "",
   landing_categories: "",
   landing_stats: "",
   landing_testimonials: "",

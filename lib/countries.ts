@@ -10,6 +10,7 @@ export interface Country {
   flag: string; // emoji
   currency: string; // símbolo corto para mostrar ("Gs", "$", "Bs")
   currencyCode: string; // ISO-4217 para el marcado (PYG, ARS…)
+  currencyName: string; // "guaraní", "peso"… para frases tipo "sin pagar un guaraní"
   phonePrefix: string; // "+595"
   taxIdLabel: string; // cómo se llama el RUC en cada país
   cities: string[];
@@ -29,6 +30,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇵🇾",
     currency: "Gs",
     currencyCode: "PYG",
+    currencyName: "guaraní",
     phonePrefix: "+595",
     taxIdLabel: "RUC",
     cities: [
@@ -54,6 +56,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇦🇷",
     currency: "$",
     currencyCode: "ARS",
+    currencyName: "peso",
     phonePrefix: "+54",
     taxIdLabel: "CUIT",
     cities: [
@@ -78,6 +81,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇲🇽",
     currency: "$",
     currencyCode: "MXN",
+    currencyName: "peso",
     phonePrefix: "+52",
     taxIdLabel: "RFC",
     cities: [
@@ -102,6 +106,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇨🇴",
     currency: "$",
     currencyCode: "COP",
+    currencyName: "peso",
     phonePrefix: "+57",
     taxIdLabel: "NIT",
     cities: [
@@ -126,6 +131,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇨🇱",
     currency: "$",
     currencyCode: "CLP",
+    currencyName: "peso",
     phonePrefix: "+56",
     taxIdLabel: "RUT",
     cities: [
@@ -150,6 +156,7 @@ export const COUNTRIES: Country[] = [
     flag: "🇧🇴",
     currency: "Bs",
     currencyCode: "BOB",
+    currencyName: "boliviano",
     phonePrefix: "+591",
     taxIdLabel: "NIT",
     cities: [

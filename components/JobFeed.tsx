@@ -416,7 +416,7 @@ export default function JobFeed({
           <section className="space-y-3 pt-2">
             <div>
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                Otras vacantes de Paraguay
+                Otras vacantes de la zona
               </h2>
               <p className="text-xs text-gray-400 mt-1">
                 Avisos de otras fuentes. Estas empresas no están verificadas por
