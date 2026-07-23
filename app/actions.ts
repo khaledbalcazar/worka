@@ -1514,6 +1514,7 @@ export async function saveJobSource(input: {
   name: string;
   kind: "auto" | "feed" | "html" | "serpapi" | "jooble";
   url: string;
+  country?: string;
   enabled: boolean;
   expire_days?: number;
   max_age_hours?: number;
@@ -1548,6 +1549,7 @@ export async function saveJobSource(input: {
     name: input.name.trim(),
     kind: input.kind,
     url: input.url.trim(),
+    country: input.country ?? "py",
     enabled: input.enabled,
     expire_days: input.expire_days ?? 30,
     max_age_hours: input.max_age_hours ?? 24,
@@ -1642,6 +1644,7 @@ export async function runImport(
   const rows = parsed.jobs.map((j) => ({
     source_id: sourceId,
     external_key: j.external_key,
+    country: source.country ?? "py",
     title: j.title,
     company_name: j.company_name,
     description: j.description,

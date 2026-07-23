@@ -5,6 +5,7 @@ import {
   getExternalJobs,
   getPublishedPosts,
 } from "@/lib/data";
+import { COUNTRIES } from "@/lib/countries";
 import { SITE_URL } from "@/lib/supabase/config";
 
 // Sitemap DINÁMICO: incluye automáticamente cada vacante activa y cada
@@ -21,6 +22,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/empleos", priority: 0.9 },
     { path: "/para-empresas", priority: 0.8 },
     { path: "/blog", priority: 0.8 },
+    // Landings por país
+    ...COUNTRIES.map((c) => ({ path: `/${c.slug}`, priority: 0.8 })),
     { path: "/registro", priority: 0.7 },
     { path: "/ingresar", priority: 0.6 },
     { path: "/empresa/registro", priority: 0.7 },

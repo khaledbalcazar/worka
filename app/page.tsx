@@ -23,6 +23,7 @@ import {
   HardHat,
 } from "lucide-react";
 import Logo from "@/components/Logo";
+import { COUNTRIES } from "@/lib/countries";
 import { getActiveJobsCount, getSiteSettings } from "@/lib/data";
 import HomeNav from "@/components/home/HomeNav";
 import HeroSearch from "@/components/home/HeroSearch";
@@ -825,6 +826,25 @@ export default async function LandingPage() {
               </ul>
             </div>
           ))}
+        </div>
+        {/* Worka en la región */}
+        <div className="border-t border-white/10">
+          <div className="max-w-6xl mx-auto px-5 py-5">
+            <p className="text-[0.67rem] text-white/40 tracking-widest uppercase mb-3">
+              Worka en tu país
+            </p>
+            <div className="flex flex-wrap gap-x-5 gap-y-2">
+              {COUNTRIES.map((c) => (
+                <Link
+                  key={c.code}
+                  href={`/${c.slug}`}
+                  className="text-sm text-white/60 hover:text-white"
+                >
+                  {c.flag} {c.name}
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
         <div className="border-t border-white/10">
           <div className="max-w-6xl mx-auto px-5 py-4.5 flex flex-wrap justify-between gap-2">

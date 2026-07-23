@@ -1,6 +1,7 @@
 import "server-only";
 import type { JobSource } from "@/lib/types";
 import { INDUSTRIES } from "@/lib/mock-data";
+import { countryByCode } from "@/lib/countries";
 import { clean, excerpt, type ParsedJob } from "../importer";
 
 // Conector de Jooble. Agregador de empleos con cobertura de Paraguay.
@@ -84,7 +85,7 @@ export async function fetchJooble(source: JobSource): Promise<ParsedJob[]> {
     },
     body: JSON.stringify({
       keywords: source.url.trim(),
-      location: "Paraguay",
+      location: countryByCode(source.country).joobleLocation,
     }),
     cache: "no-store",
   });

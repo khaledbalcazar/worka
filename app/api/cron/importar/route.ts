@@ -88,6 +88,7 @@ export async function GET(request: Request) {
       const rows = parsed.jobs.map((j) => ({
         source_id: source.id,
         external_key: j.external_key,
+        country: source.country ?? "py",
         title: j.title,
         company_name: j.company_name,
         description: j.description,

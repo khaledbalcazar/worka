@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import type { ExternalJob, JobSource } from "@/lib/types";
 import { CITIES, INDUSTRIES } from "@/lib/mock-data";
+import { COUNTRIES } from "@/lib/countries";
 import {
   deleteExternalJob,
   deleteJobSource,
@@ -17,6 +18,7 @@ const EMPTY_SOURCE = {
   name: "",
   kind: "serpapi" as "auto" | "feed" | "html" | "serpapi" | "jooble",
   url: "",
+  country: "py",
   enabled: true,
   expire_days: 30,
   max_age_hours: 24,
@@ -245,6 +247,23 @@ export default function ExternalJobsAdmin({
               </div>
             </div>
             <div>
+              <label className="label">País</label>
+              <select
+                className="input"
+                value={sourceDraft.country}
+                onChange={(e) =>
+                  setSourceDraft((s) => ({ ...s, country: e.target.value }))
+                }
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>
+                    {c.flag} {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
               <label className="label">
                 {sourceDraft.kind === "serpapi" || sourceDraft.kind === "jooble"
                   ? "Qué buscar"
@@ -359,7 +378,10 @@ export default function ExternalJobsAdmin({
                   }
                 >
                   <option value="">Sin definir</option>
-                  {CITIES.map((c) => (
+                  {(
+                    COUNTRIES.find((c) => c.code === sourceDraft.country)
+                      ?.cities ?? CITIES
+                  ).map((c) => (
                     <option key={c}>{c}</option>
                   ))}
                 </select>
@@ -427,9 +449,10 @@ export default function ExternalJobsAdmin({
               >
                 <div className="min-w-0">
                   <p className="font-medium text-primary-dark truncate">
+                    {COUNTRIES.find((c) => c.code === s.country)?.flag ?? "🌐"}{" "}
                     {s.name}{" "}
                     <span className="chip bg-surface text-gray-500 ml-1">
-                      {s.kind === "feed" ? "feed" : "html"}
+                      {s.kind}
                     </span>
                   </p>
                   <p className="text-xs text-gray-400 truncate">{s.url}</p>

@@ -1,6 +1,7 @@
 import "server-only";
 import type { JobSource } from "@/lib/types";
 import { INDUSTRIES } from "@/lib/mock-data";
+import { countryByCode } from "@/lib/countries";
 import type { ParsedJob } from "../importer";
 
 // Conector de Google Jobs vía SerpApi. Trae avisos reales (incluye los que
@@ -70,14 +71,15 @@ export async function fetchSerpApi(source: JobSource): Promise<ParsedJob[]> {
     );
   }
 
+  const country = countryByCode(source.country);
   const query = source.url.trim() || "empleos";
   const params = new URLSearchParams({
     engine: "google_jobs",
     q: query,
     hl: "es",
-    gl: "py",
-    google_domain: "google.com.py",
-    location: "Paraguay",
+    gl: country.serpGl,
+    google_domain: country.serpDomain,
+    location: country.name,
     api_key: apiKey,
   });
   // Filtro de fecha de Google Jobs: hoy = últimas 24 horas aprox.

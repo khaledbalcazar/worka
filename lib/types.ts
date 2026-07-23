@@ -45,6 +45,7 @@ export interface JobSource {
   name: string;
   kind: "auto" | "feed" | "html" | "serpapi" | "jooble";
   url: string;
+  country: string;
   enabled: boolean;
   expire_days: number;
   max_age_hours: number;
@@ -69,6 +70,7 @@ export interface ExternalJob {
   id: string;
   source_id: string | null;
   external_key: string | null;
+  country: string;
   title: string;
   company_name: string;
   company_logo_url: string | null;

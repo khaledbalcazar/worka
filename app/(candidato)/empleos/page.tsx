@@ -52,7 +52,7 @@ export default async function JobFeedPage({
   const [jobs, externalJobs, candidate, appliedIds, savedIds, settings, params] =
     await Promise.all([
       getActiveJobs(),
-      getExternalJobs(),
+      getExternalJobs("py"),
       getCurrentCandidate(),
       getMyAppliedJobIds(),
       getMySavedJobIds(),

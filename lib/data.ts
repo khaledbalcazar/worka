@@ -901,17 +901,19 @@ function gateContact(
   return { ...job, apply_email: null, apply_url: null };
 }
 
-export async function getExternalJobs(): Promise<
-  import("./types").ExternalJob[]
-> {
+export async function getExternalJobs(
+  country?: string
+): Promise<import("./types").ExternalJob[]> {
   if (!(await externalJobsEnabled())) return [];
   const supabase = await getServerClient();
   if (!supabase) return [];
   const user = await getCurrentUser();
-  const { data } = await supabase
+  let q = supabase
     .from("external_jobs")
     .select("*")
-    .eq("status", "activa")
+    .eq("status", "activa");
+  if (country) q = q.eq("country", country);
+  const { data } = await q
     .order("imported_at", { ascending: false })
     .limit(200);
   return ((data ?? []) as import("./types").ExternalJob[]).map((j) =>
