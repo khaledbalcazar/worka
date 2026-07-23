@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { Search, MapPin, ArrowRight, CheckCircle } from "lucide-react";
 import { CITIES } from "@/lib/mock-data";
 
+type Props = { cities?: string[] };
+
 const SUGGESTIONS = [
   "Cajero/a",
   "Cajero/a de supermercado",
@@ -32,7 +34,7 @@ const FILTER_CHIPS: { label: string; param: string; value: string }[] = [
   { label: "Remoto", param: "modalidad", value: "Remoto" },
 ];
 
-export default function HeroSearch() {
+export default function HeroSearch({ cities = CITIES }: Props) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [city, setCity] = useState("");
@@ -90,7 +92,7 @@ export default function HeroSearch() {
             className="w-full sm:w-40 bg-transparent border-0 outline-none text-sm text-primary-dark cursor-pointer"
           >
             <option value="">Toda ciudad</option>
-            {CITIES.map((c) => (
+            {cities.map((c) => (
               <option key={c}>{c}</option>
             ))}
           </select>

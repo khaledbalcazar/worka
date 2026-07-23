@@ -183,6 +183,7 @@ export interface Candidate {
   phone_verified: boolean;
   identity_status: IdentityStatus;
   location_city: string;
+  country: string;
   avatar_url: string | null;
   bio: string | null;
   cv_url: string | null;
@@ -273,6 +274,7 @@ export interface Company {
   banner_url: string | null;
   description: string;
   location_city: string;
+  country: string;
   website_url: string | null;
   instagram_url: string | null;
   facebook_url: string | null;

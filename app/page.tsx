@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import Logo from "@/components/Logo";
 import { COUNTRIES } from "@/lib/countries";
+import { getActiveCountry } from "@/lib/country-context";
 import { getActiveJobsCount, getSiteSettings } from "@/lib/data";
 import HomeNav from "@/components/home/HomeNav";
 import HeroSearch from "@/components/home/HeroSearch";
@@ -175,9 +176,10 @@ function SectionHead({
 }
 
 export default async function LandingPage() {
-  const [jobsCount, settings] = await Promise.all([
+  const [jobsCount, settings, country] = await Promise.all([
     getActiveJobsCount(),
     getSiteSettings(),
+    getActiveCountry(),
   ]);
 
   // Cada bloque usa lo configurado en el admin; si está vacío, el texto base.
@@ -261,8 +263,9 @@ export default async function LandingPage() {
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/[0.06] px-3.5 py-1.5 mb-5">
               <span className="w-1.5 h-1.5 rounded-full bg-primary" />
               <span className="text-[0.7rem] text-primary tracking-wide">
-                {settings.hero_badge ||
-                  "🇵🇾 Plataforma de empleo · 100% gratuita"}
+                {country.code === "py" && settings.hero_badge
+                  ? settings.hero_badge
+                  : `${country.flag} Empleos en ${country.name} · 100% gratis`}
               </span>
             </div>
 
@@ -273,11 +276,12 @@ export default async function LandingPage() {
             </h1>
 
             <p className="text-[clamp(0.95rem,2vw,1.1rem)] text-gray-500 max-w-md leading-relaxed mb-7">
-              {settings.hero_subtitle ||
-                "La única plataforma diseñada para Paraguay. Sin estafas, sin comisiones, con líneas de colectivo incluidas."}
+              {country.code === "py" && settings.hero_subtitle
+                ? settings.hero_subtitle
+                : `Encontrá tu próximo trabajo en ${country.name}. Sin estafas, sin comisiones, con las mejores empresas.`}
             </p>
 
-            <HeroSearch />
+            <HeroSearch cities={country.cities} />
 
             <div className="flex items-center gap-3 mt-6">
               <div className="flex items-center">

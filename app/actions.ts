@@ -683,6 +683,7 @@ export async function completeOnboarding(input: {
   full_name: string;
   phone_whatsapp: string;
   location_city: string;
+  country?: string;
   preferences_industry: string[];
   first_job_mode: boolean;
   bio?: string;
@@ -701,6 +702,7 @@ export async function completeOnboarding(input: {
   const { error } = await supabase.from("candidates").upsert({
     id: user.id,
     ...input,
+    country: input.country ?? "py",
     // La verificación de la cuenta es por email (confirmación de Supabase);
     // el número de WhatsApp queda como dato de contacto, sin OTP.
     phone_verified: true,
@@ -1075,6 +1077,7 @@ export async function registerCompany(input: {
   trade_name: string;
   ruc: string;
   location_city: string;
+  country?: string;
 }): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
@@ -1089,7 +1092,7 @@ export async function registerCompany(input: {
 
   const { error } = await supabase
     .from("companies")
-    .upsert({ id: user.id, ...input });
+    .upsert({ id: user.id, ...input, country: input.country ?? "py" });
   if (error) {
     if (error.code === "23505")
       return { ok: false, error: "Ese RUC ya está registrado en Worka." };
@@ -1504,6 +1507,14 @@ export async function resolveModeration(
   pingIndexNow(jobUrl(jobId));
   revalidatePath("/admin");
   revalidatePath("/empleos");
+  return { ok: true };
+}
+
+// Fija el país activo del visitante (cookie). Lo usan el selector de país
+// y las landings, para que el registro y la home se adapten a ese país.
+export async function setCountry(code: string): Promise<ActionResult> {
+  const { setActiveCountryCookie } = await import("@/lib/country-context");
+  await setActiveCountryCookie(code);
   return { ok: true };
 }
 

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
-import { CITIES } from "@/lib/mock-data";
+import { DEFAULT_COUNTRY, countryByCode } from "@/lib/countries";
 import { registerCompany, signUpWithEmail } from "@/app/actions";
 import { validateRucFormat } from "@/lib/ruc";
 
@@ -18,6 +18,15 @@ export default function CompanyRegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const [country, setCountryState] = useState(DEFAULT_COUNTRY);
+  useEffect(() => {
+    const code = document.cookie
+      .split("; ")
+      .find((c) => c.startsWith("worka_country="))
+      ?.split("=")[1];
+    if (code) setCountryState(countryByCode(code));
+  }, []);
+
   function submit() {
     setError(null);
     startTransition(async () => {
@@ -29,6 +38,7 @@ export default function CompanyRegisterPage() {
         trade_name: tradeName,
         ruc,
         location_city: city,
+        worka_country: country.code,
       });
       if (signUp.demo) {
         setSent("demo");
@@ -44,6 +54,7 @@ export default function CompanyRegisterPage() {
         trade_name: tradeName,
         ruc,
         location_city: city,
+        country: country.code,
       });
       setSent("confirm");
     });
@@ -99,14 +110,19 @@ export default function CompanyRegisterPage() {
               />
             </div>
             <div>
-              <label className="label">RUC *</label>
+              <label className="label">{country.taxIdLabel} *</label>
               <input
                 className="input"
-                placeholder="Ej: 80012345-6"
+                placeholder={
+                  country.code === "py" ? "Ej: 80012345-6" : "Número fiscal"
+                }
                 value={ruc}
                 onChange={(e) => setRuc(e.target.value)}
               />
-              {ruc.length >= 6 &&
+              {/* La validación del dígito verificador es específica de Paraguay.
+                  En otros países se contrasta manualmente. */}
+              {country.code === "py" &&
+                ruc.length >= 6 &&
                 (() => {
                   const check = validateRucFormat(ruc);
                   return (
@@ -123,16 +139,19 @@ export default function CompanyRegisterPage() {
                 })()}
             </div>
             <div>
-              <label className="label">Ciudad *</label>
+              <label className="label">
+                Ciudad en {country.flag} {country.name} *
+              </label>
               <select
                 className="input"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
               >
                 <option value="">Elegí la ciudad</option>
-                {CITIES.map((c) => (
+                {country.cities.map((c) => (
                   <option key={c}>{c}</option>
                 ))}
+                <option value="Otra">Otra ciudad</option>
               </select>
             </div>
             <div>
@@ -169,7 +188,7 @@ export default function CompanyRegisterPage() {
                 !companyName ||
                 !tradeName ||
                 !ruc ||
-                !validateRucFormat(ruc).valid ||
+                (country.code === "py" && !validateRucFormat(ruc).valid) ||
                 !city ||
                 !email ||
                 !password

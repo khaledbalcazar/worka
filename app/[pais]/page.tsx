@@ -8,6 +8,7 @@ import { getExternalJobs } from "@/lib/data";
 import { SITE_URL } from "@/lib/supabase/config";
 import Logo from "@/components/Logo";
 import ExternalJobCard from "@/components/ExternalJobCard";
+import RememberCountry from "@/components/RememberCountry";
 
 const BASE = SITE_URL.replace(/\/$/, "");
 
@@ -69,6 +70,7 @@ export default async function CountryLanding({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      <RememberCountry code={country.code} />
 
       {/* Header con selector de país */}
       <header className="sticky top-0 z-40 bg-surface/85 backdrop-blur-md border-b border-primary-dark/10">

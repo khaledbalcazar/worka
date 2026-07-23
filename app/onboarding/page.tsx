@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Logo from "@/components/Logo";
-import { CITIES, INDUSTRIES } from "@/lib/mock-data";
+import { INDUSTRIES } from "@/lib/mock-data";
+import { DEFAULT_COUNTRY, countryByCode } from "@/lib/countries";
 import {
   completeOnboarding,
   uploadAvatar,
@@ -47,6 +48,17 @@ export default function OnboardingPage() {
   const cvInput = useRef<HTMLInputElement>(null);
   const avatarInput = useRef<HTMLInputElement>(null);
 
+  // País activo (de la cookie que setean las landings). Define ciudades y
+  // prefijo telefónico. Arranca en el default para no romper la hidratación.
+  const [country, setCountryState] = useState(DEFAULT_COUNTRY);
+  useEffect(() => {
+    const code = document.cookie
+      .split("; ")
+      .find((c) => c.startsWith("worka_country="))
+      ?.split("=")[1];
+    if (code) setCountryState(countryByCode(code));
+  }, []);
+
   // Subida REAL del CV al bucket privado. Después, la persona elige sus
   // rubros manualmente (la lectura automática del PDF llega más adelante).
   function handleCvFile(file: File | undefined) {
@@ -88,6 +100,7 @@ export default function OnboardingPage() {
         full_name: name,
         phone_whatsapp: phone,
         location_city: city,
+        country: country.code,
         preferences_industry: selectedIndustries,
         first_job_mode: firstJob,
         bio: bio || undefined,
@@ -136,11 +149,13 @@ export default function OnboardingPage() {
               />
             </div>
             <div>
-              <label className="label">Tu número de WhatsApp</label>
+              <label className="label">
+                Tu número de WhatsApp ({country.flag} {country.phonePrefix})
+              </label>
               <input
                 className="input"
                 type="tel"
-                placeholder="Ej: 0981 234 567"
+                placeholder={`Ej: ${country.phonePrefix} 981 234 567`}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
@@ -150,16 +165,19 @@ export default function OnboardingPage() {
               </p>
             </div>
             <div>
-              <label className="label">¿En qué ciudad vivís?</label>
+              <label className="label">
+                ¿En qué ciudad de {country.name} vivís?
+              </label>
               <select
                 className="input"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
               >
                 <option value="">Elegí tu ciudad</option>
-                {CITIES.map((c) => (
+                {country.cities.map((c) => (
                   <option key={c}>{c}</option>
                 ))}
+                <option value="Otra">Otra ciudad</option>
               </select>
             </div>
             <button

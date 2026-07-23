@@ -7,7 +7,9 @@ import {
   getMySavedJobIds,
   getSiteSettings,
 } from "@/lib/data";
-import { CITIES, INDUSTRIES } from "@/lib/mock-data";
+import { INDUSTRIES } from "@/lib/mock-data";
+import { countryByCode } from "@/lib/countries";
+import { getActiveCountry } from "@/lib/country-context";
 import type { Candidate, JobWithCompany } from "@/lib/types";
 
 export const metadata = { title: "Empleos" };
@@ -49,22 +51,31 @@ export default async function JobFeedPage({
     primerEmpleo?: string;
   }>;
 }) {
-  const [jobs, externalJobs, candidate, appliedIds, savedIds, settings, params] =
+  const [allJobs, candidate, appliedIds, savedIds, settings, params, active] =
     await Promise.all([
       getActiveJobs(),
-      getExternalJobs("py"),
       getCurrentCandidate(),
       getMyAppliedJobIds(),
       getMySavedJobIds(),
       getSiteSettings(),
       searchParams,
+      getActiveCountry(),
     ]);
 
-  // Listas del sitio: base + las que el admin agrega desde el backoffice.
+  // País del feed: el del candidato si está logueado, si no el de la cookie.
+  const country = candidate?.country
+    ? countryByCode(candidate.country)
+    : active;
+
+  // Solo vacantes de ese país (las de empresas de ese país + externas).
+  const jobs = allJobs.filter((j) => (j.company.country ?? "py") === country.code);
+  const externalJobs = await getExternalJobs(country.code);
+
+  // Listas del sitio: ciudades del país + las que el admin agregó.
   const extra = (value: string | undefined) =>
     (value ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   const industries = [...new Set([...INDUSTRIES, ...extra(settings.custom_industries)])];
-  const cities = [...new Set([...CITIES, ...extra(settings.custom_cities)])];
+  const cities = [...new Set([...country.cities, ...extra(settings.custom_cities)])];
 
   const scored = candidate
     ? jobs
