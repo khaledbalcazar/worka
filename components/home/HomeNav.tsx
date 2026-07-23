@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import Logo from "@/components/Logo";
+import CountrySelector from "@/components/CountrySelector";
 
 // Enlaces del menú: anclas a las secciones de la home + rutas reales.
 const NAV_LINKS: [string, string][] = [
@@ -42,6 +43,7 @@ export default function HomeNav() {
         </nav>
 
         <div className="hidden md:flex items-center gap-2">
+          <CountrySelector />
           <Link
             href="/ingresar"
             className="text-sm font-medium text-primary-dark px-4 py-2 rounded-xl hover:bg-white transition-colors"
@@ -80,6 +82,9 @@ export default function HomeNav() {
               </a>
             )
           )}
+          <div className="py-3.5 border-b border-gray-100">
+            <CountrySelector />
+          </div>
           <div className="flex gap-2.5 mt-4">
             <Link
               href="/ingresar"

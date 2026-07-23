@@ -188,8 +188,45 @@ const NAV = [
   { label: "Preguntas", href: "/#faq" },
 ];
 
-export default function ParaEmpresasLanding() {
+export default function ParaEmpresasLanding({
+  countryName = "Paraguay",
+  currencyName = "guaraní",
+  taxIdLabel = "RUC",
+  isPy = true,
+}: {
+  countryName?: string;
+  currencyName?: string;
+  taxIdLabel?: string;
+  isPy?: boolean;
+}) {
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Versiones de los datos adaptadas al país (moneda, etiqueta fiscal, nombre).
+  const howSteps = HOW_STEPS.map((s, i) =>
+    i === 0
+      ? {
+          ...s,
+          description: isPy
+            ? s.description
+            : `Creá tu cuenta en minutos. Verificamos tu ${taxIdLabel} para otorgarte el sello de empresa confiable.`,
+        }
+      : s
+  );
+  const workaAdsPerks = WORKAADS_PERKS.map((p) =>
+    p.title === "Publicación en Google Jobs"
+      ? {
+          ...p,
+          description: `Tu vacante aparece en la búsqueda de Google cuando alguien busca empleo en ${countryName}.`,
+        }
+      : p
+  );
+  const comparison = COMPARISON.map((r) => {
+    if (r.feature === "Verificación de empresa (RUC)")
+      return { ...r, feature: `Verificación de empresa (${taxIdLabel})` };
+    if (r.feature === "Foco 100% en Paraguay")
+      return { ...r, feature: `Foco 100% en ${countryName}` };
+    return r;
+  });
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
@@ -266,7 +303,7 @@ export default function ParaEmpresasLanding() {
             </span>
 
             <h1 className="text-4xl lg:text-[2.85rem] font-extrabold text-primary-dark leading-[1.1] tracking-tight">
-              Encontrá talento local, verificado y sin pagar un guaraní
+              Encontrá talento local, verificado y sin pagar un {currencyName}
             </h1>
 
             <p className="text-[0.95rem] text-gray-500 leading-relaxed max-w-lg">
@@ -384,7 +421,7 @@ export default function ParaEmpresasLanding() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
-            {HOW_STEPS.map((step) => {
+            {howSteps.map((step) => {
               const Icon = step.icon;
               return (
                 <div
@@ -545,7 +582,7 @@ export default function ParaEmpresasLanding() {
             </div>
 
             <div className="grid sm:grid-cols-2 gap-4">
-              {WORKAADS_PERKS.map((perk) => {
+              {workaAdsPerks.map((perk) => {
                 const Icon = perk.icon;
                 return (
                   <div
@@ -604,20 +641,21 @@ export default function ParaEmpresasLanding() {
               Por qué Worka
             </span>
             <h2 className="text-3xl font-extrabold text-primary-dark mt-3 leading-tight">
-              La única plataforma pensada 100% para el mercado laboral paraguayo
+              La única plataforma pensada 100% para el mercado laboral de{" "}
+              {countryName}
             </h2>
             <p className="text-gray-500 mt-4 text-sm leading-relaxed">
-              LinkedIn cobra caro, EmpleaPY es básico, Infojobs no entiende el
-              contexto local. Worka fue construido desde cero para Paraguay: con
-              su cultura, sus empresas y sus candidatos.
+              LinkedIn cobra caro y los portales genéricos no entienden el
+              contexto local. Worka está construido para {countryName}: con su
+              cultura, sus empresas y sus candidatos.
             </p>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
             {[
-              { icon: MapPin, title: "100% local", description: "Rutas de transporte, barrios y contexto paraguayo integrado." },
+              { icon: MapPin, title: "100% local", description: `Rutas de transporte, barrios y contexto de ${countryName} integrado.` },
               { icon: DollarSign, title: "Gratis de verdad", description: "Las funciones esenciales no tienen costo oculto ni período de prueba." },
-              { icon: Shield, title: "Verificado y seguro", description: "RUC validado, bloqueo de fraudes y reportes de la comunidad." },
+              { icon: Shield, title: "Verificado y seguro", description: `${taxIdLabel} validado, bloqueo de fraudes y reportes de la comunidad.` },
               { icon: Clock, title: "Rápido de usar", description: "De registro a primera vacante publicada en menos de 5 minutos." },
             ].map((item) => {
               const Icon = item.icon;
@@ -661,7 +699,7 @@ export default function ParaEmpresasLanding() {
                   </tr>
                 </thead>
                 <tbody>
-                  {COMPARISON.map((row, i) => (
+                  {comparison.map((row, i) => (
                     <tr key={row.feature} className={`border-b border-gray-50 ${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}`}>
                       <td className="px-6 py-3.5 text-sm text-gray-700 font-medium">
                         {row.feature}
@@ -686,7 +724,7 @@ export default function ParaEmpresasLanding() {
             <div className="px-6 py-4 bg-primary flex flex-col sm:flex-row items-center justify-between gap-4">
               <p className="text-blue-100 text-sm">
                 Worka es la plataforma con más funciones gratuitas para empresas
-                en Paraguay.
+                en {countryName}.
               </p>
               <Link
                 href="/empresa/registro"
@@ -744,8 +782,8 @@ export default function ParaEmpresasLanding() {
             Tu próximo gran empleado está en Worka.
           </h2>
           <p className="text-blue-200 text-base leading-relaxed">
-            Más de 800 empresas en Paraguay ya encontraron el talento que
-            buscaban. Empezá hoy, gratis, sin compromisos.
+            Empresas de {countryName} ya encontraron el talento que buscaban.
+            Empezá hoy, gratis, sin compromisos.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <Link
@@ -777,7 +815,8 @@ export default function ParaEmpresasLanding() {
           <div className="flex flex-col gap-3">
             <Logo light />
             <p className="text-blue-300 text-xs max-w-xs leading-relaxed">
-              La plataforma de empleo de Paraguay. Tu próximo paso empieza acá.
+              La plataforma de empleo de {countryName}. Tu próximo paso empieza
+              acá.
             </p>
           </div>
 
