@@ -1658,6 +1658,7 @@ export async function runImport(
     country: source.country ?? "py",
     title: j.title,
     company_name: j.company_name,
+    company_logo_url: j.company_logo_url,
     description: j.description,
     city: j.city,
     industry: j.industry,

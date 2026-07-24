@@ -7,6 +7,7 @@ export type ParsedJob = {
   external_key: string | null;
   title: string;
   company_name: string;
+  company_logo_url: string | null;
   description: string;
   city: string | null;
   industry: string | null;
@@ -96,7 +97,7 @@ export function clean(html: string | undefined | null): string {
 
 // Guardamos un resumen, no el aviso completo: la fuente conserva su
 // contenido y siempre enlazamos de vuelta al original.
-export function excerpt(text: string, max = 600): string {
+export function excerpt(text: string, max = 5000): string {
   const t = clean(text);
   return t.length <= max ? t : `${t.slice(0, max).trimEnd()}…`;
 }
@@ -151,6 +152,7 @@ export function parseFeed(xml: string, source: JobSource): ParsedJob[] {
       title,
       company_name:
         pick("company", "employer", "hiringorganization") || source.name,
+      company_logo_url: pick("logo", "image", "companylogo") || null,
       description: excerpt(rawDesc),
       city: pick("city", "location", "joblocation") || source.default_city,
       industry: pick("category", "industry") || source.default_industry,
@@ -197,6 +199,7 @@ export function parseHtml(html: string, source: JobSource): ParsedJob[] {
         external_key: link || title,
         title,
         company_name: text(source.sel_company) || source.name,
+        company_logo_url: null,
         description: excerpt(rawDesc),
         city: text(source.sel_city) || source.default_city,
         industry: source.default_industry,

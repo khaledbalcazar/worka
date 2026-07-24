@@ -18,6 +18,7 @@ type SerpJob = {
   description?: string;
   job_id?: string;
   via?: string;
+  thumbnail?: string;
   detected_extensions?: {
     posted_at?: string;
     schedule_type?: string;
@@ -115,13 +116,17 @@ export async function fetchSerpApi(source: JobSource): Promise<ParsedJob[]> {
       j.share_link ??
       j.related_links?.[0]?.link ??
       null;
-    const description = (j.description ?? "").slice(0, 600).trim();
+    // Descripción completa (Google Jobs la entrega entera); capamos alto
+    // solo para evitar textos anómalos gigantes.
+    const description = (j.description ?? "").slice(0, 8000).trim();
 
     jobs.push({
       // job_id de SerpApi es estable por aviso: sirve para deduplicar.
       external_key: j.job_id || apply || `${j.title}-${j.company_name}`,
       title: j.title.trim(),
       company_name: j.company_name?.trim() || source.name,
+      // Logo/imagen de la empresa que trae Google Jobs.
+      company_logo_url: j.thumbnail?.trim() || null,
       description,
       city: cleanCity(j.location, source.default_city),
       industry: guessIndustry(j.title, source.default_industry),

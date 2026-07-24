@@ -136,6 +136,27 @@ export default function ExternalJobsAdmin({
     });
   }
 
+  function editJob(job: ExternalJob) {
+    setJobDraft({
+      id: job.id,
+      title: job.title,
+      company_name: job.company_name,
+      company_logo_url: job.company_logo_url ?? "",
+      description: job.description,
+      city: job.city ?? "",
+      industry: job.industry ?? "",
+      salary_range: job.salary_range ?? "",
+      apply_email: job.apply_email ?? "",
+      apply_url: job.apply_url ?? "",
+      source_name: job.source_name,
+      source_url: job.source_url ?? "",
+      status: job.status,
+    });
+    setShowJobForm(true);
+    // Lleva el formulario a la vista.
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   function removeJob(id: string) {
     setJobs((j) => j.filter((x) => x.id !== id));
     startTransition(() => {
@@ -625,13 +646,31 @@ export default function ExternalJobsAdmin({
               Hace falta al menos uno de los dos. Solo se le muestra a quien ya
               tiene cuenta en Worka.
             </p>
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between gap-3">
+              <label className="flex items-center gap-2 text-sm text-gray-600">
+                <input
+                  type="checkbox"
+                  className="w-5 h-5 accent-primary"
+                  checked={jobDraft.status === "activa"}
+                  onChange={(e) =>
+                    setJobDraft((j) => ({
+                      ...j,
+                      status: e.target.checked ? "activa" : "oculta",
+                    }))
+                  }
+                />
+                Visible en el sitio
+              </label>
               <button
                 className="btn-primary"
                 disabled={pending}
                 onClick={saveJob}
               >
-                {pending ? "Guardando…" : "Guardar vacante"}
+                {pending
+                  ? "Guardando…"
+                  : jobDraft.id
+                    ? "Guardar cambios"
+                    : "Guardar vacante"}
               </button>
             </div>
           </div>
@@ -667,6 +706,12 @@ export default function ExternalJobsAdmin({
                   >
                     {j.status}
                   </span>
+                  <button
+                    className="text-sm text-primary font-medium"
+                    onClick={() => editJob(j)}
+                  >
+                    Editar
+                  </button>
                   <button
                     className="text-sm text-gray-400 hover:text-danger"
                     onClick={() => removeJob(j.id)}

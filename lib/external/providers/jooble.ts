@@ -128,6 +128,7 @@ export async function fetchJooble(source: JobSource): Promise<ParsedJob[]> {
       external_key: j.id ? String(j.id) : j.link || j.title,
       title: clean(j.title),
       company_name: clean(j.company) || j.source || source.name,
+      company_logo_url: null,
       description: excerpt(snippet),
       city: cleanCity(j.location, source.default_city),
       industry: guessIndustry(j.title, source.default_industry),
