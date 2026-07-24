@@ -25,7 +25,7 @@ import {
 import Logo from "@/components/Logo";
 import { COUNTRIES } from "@/lib/countries";
 import { getActiveCountry } from "@/lib/country-context";
-import { getActiveJobsCount, getSiteSettings } from "@/lib/data";
+import { getCountryJobsCount, getSiteSettings } from "@/lib/data";
 import HomeNav from "@/components/home/HomeNav";
 import HeroSearch from "@/components/home/HeroSearch";
 import ActivityFeed, { type ActivityItem } from "@/components/home/ActivityFeed";
@@ -267,11 +267,12 @@ function SectionHead({
 }
 
 export default async function LandingPage() {
-  const [jobsCount, settings, country] = await Promise.all([
-    getActiveJobsCount(),
+  const [settings, country] = await Promise.all([
     getSiteSettings(),
     getActiveCountry(),
   ]);
+  // Total del país: vacantes de Worka + externas de ese país.
+  const jobsCount = await getCountryJobsCount(country.code);
 
   // Los textos del admin (pensados para Paraguay) solo aplican cuando el
   // país activo es Paraguay; los demás países usan el contenido generado

@@ -1123,3 +1123,34 @@ export async function getActiveJobsCount(): Promise<number> {
     .eq("status", "Activo");
   return count ?? 0;
 }
+
+// Total de vacantes activas de un país = las de empresas de Worka de ese
+// país + las externas activas de ese país (si el agregador está encendido).
+export async function getCountryJobsCount(country: string): Promise<number> {
+  const supabase = await getServerClient();
+  if (!supabase) {
+    const worka = mock
+      .getActiveJobs()
+      .filter((j) => (j.company.country ?? "py") === country).length;
+    return worka; // en demo no hay externas
+  }
+
+  const { count: workaCount } = await supabase
+    .from("jobs")
+    // inner join a companies para filtrar por país de la empresa
+    .select("id, companies!inner(country)", { count: "exact", head: true })
+    .eq("status", "Activo")
+    .eq("companies.country", country);
+
+  let externalCount = 0;
+  if (await externalJobsEnabled()) {
+    const { count } = await supabase
+      .from("external_jobs")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "activa")
+      .eq("country", country);
+    externalCount = count ?? 0;
+  }
+
+  return (workaCount ?? 0) + externalCount;
+}
