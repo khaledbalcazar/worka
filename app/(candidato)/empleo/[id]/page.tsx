@@ -25,8 +25,14 @@ export async function generateMetadata({
   const { id } = await params;
   const job = await getJobById(id);
   if (!job) return { title: "Vacante no encontrada" };
-  const title = `${job.title} — ${job.company.trade_name}`;
-  const description = `${job.company.location_city}${job.salary_range ? ` · ${job.salary_range}` : ""}. Postulate gratis en Worka.`;
+  const rawTitle = `${job.title} — ${job.company.trade_name}`;
+  const title =
+    rawTitle.length > 60 ? `${rawTitle.slice(0, 57).trimEnd()}…` : rawTitle;
+  // Descripción con el rubro y la ciudad para dar más contexto y palabras.
+  const description = `${job.title} en ${job.company.trade_name} · ${job.company.location_city}${job.salary_range ? ` · ${job.salary_range}` : ""}. Postulate gratis y sin comisiones en Worka.`.slice(
+    0,
+    158
+  );
   const ogImage = `/empleo/${job.id}/og`;
   return {
     title,

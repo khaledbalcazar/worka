@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, MapPin, Shield, Search } from "lucide-react";
-import { COUNTRIES, countryBySlug } from "@/lib/countries";
+import { COUNTRIES, DEFAULT_COUNTRY, countryBySlug } from "@/lib/countries";
 import { INDUSTRIES } from "@/lib/mock-data";
 import { getExternalJobs } from "@/lib/data";
 import { SITE_URL } from "@/lib/supabase/config";
@@ -28,20 +28,23 @@ export async function generateMetadata({
   const country = countryBySlug(pais);
   if (!country) return { title: "País no encontrado" };
 
-  const title = `Empleos en ${country.name} ${country.flag} — Worka`;
-  const description = `Encontrá trabajo en ${country.name}: vacantes actualizadas cada día, postulate gratis. La bolsa de empleo de ${country.name} en Worka.`;
+  // Título < 70 caracteres (el layout NO le agrega sufijo a este título raíz).
+  const title = `Empleos en ${country.name} — Worka`;
+  const description = `Encontrá trabajo en ${country.name}: vacantes nuevas cada día de las mejores empresas. Postulate gratis en Worka, la bolsa de empleo de ${country.demonym}.`;
+
+  // hreflang con URLs ABSOLUTAS + x-default (Semrush exige absolutas y 200).
+  const languages: Record<string, string> = {};
+  for (const c of COUNTRIES) languages[`es-${c.code}`] = `${BASE}/${c.slug}`;
+  languages["x-default"] = `${BASE}/${DEFAULT_COUNTRY.slug}`;
 
   return {
     title,
     description,
     alternates: {
-      canonical: `/${country.slug}`,
-      // hreflang: le decimos a Google que hay una versión por país.
-      languages: Object.fromEntries(
-        COUNTRIES.map((c) => [`es-${c.code.toUpperCase()}`, `/${c.slug}`])
-      ),
+      canonical: `${BASE}/${country.slug}`,
+      languages,
     },
-    openGraph: { title, description, url: `/${country.slug}`, type: "website" },
+    openGraph: { title, description, url: `${BASE}/${country.slug}`, type: "website" },
   };
 }
 
@@ -99,9 +102,8 @@ export default async function CountryLanding({
             <br />
             <span className="text-primary">está en {country.name}.</span>
           </h1>
-          <p className="text-gray-500 mt-4 max-w-xl mx-auto">
-            Vacantes de todo {country.name} en un solo lugar. Postulate gratis y
-            recibí las nuevas ofertas de tu rubro.
+          <p className="text-gray-500 mt-4 max-w-2xl mx-auto">
+            {country.blurb}
           </p>
           <div className="flex flex-wrap gap-3 justify-center mt-7">
             <a href="#empleos" className="btn-primary">
@@ -180,8 +182,53 @@ export default async function CountryLanding({
         )}
       </section>
 
+      {/* Contenido SEO único por país */}
+      <section className="bg-white border-t border-primary-dark/10 px-5 py-12">
+        <div className="max-w-3xl mx-auto prose-sm">
+          <h2 className="text-xl font-bold text-primary-dark mb-3">
+            Cómo buscar empleo en {country.name} con Worka
+          </h2>
+          <p className="text-[0.925rem] text-gray-600 leading-relaxed mb-3">
+            Buscar trabajo en {country.name} es más simple cuando tenés todas
+            las vacantes en un solo lugar. En Worka creás tu perfil gratis,
+            generás tu CV sin costo y te postulás con un clic a ofertas de{" "}
+            {country.cities.slice(0, 5).join(", ")} y más ciudades. Cada aviso
+            muestra el puesto, el rango de salario cuando está disponible y cómo
+            contactar a la empresa.
+          </p>
+          <p className="text-[0.925rem] text-gray-600 leading-relaxed mb-3">
+            Las empresas de {country.name} publican en Worka porque es{" "}
+            <Link href="/para-empresas" className="text-primary underline">
+              gratis para publicar vacantes
+            </Link>{" "}
+            y verificamos su identidad fiscal ({country.taxIdLabel}) para darle
+            confianza a los candidatos. Podés explorar{" "}
+            <Link href="/empleos" className="text-primary underline">
+              todos los empleos disponibles
+            </Link>
+            , revisar los{" "}
+            <Link href="/salarios" className="text-primary underline">
+              salarios de referencia por rubro
+            </Link>{" "}
+            o leer consejos en el{" "}
+            <Link href="/blog" className="text-primary underline">
+              blog de Worka
+            </Link>
+            .
+          </p>
+          <p className="text-[0.925rem] text-gray-600 leading-relaxed">
+            Recordá: en Worka <b>nunca tenés que pagar</b> para postularte ni
+            para conseguir un trabajo. Si una oferta te pide dinero, no es real.{" "}
+            <Link href="/registro" className="text-primary underline">
+              Creá tu cuenta gratis
+            </Link>{" "}
+            y empezá a postularte hoy mismo.
+          </p>
+        </div>
+      </section>
+
       {/* Confianza */}
-      <section className="bg-white border-t border-primary-dark/10 px-5 py-10">
+      <section className="bg-surface border-t border-primary-dark/10 px-5 py-10">
         <div className="max-w-3xl mx-auto flex items-center gap-4">
           <Shield size={26} className="text-primary shrink-0" />
           <p className="text-sm text-gray-600">

@@ -1,7 +1,11 @@
 import { getSiteSettings } from "@/lib/data";
 import LegalPage from "@/components/LegalPage";
 
-export const metadata = { title: "Política de privacidad" };
+export const metadata = {
+  title: "Política de privacidad",
+  description:
+    "Política de privacidad de Worka: cómo cuidamos y protegemos tus datos personales, para qué los usamos y cuáles son tus derechos sobre ellos.",
+};
 export const revalidate = 300;
 
 const FALLBACK = `En Worka cuidamos tus datos personales.

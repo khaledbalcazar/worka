@@ -1,0 +1,27 @@
+# Worka
+
+> Worka es la plataforma de empleo gratuita de Latinoamérica (Paraguay, Argentina, México, Colombia, Chile y Bolivia). Conecta a personas que buscan trabajo con empresas verificadas, sin costo y sin comisiones. Los candidatos se postulan gratis y las empresas publican vacantes ilimitadas.
+
+## Para candidatos
+- [Buscar empleos](https://worka.click/empleos): vacantes actualizadas cada día por rubro y ciudad.
+- [Crear cuenta gratis](https://worka.click/registro): perfil, CV gratis y postulación en 1 clic.
+- [Salarios por rubro](https://worka.click/salarios): rangos de sueldo de referencia.
+
+## Para empresas
+- [Para empresas](https://worka.click/para-empresas): publicá vacantes gratis y gestioná candidatos con un tablero Kanban.
+- [Registrar empresa](https://worka.click/empresa/registro): alta con verificación de identidad fiscal (RUC/CUIT/RFC/NIT/RUT).
+
+## Por país
+- [Paraguay](https://worka.click/paraguay)
+- [Argentina](https://worka.click/argentina)
+- [México](https://worka.click/mexico)
+- [Colombia](https://worka.click/colombia)
+- [Chile](https://worka.click/chile)
+- [Bolivia](https://worka.click/bolivia)
+
+## Recursos
+- [Blog](https://worka.click/blog): guías y consejos para conseguir empleo.
+
+## Notas
+- Worka nunca cobra a los candidatos por postularse ni por conseguir trabajo.
+- Las empresas se verifican contra los registros fiscales de cada país.

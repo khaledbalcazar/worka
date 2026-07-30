@@ -1,7 +1,11 @@
 import { getSiteSettings } from "@/lib/data";
 import LegalPage from "@/components/LegalPage";
 
-export const metadata = { title: "Términos y condiciones" };
+export const metadata = {
+  title: "Términos y condiciones",
+  description:
+    "Términos y condiciones de uso de Worka: derechos, obligaciones y reglas de la plataforma de empleo para candidatos y empresas.",
+};
 export const revalidate = 300;
 
 const FALLBACK = `Al usar Worka aceptás estos términos.

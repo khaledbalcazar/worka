@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { getSalaryStats } from "@/lib/data";
 
-export const metadata = { title: "Salarios por rubro" };
+export const metadata = {
+  title: "Salarios por rubro",
+  description:
+    "Consultá cuánto se paga por rubro y puesto: rangos salariales de referencia para cajeros, vendedores, administrativos, choferes y más. Información para negociar mejor tu sueldo.",
+};
 
 function gs(n: number): string {
   return `Gs. ${Math.round(n / 100000) * 100000 >= 1000000 ? (n / 1000000).toLocaleString("es-PY", { maximumFractionDigits: 1 }) + " M" : n.toLocaleString("es-PY")}`;

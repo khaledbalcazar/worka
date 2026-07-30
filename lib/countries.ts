@@ -18,6 +18,8 @@ export interface Country {
   serpGl: string; // Google country code
   serpDomain: string; // google_domain
   joobleLocation: string; // texto de ubicación para Jooble
+  // Párrafo único por país (SEO): evita contenido duplicado entre landings.
+  blurb: string;
   default?: boolean;
 }
 
@@ -46,6 +48,8 @@ export const COUNTRIES: Country[] = [
     serpGl: "py",
     serpDomain: "google.com.py",
     joobleLocation: "Paraguay",
+    blurb:
+      "En Paraguay el empleo se mueve fuerte en comercio y supermercados, gastronomia, maquilas y logistica. Worka reune vacantes de Asuncion, Ciudad del Este, San Lorenzo, Luque y todo el pais, con el dato de como llegar en colectivo a cada trabajo y empresas verificadas por su RUC ante la DNIT.",
     default: true,
   },
   {
@@ -72,6 +76,8 @@ export const COUNTRIES: Country[] = [
     serpGl: "ar",
     serpDomain: "google.com.ar",
     joobleLocation: "Argentina",
+    blurb:
+      "En Argentina hay demanda constante en comercio, gastronomia, atencion al cliente, logistica y administracion. En Worka encontras empleos en Buenos Aires, Cordoba, Rosario, Mendoza y todo el pais, con empresas cuyo CUIT verificamos para que postules con confianza y sin pagar comisiones.",
   },
   {
     code: "mx",
@@ -97,6 +103,8 @@ export const COUNTRIES: Country[] = [
     serpGl: "mx",
     serpDomain: "google.com.mx",
     joobleLocation: "México",
+    blurb:
+      "En Mexico crecen las oportunidades en ventas, call center, manufactura, logistica y atencion al cliente. Worka concentra vacantes de Ciudad de Mexico, Guadalajara, Monterrey, Puebla y mas, con empresas verificadas por su RFC para que apliques gratis y con seguridad.",
   },
   {
     code: "co",
@@ -122,6 +130,8 @@ export const COUNTRIES: Country[] = [
     serpGl: "co",
     serpDomain: "google.com.co",
     joobleLocation: "Colombia",
+    blurb:
+      "En Colombia el mercado laboral es activo en ventas, servicios, logistica, salud y tecnologia. En Worka reunimos empleos de Bogota, Medellin, Cali, Barranquilla y todo el pais, con empresas verificadas por su NIT para que te postules gratis y sin intermediarios.",
   },
   {
     code: "cl",
@@ -147,6 +157,8 @@ export const COUNTRIES: Country[] = [
     serpGl: "cl",
     serpDomain: "google.cl",
     joobleLocation: "Chile",
+    blurb:
+      "En Chile hay busqueda permanente en retail, servicios, mineria, logistica y administracion. Worka agrupa vacantes de Santiago, Valparaiso, Concepcion, La Serena y mas, con empresas verificadas por su RUT para que apliques rapido, gratis y con confianza.",
   },
   {
     code: "bo",
@@ -172,6 +184,8 @@ export const COUNTRIES: Country[] = [
     serpGl: "bo",
     serpDomain: "google.com.bo",
     joobleLocation: "Bolivia",
+    blurb:
+      "En Bolivia el empleo se concentra en comercio, servicios, manufactura y transporte. En Worka encontras oportunidades en La Paz, Santa Cruz de la Sierra, Cochabamba, El Alto y todo el pais, con empresas verificadas por su NIT para que te postules gratis y con seguridad.",
   },
 ];
 

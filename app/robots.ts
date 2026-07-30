@@ -9,14 +9,19 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
+        // El registro de empresa es público; el resto del panel no.
+        allow: ["/", "/empresa/registro"],
         disallow: [
           "/admin",
           "/perfil",
           "/postulaciones",
+          "/guardados",
           "/mensajes",
           "/onboarding",
           "/test-perfil",
+          "/cv",
+          "/juegos",
+          "/empresa", // panel privado (excepto /empresa/registro, permitido arriba)
           "/restablecer",
           "/recuperar",
           "/auth/",

@@ -28,17 +28,25 @@ export async function generateMetadata({
   const job = await getExternalJob(id);
   if (!job) return { title: "Vacante no encontrada" };
 
-  const where = job.city ? ` en ${job.city}` : " en Paraguay";
+  const where = job.city ? ` en ${job.city}` : "";
+  // Descripción entre 120 y 160 caracteres (recomendación SEO).
+  const rawDesc =
+    job.description.replace(/\s+/g, " ").trim() ||
+    `${job.title} en ${job.company_name}${where}. Postulate gratis desde Worka.`;
   const description =
-    job.description.slice(0, 155) ||
-    `${job.title}${where}. Postulate gratis desde Worka.`;
+    rawDesc.length > 158 ? `${rawDesc.slice(0, 155).trimEnd()}…` : rawDesc;
+
+  // Título < 62 chars para que con el sufijo "| Worka" no supere 70.
+  const rawTitle = `${job.title} — ${job.company_name}`;
+  const title =
+    rawTitle.length > 60 ? `${rawTitle.slice(0, 57).trimEnd()}…` : rawTitle;
 
   return {
-    title: `${job.title} — ${job.company_name}${where}`,
+    title,
     description,
     alternates: { canonical: `/empleo/externo/${job.id}` },
     openGraph: {
-      title: `${job.title} — ${job.company_name}`,
+      title,
       description,
       type: "article",
       url: `/empleo/externo/${job.id}`,

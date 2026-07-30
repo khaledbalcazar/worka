@@ -62,9 +62,9 @@ function LoginForm() {
       <div className="card w-full max-w-sm p-6 space-y-4">
         <div className="text-center">
           <Logo />
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-lg font-bold text-primary-dark mt-2">
             {mode === "login" ? "Ingresá a tu cuenta" : "Creá tu cuenta gratis"}
-          </p>
+          </h1>
         </div>
 
         {signupSent && (

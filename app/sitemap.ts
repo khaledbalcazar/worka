@@ -25,11 +25,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Landings por país
     ...COUNTRIES.map((c) => ({ path: `/${c.slug}`, priority: 0.8 })),
     { path: "/registro", priority: 0.7 },
-    { path: "/ingresar", priority: 0.6 },
     { path: "/empresa/registro", priority: 0.7 },
     { path: "/salarios", priority: 0.6 },
-    { path: "/cv", priority: 0.6 },
-    { path: "/juegos", priority: 0.5 },
+    { path: "/terminos", priority: 0.3 },
+    { path: "/privacidad", priority: 0.3 },
   ];
 
   const entries: MetadataRoute.Sitemap = staticRoutes.map((r) => ({

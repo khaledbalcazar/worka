@@ -12,7 +12,11 @@ import { countryByCode } from "@/lib/countries";
 import { getActiveCountry } from "@/lib/country-context";
 import type { Candidate, JobWithCompany } from "@/lib/types";
 
-export const metadata = { title: "Empleos" };
+export const metadata = {
+  title: "Buscar empleos",
+  description:
+    "Explorá miles de vacantes de empleo actualizadas cada día: ventas, gastronomía, logística, administración y más. Postulate gratis y encontrá trabajo cerca tuyo con Worka.",
+};
 
 // Puntaje de afinidad (alimentado por el test de perfil):
 // rubro > ciudad/movilidad > primer empleo > modalidad preferida.
