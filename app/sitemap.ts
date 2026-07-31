@@ -4,6 +4,7 @@ import {
   getAllCompanies,
   getExternalJobs,
   getPublishedPosts,
+  getPublishedCourses,
 } from "@/lib/data";
 import { COUNTRIES } from "@/lib/countries";
 import { SITE_URL } from "@/lib/supabase/config";
@@ -22,6 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: "/empleos", priority: 0.9 },
     { path: "/para-empresas", priority: 0.8 },
     { path: "/blog", priority: 0.8 },
+    { path: "/academia", priority: 0.7 },
     // Landings por país
     ...COUNTRIES.map((c) => ({ path: `/${c.slug}`, priority: 0.8 })),
     { path: "/registro", priority: 0.7 },

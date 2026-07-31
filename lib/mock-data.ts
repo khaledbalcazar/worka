@@ -1,6 +1,8 @@
 import type {
   Application,
   BlogPost,
+  Course,
+  Lesson,
   Candidate,
   ChatMessage,
   Company,
@@ -64,6 +66,83 @@ export const blogPosts: BlogPost[] = [
     published_at: "2026-07-17T10:00:00Z",
   },
 ];
+
+// Academia (modo demo). En producción viene de las tablas courses/lessons.
+export const courses: Course[] = [
+  {
+    id: "crs1",
+    slug: "preparate-para-entrevistas",
+    title: "Preparate para tus entrevistas",
+    description:
+      "Todo lo que necesitás para llegar seguro a una entrevista: qué decir, cómo prepararte y cómo responder las preguntas más comunes.",
+    cover_url: null,
+    category: "Entrevistas",
+    level: "Básico",
+    status: "publicado",
+    sort: 1,
+    created_at: "2026-07-20T10:00:00Z",
+    updated_at: "2026-07-20T10:00:00Z",
+  },
+  {
+    id: "crs2",
+    slug: "descubri-tus-habilidades",
+    title: "Descubrí tus habilidades",
+    description:
+      "Identificá tus fortalezas, ponelas en tu CV y contalas con ejemplos que convencen a las empresas.",
+    cover_url: null,
+    category: "Habilidades",
+    level: "Básico",
+    status: "publicado",
+    sort: 2,
+    created_at: "2026-07-20T10:00:00Z",
+    updated_at: "2026-07-20T10:00:00Z",
+  },
+  {
+    id: "crs3",
+    slug: "tu-primer-empleo",
+    title: "Tu primer empleo: guía completa",
+    description:
+      "Sin experiencia también se consigue trabajo. Paso a paso desde armar tu perfil hasta tu primer día.",
+    cover_url: null,
+    category: "Empleo",
+    level: "Básico",
+    status: "publicado",
+    sort: 3,
+    created_at: "2026-07-20T10:00:00Z",
+    updated_at: "2026-07-20T10:00:00Z",
+  },
+];
+
+const demoLessons: Lesson[] = [
+  {
+    id: "les1",
+    course_id: "crs1",
+    section: "Antes de la entrevista",
+    title: "Investigá la empresa",
+    content:
+      "Antes de cualquier entrevista, tomate 15 minutos para conocer a la empresa.\n\n## Qué mirar\n- A qué se dedica.\n- Su página en Worka.\n- Sus redes sociales.",
+    video_url: null,
+    duration_min: 8,
+    sort: 1,
+    created_at: "2026-07-20T10:00:00Z",
+  },
+  {
+    id: "les2",
+    course_id: "crs1",
+    section: "El día de la entrevista",
+    title: "Puntualidad y presentación",
+    content:
+      "Llegá **10 minutos antes**.\n\n- Llevá tu documento y CV.\n- Vestí prolijo.\n- Saludá con seguridad.",
+    video_url: null,
+    duration_min: 6,
+    sort: 2,
+    created_at: "2026-07-20T10:00:00Z",
+  },
+];
+
+export function lessonsFor(courseId: string): Lesson[] {
+  return demoLessons.filter((l) => l.course_id === courseId);
+}
 
 // Datos de ejemplo para navegar la app sin Supabase.
 // Al conectar Supabase, la capa lib/data.ts consulta la base real.

@@ -7,6 +7,7 @@ export default function SiteHeader({ active }: { active?: string }) {
     { label: "Buscar empleo", href: "/empleos" },
     { label: "Para empresas", href: "/para-empresas" },
     { label: "Blog", href: "/blog" },
+    { label: "Academia", href: "/academia" },
   ];
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-100">

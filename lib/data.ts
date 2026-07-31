@@ -968,6 +968,84 @@ export async function getJobSources(): Promise<
   return (data ?? []) as import("./types").JobSource[];
 }
 
+// ── Academia ──
+
+export async function getPublishedCourses(): Promise<
+  import("./types").Course[]
+> {
+  const supabase = await getServerClient();
+  if (!supabase) return mock.courses;
+  const { data } = await supabase
+    .from("courses")
+    .select("*")
+    .eq("status", "publicado")
+    .order("sort", { ascending: true });
+  return (data ?? []) as import("./types").Course[];
+}
+
+export async function getCourse(
+  slug: string
+): Promise<import("./types").CourseWithLessons | null> {
+  const supabase = await getServerClient();
+  if (!supabase) {
+    const c = mock.courses.find((x) => x.slug === slug);
+    return c ? { ...c, lessons: mock.lessonsFor(c.id) } : null;
+  }
+  const { data: course } = await supabase
+    .from("courses")
+    .select("*")
+    .eq("slug", slug)
+    .maybeSingle();
+  if (!course) return null;
+  const { data: lessons } = await supabase
+    .from("lessons")
+    .select("*")
+    .eq("course_id", course.id)
+    .order("sort", { ascending: true });
+  return {
+    ...(course as import("./types").Course),
+    lessons: (lessons ?? []) as import("./types").Lesson[],
+  };
+}
+
+// IDs de las lecciones que el usuario actual ya completó en un curso.
+export async function getMyCompletions(courseId: string): Promise<Set<string>> {
+  const supabase = await getServerClient();
+  if (!supabase) return new Set();
+  const user = await getCurrentUser();
+  if (!user) return new Set();
+  const { data } = await supabase
+    .from("lesson_completions")
+    .select("lesson_id")
+    .eq("user_id", user.id)
+    .eq("course_id", courseId);
+  return new Set((data ?? []).map((r) => r.lesson_id as string));
+}
+
+// Para el admin: todos los cursos, incluidos los borradores.
+export async function getAllCourses(): Promise<import("./types").Course[]> {
+  const supabase = await getServerClient();
+  if (!supabase) return mock.courses;
+  const { data } = await supabase
+    .from("courses")
+    .select("*")
+    .order("sort", { ascending: true });
+  return (data ?? []) as import("./types").Course[];
+}
+
+export async function getCourseLessons(
+  courseId: string
+): Promise<import("./types").Lesson[]> {
+  const supabase = await getServerClient();
+  if (!supabase) return mock.lessonsFor(courseId);
+  const { data } = await supabase
+    .from("lessons")
+    .select("*")
+    .eq("course_id", courseId)
+    .order("sort", { ascending: true });
+  return (data ?? []) as import("./types").Lesson[];
+}
+
 // ── Blog ──
 
 export async function getPublishedPosts(): Promise<

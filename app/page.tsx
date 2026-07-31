@@ -899,6 +899,7 @@ export default async function LandingPage() {
                 ["Crear mi perfil", "/onboarding"],
                 ["Mis postulaciones", "/postulaciones"],
                 ["Blog", "/blog"],
+                ["Academia", "/academia"],
               ],
             },
             {

@@ -39,6 +39,37 @@ export interface BadgeInfo {
   description: string;
 }
 
+// Academia Worka: cursos, lecciones y progreso.
+export interface Course {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  cover_url: string | null;
+  category: string;
+  level: "Básico" | "Intermedio" | "Avanzado";
+  status: "borrador" | "publicado";
+  sort: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Lesson {
+  id: string;
+  course_id: string;
+  section: string;
+  title: string;
+  content: string;
+  video_url: string | null;
+  duration_min: number;
+  sort: number;
+  created_at: string;
+}
+
+export interface CourseWithLessons extends Course {
+  lessons: Lesson[];
+}
+
 // Fuente de vacantes externas configurada desde el admin.
 export interface JobSource {
   id: string;

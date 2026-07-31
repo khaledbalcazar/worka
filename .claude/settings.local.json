@@ -18,7 +18,12 @@
       "Bash(cd \"C:/Users/khale/OneDrive/Desktop/worka\"; grep -o \"salarios de referencia por rubro\\\\|nunca ten\" /tmp/ar.html | head; echo \"count palabras aprox:\"; sed -e 's/<[^>]*>/ /g' /tmp/ar.html | tr -s ' ' | wc -w)",
       "Bash(git add *)",
       "Bash(git commit *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(curl -s \"http://127.0.0.1:3000/academia\")",
+      "Bash(curl -s \"http://127.0.0.1:3000/academia/preparate-para-entrevistas\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://127.0.0.1:3000/academia/preparate-para-entrevistas\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://127.0.0.1:3000/admin/academia\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://127.0.0.1:3000/academia\")"
     ]
   }
 }

@@ -97,6 +97,12 @@ export default async function AdminPage() {
           >
             🌐 Externas
           </Link>
+          <Link
+            href="/admin/academia"
+            className="text-sm text-blue-200 underline"
+          >
+            🎓 Academia
+          </Link>
           <Link href="/" className="text-sm text-blue-200 underline">
             Salir
           </Link>

@@ -1354,6 +1354,12 @@ export async function warnCompany(
 }
 
 // Verifica que quien llama sea admin (para las acciones del backoffice).
+// Mensaje de error legible a partir del error de Supabase.
+function dbError(error: { code?: string; message?: string }): string {
+  if (error.code === "23505") return "Ya existe un registro con ese dato único.";
+  return `No pudimos guardar: ${error.message ?? "error"} (¿corriste la migración?)`;
+}
+
 async function assertAdmin(): Promise<boolean> {
   const supabase = await getServerClient();
   if (!supabase) return true; // demo
@@ -1782,6 +1788,166 @@ export async function setExternalJobsEnabled(
   revalidatePath("/admin/externas");
   revalidatePath("/empleos");
   revalidatePath("/");
+  return { ok: true };
+}
+
+// ── Academia ──
+
+// Marca o desmarca una lección como completada (usuario logueado).
+export async function toggleLessonComplete(
+  lessonId: string,
+  courseId: string,
+  done: boolean
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión para guardar tu avance." };
+  if (done) {
+    const { error } = await supabase
+      .from("lesson_completions")
+      .upsert({ user_id: user.id, lesson_id: lessonId, course_id: courseId });
+    if (error) return { ok: false, error: "No pudimos guardar tu avance." };
+  } else {
+    const { error } = await supabase
+      .from("lesson_completions")
+      .delete()
+      .eq("user_id", user.id)
+      .eq("lesson_id", lessonId);
+    if (error) return { ok: false, error: "No pudimos actualizar tu avance." };
+  }
+  return { ok: true };
+}
+
+// Lecciones de un curso, para el editor del admin (server action).
+export async function getCourseLessonsClient(
+  courseId: string
+): Promise<import("@/lib/types").Lesson[]> {
+  const { getCourseLessons } = await import("@/lib/data");
+  return getCourseLessons(courseId);
+}
+
+// ── Academia: gestión (solo admin) ──
+
+function courseSlugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .slice(0, 80);
+}
+
+export async function saveCourse(input: {
+  id?: string;
+  slug?: string;
+  title: string;
+  description: string;
+  cover_url?: string;
+  category: string;
+  level: "Básico" | "Intermedio" | "Avanzado";
+  status: "borrador" | "publicado";
+  sort?: number;
+}): Promise<ActionResult & { id?: string }> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  if (!input.title.trim())
+    return { ok: false, error: "Ponele un título al curso." };
+
+  const slug =
+    (input.slug?.trim() || courseSlugify(input.title)) || `curso-${Date.now()}`;
+  const row = {
+    slug,
+    title: input.title.trim(),
+    description: input.description.trim(),
+    cover_url: input.cover_url?.trim() || null,
+    category: input.category.trim() || "General",
+    level: input.level,
+    status: input.status,
+    sort: input.sort ?? 0,
+    updated_at: new Date().toISOString(),
+  };
+
+  let id = input.id;
+  if (input.id) {
+    const { error } = await supabase
+      .from("courses")
+      .update(row)
+      .eq("id", input.id);
+    if (error) return { ok: false, error: dbError(error) };
+  } else {
+    const { data, error } = await supabase
+      .from("courses")
+      .insert(row)
+      .select("id")
+      .single();
+    if (error) return { ok: false, error: dbError(error) };
+    id = data?.id;
+  }
+  revalidatePath("/academia");
+  revalidatePath(`/academia/${slug}`);
+  revalidatePath("/admin/academia");
+  return { ok: true, id };
+}
+
+export async function deleteCourse(id: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  const { error } = await supabase.from("courses").delete().eq("id", id);
+  if (error) return { ok: false, error: "No pudimos eliminar el curso." };
+  revalidatePath("/academia");
+  revalidatePath("/admin/academia");
+  return { ok: true };
+}
+
+export async function saveLesson(input: {
+  id?: string;
+  course_id: string;
+  section: string;
+  title: string;
+  content: string;
+  video_url?: string;
+  duration_min: number;
+  sort: number;
+}): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  if (!input.title.trim())
+    return { ok: false, error: "Ponele un título a la lección." };
+
+  const row = {
+    course_id: input.course_id,
+    section: input.section.trim(),
+    title: input.title.trim(),
+    content: input.content,
+    video_url: input.video_url?.trim() || null,
+    duration_min: input.duration_min || 5,
+    sort: input.sort,
+  };
+  const { error } = input.id
+    ? await supabase.from("lessons").update(row).eq("id", input.id)
+    : await supabase.from("lessons").insert(row);
+  if (error) return { ok: false, error: dbError(error) };
+  revalidatePath("/admin/academia");
+  return { ok: true };
+}
+
+export async function deleteLesson(id: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  const { error } = await supabase.from("lessons").delete().eq("id", id);
+  if (error) return { ok: false, error: "No pudimos eliminar la lección." };
+  revalidatePath("/admin/academia");
   return { ok: true };
 }
 

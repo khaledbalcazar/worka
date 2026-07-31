@@ -40,6 +40,12 @@ export default function HomeNav() {
           >
             Blog
           </Link>
+          <Link
+            href="/academia"
+            className="text-sm text-gray-500 hover:text-primary-dark transition-colors"
+          >
+            Academia
+          </Link>
         </nav>
 
         <div className="hidden md:flex items-center gap-2">
