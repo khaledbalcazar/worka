@@ -6,13 +6,12 @@ import { Menu, X } from "lucide-react";
 import Logo from "@/components/Logo";
 import CountrySelector from "@/components/CountrySelector";
 
-// Enlaces del menú: anclas a las secciones de la home + rutas reales.
+// Nav minimalista (estilo beBee): solo rutas reales, sin anclas que saturan.
 const NAV_LINKS: [string, string][] = [
-  ["Buscar empleo", "#rubros"],
-  ["Cómo funciona", "#como-funciona"],
-  ["Para empresas", "#empresas"],
-  ["Historias", "#historias"],
-  ["Preguntas", "#faq"],
+  ["Buscar empleo", "/empleos"],
+  ["Para empresas", "/para-empresas"],
+  ["Blog", "/blog"],
+  ["Academia", "/academia"],
 ];
 
 // Header sticky con blur y menú hamburguesa en móvil.
@@ -24,28 +23,16 @@ export default function HomeNav() {
       <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between gap-4">
         <Logo />
 
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="hidden md:flex items-center gap-7">
           {NAV_LINKS.map(([label, href]) => (
-            <a
+            <Link
               key={label}
               href={href}
               className="text-sm text-gray-500 hover:text-primary-dark transition-colors"
             >
               {label}
-            </a>
+            </Link>
           ))}
-          <Link
-            href="/blog"
-            className="text-sm text-gray-500 hover:text-primary-dark transition-colors"
-          >
-            Blog
-          </Link>
-          <Link
-            href="/academia"
-            className="text-sm text-gray-500 hover:text-primary-dark transition-colors"
-          >
-            Academia
-          </Link>
         </nav>
 
         <div className="hidden md:flex items-center gap-2">
@@ -76,18 +63,16 @@ export default function HomeNav() {
 
       {open && (
         <div className="md:hidden bg-white border-t border-gray-100 px-5 pb-5 pt-3">
-          {[...NAV_LINKS, ["Blog", "/blog"] as [string, string]].map(
-            ([label, href]) => (
-              <a
-                key={label}
-                href={href}
-                onClick={() => setOpen(false)}
-                className="block py-3.5 text-[0.95rem] text-primary-dark border-b border-gray-100"
-              >
-                {label}
-              </a>
-            )
-          )}
+          {NAV_LINKS.map(([label, href]) => (
+            <Link
+              key={label}
+              href={href}
+              onClick={() => setOpen(false)}
+              className="block py-3.5 text-[0.95rem] text-primary-dark border-b border-gray-100"
+            >
+              {label}
+            </Link>
+          ))}
           <div className="py-3.5 border-b border-gray-100">
             <CountrySelector />
           </div>
