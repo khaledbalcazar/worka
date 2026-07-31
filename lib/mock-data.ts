@@ -123,6 +123,13 @@ const demoLessons: Lesson[] = [
       "Antes de cualquier entrevista, tomate 15 minutos para conocer a la empresa.\n\n## Qué mirar\n- A qué se dedica.\n- Su página en Worka.\n- Sus redes sociales.",
     video_url: null,
     duration_min: 8,
+    quiz: [
+      {
+        q: "¿Cuánto conviene investigar sobre la empresa antes de la entrevista?",
+        options: ["Nada", "Unos 15 minutos", "Varios días"],
+        answer: 1,
+      },
+    ],
     sort: 1,
     created_at: "2026-07-20T10:00:00Z",
   },
@@ -135,6 +142,7 @@ const demoLessons: Lesson[] = [
       "Llegá **10 minutos antes**.\n\n- Llevá tu documento y CV.\n- Vestí prolijo.\n- Saludá con seguridad.",
     video_url: null,
     duration_min: 6,
+    quiz: [],
     sort: 2,
     created_at: "2026-07-20T10:00:00Z",
   },

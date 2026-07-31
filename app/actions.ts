@@ -1914,6 +1914,7 @@ export async function saveLesson(input: {
   content: string;
   video_url?: string;
   duration_min: number;
+  quiz?: import("@/lib/types").QuizQuestion[];
   sort: number;
 }): Promise<ActionResult> {
   const supabase = await getServerClient();
@@ -1923,6 +1924,19 @@ export async function saveLesson(input: {
   if (!input.title.trim())
     return { ok: false, error: "Ponele un título a la lección." };
 
+  // Limpia el quiz: descarta preguntas vacías o sin opciones válidas.
+  const quiz = (input.quiz ?? [])
+    .map((q) => ({
+      q: (q.q ?? "").trim(),
+      options: (q.options ?? []).map((o) => (o ?? "").trim()).filter(Boolean),
+      answer: q.answer ?? 0,
+    }))
+    .filter((q) => q.q && q.options.length >= 2)
+    .map((q) => ({
+      ...q,
+      answer: Math.min(Math.max(q.answer, 0), q.options.length - 1),
+    }));
+
   const row = {
     course_id: input.course_id,
     section: input.section.trim(),
@@ -1930,6 +1944,7 @@ export async function saveLesson(input: {
     content: input.content,
     video_url: input.video_url?.trim() || null,
     duration_min: input.duration_min || 5,
+    quiz,
     sort: input.sort,
   };
   const { error } = input.id

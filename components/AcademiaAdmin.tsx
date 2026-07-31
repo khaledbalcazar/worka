@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import type { Course, Lesson } from "@/lib/types";
+import type { Course, Lesson, QuizQuestion } from "@/lib/types";
 import {
   deleteCourse,
   deleteLesson,
@@ -31,6 +31,7 @@ const EMPTY_LESSON = {
   content: "",
   video_url: "",
   duration_min: 5,
+  quiz: [] as QuizQuestion[],
   sort: 0,
 };
 
@@ -120,9 +121,30 @@ export default function AcademiaAdmin({
       content: l.content,
       video_url: l.video_url ?? "",
       duration_min: l.duration_min,
+      quiz: l.quiz ?? [],
       sort: l.sort,
     });
     setShowLessonForm(true);
+  }
+
+  // Helpers del editor de quiz.
+  function addQuestion() {
+    setLessonDraft((l) => ({
+      ...l,
+      quiz: [...l.quiz, { q: "", options: ["", ""], answer: 0 }],
+    }));
+  }
+  function updateQuestion(i: number, patch: Partial<QuizQuestion>) {
+    setLessonDraft((l) => ({
+      ...l,
+      quiz: l.quiz.map((q, idx) => (idx === i ? { ...q, ...patch } : q)),
+    }));
+  }
+  function removeQuestion(i: number) {
+    setLessonDraft((l) => ({
+      ...l,
+      quiz: l.quiz.filter((_, idx) => idx !== i),
+    }));
   }
 
   function saveTheLesson() {
@@ -373,6 +395,115 @@ export default function AcademiaAdmin({
                   <b>**negrita**</b>
                 </p>
               </div>
+
+              {/* Editor de quiz */}
+              <div className="border-t border-gray-200 pt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="label mb-0">
+                    Ejercicio ({lessonDraft.quiz.length} pregunta
+                    {lessonDraft.quiz.length === 1 ? "" : "s"})
+                  </label>
+                  <button
+                    type="button"
+                    className="text-xs text-primary font-medium"
+                    onClick={addQuestion}
+                  >
+                    ➕ Agregar pregunta
+                  </button>
+                </div>
+                {lessonDraft.quiz.length === 0 ? (
+                  <p className="text-xs text-gray-400">
+                    Sin ejercicio. Agregá preguntas para que el usuario se
+                    autoevalúe (marcá la opción correcta con el círculo).
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {lessonDraft.quiz.map((q, qi) => (
+                      <div
+                        key={qi}
+                        className="rounded-xl border border-gray-200 bg-white p-3 space-y-2"
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            className="input flex-1"
+                            placeholder={`Pregunta ${qi + 1}`}
+                            value={q.q}
+                            onChange={(e) =>
+                              updateQuestion(qi, { q: e.target.value })
+                            }
+                          />
+                          <button
+                            type="button"
+                            className="text-gray-400 hover:text-danger text-sm shrink-0"
+                            onClick={() => removeQuestion(qi)}
+                          >
+                            Quitar
+                          </button>
+                        </div>
+                        {q.options.map((opt, oi) => (
+                          <div key={oi} className="flex items-center gap-2">
+                            <input
+                              type="radio"
+                              name={`correct-${qi}`}
+                              checked={q.answer === oi}
+                              onChange={() =>
+                                updateQuestion(qi, { answer: oi })
+                              }
+                              className="w-4 h-4 accent-success shrink-0"
+                              title="Marcar como correcta"
+                            />
+                            <input
+                              className="input flex-1"
+                              placeholder={`Opción ${oi + 1}`}
+                              value={opt}
+                              onChange={(e) =>
+                                updateQuestion(qi, {
+                                  options: q.options.map((o, idx) =>
+                                    idx === oi ? e.target.value : o
+                                  ),
+                                })
+                              }
+                            />
+                            {q.options.length > 2 && (
+                              <button
+                                type="button"
+                                className="text-gray-300 hover:text-danger text-xs shrink-0"
+                                onClick={() =>
+                                  updateQuestion(qi, {
+                                    options: q.options.filter(
+                                      (_, idx) => idx !== oi
+                                    ),
+                                    answer:
+                                      q.answer >= oi && q.answer > 0
+                                        ? q.answer - 1
+                                        : q.answer,
+                                  })
+                                }
+                              >
+                                ✕
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                        {q.options.length < 5 && (
+                          <button
+                            type="button"
+                            className="text-xs text-primary"
+                            onClick={() =>
+                              updateQuestion(qi, {
+                                options: [...q.options, ""],
+                              })
+                            }
+                          >
+                            + Opción
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-end gap-3">
                 <button
                   className="btn-secondary"

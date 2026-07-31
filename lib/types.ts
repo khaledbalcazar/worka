@@ -54,6 +54,13 @@ export interface Course {
   updated_at: string;
 }
 
+// Una pregunta de opción múltiple. answer = índice de la opción correcta.
+export interface QuizQuestion {
+  q: string;
+  options: string[];
+  answer: number;
+}
+
 export interface Lesson {
   id: string;
   course_id: string;
@@ -62,6 +69,7 @@ export interface Lesson {
   content: string;
   video_url: string | null;
   duration_min: number;
+  quiz: QuizQuestion[];
   sort: number;
   created_at: string;
 }

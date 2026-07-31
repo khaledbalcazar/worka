@@ -1,8 +1,16 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { Check, Circle, PlayCircle, ChevronLeft } from "lucide-react";
-import type { CourseWithLessons } from "@/lib/types";
+import Link from "next/link";
+import {
+  Check,
+  Circle,
+  PlayCircle,
+  ChevronLeft,
+  Award,
+  X as XIcon,
+} from "lucide-react";
+import type { CourseWithLessons, Lesson } from "@/lib/types";
 import BlogContent from "@/components/BlogContent";
 import { toggleLessonComplete } from "@/app/actions";
 
@@ -80,6 +88,15 @@ export default function CourseViewer({
               style={{ width: `${pct}%` }}
             />
           </div>
+
+          {pct === 100 && total > 0 && (
+            <Link
+              href={`/academia/${course.slug}/certificado`}
+              className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 text-white font-bold py-2.5 text-sm hover:from-amber-500 hover:to-amber-600 transition-colors"
+            >
+              <Award size={16} /> Ver mi certificado
+            </Link>
+          )}
         </div>
 
         <div className="card divide-y divide-gray-100 overflow-hidden">
@@ -144,17 +161,37 @@ export default function CourseViewer({
 
             <BlogContent content={active.content} />
 
+            {/* Ejercicio de la lección */}
+            {active.quiz && active.quiz.length > 0 && (
+              <Quiz
+                key={active.id}
+                lesson={active}
+                onPass={() => {
+                  if (!completed.has(active.id)) toggle(active.id, true);
+                }}
+              />
+            )}
+
             <div className="mt-8 pt-5 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3">
-              <label className="flex items-center gap-2.5 cursor-pointer text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={completed.has(active.id)}
-                  onChange={(e) => toggle(active.id, e.target.checked)}
-                  disabled={pending}
-                  className="w-5 h-5 accent-primary"
-                />
-                Marcar como completada
-              </label>
+              {(!active.quiz || active.quiz.length === 0) && (
+                <label className="flex items-center gap-2.5 cursor-pointer text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={completed.has(active.id)}
+                    onChange={(e) => toggle(active.id, e.target.checked)}
+                    disabled={pending}
+                    className="w-5 h-5 accent-primary"
+                  />
+                  Marcar como completada
+                </label>
+              )}
+              {active.quiz && active.quiz.length > 0 && (
+                <span className="text-sm text-gray-500">
+                  {completed.has(active.id)
+                    ? "✅ Lección aprobada"
+                    : "Resolvé el ejercicio para completar la lección"}
+                </span>
+              )}
               {next && (
                 <button
                   onClick={() => {
@@ -179,6 +216,111 @@ export default function CourseViewer({
             Este curso todavía no tiene lecciones.
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Ejercicio de opción múltiple. Al responder todo bien, marca la lección.
+function Quiz({ lesson, onPass }: { lesson: Lesson; onPass: () => void }) {
+  const [answers, setAnswers] = useState<Record<number, number>>({});
+  const [checked, setChecked] = useState(false);
+
+  const allAnswered = lesson.quiz.every((_, i) => answers[i] !== undefined);
+  const correctCount = lesson.quiz.filter(
+    (q, i) => answers[i] === q.answer
+  ).length;
+  const passed = correctCount === lesson.quiz.length;
+
+  function check() {
+    setChecked(true);
+    if (passed) onPass();
+  }
+
+  return (
+    <div className="mt-8 rounded-2xl border border-primary/15 bg-primary/[0.03] p-5">
+      <h3 className="font-bold text-primary-dark mb-4 flex items-center gap-2">
+        📝 Ejercicio
+      </h3>
+      <div className="space-y-5">
+        {lesson.quiz.map((q, qi) => (
+          <div key={qi}>
+            <p className="font-medium text-primary-dark text-[0.925rem] mb-2">
+              {qi + 1}. {q.q}
+            </p>
+            <div className="space-y-1.5">
+              {q.options.map((opt, oi) => {
+                const selected = answers[qi] === oi;
+                const isCorrect = q.answer === oi;
+                let cls = "border-gray-200 bg-white";
+                if (checked && isCorrect)
+                  cls = "border-success bg-emerald-50 text-emerald-800";
+                else if (checked && selected && !isCorrect)
+                  cls = "border-danger bg-red-50 text-danger";
+                else if (selected) cls = "border-primary bg-primary/5";
+                return (
+                  <button
+                    key={oi}
+                    onClick={() => {
+                      if (!checked)
+                        setAnswers((a) => ({ ...a, [qi]: oi }));
+                    }}
+                    disabled={checked}
+                    className={`w-full text-left flex items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-sm transition-colors ${cls}`}
+                  >
+                    <span className="w-5 h-5 rounded-full border border-current/30 flex items-center justify-center shrink-0 text-xs">
+                      {checked && isCorrect ? (
+                        <Check size={13} />
+                      ) : checked && selected && !isCorrect ? (
+                        <XIcon size={13} />
+                      ) : (
+                        String.fromCharCode(65 + oi)
+                      )}
+                    </span>
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 flex items-center justify-between gap-3">
+        {checked ? (
+          <p
+            className={`text-sm font-medium ${
+              passed ? "text-emerald-700" : "text-danger"
+            }`}
+          >
+            {passed
+              ? "🎉 ¡Correcto! Lección aprobada."
+              : `Acertaste ${correctCount} de ${lesson.quiz.length}. Repasá y volvé a intentar.`}
+          </p>
+        ) : (
+          <span className="text-xs text-gray-400">
+            Elegí una opción en cada pregunta.
+          </span>
+        )}
+        {checked && !passed ? (
+          <button
+            className="btn-secondary"
+            onClick={() => {
+              setChecked(false);
+              setAnswers({});
+            }}
+          >
+            Reintentar
+          </button>
+        ) : !checked ? (
+          <button
+            className="btn-primary"
+            disabled={!allAnswered}
+            onClick={check}
+          >
+            Comprobar
+          </button>
+        ) : null}
       </div>
     </div>
   );
