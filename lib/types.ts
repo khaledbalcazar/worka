@@ -498,3 +498,33 @@ export interface JobAlert {
   last_run_at: string | null;
   created_at: string;
 }
+
+// ── Reseñas de empresas ──
+export interface CompanyReview {
+  id: string;
+  company_id: string | null;
+  company_name: string;
+  company_slug: string;
+  country: string;
+  reviewer_id: string;
+  rating: number;
+  role: string | null;
+  employment_type: "actual" | "ex" | "entrevista";
+  title: string;
+  body: string;
+  pros: string | null;
+  cons: string | null;
+  would_recommend: boolean | null;
+  status: "visible" | "oculta";
+  created_at: string;
+}
+
+// Empleador agregado (registrado o no) para el directorio de opiniones.
+export interface EmployerSummary {
+  slug: string;
+  name: string;
+  company_id: string | null; // no null = registrado en Worka (verificado)
+  logo_url: string | null;
+  avg_rating: number;
+  review_count: number;
+}

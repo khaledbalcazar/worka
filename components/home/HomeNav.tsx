@@ -11,6 +11,7 @@ const NAV_LINKS: [string, string][] = [
   ["Buscar empleo", "/empleos"],
   ["Freelancers", "/freelancers"],
   ["Panorama", "/panorama"],
+  ["Opiniones", "/opiniones"],
   ["Para empresas", "/para-empresas"],
   ["Blog", "/blog"],
   ["Academia", "/academia"],

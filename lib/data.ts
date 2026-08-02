@@ -1,6 +1,7 @@
 import "server-only";
 import { getServerClient, getCurrentUser } from "./supabase/server";
 import { isSupabaseConfigured } from "./supabase/config";
+import { slugify } from "./slug";
 import type {
   Application,
   ApplicationStatus,
@@ -1495,5 +1496,189 @@ export async function getMarketPanorama(
         .sort((a, b) => b.count - a.count)
         .slice(0, 6),
     },
+  };
+}
+
+/* ── Reseñas de empresas ── */
+
+// Empleadores más reseñados del país (registrados o no), con promedio.
+export async function getTopEmployers(
+  country: string
+): Promise<import("./types").EmployerSummary[]> {
+  const supabase = await getServerClient();
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("company_reviews")
+    .select("company_slug,company_name,company_id,rating")
+    .eq("status", "visible")
+    .eq("country", country)
+    .limit(2000);
+  const groups = new Map<
+    string,
+    { name: string; company_id: string | null; sum: number; n: number }
+  >();
+  for (const r of (data ?? []) as any[]) {
+    const g = groups.get(r.company_slug) ?? {
+      name: r.company_name,
+      company_id: null,
+      sum: 0,
+      n: 0,
+    };
+    g.sum += r.rating;
+    g.n += 1;
+    if (r.company_id) g.company_id = r.company_id;
+    groups.set(r.company_slug, g);
+  }
+  const summaries = [...groups.entries()].map(([slug, g]) => ({
+    slug,
+    name: g.name,
+    company_id: g.company_id,
+    logo_url: null as string | null,
+    avg_rating: Math.round((g.sum / g.n) * 10) / 10,
+    review_count: g.n,
+  }));
+  summaries.sort((a, b) => b.review_count - a.review_count);
+  return summaries.slice(0, 24);
+}
+
+// Ficha de un empleador por slug: resumen + reseñas visibles.
+export async function getEmployerBySlug(
+  slug: string,
+  fallbackName?: string
+): Promise<{
+  summary: import("./types").EmployerSummary;
+  reviews: import("./types").CompanyReview[];
+} | null> {
+  const supabase = await getServerClient();
+  if (!supabase) return null;
+  const { data: reviews } = await supabase
+    .from("company_reviews")
+    .select("*")
+    .eq("company_slug", slug)
+    .eq("status", "visible")
+    .order("created_at", { ascending: false });
+  const list = (reviews ?? []) as import("./types").CompanyReview[];
+
+  // Resolver identidad del empleador (nombre, si está registrado, logo).
+  let name = list[0]?.company_name ?? fallbackName ?? slug;
+  let company_id: string | null =
+    list.find((r) => r.company_id)?.company_id ?? null;
+  let logo_url: string | null = null;
+
+  // ¿Hay una empresa registrada cuyo nombre normaliza a este slug?
+  if (!company_id) {
+    const { data: comps } = await supabase
+      .from("companies")
+      .select("id,trade_name,company_name,logo_url")
+      .or(`trade_name.ilike.%${name}%,company_name.ilike.%${name}%`)
+      .limit(20);
+    const match = ((comps ?? []) as any[]).find(
+      (c) => slugify(c.trade_name) === slug || slugify(c.company_name) === slug
+    );
+    if (match) {
+      company_id = match.id;
+      name = match.trade_name || match.company_name;
+      logo_url = match.logo_url;
+    }
+  } else {
+    const { data: comp } = await supabase
+      .from("companies")
+      .select("trade_name,company_name,logo_url")
+      .eq("id", company_id)
+      .maybeSingle();
+    if (comp) {
+      name = (comp as any).trade_name || (comp as any).company_name;
+      logo_url = (comp as any).logo_url;
+    }
+  }
+
+  if (list.length === 0 && !fallbackName && !company_id) return null;
+
+  const sum = list.reduce((acc, r) => acc + r.rating, 0);
+  return {
+    summary: {
+      slug,
+      name,
+      company_id,
+      logo_url,
+      avg_rating: list.length ? Math.round((sum / list.length) * 10) / 10 : 0,
+      review_count: list.length,
+    },
+    reviews: list,
+  };
+}
+
+// Busca empleadores para reseñar: registrados en Worka + nombres de las
+// vacantes externas. Devuelve candidatos con su slug.
+export async function searchEmployers(
+  q: string,
+  country: string
+): Promise<
+  { slug: string; name: string; company_id: string | null; logo_url: string | null }[]
+> {
+  const supabase = await getServerClient();
+  if (!supabase || q.trim().length < 2) return [];
+  const term = `%${q.trim()}%`;
+
+  const [{ data: comps }, { data: ext }] = await Promise.all([
+    supabase
+      .from("companies")
+      .select("id,trade_name,company_name,logo_url")
+      .eq("country", country)
+      .or(`trade_name.ilike.${term},company_name.ilike.${term}`)
+      .limit(10),
+    supabase
+      .from("external_jobs")
+      .select("company_name")
+      .eq("country", country)
+      .ilike("company_name", term)
+      .limit(50),
+  ]);
+
+  const out = new Map<
+    string,
+    { slug: string; name: string; company_id: string | null; logo_url: string | null }
+  >();
+  for (const c of (comps ?? []) as any[]) {
+    const name = c.trade_name || c.company_name;
+    out.set(slugify(name), {
+      slug: slugify(name),
+      name,
+      company_id: c.id,
+      logo_url: c.logo_url,
+    });
+  }
+  for (const e of (ext ?? []) as any[]) {
+    if (!e.company_name) continue;
+    const slug = slugify(e.company_name);
+    if (!out.has(slug))
+      out.set(slug, {
+        slug,
+        name: e.company_name,
+        company_id: null,
+        logo_url: null,
+      });
+  }
+  return [...out.values()].slice(0, 12);
+}
+
+// Rating agregado de una empresa registrada (para su ficha pública).
+export async function getCompanyRating(
+  companyId: string
+): Promise<{ avg: number; count: number; slug: string | null }> {
+  const supabase = await getServerClient();
+  if (!supabase) return { avg: 0, count: 0, slug: null };
+  const { data } = await supabase
+    .from("company_reviews")
+    .select("rating,company_slug")
+    .eq("company_id", companyId)
+    .eq("status", "visible");
+  const list = (data ?? []) as any[];
+  if (list.length === 0) return { avg: 0, count: 0, slug: null };
+  const sum = list.reduce((a, r) => a + r.rating, 0);
+  return {
+    avg: Math.round((sum / list.length) * 10) / 10,
+    count: list.length,
+    slug: list[0].company_slug ?? null,
   };
 }

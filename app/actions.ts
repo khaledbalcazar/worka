@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
+import { slugify as toSlug } from "@/lib/slug";
 import type {
   ApplicationStatus,
   BadgeId,
@@ -2646,4 +2647,83 @@ export async function deleteJobAlert(id: string): Promise<ActionResult> {
   if (error) return { ok: false, error: "No pudimos borrar la alerta." };
   revalidatePath("/alertas");
   return { ok: true };
+}
+
+// ============================================================
+// Reseñas de empresas
+// ============================================================
+
+export async function createCompanyReview(input: {
+  company_name: string;
+  company_id?: string | null;
+  country: string;
+  rating: number;
+  role?: string;
+  employment_type?: "actual" | "ex" | "entrevista";
+  title?: string;
+  body?: string;
+  pros?: string;
+  cons?: string;
+  would_recommend?: boolean | null;
+}): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión para dejar una reseña." };
+  if (!input.company_name?.trim())
+    return { ok: false, error: "Falta el nombre de la empresa." };
+  if (!input.rating || input.rating < 1 || input.rating > 5)
+    return { ok: false, error: "Elegí una calificación de 1 a 5 estrellas." };
+
+  const slug = toSlug(input.company_name);
+  const { error } = await supabase.from("company_reviews").insert({
+    company_id: input.company_id || null,
+    company_name: input.company_name.trim(),
+    company_slug: slug,
+    country: input.country,
+    reviewer_id: user.id,
+    rating: input.rating,
+    role: input.role?.trim() || null,
+    employment_type: input.employment_type ?? "ex",
+    title: input.title?.trim() || "",
+    body: input.body?.trim() || "",
+    pros: input.pros?.trim() || null,
+    cons: input.cons?.trim() || null,
+    would_recommend: input.would_recommend ?? null,
+  });
+  if (error) {
+    // Violación de la restricción única = ya reseñó esta empresa.
+    if (error.code === "23505")
+      return { ok: false, error: "Ya dejaste una reseña para esta empresa." };
+    return { ok: false, error: "No pudimos guardar tu reseña." };
+  }
+  revalidatePath(`/opiniones/${slug}`);
+  revalidatePath("/opiniones");
+  return { ok: true };
+}
+
+export async function deleteCompanyReview(id: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sesión no válida." };
+  const { error } = await supabase
+    .from("company_reviews")
+    .delete()
+    .eq("id", id)
+    .eq("reviewer_id", user.id);
+  if (error) return { ok: false, error: "No pudimos borrar la reseña." };
+  revalidatePath("/opiniones");
+  return { ok: true };
+}
+
+// Búsqueda de empleadores (registrados + externos) para el buscador de opiniones.
+export async function searchEmployersAction(
+  q: string,
+  country: string
+): Promise<
+  { slug: string; name: string; company_id: string | null; logo_url: string | null }[]
+> {
+  const { searchEmployers } = await import("@/lib/data");
+  return searchEmployers(q, country);
 }
