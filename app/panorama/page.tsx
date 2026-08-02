@@ -7,7 +7,7 @@ import {
   Sparkles,
   Building2,
 } from "lucide-react";
-import Logo from "@/components/Logo";
+import HomeNav from "@/components/home/HomeNav";
 import { getMarketPanorama, getSalaryStats } from "@/lib/data";
 import { getActiveCountry } from "@/lib/country-context";
 
@@ -32,19 +32,7 @@ export default async function PanoramaPage() {
 
   return (
     <main className="flex-1 bg-surface min-h-screen">
-      <header className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <Logo />
-          <nav className="flex items-center gap-3 text-sm">
-            <Link href="/empleos" className="text-gray-500 hover:text-primary">
-              Empleos
-            </Link>
-            <Link href="/salarios" className="text-gray-500 hover:text-primary">
-              Salarios
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <HomeNav />
 
       <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
         <div>

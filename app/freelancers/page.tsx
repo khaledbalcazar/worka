@@ -18,7 +18,7 @@ import {
   Send,
   ArrowRight,
 } from "lucide-react";
-import Logo from "@/components/Logo";
+import HomeNav from "@/components/home/HomeNav";
 import FreelancerCard from "@/components/freelancers/FreelancerCard";
 import { getFreelancerDirectory } from "@/lib/data";
 import { getActiveCountry } from "@/lib/country-context";
@@ -83,19 +83,7 @@ export default async function FreelancersDirectory({
 
   return (
     <main className="flex-1 bg-surface min-h-screen">
-      <header className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-20">
-        <div className="max-w-6xl mx-auto flex items-center justify-between gap-3">
-          <Logo />
-          <nav className="flex items-center gap-3 text-sm">
-            <Link href="/empleos" className="text-gray-500 hover:text-primary">
-              Empleos
-            </Link>
-            <Link href="/unirme-freelancer" className="btn-primary text-xs">
-              Ofrecer mis servicios
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <HomeNav />
 
       {/* Hero */}
       <section className="relative overflow-hidden">
