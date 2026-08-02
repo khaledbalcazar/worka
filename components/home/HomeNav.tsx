@@ -9,6 +9,7 @@ import CountrySelector from "@/components/CountrySelector";
 // Nav minimalista (estilo beBee): solo rutas reales, sin anclas que saturan.
 const NAV_LINKS: [string, string][] = [
   ["Buscar empleo", "/empleos"],
+  ["Freelancers", "/freelancers"],
   ["Para empresas", "/para-empresas"],
   ["Blog", "/blog"],
   ["Academia", "/academia"],

@@ -12,6 +12,7 @@ const NAV = [
   { href: "/empleos", label: "Empleos", icon: "🔍" },
   { href: "/postulaciones", label: "Postulaciones", icon: "📋" },
   { href: "/mensajes", label: "Mensajes", icon: "💬" },
+  { href: "/freelancer", label: "Freelancer", icon: "🧑‍💻" },
   { href: "/perfil", label: "Mi perfil", icon: "👤" },
 ];
 

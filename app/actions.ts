@@ -2265,3 +2265,314 @@ export async function signOut(): Promise<void> {
   if (supabase) await supabase.auth.signOut();
   redirect("/");
 }
+
+// ============================================================
+// Worka Freelancers
+// ============================================================
+
+// El candidato acepta unirse a Worka Freelancers: se crea su perfil.
+export async function joinFreelancers(): Promise<
+  ActionResult & { slug?: string }
+> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión primero." };
+
+  // ¿ya tiene perfil?
+  const { data: existing } = await supabase
+    .from("freelancer_profiles")
+    .select("slug")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (existing) return { ok: true, slug: existing.slug };
+
+  // Necesita ser candidato: tomamos su nombre, ciudad y país.
+  const { data: cand } = await supabase
+    .from("candidates")
+    .select("full_name, location_city, country")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (!cand)
+    return {
+      ok: false,
+      error: "Primero completá tu perfil de candidato en Worka.",
+    };
+
+  // slug único: nombre + sufijo corto del id
+  const base = slugify(cand.full_name) || "freelancer";
+  const slug = `${base}-${user.id.slice(0, 6)}`;
+
+  const { error } = await supabase.from("freelancer_profiles").insert({
+    id: user.id,
+    slug,
+    location_city: cand.location_city ?? "",
+    country: cand.country ?? "py",
+  });
+  if (error)
+    return { ok: false, error: "No pudimos crear tu perfil de freelancer." };
+  revalidatePath("/freelancer");
+  revalidatePath("/freelancers");
+  return { ok: true, slug };
+}
+
+export async function updateFreelancerProfile(input: {
+  headline?: string;
+  bio?: string;
+  category?: string;
+  skills?: string[];
+  languages?: string[];
+  hourly_rate?: number | null;
+  currency?: string;
+  availability?: "disponible" | "ocupado" | "no_disponible";
+  years_experience?: number | null;
+  location_city?: string;
+  website_url?: string | null;
+  linkedin_url?: string | null;
+  instagram_url?: string | null;
+  github_url?: string | null;
+  behance_url?: string | null;
+  accent_color?: string;
+  is_public?: boolean;
+}): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sesión no válida." };
+  const { error } = await supabase
+    .from("freelancer_profiles")
+    .update(input)
+    .eq("id", user.id);
+  if (error) return { ok: false, error: "No pudimos guardar tus cambios." };
+  revalidatePath("/freelancer");
+  return { ok: true };
+}
+
+// Crea o actualiza un servicio. Si trae `id`, actualiza; si no, inserta.
+export async function saveFreelancerService(input: {
+  id?: string;
+  title: string;
+  description?: string;
+  price_from?: number | null;
+  currency?: string;
+  delivery_days?: number | null;
+  sort?: number;
+}): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sesión no válida." };
+  if (!input.title?.trim())
+    return { ok: false, error: "El servicio necesita un título." };
+
+  if (input.id) {
+    const { id, ...rest } = input;
+    const { error } = await supabase
+      .from("freelancer_services")
+      .update(rest)
+      .eq("id", id)
+      .eq("freelancer_id", user.id);
+    if (error) return { ok: false, error: "No pudimos guardar el servicio." };
+  } else {
+    const { error } = await supabase
+      .from("freelancer_services")
+      .insert({ ...input, freelancer_id: user.id });
+    if (error) return { ok: false, error: "No pudimos crear el servicio." };
+  }
+  revalidatePath("/freelancer");
+  return { ok: true };
+}
+
+export async function deleteFreelancerService(
+  id: string
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sesión no válida." };
+  const { error } = await supabase
+    .from("freelancer_services")
+    .delete()
+    .eq("id", id)
+    .eq("freelancer_id", user.id);
+  if (error) return { ok: false, error: "No pudimos borrar el servicio." };
+  revalidatePath("/freelancer");
+  return { ok: true };
+}
+
+export async function savePortfolioItem(input: {
+  id?: string;
+  title: string;
+  description?: string;
+  image_url?: string | null;
+  link_url?: string | null;
+  role?: string | null;
+  client?: string | null;
+  year?: number | null;
+  sort?: number;
+}): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sesión no válida." };
+  if (!input.title?.trim())
+    return { ok: false, error: "El proyecto necesita un título." };
+
+  if (input.id) {
+    const { id, ...rest } = input;
+    const { error } = await supabase
+      .from("portfolio_items")
+      .update(rest)
+      .eq("id", id)
+      .eq("freelancer_id", user.id);
+    if (error) return { ok: false, error: "No pudimos guardar el proyecto." };
+  } else {
+    const { error } = await supabase
+      .from("portfolio_items")
+      .insert({ ...input, freelancer_id: user.id });
+    if (error) return { ok: false, error: "No pudimos crear el proyecto." };
+  }
+  revalidatePath("/freelancer");
+  return { ok: true };
+}
+
+export async function deletePortfolioItem(id: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sesión no válida." };
+  const { error } = await supabase
+    .from("portfolio_items")
+    .delete()
+    .eq("id", id)
+    .eq("freelancer_id", user.id);
+  if (error) return { ok: false, error: "No pudimos borrar el proyecto." };
+  revalidatePath("/freelancer");
+  return { ok: true };
+}
+
+export async function savePaymentLink(input: {
+  id?: string;
+  label: string;
+  url: string;
+  sort?: number;
+}): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sesión no válida." };
+  if (!input.label?.trim() || !input.url?.trim())
+    return { ok: false, error: "Poné un nombre y un link válido." };
+  // Solo aceptamos URLs http(s): evitamos javascript: y otros esquemas.
+  if (!/^https?:\/\//i.test(input.url.trim()))
+    return { ok: false, error: "El link debe empezar con http:// o https://" };
+
+  if (input.id) {
+    const { id, ...rest } = input;
+    const { error } = await supabase
+      .from("payment_links")
+      .update(rest)
+      .eq("id", id)
+      .eq("freelancer_id", user.id);
+    if (error) return { ok: false, error: "No pudimos guardar el link." };
+  } else {
+    const { error } = await supabase
+      .from("payment_links")
+      .insert({ ...input, freelancer_id: user.id });
+    if (error) return { ok: false, error: "No pudimos crear el link." };
+  }
+  revalidatePath("/freelancer");
+  return { ok: true };
+}
+
+export async function deletePaymentLink(id: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sesión no válida." };
+  const { error } = await supabase
+    .from("payment_links")
+    .delete()
+    .eq("id", id)
+    .eq("freelancer_id", user.id);
+  if (error) return { ok: false, error: "No pudimos borrar el link." };
+  revalidatePath("/freelancer");
+  return { ok: true };
+}
+
+// Imagen del freelancer (banner o portfolio) → bucket público.
+export async function uploadFreelancerImage(
+  formData: FormData
+): Promise<ActionResult & { url?: string }> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión primero." };
+  const file = formData.get("image") as File | null;
+  const kind = String(formData.get("kind") ?? "portfolio");
+  if (!file || file.size === 0) return { ok: false, error: "Elegí una imagen." };
+  if (file.size > 5 * 1024 * 1024)
+    return { ok: false, error: "La imagen no puede pesar más de 5 MB." };
+
+  const path = `freelancers/${user.id}/${kind}-${Date.now()}.jpg`;
+  const { error } = await supabase.storage
+    .from("publico")
+    .upload(path, file, { upsert: true, contentType: "image/jpeg" });
+  if (error) return { ok: false, error: "No pudimos subir la imagen." };
+  const { data } = supabase.storage.from("publico").getPublicUrl(path);
+  const url = data.publicUrl;
+  if (kind === "banner") {
+    await supabase
+      .from("freelancer_profiles")
+      .update({ banner_url: url })
+      .eq("id", user.id);
+    revalidatePath("/freelancer");
+  }
+  return { ok: true, url };
+}
+
+// Un cliente pide presupuesto a un freelancer.
+export async function requestQuote(input: {
+  freelancer_id: string;
+  name: string;
+  email: string;
+  message: string;
+  budget?: string;
+}): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!input.name?.trim() || !input.email?.trim() || !input.message?.trim())
+    return { ok: false, error: "Completá tu nombre, email y mensaje." };
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(input.email.trim()))
+    return { ok: false, error: "El email no es válido." };
+  const user = await getCurrentUser();
+  const { error } = await supabase.from("quote_requests").insert({
+    freelancer_id: input.freelancer_id,
+    requester_id: user?.id ?? null,
+    name: input.name.trim(),
+    email: input.email.trim(),
+    message: input.message.trim(),
+    budget: input.budget?.trim() || null,
+  });
+  if (error)
+    return { ok: false, error: "No pudimos enviar tu solicitud. Probá de nuevo." };
+  return { ok: true };
+}
+
+export async function setQuoteStatus(
+  id: string,
+  status: "nuevo" | "respondido" | "cerrado"
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sesión no válida." };
+  const { error } = await supabase
+    .from("quote_requests")
+    .update({ status })
+    .eq("id", id)
+    .eq("freelancer_id", user.id);
+  if (error) return { ok: false, error: "No pudimos actualizar la solicitud." };
+  revalidatePath("/freelancer");
+  return { ok: true };
+}

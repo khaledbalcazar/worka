@@ -384,3 +384,101 @@ export interface Report {
 export interface JobWithCompany extends Job {
   company: Company;
 }
+
+// ── Worka Freelancers ──
+
+export type FreelancerAvailability = "disponible" | "ocupado" | "no_disponible";
+
+export interface FreelancerProfile {
+  id: string;
+  slug: string;
+  headline: string;
+  bio: string;
+  category: string;
+  skills: string[];
+  languages: string[];
+  hourly_rate: number | null;
+  currency: string;
+  availability: FreelancerAvailability;
+  years_experience: number | null;
+  location_city: string;
+  country: string;
+  website_url: string | null;
+  linkedin_url: string | null;
+  instagram_url: string | null;
+  github_url: string | null;
+  behance_url: string | null;
+  banner_url: string | null;
+  accent_color: string;
+  is_public: boolean;
+  is_verified: boolean;
+  featured: boolean;
+  views_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FreelancerService {
+  id: string;
+  freelancer_id: string;
+  title: string;
+  description: string;
+  price_from: number | null;
+  currency: string;
+  delivery_days: number | null;
+  sort: number;
+  created_at: string;
+}
+
+export interface PortfolioItem {
+  id: string;
+  freelancer_id: string;
+  title: string;
+  description: string;
+  image_url: string | null;
+  link_url: string | null;
+  role: string | null;
+  client: string | null;
+  year: number | null;
+  sort: number;
+  created_at: string;
+}
+
+export interface PaymentLink {
+  id: string;
+  freelancer_id: string;
+  label: string;
+  url: string;
+  sort: number;
+  created_at: string;
+}
+
+export interface QuoteRequest {
+  id: string;
+  freelancer_id: string;
+  requester_id: string | null;
+  name: string;
+  email: string;
+  message: string;
+  budget: string | null;
+  status: "nuevo" | "respondido" | "cerrado";
+  created_at: string;
+}
+
+// Identidad del candidato adjunta a su perfil de freelancer (nombre, foto…)
+export interface FreelancerIdentity {
+  full_name: string;
+  avatar_url: string | null;
+}
+
+// Perfil de freelancer + su identidad de candidato (para tarjetas y páginas)
+export interface FreelancerWithIdentity extends FreelancerProfile {
+  identity: FreelancerIdentity;
+}
+
+// Perfil público completo con todas sus secciones
+export interface FreelancerPublic extends FreelancerWithIdentity {
+  services: FreelancerService[];
+  portfolio: PortfolioItem[];
+  payment_links: PaymentLink[];
+}

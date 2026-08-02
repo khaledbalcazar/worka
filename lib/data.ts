@@ -8,6 +8,9 @@ import type {
   ChatMessage,
   Company,
   CompanyPost,
+  FreelancerWithIdentity,
+  FreelancerPublic,
+  QuoteRequest,
   Interview,
   JobWithCompany,
   Notification,
@@ -1231,4 +1234,129 @@ export async function getCountryJobsCount(country: string): Promise<number> {
   }
 
   return (workaCount ?? 0) + externalCount;
+}
+
+/* ── Worka Freelancers ── */
+
+// Perfil de freelancer del usuario logueado (null si todavía no se unió).
+export async function getMyFreelancerProfile(): Promise<FreelancerWithIdentity | null> {
+  const supabase = await getServerClient();
+  if (!supabase) return null;
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from("freelancer_profiles")
+    .select("*, candidates!inner(full_name, avatar_url)")
+    .eq("id", user.id)
+    .maybeSingle();
+  if (!data) return null;
+  return attachIdentity(data);
+}
+
+// Directorio público con filtros opcionales.
+export async function getFreelancerDirectory(opts?: {
+  country?: string;
+  category?: string;
+  q?: string;
+}): Promise<FreelancerWithIdentity[]> {
+  const supabase = await getServerClient();
+  if (!supabase) return [];
+  let query = supabase
+    .from("freelancer_profiles")
+    .select("*, candidates!inner(full_name, avatar_url)")
+    .eq("is_public", true)
+    .order("featured", { ascending: false })
+    .order("updated_at", { ascending: false })
+    .limit(60);
+  if (opts?.country) query = query.eq("country", opts.country);
+  if (opts?.category && opts.category !== "Todas")
+    query = query.eq("category", opts.category);
+  if (opts?.q) query = query.ilike("headline", `%${opts.q}%`);
+  const { data } = await query;
+  return (data ?? []).map(attachIdentity);
+}
+
+// Perfil público completo por slug (con servicios, portfolio y links de pago).
+export async function getPublicFreelancer(
+  slug: string
+): Promise<FreelancerPublic | null> {
+  const supabase = await getServerClient();
+  if (!supabase) return null;
+  const { data } = await supabase
+    .from("freelancer_profiles")
+    .select(
+      "*, candidates!inner(full_name, avatar_url), freelancer_services(*), portfolio_items(*), payment_links(*)"
+    )
+    .eq("slug", slug)
+    .eq("is_public", true)
+    .maybeSingle();
+  if (!data) return null;
+  const base = attachIdentity(data);
+  const sortBy = <T extends { sort: number }>(a: T, b: T) => a.sort - b.sort;
+  return {
+    ...base,
+    services: ((data as any).freelancer_services ?? []).sort(sortBy),
+    portfolio: ((data as any).portfolio_items ?? []).sort(sortBy),
+    payment_links: ((data as any).payment_links ?? []).sort(sortBy),
+  };
+}
+
+// Presupuestos recibidos por el freelancer logueado.
+export async function getMyQuoteRequests(): Promise<QuoteRequest[]> {
+  const supabase = await getServerClient();
+  if (!supabase) return [];
+  const user = await getCurrentUser();
+  if (!user) return [];
+  const { data } = await supabase
+    .from("quote_requests")
+    .select("*")
+    .eq("freelancer_id", user.id)
+    .order("created_at", { ascending: false });
+  return (data ?? []) as QuoteRequest[];
+}
+
+// Extrae la identidad (nombre/foto) del join con candidates y la adjunta.
+function attachIdentity(row: any): FreelancerWithIdentity {
+  const c = row.candidates ?? {};
+  const { candidates, freelancer_services, portfolio_items, payment_links, ...profile } =
+    row;
+  return {
+    ...(profile as FreelancerWithIdentity),
+    identity: {
+      full_name: c.full_name ?? "Freelancer",
+      avatar_url: c.avatar_url ?? null,
+    },
+  };
+}
+
+// Panel del freelancer: su perfil + todas sus secciones + presupuestos.
+export async function getMyFreelancerDashboard(): Promise<{
+  profile: import("./types").FreelancerWithIdentity;
+  services: import("./types").FreelancerService[];
+  portfolio: import("./types").PortfolioItem[];
+  payment_links: import("./types").PaymentLink[];
+  quotes: QuoteRequest[];
+} | null> {
+  const supabase = await getServerClient();
+  if (!supabase) return null;
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from("freelancer_profiles")
+    .select(
+      "*, candidates!inner(full_name, avatar_url), freelancer_services(*), portfolio_items(*), payment_links(*)"
+    )
+    .eq("id", user.id)
+    .maybeSingle();
+  if (!data) return null;
+  const profile = attachIdentity(data);
+  const sortBy = <T extends { sort: number }>(a: T, b: T) => a.sort - b.sort;
+  const quotes = await getMyQuoteRequests();
+  return {
+    profile,
+    services: (((data as any).freelancer_services ?? []) as import("./types").FreelancerService[]).sort(sortBy),
+    portfolio: (((data as any).portfolio_items ?? []) as import("./types").PortfolioItem[]).sort(sortBy),
+    payment_links: (((data as any).payment_links ?? []) as import("./types").PaymentLink[]).sort(sortBy),
+    quotes,
+  };
 }
