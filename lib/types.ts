@@ -482,3 +482,19 @@ export interface FreelancerPublic extends FreelancerWithIdentity {
   portfolio: PortfolioItem[];
   payment_links: PaymentLink[];
 }
+
+// ── Alertas de empleo ──
+export interface JobAlert {
+  id: string;
+  user_id: string;
+  keyword: string | null;
+  industry: string | null;
+  city: string | null;
+  country: string;
+  modality: string | null;
+  email_enabled: boolean;
+  inapp_enabled: boolean;
+  active: boolean;
+  last_run_at: string | null;
+  created_at: string;
+}

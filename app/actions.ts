@@ -2576,3 +2576,74 @@ export async function setQuoteStatus(
   revalidatePath("/freelancer");
   return { ok: true };
 }
+
+// ============================================================
+// Alertas de empleo
+// ============================================================
+
+export async function createJobAlert(input: {
+  keyword?: string;
+  industry?: string;
+  city?: string;
+  country: string;
+  modality?: string;
+  email_enabled?: boolean;
+  inapp_enabled?: boolean;
+}): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión para crear alertas." };
+  // Al menos un criterio, si no la alerta traería todo.
+  if (!input.keyword?.trim() && !input.industry && !input.city && !input.modality)
+    return {
+      ok: false,
+      error: "Elegí al menos un criterio (rubro, ciudad o palabra clave).",
+    };
+  const { error } = await supabase.from("job_alerts").insert({
+    user_id: user.id,
+    keyword: input.keyword?.trim() || null,
+    industry: input.industry || null,
+    city: input.city?.trim() || null,
+    country: input.country,
+    modality: input.modality || null,
+    email_enabled: input.email_enabled ?? true,
+    inapp_enabled: input.inapp_enabled ?? true,
+  });
+  if (error) return { ok: false, error: "No pudimos crear la alerta." };
+  revalidatePath("/alertas");
+  return { ok: true };
+}
+
+export async function updateJobAlert(
+  id: string,
+  patch: { email_enabled?: boolean; inapp_enabled?: boolean; active?: boolean }
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sesión no válida." };
+  const { error } = await supabase
+    .from("job_alerts")
+    .update(patch)
+    .eq("id", id)
+    .eq("user_id", user.id);
+  if (error) return { ok: false, error: "No pudimos actualizar la alerta." };
+  revalidatePath("/alertas");
+  return { ok: true };
+}
+
+export async function deleteJobAlert(id: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sesión no válida." };
+  const { error } = await supabase
+    .from("job_alerts")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
+  if (error) return { ok: false, error: "No pudimos borrar la alerta." };
+  revalidatePath("/alertas");
+  return { ok: true };
+}

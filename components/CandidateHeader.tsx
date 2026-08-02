@@ -11,6 +11,7 @@ import { timeAgo } from "@/lib/format";
 const NAV = [
   { href: "/empleos", label: "Empleos", icon: "🔍" },
   { href: "/postulaciones", label: "Postulaciones", icon: "📋" },
+  { href: "/alertas", label: "Alertas", icon: "🔔" },
   { href: "/mensajes", label: "Mensajes", icon: "💬" },
   { href: "/freelancer", label: "Freelancer", icon: "🧑‍💻" },
   { href: "/perfil", label: "Mi perfil", icon: "👤" },

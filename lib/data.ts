@@ -1360,3 +1360,18 @@ export async function getMyFreelancerDashboard(): Promise<{
     quotes,
   };
 }
+
+/* ── Alertas de empleo ── */
+
+export async function getMyAlerts(): Promise<import("./types").JobAlert[]> {
+  const supabase = await getServerClient();
+  if (!supabase) return [];
+  const user = await getCurrentUser();
+  if (!user) return [];
+  const { data } = await supabase
+    .from("job_alerts")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+  return (data ?? []) as import("./types").JobAlert[];
+}
