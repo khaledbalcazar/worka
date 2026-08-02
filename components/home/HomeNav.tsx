@@ -10,6 +10,7 @@ import CountrySelector from "@/components/CountrySelector";
 const NAV_LINKS: [string, string][] = [
   ["Buscar empleo", "/empleos"],
   ["Freelancers", "/freelancers"],
+  ["Panorama", "/panorama"],
   ["Para empresas", "/para-empresas"],
   ["Blog", "/blog"],
   ["Academia", "/academia"],

@@ -1375,3 +1375,125 @@ export async function getMyAlerts(): Promise<import("./types").JobAlert[]> {
     .order("created_at", { ascending: false });
   return (data ?? []) as import("./types").JobAlert[];
 }
+
+/* ── Panorama de mercado ── */
+
+export interface MarketPanorama {
+  country: string;
+  workaActive: number;
+  externalActive: number;
+  totalActive: number;
+  newThisWeek: number;
+  applicantsPerJob: number | null;
+  topIndustries: { industry: string; count: number }[];
+  topCities: { city: string; count: number }[];
+  freelancers: {
+    total: number;
+    byCategory: { category: string; count: number }[];
+  };
+}
+
+// Métricas de mercado del país activo. Todo se calcula de datos reales:
+// vacantes de Worka, vacantes externas agregadas, postulaciones y freelancers.
+export async function getMarketPanorama(
+  country: string
+): Promise<MarketPanorama> {
+  const empty: MarketPanorama = {
+    country,
+    workaActive: 0,
+    externalActive: 0,
+    totalActive: 0,
+    newThisWeek: 0,
+    applicantsPerJob: null,
+    topIndustries: [],
+    topCities: [],
+    freelancers: { total: 0, byCategory: [] },
+  };
+  const supabase = await getServerClient();
+  if (!supabase) return empty;
+
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const nowIso = new Date().toISOString();
+
+  // Vacantes de Worka activas (con país de la empresa)
+  const { data: workaRows } = await supabase
+    .from("jobs")
+    .select("industry,created_at,company:companies!inner(country,location_city)")
+    .eq("status", "Activo")
+    .gt("expires_at", nowIso)
+    .limit(2000);
+  const worka = ((workaRows ?? []) as any[]).filter(
+    (j) => (j.company?.country ?? "py") === country
+  );
+
+  // Vacantes externas activas del país
+  const { data: extRows } = await supabase
+    .from("external_jobs")
+    .select("industry,city,imported_at")
+    .eq("status", "activa")
+    .eq("country", country)
+    .limit(4000);
+  const ext = (extRows ?? []) as any[];
+
+  // Conteo por rubro (Worka + externas)
+  const indCount = new Map<string, number>();
+  const cityCount = new Map<string, number>();
+  let newThisWeek = 0;
+  for (const j of worka) {
+    if (j.industry) indCount.set(j.industry, (indCount.get(j.industry) ?? 0) + 1);
+    const city = j.company?.location_city;
+    if (city) cityCount.set(city, (cityCount.get(city) ?? 0) + 1);
+    if (j.created_at > weekAgo) newThisWeek++;
+  }
+  for (const j of ext) {
+    if (j.industry) indCount.set(j.industry, (indCount.get(j.industry) ?? 0) + 1);
+    if (j.city) cityCount.set(j.city, (cityCount.get(j.city) ?? 0) + 1);
+    if (j.imported_at > weekAgo) newThisWeek++;
+  }
+
+  const topIndustries = [...indCount.entries()]
+    .map(([industry, count]) => ({ industry, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8);
+  const topCities = [...cityCount.entries()]
+    .map(([city, count]) => ({ city, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6);
+
+  // Competencia: postulaciones totales / vacantes de Worka (aprox.)
+  let applicantsPerJob: number | null = null;
+  const { count: appCount } = await supabase
+    .from("applications")
+    .select("id", { count: "exact", head: true });
+  if (appCount != null && worka.length > 0)
+    applicantsPerJob = Math.round((appCount / worka.length) * 10) / 10;
+
+  // Freelancers por categoría
+  const { data: flRows } = await supabase
+    .from("freelancer_profiles")
+    .select("category")
+    .eq("is_public", true)
+    .eq("country", country)
+    .limit(2000);
+  const flCount = new Map<string, number>();
+  for (const f of (flRows ?? []) as any[])
+    flCount.set(f.category, (flCount.get(f.category) ?? 0) + 1);
+
+  return {
+    country,
+    workaActive: worka.length,
+    externalActive: ext.length,
+    totalActive: worka.length + ext.length,
+    newThisWeek,
+    applicantsPerJob,
+    topIndustries,
+    topCities,
+    freelancers: {
+      total: (flRows ?? []).length,
+      byCategory: [...flCount.entries()]
+        .map(([category, count]) => ({ category, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 6),
+    },
+  };
+}

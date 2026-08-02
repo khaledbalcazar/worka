@@ -9,7 +9,7 @@ import { FREELANCER_CATEGORIES } from "@/lib/freelancer";
 export const revalidate = 120;
 
 export const metadata = {
-  title: "Worka Freelancers — Contratá profesionales para tus proyectos",
+  title: "Freelancers — Contratá profesionales para tus proyectos",
   description:
     "Encontrá diseñadores, programadores, redactores y más. Mirá sus portfolios, pedí presupuesto y trabajá con freelancers de tu país en Worka.",
 };

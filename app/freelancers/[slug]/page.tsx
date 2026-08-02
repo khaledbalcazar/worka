@@ -28,7 +28,7 @@ export async function generateMetadata({
   const f = await getPublicFreelancer(slug);
   if (!f) return { title: "Freelancer no encontrado" };
   return {
-    title: `${f.identity.full_name} — ${f.headline || f.category} | Worka Freelancers`,
+    title: `${f.identity.full_name} — ${f.headline || f.category}`,
     description:
       f.bio.slice(0, 155) ||
       `Contratá a ${f.identity.full_name} en Worka. Mirá su portfolio y pedí un presupuesto.`,
