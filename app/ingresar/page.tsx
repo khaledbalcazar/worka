@@ -26,18 +26,20 @@ function LoginForm() {
   const supabase = getBrowserClient();
   const demoMode = supabase === null;
 
-  async function handleGoogle() {
-    if (!supabase) {
-      router.push("/empleos");
-      return;
-    }
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-      },
-    });
+async function handleGoogle() {
+  if (!supabase) {
+    router.push("/empleos"); // o "/empleo" según corresponda
+    return;
   }
+  
+  await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      // Reemplazamos la variable 'next' por el texto directo de tu ruta
+      redirectTo: `${window.location.origin}/auth/callback?next=/empleos`,
+    },
+  });
+}
 
   function handleEmail() {
     setError(null);
