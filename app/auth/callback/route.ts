@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     if (supabase) {
       const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (!error) {
-        const target = next && next !== "/empleos" ? next : await getRoleHome();
+        const target = next || await getRoleHome();
         return NextResponse.redirect(`${origin}${target}`);
       }
       console.error("auth callback exchange error:", error);
