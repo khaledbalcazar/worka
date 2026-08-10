@@ -13,6 +13,17 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  // Módulo e-learn: código portado de un proyecto externo (Aula Virtual).
+  // Relajamos reglas de estilo que no aportan valor en código de terceros.
+  {
+    files: ["components/elearn/**/*.{ts,tsx}"],
+    rules: {
+      "react/no-unescaped-entities": "off",
+      "@next/next/no-img-element": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;
