@@ -1,6 +1,7 @@
 import "server-only";
 import fs from "node:fs";
 import path from "node:path";
+import { formatManual, type Block } from "./format";
 
 // Carga y procesa el Manual de Estudio completo (≈195 páginas) que vive en
 // lib/elearn/manual.txt. Se usa para: (1) la vista "Manual Completo" del aula,
@@ -35,7 +36,8 @@ function clean(text: string): string {
 export interface ManualPart {
   id: string;
   title: string;
-  body: string;
+  body: string; // texto plano (se mantiene para la búsqueda y el tutor IA)
+  blocks: Block[]; // versión formateada para la lectura en pantalla
 }
 
 let PARTS: ManualPart[] | null = null;
@@ -66,7 +68,12 @@ export function getManualParts(): ManualPart[] {
       .replace(/\s+/g, " ")
       .trim();
     const content = firstNl < 0 ? "" : slice.slice(firstNl + 1).trim();
-    parts.push({ id: `parte-${i}`, title, body: content });
+    parts.push({
+      id: `parte-${i}`,
+      title,
+      body: content,
+      blocks: formatManual(content),
+    });
   }
   PARTS = parts;
   return parts;

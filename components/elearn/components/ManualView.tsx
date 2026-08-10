@@ -1,13 +1,87 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BookOpen, Search, Loader2 } from 'lucide-react';
+import { BookOpen, Search, Loader2, Lightbulb } from 'lucide-react';
+
+type Block =
+  | { type: 'h2'; text: string }
+  | { type: 'h3'; text: string }
+  | { type: 'p'; text: string }
+  | { type: 'li'; text: string }
+  | { type: 'callout'; tag: string; text: string }
+  | { type: 'pre'; text: string };
 
 interface ManualPart {
   id: string;
   title: string;
   body: string;
+  blocks: Block[];
 }
 
-// Lector del Manual de Estudio COMPLETO (las 16 partes, texto íntegro del PDF).
+// Agrupa bloques "li" consecutivos en una sola lista <ul>.
+function groupBlocks(blocks: Block[]): (Block | { type: 'ul'; items: string[] })[] {
+  const out: (Block | { type: 'ul'; items: string[] })[] = [];
+  for (const b of blocks) {
+    if (b.type === 'li') {
+      const last = out[out.length - 1];
+      if (last && last.type === 'ul') last.items.push(b.text);
+      else out.push({ type: 'ul', items: [b.text] });
+    } else {
+      out.push(b);
+    }
+  }
+  return out;
+}
+
+function BlockRenderer({ block }: { block: ReturnType<typeof groupBlocks>[number] }) {
+  switch (block.type) {
+    case 'h2':
+      return (
+        <h3 className="font-serif text-lg font-bold text-[#d4af37] mt-6 mb-2 first:mt-0">
+          {block.text}
+        </h3>
+      );
+    case 'h3':
+      return (
+        <h4 className="font-serif text-base font-semibold text-[#e4c766] mt-5 mb-1.5">
+          {block.text}
+        </h4>
+      );
+    case 'p':
+      return <p className="text-[#d4d4d8] leading-relaxed mb-3">{block.text}</p>;
+    case 'ul':
+      return (
+        <ul className="list-disc pl-5 space-y-1 mb-3 text-[#d4d4d8]">
+          {block.items.map((it, i) => (
+            <li key={i} className="leading-relaxed">
+              {it}
+            </li>
+          ))}
+        </ul>
+      );
+    case 'callout':
+      return (
+        <div className="flex gap-2.5 bg-[#d4af37]/10 border border-[#d4af37]/25 rounded-xl px-4 py-3 mb-3">
+          <Lightbulb className="w-4 h-4 text-[#d4af37] shrink-0 mt-0.5" />
+          <div>
+            <p className="text-xs font-bold text-[#d4af37] uppercase tracking-wide mb-1">
+              {block.tag}
+            </p>
+            <p className="text-[#e4e4e7] leading-relaxed text-sm">{block.text}</p>
+          </div>
+        </div>
+      );
+    case 'pre':
+      return (
+        <pre className="bg-[#0a0a0c] border border-[#27272a] rounded-lg p-3 mb-3 text-xs text-[#a1a1aa] overflow-x-auto font-mono leading-relaxed">
+          {block.text}
+        </pre>
+      );
+    default:
+      return null;
+  }
+}
+
+// Lector del Manual de Estudio COMPLETO (las 18 partes, texto íntegro del
+// PDF, ya reconstruido en párrafos/títulos/listas legibles).
 export const ManualView: React.FC = () => {
   const [parts, setParts] = useState<ManualPart[]>([]);
   const [activeId, setActiveId] = useState<string>('');
@@ -37,6 +111,10 @@ export const ManualView: React.FC = () => {
   }, [parts, query]);
 
   const active = parts.find((p) => p.id === activeId) ?? filtered[0];
+  const grouped = useMemo(
+    () => (active ? groupBlocks(active.blocks) : []),
+    [active]
+  );
 
   if (loading)
     return (
@@ -98,11 +176,13 @@ export const ManualView: React.FC = () => {
         <article className="bg-[#121216] border border-[#27272a] rounded-xl p-6 max-h-[75vh] overflow-y-auto">
           {active && (
             <>
-              <h3 className="font-serif text-lg font-bold text-[#d4af37] mb-4 sticky -top-6 bg-[#121216] py-2">
+              <h3 className="font-serif text-xl font-bold text-[#d4af37] mb-4 pb-3 border-b border-[#27272a]">
                 {active.title}
               </h3>
-              <div className="text-[#d4d4d8] text-[0.95rem] leading-relaxed whitespace-pre-wrap">
-                {active.body}
+              <div className="text-[0.95rem]">
+                {grouped.map((b, i) => (
+                  <BlockRenderer key={i} block={b} />
+                ))}
               </div>
             </>
           )}
