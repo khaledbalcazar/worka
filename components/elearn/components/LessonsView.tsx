@@ -1,7 +1,58 @@
 import React, { useState } from 'react';
 import { CHAPTERS_DATA } from '../data/chaptersData';
 import { Lesson, UserProgress } from '../types';
-import { BookOpen, CheckCircle2, Circle, Search, Sparkles, AlertCircle, Bookmark, ChevronRight } from 'lucide-react';
+import { BookOpen, CheckCircle2, Circle, Search, Sparkles, AlertCircle, Bookmark, ChevronRight, ScrollText, ListChecks, XCircle } from 'lucide-react';
+
+// Ejercicios de autoevaluación al pie de cada lección: elegir opción y ver
+// al instante si es correcta, con la explicación.
+const LessonExercises: React.FC<{ lesson: Lesson }> = ({ lesson }) => {
+  const [answers, setAnswers] = useState<Record<number, number>>({});
+  if (!lesson.exercises || lesson.exercises.length === 0) return null;
+
+  return (
+    <div className="bg-[#0e0e11] border border-violet-500/30 rounded-xl p-4 sm:p-5 space-y-4">
+      <div className="flex items-center gap-2 text-violet-400 font-bold text-xs uppercase tracking-widest">
+        <ListChecks className="w-4 h-4" />
+        <span>Ejercicios de Autoevaluación</span>
+      </div>
+      {lesson.exercises.map((ex, qi) => {
+        const chosen = answers[qi];
+        const answered = chosen !== undefined;
+        return (
+          <div key={qi} className="bg-[#121216] border border-[#27272a] rounded-lg p-3.5 space-y-2">
+            <p className="text-sm text-[#e4e4e7] font-medium">{qi + 1}. {ex.question}</p>
+            <div className="space-y-1.5">
+              {ex.options.map((opt, oi) => {
+                const isCorrect = oi === ex.correctIndex;
+                const isChosen = chosen === oi;
+                let cls = 'border-[#3f3f46] text-[#d4d4d8] hover:border-[#d4af37]/40';
+                if (answered && isCorrect) cls = 'border-emerald-500/60 bg-emerald-500/10 text-emerald-300';
+                else if (answered && isChosen && !isCorrect) cls = 'border-red-500/60 bg-red-500/10 text-red-300';
+                return (
+                  <button
+                    key={oi}
+                    onClick={() => !answered && setAnswers((p) => ({ ...p, [qi]: oi }))}
+                    disabled={answered}
+                    className={`w-full text-left text-xs sm:text-sm px-3 py-2 rounded-lg border transition-colors flex items-center gap-2 ${cls}`}
+                  >
+                    {answered && isCorrect && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
+                    {answered && isChosen && !isCorrect && <XCircle className="w-3.5 h-3.5 shrink-0" />}
+                    <span>{opt}</span>
+                  </button>
+                );
+              })}
+            </div>
+            {answered && (
+              <p className="text-xs text-[#a1a1aa] bg-[#0e0e11] border border-[#27272a] rounded-lg p-2.5 leading-relaxed">
+                {ex.explanation}
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
 
 interface LessonsViewProps {
   progress: UserProgress;
@@ -236,6 +287,26 @@ export const LessonsView: React.FC<LessonsViewProps> = ({
                 </ul>
               </div>
             )}
+
+            {/* Desarrollo extendido: artículo por artículo, casos, excepciones */}
+            {currentLesson.deepDive && currentLesson.deepDive.length > 0 && (
+              <div className="bg-[#0e0e11] border border-[#27272a] rounded-xl p-4 sm:p-5 space-y-3">
+                <div className="flex items-center gap-2 text-[#a78bfa] font-bold text-xs uppercase tracking-widest">
+                  <ScrollText className="w-4 h-4" />
+                  <span>Desarrollo Extendido</span>
+                </div>
+                <div className="space-y-3">
+                  {currentLesson.deepDive.map((para, idx) => (
+                    <p key={idx} className="text-[#d4d4d8] text-sm leading-relaxed">
+                      {para}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Ejercicios de autoevaluación */}
+            <LessonExercises lesson={currentLesson} />
           </div>
         ) : (
           <div className="bg-[#121216] border border-[#27272a] rounded-xl p-12 text-center text-[#a1a1aa]">

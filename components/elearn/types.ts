@@ -1,3 +1,10 @@
+export interface LessonExercise {
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+}
+
 export interface Lesson {
   id: string;
   title: string;
@@ -7,6 +14,8 @@ export interface Lesson {
   level3DeskExample: string; // Ejemplo del mostrador de atención al público
   keyArticle?: string;
   memoryTips?: string[];
+  deepDive?: string[]; // Desarrollo extendido: artículo por artículo, casos, excepciones
+  exercises?: LessonExercise[]; // Autoevaluación al final de la lección
 }
 
 export interface Chapter {

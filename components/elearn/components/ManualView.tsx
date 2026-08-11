@@ -1,18 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BookOpen, Search, Loader2, Lightbulb } from 'lucide-react';
+import { BookOpen, Search, Loader2, Lightbulb, Quote } from 'lucide-react';
 
 type Block =
-  | { type: 'h2'; text: string }
-  | { type: 'h3'; text: string }
-  | { type: 'p'; text: string }
+  | { type: 'heading'; level: number; text: string }
+  | { type: 'p'; text: string; style?: string }
   | { type: 'li'; text: string }
   | { type: 'callout'; tag: string; text: string }
-  | { type: 'pre'; text: string };
+  | { type: 'quote'; text: string }
+  | { type: 'pre'; text: string }
+  | { type: 'table'; rows: string[][] };
 
 interface ManualPart {
   id: string;
   title: string;
-  body: string;
   blocks: Block[];
 }
 
@@ -31,20 +31,27 @@ function groupBlocks(blocks: Block[]): (Block | { type: 'ul'; items: string[] })
   return out;
 }
 
+function partTextForSearch(p: ManualPart): string {
+  return p.blocks
+    .map((b) => {
+      if (b.type === 'table') return b.rows.map((r) => r.join(' ')).join(' ');
+      return 'text' in b ? b.text : '';
+    })
+    .join(' ');
+}
+
 function BlockRenderer({ block }: { block: ReturnType<typeof groupBlocks>[number] }) {
   switch (block.type) {
-    case 'h2':
-      return (
-        <h3 className="font-serif text-lg font-bold text-[#d4af37] mt-6 mb-2 first:mt-0">
-          {block.text}
-        </h3>
-      );
-    case 'h3':
-      return (
-        <h4 className="font-serif text-base font-semibold text-[#e4c766] mt-5 mb-1.5">
-          {block.text}
-        </h4>
-      );
+    case 'heading': {
+      const level = block.level;
+      const cls =
+        level <= 1
+          ? 'font-serif text-lg font-bold text-[#d4af37] mt-6 mb-2 first:mt-0'
+          : level === 2
+            ? 'font-serif text-base font-semibold text-[#e4c766] mt-5 mb-1.5'
+            : 'font-serif text-sm font-semibold text-[#c9a862] mt-4 mb-1';
+      return <p className={cls}>{block.text}</p>;
+    }
     case 'p':
       return <p className="text-[#d4d4d8] leading-relaxed mb-3">{block.text}</p>;
     case 'ul':
@@ -69,19 +76,58 @@ function BlockRenderer({ block }: { block: ReturnType<typeof groupBlocks>[number
           </div>
         </div>
       );
+    case 'quote':
+      return (
+        <blockquote className="flex gap-2.5 border-l-2 border-[#3f3f46] pl-4 py-1 mb-3 italic">
+          <Quote className="w-4 h-4 text-[#71717a] shrink-0 mt-1" />
+          <p className="text-[#a1a1aa] leading-relaxed text-sm">{block.text}</p>
+        </blockquote>
+      );
     case 'pre':
       return (
-        <pre className="bg-[#0a0a0c] border border-[#27272a] rounded-lg p-3 mb-3 text-xs text-[#a1a1aa] overflow-x-auto font-mono leading-relaxed">
+        <pre className="bg-[#0a0a0c] border border-[#27272a] rounded-lg p-3 mb-3 text-xs text-[#a1a1aa] overflow-x-auto font-mono leading-relaxed whitespace-pre">
           {block.text}
         </pre>
       );
+    case 'table': {
+      const [head, ...body] = block.rows;
+      return (
+        <div className="overflow-x-auto mb-4 rounded-lg border border-[#27272a]">
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="bg-[#1a1a1f]">
+                {head.map((c, i) => (
+                  <th
+                    key={i}
+                    className="text-left px-3 py-2 font-semibold text-[#d4af37] border-b border-[#27272a] whitespace-nowrap"
+                  >
+                    {c}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {body.map((row, ri) => (
+                <tr key={ri} className={ri % 2 ? 'bg-[#121216]' : 'bg-[#0e0e11]'}>
+                  {row.map((c, ci) => (
+                    <td key={ci} className="px-3 py-2 text-[#d4d4d8] align-top border-b border-[#1a1a1f]">
+                      {c}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
     default:
       return null;
   }
 }
 
-// Lector del Manual de Estudio COMPLETO (las 18 partes, texto íntegro del
-// PDF, ya reconstruido en párrafos/títulos/listas legibles).
+// Lector del Manual de Estudio COMPLETO — extraído del .docx oficial, con
+// estructura real (encabezados, listas, tablas, citas y diagramas).
 export const ManualView: React.FC = () => {
   const [parts, setParts] = useState<ManualPart[]>([]);
   const [activeId, setActiveId] = useState<string>('');
@@ -106,15 +152,12 @@ export const ManualView: React.FC = () => {
     const q = query.trim().toLowerCase();
     if (!q) return parts;
     return parts.filter(
-      (p) => p.title.toLowerCase().includes(q) || p.body.toLowerCase().includes(q)
+      (p) => p.title.toLowerCase().includes(q) || partTextForSearch(p).toLowerCase().includes(q)
     );
   }, [parts, query]);
 
   const active = parts.find((p) => p.id === activeId) ?? filtered[0];
-  const grouped = useMemo(
-    () => (active ? groupBlocks(active.blocks) : []),
-    [active]
-  );
+  const grouped = useMemo(() => (active ? groupBlocks(active.blocks) : []), [active]);
 
   if (loading)
     return (
