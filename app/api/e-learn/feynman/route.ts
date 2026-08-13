@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { retrieveRelevant } from "@/lib/elearn/manual";
+import { callAi, credentialsFromRequest } from "@/lib/elearn/aiProvider";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -24,11 +24,10 @@ export async function POST(req: Request) {
   if (!(await ensureAdmin()))
     return NextResponse.json({ error: "No autorizado." }, { status: 403 });
 
-  const clientKey = req.headers.get("x-anthropic-api-key")?.trim();
-  const apiKey = clientKey || process.env.ANTHROPIC_API_KEY;
-  if (!apiKey)
+  const creds = credentialsFromRequest(req);
+  if (!creds)
     return NextResponse.json(
-      { error: "Falta configurar una Anthropic API Key (propia o del servidor)." },
+      { error: "Configurá tu proveedor de IA y su API Key desde el panel del Tutor." },
       { status: 400 }
     );
 
@@ -37,18 +36,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Explicación vacía." }, { status: 400 });
 
   const grounding = retrieveRelevant(`${topic ?? ""} ${explanation}`);
-  const client = new Anthropic({ apiKey });
   try {
-    const msg = await client.messages.create({
-      model: "claude-opus-5",
-      max_tokens: 1500,
-      output_config: { effort: "medium" },
+    const text = await callAi(creds, {
       system:
         "Sos un evaluador docente experto para el Concurso del Registro del Estado Civil de Paraguay. Evaluás explicaciones con la Técnica Feynman: claridad, precisión jurídica (artículos, plazos, números) y errores. Devolvés únicamente un objeto JSON válido, sin texto adicional.",
-      messages: [
-        {
-          role: "user",
-          content: `Tema elegido: ${topic}
+      maxTokens: 1500,
+      json: true,
+      user: `Tema elegido: ${topic}
 Explicación del estudiante: "${explanation}"
 
 Pasajes del Manual para contrastar la exactitud:
@@ -62,15 +56,8 @@ Devolvé EXACTAMENTE este JSON (sin markdown, sin backticks):
   "missingOrGaps": ["<concepto, plazo o número que faltó o es erróneo>"],
   "feedback": "<recomendación práctica para la prueba escrita y la entrevista oral>"
 }`,
-        },
-      ],
     });
-    const text = msg.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("")
-      .trim();
-    // Aísla el JSON por si viene con texto alrededor.
+    // Aísla el JSON por si viene con texto o backticks alrededor.
     const start = text.indexOf("{");
     const end = text.lastIndexOf("}");
     const json = start >= 0 && end > start ? text.slice(start, end + 1) : text;

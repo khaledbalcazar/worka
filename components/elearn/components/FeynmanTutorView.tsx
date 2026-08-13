@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, MessageSquare, Award, Clock, Send, Bot, User, CheckCircle2, AlertCircle, Loader2, Settings2, ChevronDown } from 'lucide-react';
 import { ApiKeySettings } from './ApiKeySettings';
-import { loadApiKey } from '../lib/apiKeyStorage';
+import { authHeaders } from '../lib/apiKeyStorage';
 
 interface FeynmanTutorViewProps {
   initialContext?: string;
@@ -51,7 +51,7 @@ export const FeynmanTutorView: React.FC<FeynmanTutorViewProps> = ({ initialConte
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(loadApiKey() ? { 'x-anthropic-api-key': loadApiKey() } : {})
+          ...authHeaders()
         },
         body: JSON.stringify({ prompt: promptText, context: tutorContext })
       });
@@ -62,7 +62,7 @@ export const FeynmanTutorView: React.FC<FeynmanTutorViewProps> = ({ initialConte
       } else {
         setTutorMessages((prev) => [
           ...prev,
-          { role: 'assistant', text: data.error || 'No se pudo obtener respuesta. Configurá tu API Key arriba o verificá que ANTHROPIC_API_KEY esté configurada en el servidor.' }
+          { role: 'assistant', text: data.error || 'No se pudo obtener respuesta. Configurá tu proveedor de IA y tu API Key desde el panel de arriba.' }
         ]);
       }
     } catch (err) {
@@ -85,7 +85,7 @@ export const FeynmanTutorView: React.FC<FeynmanTutorViewProps> = ({ initialConte
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(loadApiKey() ? { 'x-anthropic-api-key': loadApiKey() } : {})
+          ...authHeaders()
         },
         body: JSON.stringify({ topic: selectedTopic, explanation: explanationText })
       });
@@ -122,7 +122,7 @@ export const FeynmanTutorView: React.FC<FeynmanTutorViewProps> = ({ initialConte
           className="flex items-center gap-1.5 text-xs text-[#a1a1aa] hover:text-[#d4af37] transition-colors"
         >
           <Settings2 className="w-3.5 h-3.5" />
-          Configurar mi API Key de Anthropic
+          Configurar mi proveedor de IA y API Key
           <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showKeySettings ? 'rotate-180' : ''}`} />
         </button>
         {showKeySettings && (

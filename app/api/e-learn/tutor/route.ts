@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { retrieveRelevant } from "@/lib/elearn/manual";
+import { callAi, credentialsFromRequest } from "@/lib/elearn/aiProvider";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -35,13 +35,11 @@ export async function POST(req: Request) {
   if (!(await ensureAdmin()))
     return NextResponse.json({ error: "No autorizado." }, { status: 403 });
 
-  // La key propia del usuario (guardada en su navegador) tiene prioridad
-  // sobre la del servidor. Nunca se persiste: se usa solo para esta llamada.
-  const clientKey = req.headers.get("x-anthropic-api-key")?.trim();
-  const apiKey = clientKey || process.env.ANTHROPIC_API_KEY;
-  if (!apiKey)
+  // Credenciales del usuario (header) o, si no hay, las del servidor.
+  const creds = credentialsFromRequest(req);
+  if (!creds)
     return NextResponse.json(
-      { error: "Falta configurar una Anthropic API Key (propia o del servidor)." },
+      { error: "Configurá tu proveedor de IA y su API Key desde el panel del Tutor." },
       { status: 400 }
     );
 
@@ -50,30 +48,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Consulta vacía." }, { status: 400 });
 
   const grounding = retrieveRelevant(`${context ?? ""} ${prompt}`);
-  const client = new Anthropic({ apiKey });
   try {
-    const msg = await client.messages.create({
-      model: "claude-opus-5",
-      max_tokens: 2000,
-      output_config: { effort: "medium" },
+    const answer = await callAi(creds, {
       system: SYSTEM,
-      messages: [
-        {
-          role: "user",
-          content: `Tema actual: ${context || "General"}
+      maxTokens: 2000,
+      user: `Tema actual: ${context || "General"}
 
 Pasajes relevantes del Manual de Estudio:
 ${grounding || "(sin coincidencias directas; respondé con criterio general del temario)"}
 
 Consulta del estudiante: ${prompt}`,
-        },
-      ],
     });
-    const answer = msg.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("\n")
-      .trim();
     return NextResponse.json({ answer });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Error con la IA.";
