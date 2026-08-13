@@ -30,6 +30,38 @@ export function getManualParts(): ManualPart[] {
   return PARTS;
 }
 
+export interface ManualSection {
+  prefix: string; // "4.3", "0-B.1"…
+  title: string;  // encabezado completo del H2
+  blocks: Block[]; // contenido íntegro de la sección (sin el propio H2)
+}
+
+// Extrae el prefijo numérico de un encabezado ("4.3 CAPÍTULO I — ..." -> "4.3").
+function sectionPrefix(text: string): string | null {
+  const m = /^(\d+(?:-[A-Z])?(?:\.\d+)*)\s/.exec(text.trim());
+  return m ? m[1] : null;
+}
+
+// Devuelve las secciones (H2) de una parte del manual, cada una con todo su
+// contenido hasta el siguiente H2. Es el material de estudio que se muestra
+// dentro de cada unidad de un curso del Temario Oficial.
+export function getPartSections(partId: string): ManualSection[] {
+  const part = getManualParts().find((p) => p.id === partId);
+  if (!part) return [];
+  const sections: ManualSection[] = [];
+  let current: ManualSection | null = null;
+  for (const b of part.blocks) {
+    if (b.type === "heading" && b.level <= 2) {
+      const prefix = sectionPrefix(b.text);
+      current = { prefix: prefix ?? b.text, title: b.text, blocks: [] };
+      sections.push(current);
+      continue;
+    }
+    if (current) current.blocks.push(b);
+  }
+  return sections;
+}
+
 function blockText(b: Block): string {
   switch (b.type) {
     case "heading":

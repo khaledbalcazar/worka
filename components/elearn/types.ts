@@ -16,6 +16,10 @@ export interface Lesson {
   memoryTips?: string[];
   deepDive?: string[]; // Desarrollo extendido: artículo por artículo, casos, excepciones
   exercises?: LessonExercise[]; // Autoevaluación al final de la lección
+  // Secciones del Manual oficial cuyo contenido íntegro se muestra en esta
+  // unidad (prefijos de encabezado, p. ej. ['4.3', '4.4']). Es el material
+  // de estudio real; los campos de arriba son el resumen pedagógico.
+  manualSections?: string[];
 }
 
 export interface Chapter {
@@ -24,6 +28,9 @@ export interface Chapter {
   partNumber: string; // e.g. "Parte 0", "Parte I", "Parte II"...
   description: string;
   lessons: Lesson[];
+  // Parte del Manual oficial (lib/elearn/manual-data.json) de la que este
+  // curso toma su material de estudio íntegro.
+  manualPartId?: string;
 }
 
 export interface QuizQuestion {

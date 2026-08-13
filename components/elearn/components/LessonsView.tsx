@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { CHAPTERS_DATA } from '../data/chaptersData';
+import { CHAPTER_TO_MANUAL_PART, LESSON_TO_MANUAL_SECTIONS } from '../data/manualMap';
 import { Chapter, Lesson, UserProgress } from '../types';
 import {
   BookOpen,
@@ -14,8 +15,18 @@ import {
   XCircle,
   ArrowLeft,
   Megaphone,
-  GraduationCap
+  GraduationCap,
+  Loader2,
+  ChevronDown,
+  BookMarked
 } from 'lucide-react';
+import { Block, ManualBlocks } from './ManualBlocks';
+
+interface ManualSection {
+  prefix: string;
+  title: string;
+  blocks: Block[];
+}
 
 // Paleta de "cursos" al estilo Canvas: un color sólido por curso, cíclico.
 const COURSE_COLORS = [
@@ -43,7 +54,7 @@ const LessonExercises: React.FC<{ lesson: Lesson }> = ({ lesson }) => {
     <div className="bg-[#0e0e11] border border-violet-500/30 rounded-xl p-4 sm:p-5 space-y-4">
       <div className="flex items-center gap-2 text-violet-400 font-bold text-xs uppercase tracking-widest">
         <ListChecks className="w-4 h-4" />
-        <span>Ejercicios de Autoevaluación</span>
+        <span>Autoevaluación</span>
       </div>
       {lesson.exercises.map((ex, qi) => {
         const chosen = answers[qi];
@@ -84,7 +95,48 @@ const LessonExercises: React.FC<{ lesson: Lesson }> = ({ lesson }) => {
   );
 };
 
-// ── Una unidad = una lección, con sus 3 niveles + trucos + desarrollo + ejercicios ──
+// ── Material de estudio: el desarrollo íntegro del Manual para esta unidad ──
+const ManualMaterial: React.FC<{ sections: ManualSection[]; color: string }> = ({ sections, color }) => {
+  const [open, setOpen] = useState(true);
+  if (sections.length === 0) return null;
+
+  return (
+    <div className="bg-[#0e0e11] border rounded-xl overflow-hidden" style={{ borderColor: `${color}55` }}>
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-4 sm:px-5 py-3 hover:bg-[#121216] transition-colors"
+      >
+        <span className="flex items-center gap-2 font-bold text-xs uppercase tracking-widest" style={{ color }}>
+          <BookMarked className="w-4 h-4" />
+          Material de estudio — Manual oficial
+        </span>
+        <span className="flex items-center gap-2 text-[10px] text-[#71717a]">
+          {sections.length} sección{sections.length === 1 ? '' : 'es'}
+          <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </span>
+      </button>
+      {open && (
+        <div className="px-4 sm:px-5 pb-5 space-y-5">
+          {sections.map((s) => (
+            <div key={s.prefix}>
+              <h4
+                className="font-serif text-base font-bold mb-2 pb-2 border-b"
+                style={{ color, borderColor: '#27272a' }}
+              >
+                {s.title}
+              </h4>
+              <div className="text-[0.95rem]">
+                <ManualBlocks blocks={s.blocks} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── Una unidad = una lección: resumen pedagógico + material íntegro + autoevaluación ──
 const UnitSection: React.FC<{
   lesson: Lesson;
   index: number;
@@ -92,7 +144,8 @@ const UnitSection: React.FC<{
   onToggleComplete: (id: string) => void;
   onAskTutor: (context: string) => void;
   color: string;
-}> = ({ lesson, index, isCompleted, onToggleComplete, onAskTutor, color }) => (
+  sections: ManualSection[];
+}> = ({ lesson, index, isCompleted, onToggleComplete, onAskTutor, color, sections }) => (
   <section id={lesson.id} className="scroll-mt-24 bg-[#121216] border border-[#27272a] rounded-xl p-5 sm:p-6 space-y-5">
     <div className="border-b border-[#27272a] pb-4 space-y-2">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -129,19 +182,24 @@ const UnitSection: React.FC<{
       <p className="text-[#a1a1aa] text-xs sm:text-sm">{lesson.summary}</p>
     </div>
 
+    {/* 1. Orientación: en palabras simples */}
     <div className="bg-[#0e0e11] border border-[#27272a] rounded-xl p-4 sm:p-5 space-y-2">
       <div className="flex items-center gap-2 text-[#d4af37] font-bold text-xs uppercase tracking-widest">
         <Bookmark className="w-4 h-4" />
-        <span>Nivel 1: En Palabras Simples</span>
+        <span>En Palabras Simples</span>
       </div>
       <p className="text-[#e4e4e7] text-sm sm:text-base leading-relaxed">{lesson.level1Simple}</p>
     </div>
 
+    {/* 2. El material de estudio real, del Manual oficial */}
+    <ManualMaterial sections={sections} color={color} />
+
+    {/* 3. Datos a memorizar */}
     <div className="bg-[#0e0e11] border border-emerald-500/30 rounded-xl p-4 sm:p-5 space-y-2">
       <div className="flex items-center justify-between gap-2 text-emerald-400 font-bold text-xs uppercase tracking-widest">
         <div className="flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4" />
-          <span>Nivel 2: El Texto Legal y Datos a Memorizar</span>
+          <span>Datos a Memorizar</span>
         </div>
         {lesson.keyArticle && <span className="font-mono text-emerald-300 text-[11px]">{lesson.keyArticle}</span>}
       </div>
@@ -150,16 +208,18 @@ const UnitSection: React.FC<{
       </p>
     </div>
 
+    {/* 4. Ejemplo del mostrador */}
     <div className="bg-[#0e0e11] border border-cyan-500/30 rounded-xl p-4 sm:p-5 space-y-2">
       <div className="flex items-center gap-2 text-cyan-400 font-bold text-xs uppercase tracking-widest">
         <AlertCircle className="w-4 h-4" />
-        <span>Nivel 3: Ejemplo Práctico del Mostrador</span>
+        <span>Ejemplo Práctico del Mostrador</span>
       </div>
       <p className="text-[#e4e4e7] text-sm sm:text-base leading-relaxed italic bg-[#121216] p-3 rounded-lg border border-[#27272a]">
         &ldquo;{lesson.level3DeskExample}&rdquo;
       </p>
     </div>
 
+    {/* 5. Trucos de memorización fina */}
     {lesson.memoryTips && lesson.memoryTips.length > 0 && (
       <div className="bg-[#d4af37]/10 border border-[#d4af37]/30 rounded-xl p-4 space-y-2">
         <h4 className="text-xs font-bold text-[#d4af37] uppercase tracking-widest flex items-center gap-2">
@@ -174,6 +234,7 @@ const UnitSection: React.FC<{
       </div>
     )}
 
+    {/* 6. Desarrollo extendido */}
     {lesson.deepDive && lesson.deepDive.length > 0 && (
       <div className="bg-[#0e0e11] border border-[#27272a] rounded-xl p-4 sm:p-5 space-y-3">
         <div className="flex items-center gap-2 text-[#a78bfa] font-bold text-xs uppercase tracking-widest">
@@ -188,6 +249,7 @@ const UnitSection: React.FC<{
       </div>
     )}
 
+    {/* 7. Autoevaluación */}
     <LessonExercises lesson={lesson} />
   </section>
 );
@@ -204,6 +266,39 @@ const CourseDetail: React.FC<{
   const color = courseColor(index);
   const { done, total } = courseProgress(chapter, progress);
   const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  const partId = CHAPTER_TO_MANUAL_PART[chapter.id];
+
+  const [sections, setSections] = useState<ManualSection[]>([]);
+  // Si el curso no tiene parte de manual asociada, no hay nada que cargar.
+  const [loading, setLoading] = useState(Boolean(partId));
+
+  useEffect(() => {
+    if (!partId) return;
+    let cancelled = false;
+    fetch(`/api/e-learn/course?partId=${encodeURIComponent(partId)}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && d.sections) setSections(d.sections);
+      })
+      .catch(() => {
+        /* el curso sigue siendo usable con el resumen pedagógico */
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [partId]);
+
+  // Secciones del manual que corresponden a cada unidad.
+  const sectionsForLesson = (lessonId: string): ManualSection[] => {
+    const prefixes = LESSON_TO_MANUAL_SECTIONS[lessonId] ?? [];
+    return prefixes
+      .map((p) => sections.find((s) => s.prefix === p))
+      .filter((s): s is ManualSection => !!s);
+  };
 
   return (
     <div className="space-y-5 pb-12">
@@ -225,14 +320,26 @@ const CourseDetail: React.FC<{
           </span>
           <h2 className="text-xl sm:text-2xl font-serif font-bold text-white">{chapter.title}</h2>
           <p className="text-xs sm:text-sm text-[#a1a1aa]">{chapter.description}</p>
-          <div className="flex items-center gap-3 pt-1">
-            <div className="flex-1 h-2 bg-[#27272a] rounded-full overflow-hidden max-w-xs">
+          <div className="flex items-center gap-3 pt-1 flex-wrap">
+            <div className="flex-1 h-2 bg-[#27272a] rounded-full overflow-hidden max-w-xs min-w-[120px]">
               <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
             </div>
             <span className="text-xs font-semibold text-[#d4d4d8]">{done}/{total} unidades · {pct}%</span>
+            {sections.length > 0 && (
+              <span className="text-[10px] text-[#71717a] inline-flex items-center gap-1">
+                <BookMarked className="w-3 h-3" />
+                {sections.length} secciones del Manual incluidas
+              </span>
+            )}
           </div>
         </div>
       </div>
+
+      {loading && (
+        <div className="flex items-center justify-center gap-2 text-[#a1a1aa] py-6 text-sm">
+          <Loader2 className="w-4 h-4 animate-spin" /> Cargando el material del manual…
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Mini índice sticky */}
@@ -268,6 +375,7 @@ const CourseDetail: React.FC<{
               onToggleComplete={onToggleComplete}
               onAskTutor={onAskTutor}
               color={color}
+              sections={sectionsForLesson(lesson.id)}
             />
           ))}
         </div>
@@ -328,8 +436,8 @@ interface LessonsViewProps {
 }
 
 // Vista principal: tablero tipo Canvas (grilla de cursos) que abre en el
-// detalle unificado de cada curso al hacer clic — cada norma del temario
-// oficial es un curso propio, con todas sus unidades en una sola página.
+// detalle unificado de cada curso — cada norma del temario oficial es un
+// curso propio, con el desarrollo íntegro del Manual dentro de cada unidad.
 export const LessonsView: React.FC<LessonsViewProps> = ({
   progress,
   onToggleLessonComplete,
@@ -373,8 +481,8 @@ export const LessonsView: React.FC<LessonsViewProps> = ({
           Tablero de Cursos — Temario Oficial
         </h2>
         <p className="text-xs text-[#a1a1aa]">
-          Cada normativa del concurso es un curso propio. Entrá a cualquiera para estudiar todas sus unidades, con
-          ejercicios incluidos.
+          Cada normativa del concurso es un curso propio, con el desarrollo íntegro del Manual oficial dentro de cada
+          unidad, más resumen por niveles, trucos de memoria y autoevaluación.
         </p>
       </div>
 
