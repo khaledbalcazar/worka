@@ -1125,6 +1125,35 @@ export const CHAPTERS_DATA: Chapter[] = [
             explanation: 'Se citan juntos porque el Dto. 19.102 sigue vigente como base reglamentaria detallada, mientras que el Dto. 3080 actualiza específicamente la estructura orgánica.'
           }
         ]
+      },
+      {
+        id: 'p8d-l3',
+        title: 'Funciones del bloque de conducción: dirigir, representar y supervisar',
+        summary: 'Qué hace concretamente la Dirección General según las funciones que le asigna el decreto.',
+        level1Simple: 'La Dirección General no solo "manda": tiene funciones concretas y enumeradas, como dirigir el servicio, representar legalmente a la institución y supervisar a todas las oficinas del país.',
+        level2Norm: 'Bloque de conducción — funciones típicas de la Dirección General: a) Dirigir, planificar, organizar, fiscalizar, administrar y supervisar el servicio; b) Ejercer la representación legal de la institución; c) Ejercer la potestad de superintendencia sobre las Direcciones Departamentales, Oficinas y demás dependencias; y, entre otras, reestructurar oficinas y reorganizar dependencias cuando la gestión lo requiera.',
+        level3DeskExample: 'Cuando la Dirección General firma un convenio con otra institución del Estado, está ejerciendo su función de representación legal (inciso b), no una facultad "extra" que se inventó para la ocasión.',
+        keyArticle: 'Bloque de Conducción, Decreto 3080/2015',
+        memoryTips: ['Conducción = dirigir + representar + supervisar (superintendencia)', 'La superintendencia alcanza a TODAS las Direcciones Departamentales y Oficinas'],
+        deepDive: [
+          'La "potestad de superintendencia" es un concepto técnico que vale la pena distinguir de la simple jerarquía: no es solo que la Dirección General esté "arriba" en el organigrama, sino que tiene facultades concretas de control, inspección y corrección sobre todas las oficinas del país, incluidas las departamentales. Esto le permite, por ejemplo, ordenar auditorías o corregir procedimientos irregulares detectados en cualquier oficina registral.',
+          'La función de representación legal (inciso b) es la que explica por qué es la Dirección General —y no cualquier funcionario— quien firma convenios institucionales, comparece en instancias oficiales, o asume compromisos formales en nombre de la DGREC ante otros organismos del Estado o entidades externas.',
+          'La facultad de reestructurar oficinas y reorganizar dependencias es la base jurídica que permitió, en su momento, el propio dictado del Decreto 3080/2015: es una potestad organizativa que la ley reconoce a la conducción de la institución para adaptar su estructura interna a las necesidades del servicio, sin necesidad de una nueva ley del Congreso para cada ajuste administrativo.'
+        ],
+        exercises: [
+          {
+            question: '¿Qué significa que la Dirección General tenga "potestad de superintendencia" sobre las oficinas del REC?',
+            options: ['Que solo puede dar sugerencias no vinculantes', 'Que tiene facultades concretas de control, inspección y corrección sobre todas las Direcciones Departamentales y Oficinas', 'Que únicamente supervisa la oficina de la Capital', 'Que delega toda la supervisión en el Ministerio de Justicia'],
+            correctIndex: 1,
+            explanation: 'La superintendencia es una facultad real de control, inspección y corrección sobre todas las dependencias del Registro Civil en el país, no una jerarquía meramente simbólica.'
+          },
+          {
+            question: '¿Qué función del bloque de conducción explica que sea la Dirección General quien firma convenios institucionales?',
+            options: ['La función de custodia documental', 'La representación legal de la institución', 'La función de certificación', 'La función de archivo'],
+            correctIndex: 1,
+            explanation: 'La representación legal (inciso b del bloque de conducción) es la que habilita a la Dirección General a firmar convenios y comprometer institucionalmente a la DGREC.'
+          }
+        ]
       }
     ]
   },
@@ -1249,6 +1278,35 @@ export const CHAPTERS_DATA: Chapter[] = [
             options: ['Art. 14 (concurso público)', 'Art. 51.g (probidad administrativa)', 'Art. 10 (principios rectores)', 'Art. 106 CN (responsabilidad civil)'],
             correctIndex: 1,
             explanation: 'El Art. 51.g (probidad administrativa), combinado con los Arts. 54 y 58 sobre responsabilidad, es el que mejor sintetiza el deber de conducta del funcionario.'
+          }
+        ]
+      },
+      {
+        id: 'p9r-l5',
+        title: 'El Informe D.A.I.I. N° 44/2025: contexto de la auditoría de legajos',
+        summary: 'Qué encontró la Auditoría Interna al revisar el cumplimiento del Art. 11 en los legajos reales.',
+        level1Simple: 'El documento al que remite el acta del concurso no es el reglamento completo, sino una auditoría interna de 2025 que revisó si los legajos del personal cumplían con los 12 ítems del Art. 11. Vale la pena conocerlo porque es material publicado y puede preguntarse.',
+        level2Norm: 'El Informe D.A.I.I. N° 44/2025 es una auditoría interna del 16 de setiembre de 2025. Antecedentes normativos citados: Resolución N° 469/2014 (reorganiza el Ministerio; su Art. 6° inc. m establece la Dirección de Auditoría como órgano de apoyo dependiente de la Máxima Autoridad Institucional); Resolución N° 842/2015 (aprueba el Manual de Funciones de la Dirección de Auditoría Interna); Resolución N° 983/2017 (aprueba el Reglamento Interno vigente). Hallazgos: el archivo físico estaba en buen estado de conservación, pero varios legajos tenían documentación incompleta respecto al Art. 11 — faltaban sobre todo formularios de vacaciones y reposo médico en la totalidad de los legajos revisados.',
+        level3DeskExample: 'Si te preguntan en la entrevista sobre gestión documental, podés mencionar que la auditoría de 2025 distinguió el estado físico del archivo (bueno) de la completitud documental (deficiente) — una distinción fina que muestra criterio profesional.',
+        keyArticle: 'Informe D.A.I.I. N° 44/2025',
+        memoryTips: ['La Auditoría Interna es un órgano de apoyo dependiente de la Máxima Autoridad Institucional (Res. 469/2014)', 'Hallazgo más citado: faltaba documentación de vacaciones y reposo médico en TODOS los legajos revisados'],
+        deepDive: [
+          'Es importante situar correctamente este informe dentro de la jerarquía normativa que ya conocés de la Parte 0: no es una ley ni un decreto, es un informe de auditoría interna, el escalón más bajo y más operativo de todos. Su valor para el examen no está en que cree obligaciones nuevas, sino en que aplica y verifica el cumplimiento de una obligación que ya existe (el Art. 11 de la RM 983/2017).',
+          'La cadena de resoluciones que cita el informe (469/2014 → 842/2015 → 983/2017) muestra cómo se fue construyendo, paso a paso, el marco de auditoría interna del Ministerio: primero se creó el órgano (Dirección de Auditoría, dependiente directamente de la Máxima Autoridad Institucional, lo que le da independencia funcional), después se aprobó su manual de funciones, y finalmente se aprobó el reglamento que la propia auditoría terminó verificando en 2025.',
+          'El hallazgo más citado (falta de documentación sobre vacaciones y reposo médico en la totalidad de los legajos revisados) es útil para memorizar precisamente porque es un dato concreto y verificable: demuestra que, incluso en instituciones con procedimientos formales bien diseñados, la implementación práctica puede quedar rezagada — y ese es exactamente el tipo de "brecha entre la norma y la práctica" que un buen funcionario de Documentación Central debe ayudar a cerrar.'
+        ],
+        exercises: [
+          {
+            question: '¿Qué tipo de norma es el Informe D.A.I.I. N° 44/2025 dentro de la jerarquía normativa?',
+            options: ['Una ley del Congreso', 'Un decreto presidencial', 'Un informe de auditoría interna que verifica el cumplimiento de una resolución existente', 'Una reforma constitucional'],
+            correctIndex: 2,
+            explanation: 'El Informe D.A.I.I. N° 44/2025 es un informe de auditoría interna: no crea obligaciones nuevas, verifica el cumplimiento del Art. 11 de la RM 983/2017.'
+          },
+          {
+            question: '¿Cuál fue el hallazgo más citado de la auditoría respecto a los legajos revisados?',
+            options: ['Los legajos estaban perfectos, sin ninguna falencia', 'El archivo físico estaba deteriorado', 'Faltaba documentación de vacaciones y reposo médico en la totalidad de los legajos revisados', 'Faltaban las fotos carnet únicamente'],
+            correctIndex: 2,
+            explanation: 'El hallazgo más fuerte de la auditoría fue que la totalidad de los legajos revisados carecía de documentación sobre vacaciones y reposo médico, aunque el archivo físico estaba en buen estado.'
           }
         ]
       }

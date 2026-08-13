@@ -77,6 +77,81 @@ export const QUIZ_BANK: QuizQuestion[] = [
     explanation: 'El Art. 105 CN prohíbe percibir más de un sueldo del Estado, con excepción de los que provengan del ejercicio de la docencia.',
     legalReference: 'Art. 105 Constitución Nacional'
   },
+  {
+    id: 'q-a6',
+    block: 'A',
+    blockName: 'Constitución Nacional',
+    question: 'Según el Art. 106 de la Constitución, si un funcionario causa un daño en el ejercicio de sus funciones y no puede pagarlo, ¿qué ocurre?',
+    options: [
+      'El Estado no responde en ningún caso',
+      'Responde el Estado en forma subsidiaria, con derecho a repetir contra el funcionario',
+      'Responde otro funcionario de la misma oficina',
+      'La víctima pierde el derecho a indemnización'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'El Art. 106 CN establece responsabilidad personal del funcionario y, subsidiariamente, del Estado, que tiene derecho a repetir el pago contra el responsable.',
+    legalReference: 'Art. 106 Constitución Nacional'
+  },
+  {
+    id: 'q-a7',
+    block: 'A',
+    blockName: 'Constitución Nacional',
+    question: '¿Cuál es, según el Art. 47 inc. 3 de la Constitución, el único requisito para acceder a una función pública no electiva?',
+    options: [
+      'La afiliación política',
+      'La idoneidad',
+      'La antigüedad en el sector privado',
+      'La recomendación de un funcionario en actividad'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'El Art. 47 inc. 3 CN garantiza la igualdad de acceso a las funciones públicas no electivas, sin más requisito que la idoneidad.',
+    legalReference: 'Art. 47 inc. 3 Constitución Nacional'
+  },
+  {
+    id: 'q-a8',
+    block: 'A',
+    blockName: 'Constitución Nacional',
+    question: '¿Cuáles son las 7 carreras que reconoce expresamente el Art. 101 de la Constitución?',
+    options: [
+      'Judicial, Docente, Diplomática/Consular, Investigación Científica, Servicio Civil, Militar y Policial',
+      'Judicial, Legislativa, Ejecutiva, Municipal, Departamental, Sindical y Cooperativa',
+      'Docente, Médica, Bancaria, Notarial, Militar, Policial y Diplomática',
+      'Servicio Civil, Municipal, Bancaria, Docente, Judicial, Sindical y Consular'
+    ],
+    correctAnswerIndex: 0,
+    explanation: 'El Art. 101 CN enumera 7 carreras: Judicial, Docente, Diplomática y Consular, Investigación Científica y Tecnológica, Servicio Civil, Militar y Policial.',
+    legalReference: 'Art. 101 Constitución Nacional'
+  },
+  {
+    id: 'q-a9',
+    block: 'A',
+    blockName: 'Constitución Nacional',
+    question: '¿Qué prohíbe expresamente el Art. 53 de la Constitución respecto de los hijos?',
+    options: [
+      'Inscribir hijos extramatrimoniales',
+      'Cualquier calificación sobre la naturaleza de la filiación en los documentos personales',
+      'El reconocimiento tardío de un hijo',
+      'Que un hijo tenga más de un apellido'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'El Art. 53 CN prohíbe cualquier calificación sobre la filiación (como "hijo natural" o "ilegítimo") en los documentos personales.',
+    legalReference: 'Art. 53 Constitución Nacional'
+  },
+  {
+    id: 'q-a10',
+    block: 'A',
+    blockName: 'Constitución Nacional',
+    question: '¿A qué edad se adquiere la ciudadanía en Paraguay, según el Art. 152 CN, y en qué se diferencia de la nacionalidad?',
+    options: [
+      'A los 18 años; la nacionalidad se adquiere desde el nacimiento',
+      'A los 21 años; son sinónimos con la nacionalidad',
+      'Al nacer, igual que la nacionalidad',
+      'A los 16 años, con autorización de los padres'
+    ],
+    correctAnswerIndex: 0,
+    explanation: 'La nacionalidad se adquiere desde el nacimiento (Art. 146), mientras que la ciudadanía —que habilita derechos políticos— se adquiere a los 18 años (Art. 152).',
+    legalReference: 'Arts. 146, 152 Constitución Nacional'
+  },
 
   // BLOQUE B - LEY 7445/2025 FUNCIÓN PÚBLICA
   {
@@ -154,6 +229,81 @@ export const QUIZ_BANK: QuizQuestion[] = [
     explanation: 'Arts. 60 y 63: Las faltas leves las aplica el titular de la UGDDP sin sumario previo; procede recurso de reconsideración dentro de 10 días hábiles.',
     legalReference: 'Arts. 60, 63 Ley 7445/2025'
   },
+  {
+    id: 'q-b6',
+    block: 'B',
+    blockName: 'Ley 7445/2025 Función Pública',
+    question: '¿Cuáles son los siete principios rectores que enumera el Art. 10 de la Ley 7445?',
+    options: [
+      'Legalidad, Mérito, Igualdad de oportunidades, Transparencia, Probidad, Eficiencia y Estabilidad',
+      'Legalidad, Antigüedad, Jerarquía, Puntualidad, Disciplina, Lealtad y Confidencialidad',
+      'Mérito, Salario, Ascenso, Capacitación, Vacaciones, Descanso y Jubilación',
+      'Transparencia, Publicidad, Gratuidad, Celeridad, Eficacia, Economía y Simplicidad'
+    ],
+    correctAnswerIndex: 0,
+    explanation: 'El Art. 10 enumera siete principios rectores: Legalidad, Mérito, Igualdad de oportunidades, Transparencia, Probidad, Eficiencia y Estabilidad.',
+    legalReference: 'Art. 10 Ley 7445/2025'
+  },
+  {
+    id: 'q-b7',
+    block: 'B',
+    blockName: 'Ley 7445/2025 Función Pública',
+    question: '¿Cuál es la vía general de ingreso a la función pública según el Art. 14 de la Ley 7445?',
+    options: [
+      'La designación directa de la máxima autoridad',
+      'El concurso público',
+      'La antigüedad en cargos privados',
+      'La recomendación de un funcionario en actividad'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'El Art. 14 establece el concurso público como la vía general de ingreso, salvo excepciones acotadas para cargos de confianza.',
+    legalReference: 'Art. 14 Ley 7445/2025'
+  },
+  {
+    id: 'q-b8',
+    block: 'B',
+    blockName: 'Ley 7445/2025 Función Pública',
+    question: '¿Qué ocurre con las vacaciones no utilizadas de un funcionario público, según el Art. 43.c de la Ley 7445?',
+    options: [
+      'Se pagan en dinero al finalizar el año',
+      'Se acumulan hasta un máximo de 2 años, sin compensación en dinero',
+      'Se pierden automáticamente al finalizar el año',
+      'Se acumulan sin límite alguno'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'El Art. 43.c establece que las vacaciones no se compensan en dinero, pero pueden acumularse hasta un máximo de 2 años.',
+    legalReference: 'Art. 43.c Ley 7445/2025'
+  },
+  {
+    id: 'q-b9',
+    block: 'B',
+    blockName: 'Ley 7445/2025 Función Pública',
+    question: 'Un funcionario falta injustificadamente 3 días consecutivos en el mes. ¿Qué tipo de falta comete según la Ley 7445?',
+    options: [
+      'Falta leve, porque son pocos días',
+      'Falta grave, por ausencias consecutivas',
+      'No es sancionable si avisa después',
+      'Falta gravísima con destitución automática sin sumario'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'Tres ausencias consecutivas (o cinco alternas en el trimestre) constituyen falta grave, que requiere sumario administrativo formal.',
+    legalReference: 'Arts. 54, 58, 61 Ley 7445/2025'
+  },
+  {
+    id: 'q-b10',
+    block: 'B',
+    blockName: 'Ley 7445/2025 Función Pública',
+    question: 'Un funcionario promueve a su cuñado a un cargo dentro de su misma dependencia. ¿Qué prohibición del Art. 52 está infringiendo?',
+    options: [
+      'Conflicto de intereses genérico',
+      'Nepotismo, porque el cuñado está dentro del 2° grado de afinidad',
+      'Ninguna, porque el cuñado no es pariente consanguíneo',
+      'Corrupción y beneficio indebido'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'El cuñado es pariente por afinidad de 2° grado, dentro del límite que prohíbe el nepotismo según el Art. 52.u/v.',
+    legalReference: 'Art. 52.u/v Ley 7445/2025'
+  },
 
   // BLOQUE C - LEY 5282/2014 ACCESO A INFORMACIÓN
   {
@@ -200,6 +350,66 @@ export const QUIZ_BANK: QuizQuestion[] = [
     correctAnswerIndex: 1,
     explanation: 'Art. 4: Cualquier persona puede acceder a la información pública en forma gratuita y SIN necesidad alguna de justificar las razones.',
     legalReference: 'Art. 4 Ley 5282/2014'
+  },
+  {
+    id: 'q-c4',
+    block: 'C',
+    blockName: 'Ley 5282/2014 Acceso a la Información',
+    question: '¿Cuál de las siguientes entidades está incluida como "fuente pública" según el Art. 2 de la Ley 5282?',
+    options: [
+      'Solo los ministerios nacionales',
+      'Itaipú y Yacyretá, además de municipalidades y universidades públicas',
+      'Solo empresas privadas con contrato estatal',
+      'Solo el Poder Judicial'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'El Art. 2 define como fuentes públicas a todas las reparticiones del Estado, incluidas entidades binacionales como Itaipú y Yacyretá.',
+    legalReference: 'Art. 2 Ley 5282/2014'
+  },
+  {
+    id: 'q-c5',
+    block: 'C',
+    blockName: 'Ley 5282/2014 Acceso a la Información',
+    question: '¿Qué información exige publicar el Art. 8 inc. e) de la Ley 5282 sobre los funcionarios públicos?',
+    options: [
+      'Solo el nombre completo',
+      'Cédula, cargo y salario mensual con viáticos',
+      'Solo el número de legajo',
+      'Ninguna, esa información es reservada'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'El Art. 8 inc. e) exige publicar el listado actualizado de personas en función pública con cédula, cargo y salarios mensuales, incluidos viáticos.',
+    legalReference: 'Art. 8 inc. e Ley 5282/2014'
+  },
+  {
+    id: 'q-c6',
+    block: 'C',
+    blockName: 'Ley 5282/2014 Acceso a la Información',
+    question: '¿Pueden entregarse los documentos ORIGINALES del archivo a quien solicita información pública?',
+    options: [
+      'Sí, siempre que lo pida por escrito',
+      'No, los originales nunca salen del archivo; solo se entregan copias o certificaciones',
+      'Solo si es un juez quien lo pide',
+      'Sí, pero con cargo económico'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'El Art. 18 protege los documentos originales: nunca salen del archivo, solo se entregan copias, fotocopias o certificaciones autenticadas.',
+    legalReference: 'Art. 18 Ley 5282/2014'
+  },
+  {
+    id: 'q-c7',
+    block: 'C',
+    blockName: 'Ley 5282/2014 Acceso a la Información',
+    question: '¿En qué plazo procede la acción judicial ante la denegatoria (ficta o expresa) de un pedido de información pública?',
+    options: [
+      '15 días',
+      '30 días',
+      '60 días, ante el Juez de Primera Instancia',
+      'No existe plazo, puede iniciarse en cualquier momento'
+    ],
+    correctAnswerIndex: 2,
+    explanation: 'Los Arts. 23-24 fijan un plazo de 60 días para iniciar la acción judicial ante el Juez de Primera Instancia.',
+    legalReference: 'Arts. 23-24 Ley 5282/2014'
   },
 
   // BLOQUE D - LEY 1266/1987 REGISTRO CIVIL
@@ -258,6 +468,51 @@ export const QUIZ_BANK: QuizQuestion[] = [
     explanation: 'Art. 81: Si el matrimonio se celebra fuera de la oficina registral, se requiere la presencia de CUATRO (4) TESTIGOS.',
     legalReference: 'Art. 81 Ley 1266/1987'
   },
+  {
+    id: 'q-d5',
+    block: 'D',
+    blockName: 'Ley 1266/1987 Registro del Estado Civil',
+    question: '¿Qué diferencia hay entre la DENUNCIA de un nacimiento y su DECLARACIÓN, según la Ley 1266?',
+    options: [
+      'Son sinónimos, ambas producen la inscripción',
+      'La denuncia (médicos, 7 días) es un aviso que NO inscribe; la declaración (padres, 30/60 días) sí produce la inscripción',
+      'La denuncia la hacen los padres y la declaración los médicos',
+      'Ninguna tiene plazo legal'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'El médico DENUNCIA el hecho biológico (7 días, no inscribe); los padres DECLARAN el nacimiento ante el Oficial, y esa declaración sí produce la inscripción.',
+    legalReference: 'Arts. 52, 53 Ley 1266/1987'
+  },
+  {
+    id: 'q-d6',
+    block: 'D',
+    blockName: 'Ley 1266/1987 Registro del Estado Civil',
+    question: '¿Qué elementos prohíbe expresamente el Art. 26 de la Ley 1266 en la redacción de las actas?',
+    options: [
+      'El uso del idioma guaraní',
+      'Guarismos (números en cifra), abreviaturas, raspaduras y espacios en blanco',
+      'Las firmas dobles',
+      'Los sellos de la institución'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'El Art. 26 prohíbe guarismos, abreviaturas, raspaduras y espacios en blanco, como medida anti-falsificación de los instrumentos públicos.',
+    legalReference: 'Art. 26 Ley 1266/1987'
+  },
+  {
+    id: 'q-d7',
+    block: 'D',
+    blockName: 'Ley 1266/1987 Registro del Estado Civil',
+    question: '¿Qué consecuencia tiene inscribir un acta en un libro no rubricado, según el Art. 21?',
+    options: [
+      'Ninguna, es solo una irregularidad menor',
+      'La inscripción es nula y el Oficial responsable es separado del cargo',
+      'Se corrige con una nota marginal',
+      'Se convalida automáticamente a los 30 días'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'El Art. 21 sanciona con nulidad la inscripción hecha en libro no rubricado, y dispone la separación del Oficial responsable.',
+    legalReference: 'Art. 21 Ley 1266/1987'
+  },
 
   // BLOQUE E - DEFUNCIONES, CERTIFICADOS Y REMEDIOS
   {
@@ -295,6 +550,41 @@ export const QUIZ_BANK: QuizQuestion[] = [
     explanation: 'Cap. XI (Arts. 114-116): La reconstitución procede cuando los libros o partidas se hayan perdido, destruido, alterado o inutilizado.',
     legalReference: 'Arts. 114-116 Ley 1266/1987'
   },
+  {
+    id: 'q-e5',
+    block: 'E',
+    blockName: 'Ley 1266: Defunciones y Remedios',
+    question: '¿Cuál es el plazo mínimo y máximo para proceder a la inhumación de un cadáver, según el Art. 105?',
+    options: ['6 y 24 horas', '12 y 36 horas', '24 y 48 horas', 'No hay plazos fijados'],
+    correctAnswerIndex: 1,
+    explanation: 'La inhumación debe realizarse como mínimo 12 horas después de la defunción (para verificarla) y como máximo 36 horas después.',
+    legalReference: 'Art. 105 Ley 1266/1987'
+  },
+  {
+    id: 'q-e6',
+    block: 'E',
+    blockName: 'Ley 1266: Defunciones y Remedios',
+    question: 'En 2018 se detecta que el domicilio de la madre quedó mal escrito en una partida de nacimiento (error material). ¿Qué remedio corresponde?',
+    options: [
+      'Reconstitución del libro completo',
+      'Rectificación administrativa, con dictamen previo de Asesoría Jurídica',
+      'Convalidación por falta de firma',
+      'No tiene solución posible'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'Los errores u omisiones puramente materiales se corrigen por vía administrativa (Art. 118), con dictamen previo de Asesoría Jurídica.',
+    legalReference: 'Art. 118 Ley 1266/1987'
+  },
+  {
+    id: 'q-e7',
+    block: 'E',
+    blockName: 'Ley 1266: Defunciones y Remedios',
+    question: '¿Qué remedio registral corresponde cuando un acta está completa pero le falta la firma del Oficial o de los testigos?',
+    options: ['Reconstitución', 'Rectificación', 'Convalidación', 'Cancelación'],
+    correctAnswerIndex: 2,
+    explanation: 'La convalidación (Cap. XIII, Arts. 122-123) procede cuando el acta está completa pero falta la firma del Oficial o de los testigos.',
+    legalReference: 'Arts. 122-123 Ley 1266/1987'
+  },
 
   // BLOQUE F - DECRETOS 19.102 Y 3080
   {
@@ -321,6 +611,41 @@ export const QUIZ_BANK: QuizQuestion[] = [
     correctAnswerIndex: 1,
     explanation: 'Art. 39.h Dto. 19.102: La localización se realiza en la secuencia exacta: Caja -> Volumen -> Tomo -> Folio -> Acta.',
     legalReference: 'Art. 39 inc. h Decreto 19.102/2002'
+  },
+  {
+    id: 'q-f3',
+    block: 'F',
+    blockName: 'Decretos Orgánicos',
+    question: '¿Cuáles son los 6 requisitos para ser Oficial del Registro Civil, según el Art. 58 del Decreto 19.102?',
+    options: [
+      'Título universitario, 25 años, sin más requisitos',
+      'Paraguayo/a natural, mayor de edad, residencia en el distrito, secundaria concluida, sin antecedentes y aprobar examen',
+      'Solo aprobar un examen técnico',
+      'Ser recomendado por el Director General'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'El Art. 58 exige: paraguayo natural, mayoría de edad, residencia permanente en el distrito, secundaria concluida, sin antecedentes penales firmes y notoria honorabilidad, y aprobar examen teórico-práctico.',
+    legalReference: 'Art. 58 Decreto 19.102/2002'
+  },
+  {
+    id: 'q-f4',
+    block: 'F',
+    blockName: 'Decretos Orgánicos',
+    question: '¿A qué bloque pertenece la Dirección de Gestión de Documentación Central según el Decreto 3080/2015?',
+    options: ['Conducción', 'Apoyo', 'Misional', 'No está clasificada'],
+    correctAnswerIndex: 2,
+    explanation: 'Documentación Central (Dependencia N° 12) pertenece al bloque Misional, junto con las Oficinas del REC y el Centro de Estudios Registrales.',
+    legalReference: 'Decreto 3080/2015'
+  },
+  {
+    id: 'q-f5',
+    block: 'F',
+    blockName: 'Decretos Orgánicos',
+    question: '¿Cuántas dependencias en total fijó el Decreto 3080/2015 para la estructura orgánica de la DGREC?',
+    options: ['10', '12', '14', '16'],
+    correctAnswerIndex: 2,
+    explanation: 'El Decreto 3080/2015 estableció 14 dependencias distribuidas en 3 bloques: Conducción (2), Apoyo (9) y Misionales (3).',
+    legalReference: 'Decreto 3080/2015'
   },
 
   // BLOQUE G - CÓDIGO CIVIL
@@ -349,6 +674,51 @@ export const QUIZ_BANK: QuizQuestion[] = [
     explanation: 'Art. 235 CC exige la concurrencia de los tres elementos conocidos en doctrina como Nomen, Tractatus y Fama.',
     legalReference: 'Art. 235 Código Civil'
   },
+  {
+    id: 'q-g3',
+    block: 'G',
+    blockName: 'Código Civil (Ley 1183/85)',
+    question: 'Se descubre que uno de los cónyuges ya tenía un matrimonio anterior no disuelto. ¿Qué tipo de nulidad corresponde según el Art. 179 CC?',
+    options: [
+      'Anulabilidad, con plazo de 60 días',
+      'Nulidad absoluta, por impedimento dirimente, sin plazo',
+      'No hay nulidad si pasaron más de 10 años',
+      'Depende de si hay hijos'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'El vínculo matrimonial anterior subsistente es un impedimento dirimente (Art. 179 CC): el matrimonio es nulo, sin plazo para reclamarlo.',
+    legalReference: 'Art. 179 Código Civil'
+  },
+  {
+    id: 'q-g4',
+    block: 'G',
+    blockName: 'Código Civil (Ley 1183/85)',
+    question: 'Un matrimonio es declarado nulo, pero ambos cónyuges actuaron de mala fe. ¿Qué ocurre con los hijos, según el Art. 185 CC?',
+    options: [
+      'Pierden su calidad de hijos matrimoniales',
+      'Conservan su calidad de hijos matrimoniales, aunque ambos padres sean de mala fe',
+      'Solo la conservan si uno de los padres era de buena fe',
+      'Deben reconocerse nuevamente por vía judicial'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'El Art. 185 CC establece que, aunque ambos cónyuges sean de mala fe, no obsta a la calidad de los hijos: siguen siendo matrimoniales.',
+    legalReference: 'Art. 185 Código Civil'
+  },
+  {
+    id: 'q-g5',
+    block: 'G',
+    blockName: 'Código Civil (Ley 1183/85)',
+    question: 'Un niño nace 250 días después de la celebración del matrimonio de sus padres. Según el Art. 225 CC, ¿qué se presume?',
+    options: [
+      'Que no es hijo matrimonial',
+      'Que es hijo matrimonial, porque cae dentro de la ventana de 180 a 300 días',
+      'Que hace falta un estudio de ADN obligatorio',
+      'Que es hijo extramatrimonial automáticamente'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'Al nacer después de los 180 días mínimos y dentro de los 300 días de vigencia del matrimonio, se presume hijo matrimonial (Art. 225 CC).',
+    legalReference: 'Art. 225 Código Civil'
+  },
 
   // BLOQUE H - LEY 1/1992
   {
@@ -371,6 +741,51 @@ export const QUIZ_BANK: QuizQuestion[] = [
     explanation: 'Art. 86 Ley 1/92: Transcurridos 10 AÑOS de unión continua (o desde el nacimiento de hijos comunes, Art. 85), se puede inscribir la unión equiparándola a matrimonio.',
     legalReference: 'Arts. 85, 86 Ley 1/1992'
   },
+  {
+    id: 'q-h3',
+    block: 'H',
+    blockName: 'Ley 1/1992 Reforma del Código Civil',
+    question: '¿Qué establece textualmente el Art. 1 de la Ley 1/1992?',
+    options: [
+      'La mujer y el varón tienen igual capacidad de goce y de ejercicio de los derechos civiles, cualquiera sea su estado civil',
+      'El matrimonio se rige exclusivamente por el Código Civil de 1985',
+      'La mujer casada requiere autorización del marido para disponer de sus bienes',
+      'Todos los bienes del matrimonio son administrados por el varón'
+    ],
+    correctAnswerIndex: 0,
+    explanation: 'El Art. 1 Ley 1/92 establece la igualdad de capacidad de goce y ejercicio de derechos civiles entre mujer y varón, cualquiera sea su estado civil.',
+    legalReference: 'Art. 1 Ley 1/1992'
+  },
+  {
+    id: 'q-h4',
+    block: 'H',
+    blockName: 'Ley 1/1992 Reforma del Código Civil',
+    question: '¿Cuáles son los tres principios de interpretación que fija el Art. 2 de la Ley 1/92?',
+    options: [
+      'La preferencia por el cónyuge de mayor edad, la propiedad y el ahorro',
+      'La unidad de la familia, el bienestar de los hijos menores, y la igualdad entre cónyuges',
+      'La prioridad económica, la eficiencia y la transparencia',
+      'El régimen de gananciales, la separación de bienes y el divorcio'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'El Art. 2 establece tres principios: la unidad de la familia, el bienestar de los hijos menores, y la igualdad de derechos y obligaciones de los cónyuges.',
+    legalReference: 'Art. 2 Ley 1/1992'
+  },
+  {
+    id: 'q-h5',
+    block: 'H',
+    blockName: 'Ley 1/1992 Reforma del Código Civil',
+    question: '¿Qué protege la figura del "bien de familia" regulada en los Arts. 95-97 de la Ley 1/92?',
+    options: [
+      'El salario del titular',
+      'La vivienda familiar frente a embargos por deudas posteriores a su constitución',
+      'Los ahorros bancarios',
+      'Los bienes muebles del hogar'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'El bien de familia protege el inmueble destinado a vivienda o explotación familiar frente a embargos por deudas contraídas después de constituirlo.',
+    legalReference: 'Arts. 95-97 Ley 1/1992'
+  },
 
   // BLOQUE I - LEY 6618/2020 Y RESOLUCIÓN 983
   {
@@ -387,6 +802,56 @@ export const QUIZ_BANK: QuizQuestion[] = [
     correctAnswerIndex: 1,
     explanation: 'Art. 6 Ley 6618/2020: El uso del estado civil en cualquier documentación será de SOLTERO/A o CASADO/A, salvo que la persona desee conservar el de viudo/a o divorciado/a.',
     legalReference: 'Art. 6 Ley 6618/2020'
+  },
+  {
+    id: 'q-i2',
+    block: 'I',
+    blockName: 'Ley 6618/2020 y Res. 983',
+    question: 'Según el Art. 2 de la Ley 6618/2020, ¿frente a qué tres ámbitos se define la "situación jurídica" que constituye el estado civil?',
+    options: [
+      'El trabajo, la salud y la educación',
+      'El Estado, la sociedad y la familia',
+      'El banco, el municipio y la escuela',
+      'Los padres, los hermanos y los hijos'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'El Art. 2 define el Estado Civil como la situación jurídica que la persona tiene frente al Estado, la sociedad y la familia.',
+    legalReference: 'Art. 2 Ley 6618/2020'
+  },
+  {
+    id: 'q-i3',
+    block: 'I',
+    blockName: 'Ley 6618/2020 y Res. 983',
+    question: '¿Cuál es el órgano responsable de la guarda y actualización del legajo de cada servidor público, según el Art. 9 de la RM 983/2017?',
+    options: [
+      'La Dirección General de Talento Humano (DGTH)',
+      'La Asesoría Jurídica del Ministerio',
+      'La Secretaría de la Función Pública',
+      'El propio servidor público'
+    ],
+    correctAnswerIndex: 0,
+    explanation: 'El Art. 9 de la RM 983/2017 asigna a la DGTH la responsabilidad de guardar y mantener actualizado el legajo de cada servidor.',
+    legalReference: 'Art. 9 RM 983/2017'
+  },
+  {
+    id: 'q-i4',
+    block: 'I',
+    blockName: 'Ley 6618/2020 y Res. 983',
+    question: '¿En qué plazo debe un servidor recién ingresado entregar su documentación para conformar su legajo, según el Art. 10 de la RM 983/2017?',
+    options: ['15 días', '30 días', '60 días', '90 días'],
+    correctAnswerIndex: 1,
+    explanation: 'El Art. 10 fija un plazo de 30 días desde el ingreso para entregar la documentación requerida para el legajo.',
+    legalReference: 'Art. 10 RM 983/2017'
+  },
+  {
+    id: 'q-i5',
+    block: 'I',
+    blockName: 'Ley 6618/2020 y Res. 983',
+    question: '¿Cuántos artículos tiene en total la Ley 6618/2020?',
+    options: ['5 artículos', '9 artículos', '15 artículos', '99 artículos'],
+    correctAnswerIndex: 1,
+    explanation: 'La Ley 6618/2020 tiene solo 9 artículos, la más corta de todo el temario del concurso.',
+    legalReference: 'Ley 6618/2020'
   },
 
   // BLOQUE J - PREGUNTAS CRUZADAS Y TRAMPAS
@@ -419,5 +884,50 @@ export const QUIZ_BANK: QuizQuestion[] = [
     correctAnswerIndex: 1,
     explanation: 'La Ley 1/1992 es posterior a la Ley 1266 y su Art. 98 establece expresamente la derogación de toda norma previa contraria.',
     legalReference: 'Art. 98 Ley 1/1992'
+  },
+  {
+    id: 'q-j3',
+    block: 'J',
+    blockName: 'Preguntas Cruzadas y Trampas',
+    question: 'Un ciudadano pide el certificado de matrimonio de otra persona que no es familiar suyo (vía Ley 1266) y, por separado, pide la nómina salarial de la DGREC (vía Ley 5282). ¿En qué se diferencian ambos pedidos?',
+    options: [
+      'Ambos requieren acreditar interés legítimo',
+      'El de la Ley 1266 requiere interés legítimo (protección de intimidad); el de la Ley 5282 es libre y sin justificar razones',
+      'Ninguno requiere justificación',
+      'Ambos son gratuitos e idénticos en trámite'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'Los datos del Registro Civil sobre terceros requieren interés legítimo (Art. 33 CN, intimidad); la información pública general (Ley 5282) es de acceso libre sin justificar motivos.',
+    legalReference: 'Ley 1266 vs Ley 5282/2014'
+  },
+  {
+    id: 'q-j4',
+    block: 'J',
+    blockName: 'Preguntas Cruzadas y Trampas',
+    question: 'El plazo de 15 días para presentar la declaración jurada de bienes (Art. 104 CN) reaparece en el Art. 11 de la RM 983/2017 como parte del legajo. ¿Qué demuestra esta repetición?',
+    options: [
+      'Que son obligaciones distintas y no relacionadas',
+      'Que normas de menor jerarquía (resoluciones) suelen ser aplicaciones operativas de obligaciones que nacen en la Constitución',
+      'Que la Constitución fue copiada de la resolución ministerial',
+      'Que el plazo cambia según la norma que se consulte'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'Es el mismo patrón que se repite en el temario: normas de menor jerarquía como una resolución ministerial aplican, en la práctica, obligaciones que ya nacen en la Constitución.',
+    legalReference: 'Art. 104 CN + Art. 11 RM 983/2017'
+  },
+  {
+    id: 'q-j5',
+    block: 'J',
+    blockName: 'Preguntas Cruzadas y Trampas',
+    question: 'Un Oficial no puede inscribir el matrimonio de su cuñado. ¿Con qué otro artículo del temario comparte exactamente el mismo límite de parentesco (2° de afinidad)?',
+    options: [
+      'Solo con el Art. 30 de la Ley 1266',
+      'Con el Art. 30 de la Ley 1266 (incompatibilidad del Oficial) y con el Art. 52.u de la Ley 7445 (nepotismo)',
+      'No hay ninguna otra norma con ese límite',
+      'Con el Art. 225 del Código Civil'
+    ],
+    correctAnswerIndex: 1,
+    explanation: 'El límite de 4° de consanguinidad y 2° de afinidad se repite en el Art. 30 de la Ley 1266 (incompatibilidad del Oficial) y en el Art. 52.u de la Ley 7445 (nepotismo) — el mismo criterio aplicado a distintas normas.',
+    legalReference: 'Art. 30 Ley 1266 + Art. 52.u Ley 7445'
   }
 ];

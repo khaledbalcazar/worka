@@ -12,6 +12,7 @@ import { OfimaticaView } from './components/OfimaticaView';
 import { FeynmanTutorView } from './components/FeynmanTutorView';
 import { StudyPlanView } from './components/StudyPlanView';
 import { ManualView } from './components/ManualView';
+import { FocusWidget } from './components/FocusWidget';
 import { loadUserProgress, saveUserProgress } from './lib/storage';
 import { UserProgress } from './types';
 import { CHAPTERS_DATA } from './data/chaptersData';
@@ -147,6 +148,8 @@ export default function ELearnApp() {
           </p>
         </div>
       </footer>
+
+      <FocusWidget />
     </div>
   );
 }
