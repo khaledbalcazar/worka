@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { Sparkles, MessageSquare, Award, Clock, Send, Bot, User, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Sparkles, MessageSquare, Award, Clock, Send, Bot, User, CheckCircle2, AlertCircle, Loader2, Settings2, ChevronDown } from 'lucide-react';
+import { ApiKeySettings } from './ApiKeySettings';
+import { loadApiKey } from '../lib/apiKeyStorage';
 
 interface FeynmanTutorViewProps {
   initialContext?: string;
@@ -7,6 +9,7 @@ interface FeynmanTutorViewProps {
 
 export const FeynmanTutorView: React.FC<FeynmanTutorViewProps> = ({ initialContext = '' }) => {
   const [activeTab, setActiveTab] = useState<'tutor' | 'feynman'>('tutor');
+  const [showKeySettings, setShowKeySettings] = useState(false);
 
   // AI Tutor State
   const [userPrompt, setUserPrompt] = useState<string>('');
@@ -46,7 +49,10 @@ export const FeynmanTutorView: React.FC<FeynmanTutorViewProps> = ({ initialConte
     try {
       const res = await fetch('/api/e-learn/tutor', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(loadApiKey() ? { 'x-anthropic-api-key': loadApiKey() } : {})
+        },
         body: JSON.stringify({ prompt: promptText, context: tutorContext })
       });
       const data = await res.json();
@@ -56,7 +62,7 @@ export const FeynmanTutorView: React.FC<FeynmanTutorViewProps> = ({ initialConte
       } else {
         setTutorMessages((prev) => [
           ...prev,
-          { role: 'assistant', text: data.error || 'No se pudo obtener respuesta. Verificá que ANTHROPIC_API_KEY esté configurada en el servidor.' }
+          { role: 'assistant', text: data.error || 'No se pudo obtener respuesta. Configurá tu API Key arriba o verificá que ANTHROPIC_API_KEY esté configurada en el servidor.' }
         ]);
       }
     } catch (err) {
@@ -77,7 +83,10 @@ export const FeynmanTutorView: React.FC<FeynmanTutorViewProps> = ({ initialConte
     try {
       const res = await fetch('/api/e-learn/feynman', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(loadApiKey() ? { 'x-anthropic-api-key': loadApiKey() } : {})
+        },
         body: JSON.stringify({ topic: selectedTopic, explanation: explanationText })
       });
       const data = await res.json();
@@ -104,6 +113,23 @@ export const FeynmanTutorView: React.FC<FeynmanTutorViewProps> = ({ initialConte
         <p className="text-xs sm:text-sm text-[#a1a1aa] max-w-xl mx-auto">
           Resuelve dudas jurídicas complejas o ensaya tu explicación en voz alta usando la Técnica Feynman para recibir retroalimentación instantánea.
         </p>
+      </div>
+
+      {/* Configuración de API Key */}
+      <div>
+        <button
+          onClick={() => setShowKeySettings((v) => !v)}
+          className="flex items-center gap-1.5 text-xs text-[#a1a1aa] hover:text-[#d4af37] transition-colors"
+        >
+          <Settings2 className="w-3.5 h-3.5" />
+          Configurar mi API Key de Anthropic
+          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showKeySettings ? 'rotate-180' : ''}`} />
+        </button>
+        {showKeySettings && (
+          <div className="mt-2">
+            <ApiKeySettings />
+          </div>
+        )}
       </div>
 
       {/* Tabs */}

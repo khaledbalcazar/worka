@@ -23,9 +23,12 @@ async function ensureAdmin(): Promise<boolean> {
 export async function POST(req: Request) {
   if (!(await ensureAdmin()))
     return NextResponse.json({ error: "No autorizado." }, { status: 403 });
-  if (!process.env.ANTHROPIC_API_KEY)
+
+  const clientKey = req.headers.get("x-anthropic-api-key")?.trim();
+  const apiKey = clientKey || process.env.ANTHROPIC_API_KEY;
+  if (!apiKey)
     return NextResponse.json(
-      { error: "Falta ANTHROPIC_API_KEY en el servidor." },
+      { error: "Falta configurar una Anthropic API Key (propia o del servidor)." },
       { status: 400 }
     );
 
@@ -34,7 +37,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Explicación vacía." }, { status: 400 });
 
   const grounding = retrieveRelevant(`${topic ?? ""} ${explanation}`);
-  const client = new Anthropic();
+  const client = new Anthropic({ apiKey });
   try {
     const msg = await client.messages.create({
       model: "claude-opus-5",

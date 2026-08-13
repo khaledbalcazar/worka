@@ -34,9 +34,14 @@ Normativa del temario: Constitución Nacional 1992; Ley 7445/2025 (Función Púb
 export async function POST(req: Request) {
   if (!(await ensureAdmin()))
     return NextResponse.json({ error: "No autorizado." }, { status: 403 });
-  if (!process.env.ANTHROPIC_API_KEY)
+
+  // La key propia del usuario (guardada en su navegador) tiene prioridad
+  // sobre la del servidor. Nunca se persiste: se usa solo para esta llamada.
+  const clientKey = req.headers.get("x-anthropic-api-key")?.trim();
+  const apiKey = clientKey || process.env.ANTHROPIC_API_KEY;
+  if (!apiKey)
     return NextResponse.json(
-      { error: "Falta ANTHROPIC_API_KEY en el servidor." },
+      { error: "Falta configurar una Anthropic API Key (propia o del servidor)." },
       { status: 400 }
     );
 
@@ -45,7 +50,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Consulta vacía." }, { status: 400 });
 
   const grounding = retrieveRelevant(`${context ?? ""} ${prompt}`);
-  const client = new Anthropic();
+  const client = new Anthropic({ apiKey });
   try {
     const msg = await client.messages.create({
       model: "claude-opus-5",
