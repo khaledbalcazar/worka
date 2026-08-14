@@ -5,6 +5,7 @@ const STORAGE_KEY = 'dgrec_learning_progress_v1';
 const defaultProgress: UserProgress = {
   completedLessons: [],
   masteredFlashcards: [],
+  flashcardSrs: {},
   quizScores: {},
   errorLog: [],
   feynmanLogs: [],

@@ -16,9 +16,11 @@ import { FocusWidget } from './components/FocusWidget';
 import { loadUserProgress, saveUserProgress } from './lib/storage';
 import { UserProgress } from './types';
 import { CHAPTERS_DATA } from './data/chaptersData';
+import { MAX_BOX, getState, review } from './lib/srs';
 
 // Aula Virtual DGREC — módulo de aprendizaje integrado en Worka (solo admin).
-// Portado del proyecto original de Google AI Studio; el tutor IA usa Claude.
+// Portado del proyecto original de Google AI Studio; el tutor IA es
+// multi-proveedor (Groq, OpenAI, Gemini, Anthropic...).
 export default function ELearnApp() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [progress, setProgress] = useState<UserProgress>(() => loadUserProgress());
@@ -50,6 +52,21 @@ export default function ELearnApp() {
     setProgress((prev) => {
       if (prev.masteredFlashcards.includes(cardId)) return prev;
       return { ...prev, masteredFlashcards: [...prev.masteredFlashcards, cardId] };
+    });
+  };
+
+  // Repaso espaciado (Leitner): acertar sube de caja, fallar la devuelve a la 1.
+  const handleReviewFlashcard = (cardId: string, remembered: boolean) => {
+    setProgress((prev) => {
+      const next = review(getState(prev.flashcardSrs, cardId), remembered);
+      const mastered = new Set(prev.masteredFlashcards);
+      if (next.box === MAX_BOX) mastered.add(cardId);
+      else mastered.delete(cardId);
+      return {
+        ...prev,
+        flashcardSrs: { ...prev.flashcardSrs, [cardId]: next },
+        masteredFlashcards: [...mastered]
+      };
     });
   };
 
@@ -119,6 +136,7 @@ export default function ELearnApp() {
           <FlashcardsView
             progress={progress}
             onMarkFlashcardMastered={handleMarkFlashcardMastered}
+            onReviewFlashcard={handleReviewFlashcard}
           />
         )}
         {activeTab === 'quiz' && (

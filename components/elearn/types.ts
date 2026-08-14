@@ -88,6 +88,9 @@ export interface StudyDay {
 export interface UserProgress {
   completedLessons: string[]; // lesson IDs
   masteredFlashcards: string[]; // flashcard IDs
+  // Estado de repetición espaciada (Leitner) por tarjeta: caja y fecha en
+  // que vuelve a tocar. Ver lib/srs.ts.
+  flashcardSrs: Record<string, { box: number; due: string }>;
   quizScores: { [blockId: string]: number }; // e.g. { 'A': 22, 'B': 24 }
   errorLog: { questionId: string; userNote: string; date: string }[];
   feynmanLogs: { topic: string; score: number; date: string }[];
