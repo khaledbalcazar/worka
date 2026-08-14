@@ -10,7 +10,8 @@ const defaultProgress: UserProgress = {
   errorLog: [],
   feynmanLogs: [],
   completedStudyDays: [],
-  bookmarkedQuestionIds: []
+  bookmarkedQuestionIds: [],
+  completedStudyTasks: []
 };
 
 export function loadUserProgress(): UserProgress {

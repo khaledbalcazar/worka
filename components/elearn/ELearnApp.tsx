@@ -100,6 +100,27 @@ export default function ELearnApp() {
     });
   };
 
+  // Saca una pregunta del cuaderno de errores cuando se la vuelve a acertar.
+  const handleResolveError = (questionId: string) => {
+    setProgress((prev) => ({
+      ...prev,
+      errorLog: prev.errorLog.filter((e) => e.questionId !== questionId)
+    }));
+  };
+
+  // Marca/desmarca una tarea del plan adaptativo del día.
+  const handleToggleStudyTask = (taskId: string) => {
+    setProgress((prev) => {
+      const done = prev.completedStudyTasks.includes(taskId);
+      return {
+        ...prev,
+        completedStudyTasks: done
+          ? prev.completedStudyTasks.filter((t) => t !== taskId)
+          : [...prev.completedStudyTasks, taskId]
+      };
+    });
+  };
+
   const handleOpenAiTutorWithContext = (context: string) => {
     setTutorContext(context);
     setActiveTab('feynman');
@@ -121,6 +142,7 @@ export default function ELearnApp() {
             progress={progress}
             setActiveTab={setActiveTab}
             totalLessonsCount={totalLessonsCount}
+            onToggleStudyTask={handleToggleStudyTask}
           />
         )}
         {activeTab === 'manual' && <ManualView />}
@@ -144,6 +166,7 @@ export default function ELearnApp() {
             progress={progress}
             onSaveQuizScore={handleSaveQuizScore}
             onAddErrorToLog={handleAddErrorToLog}
+            onResolveError={handleResolveError}
           />
         )}
         {activeTab === 'guarani' && <GuaraniLabView />}

@@ -96,4 +96,6 @@ export interface UserProgress {
   feynmanLogs: { topic: string; score: number; date: string }[];
   completedStudyDays: number[]; // day numbers
   bookmarkedQuestionIds: string[];
+  // Tareas del plan adaptativo ya hechas, con id "fecha::etiqueta".
+  completedStudyTasks: string[];
 }

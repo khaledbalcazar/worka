@@ -3,17 +3,20 @@ import { QUIZ_BANK } from '../data/quizBank';
 import { QuizQuestion, UserProgress } from '../types';
 import confetti from 'canvas-confetti';
 import { CheckCircle2, XCircle, AlertCircle, Sparkles, RotateCw, Trophy, BookOpen, Clock, ArrowRight } from 'lucide-react';
+import { ErrorReview } from './ErrorReview';
 
 interface QuizSimulatorViewProps {
   progress: UserProgress;
   onSaveQuizScore: (blockId: string, score: number) => void;
   onAddErrorToLog: (questionId: string, userNote: string) => void;
+  onResolveError: (questionId: string) => void;
 }
 
 export const QuizSimulatorView: React.FC<QuizSimulatorViewProps> = ({
   progress,
   onSaveQuizScore,
-  onAddErrorToLog
+  onAddErrorToLog,
+  onResolveError
 }) => {
   const [selectedBlock, setSelectedBlock] = useState<string>('A');
   const [activeMode, setActiveTabMode] = useState<'block' | 'errorLog'>('block');
@@ -122,7 +125,7 @@ export const QuizSimulatorView: React.FC<QuizSimulatorViewProps> = ({
           }`}
         >
           <AlertCircle className="w-4 h-4 text-rose-400" />
-          <span>Cuaderno de Errores ({progress.errorLog.length})</span>
+          <span>Repaso de Errores ({progress.errorLog.length})</span>
         </button>
       </div>
 
@@ -288,57 +291,8 @@ export const QuizSimulatorView: React.FC<QuizSimulatorViewProps> = ({
           )}
         </div>
       ) : (
-        /* Cuaderno de Errores View */
-        <div className="space-y-4">
-          <div className="bg-[#121216] border border-[#27272a] p-5 rounded-xl space-y-2">
-            <h3 className="text-base font-serif font-bold text-white flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-rose-400" />
-              Cuaderno de Errores (Puntos Débiles a Reforzar)
-            </h3>
-            <p className="text-xs text-[#a1a1aa]">
-              Aquí se guardan las preguntas en las que has fallado durante tus pruebas. Repasar esta lista 5 minutos al día vale más que releer capítulos enteros.
-            </p>
-          </div>
-
-          {progress.errorLog.length === 0 ? (
-            <div className="bg-[#121216] border border-[#27272a] p-8 rounded-xl text-center text-[#71717a] text-sm">
-              ¡Aún no tienes errores registrados! Rinde pruebas por bloques y los fallos aparecerán automáticamente aquí.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {progress.errorLog.map((item, idx) => {
-                const questionObj = QUIZ_BANK.find((q) => q.id === item.questionId);
-                if (!questionObj) return null;
-
-                return (
-                  <div key={idx} className="bg-[#121216] border border-rose-500/30 p-4 rounded-xl space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-rose-400 uppercase tracking-widest">
-                        {questionObj.blockName}
-                      </span>
-                      <span className="font-mono text-emerald-400 text-[11px]">
-                        {questionObj.legalReference}
-                      </span>
-                    </div>
-
-                    <h4 className="text-sm font-semibold text-white leading-snug">
-                      {questionObj.question}
-                    </h4>
-
-                    <div className="bg-[#0e0e11] p-3 rounded-lg border border-[#27272a] text-xs space-y-1">
-                      <div className="text-emerald-300 font-medium">
-                        ✓ Respuesta Correcta: {questionObj.options[questionObj.correctAnswerIndex]}
-                      </div>
-                      <div className="text-[#a1a1aa] italic">
-                        Fundamento: {questionObj.explanation}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        /* Repaso activo de errores */
+        <ErrorReview progress={progress} onResolveError={onResolveError} />
       )}
     </div>
   );

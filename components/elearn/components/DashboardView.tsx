@@ -1,17 +1,20 @@
 import React from 'react';
 import { BookOpen, ShieldCheck, Award, CheckCircle2, Sparkles, ArrowRight, Clock, Target, Calendar, AlertCircle } from 'lucide-react';
 import { UserProgress } from '../types';
+import { TodayPanel } from './TodayPanel';
 
 interface DashboardViewProps {
   progress: UserProgress;
   setActiveTab: (tab: string) => void;
   totalLessonsCount: number;
+  onToggleStudyTask: (taskId: string) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   progress,
   setActiveTab,
-  totalLessonsCount
+  totalLessonsCount,
+  onToggleStudyTask
 }) => {
   const completedLessons = progress.completedLessons.length;
   const progressPercent = Math.round((completedLessons / totalLessonsCount) * 100);
@@ -20,6 +23,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   return (
     <div className="space-y-8 pb-12">
+      {/* Cuenta regresiva al examen y plan del día */}
+      <TodayPanel progress={progress} setActiveTab={setActiveTab} onToggleTask={onToggleStudyTask} />
+
       {/* Hero Banner */}
       <div className="bg-[#121216] border border-[#27272a] rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="absolute -right-12 -top-12 w-64 h-64 bg-[#d4af37]/10 rounded-full blur-3xl pointer-events-none" />
