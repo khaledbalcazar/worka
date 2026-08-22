@@ -26,20 +26,25 @@ function LoginForm() {
   const supabase = getBrowserClient();
   const demoMode = supabase === null;
 
-async function handleGoogle() {
-  if (!supabase) {
-    router.push("/empleos"); // o "/empleo" según corresponda
-    return;
+  async function handleGoogle() {
+    if (!supabase) {
+      router.push("/empleos");
+      return;
+    }
+
+    // La URL de retorno va SIN query string: Supabase compara este valor
+    // contra su lista de Redirect URLs, y cualquier parámetro extra puede
+    // hacer que no coincida y te devuelva al Site URL (la home) sin sesión.
+    // El destino lo resuelve el callback con getRoleHome(), que además manda
+    // al onboarding a quien entra por primera vez.
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (oauthError) {
+      setError(`No pudimos abrir el ingreso con Google: ${oauthError.message}`);
+    }
   }
-  
-  await supabase.auth.signInWithOAuth({
-    provider: "google",
-    options: {
-      // Reemplazamos la variable 'next' por el texto directo de tu ruta
-      redirectTo: `${window.location.origin}/auth/callback?next=/empleos`,
-    },
-  });
-}
 
   function handleEmail() {
     setError(null);
