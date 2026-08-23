@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Bell,
   BookOpen,
+  Bookmark,
   Briefcase,
   ClipboardList,
   FileText,
@@ -48,6 +49,12 @@ const GROUPS: {
         label: "Alertas de empleo",
         hint: "Avisos de vacantes nuevas",
         Icon: Bell,
+      },
+      {
+        href: "/guardados",
+        label: "Guardadas",
+        hint: "Vacantes que dejaste para después",
+        Icon: Bookmark,
       },
       {
         href: "/cv",

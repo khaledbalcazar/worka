@@ -165,7 +165,11 @@ export default async function JobDetailPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <JobViewTracker jobId={job.id} />
+      <JobViewTracker
+        jobId={job.id}
+        title={job.title}
+        company={job.company.trade_name}
+      />
       <Link href="/empleos" className="text-sm text-primary font-medium">
         ← Volver al feed
       </Link>

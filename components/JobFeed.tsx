@@ -1,9 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { SlidersHorizontal, X } from "lucide-react";
 import Link from "next/link";
 import JobCard from "@/components/JobCard";
 import ExternalJobCard from "@/components/ExternalJobCard";
+import RecentJobs from "@/components/RecentJobs";
 import { CITIES, INDUSTRIES } from "@/lib/mock-data";
 import type { ExternalJob, JobWithCompany, Modality } from "@/lib/types";
 
@@ -48,6 +50,17 @@ export default function JobFeed({
   const [firstJobOnly, setFirstJobOnly] = useState(initialFirstJob);
   const [onlyVerified, setOnlyVerified] = useState(false);
   const [withSalary, setWithSalary] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  // Con la hoja abierta el fondo no debe correrse al arrastrar.
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [sheetOpen]);
 
   const applied = useMemo(() => new Set(appliedJobIds), [appliedJobIds]);
   const savedSet = useMemo(() => new Set(savedJobIds), [savedJobIds]);
@@ -109,6 +122,34 @@ export default function JobFeed({
     Number(firstJobOnly) +
     Number(onlyVerified) +
     Number(withSalary);
+
+  function clearAll() {
+    setCity("");
+    setIndustry("");
+    setModality("");
+    setContract("");
+    setFirstJobOnly(false);
+    setOnlyVerified(false);
+    setWithSalary(false);
+  }
+
+  // Cada filtro activo se muestra arriba y se quita tocándolo: así se ve de un
+  // vistazo por qué aparecen pocas vacantes, sin tener que abrir la hoja.
+  const activeChips: { label: string; clear: () => void }[] = [
+    city ? { label: city, clear: () => setCity("") } : null,
+    industry ? { label: industry, clear: () => setIndustry("") } : null,
+    modality ? { label: modality, clear: () => setModality("") } : null,
+    contract ? { label: contract, clear: () => setContract("") } : null,
+    firstJobOnly
+      ? { label: "Primer empleo", clear: () => setFirstJobOnly(false) }
+      : null,
+    onlyVerified
+      ? { label: "Verificadas", clear: () => setOnlyVerified(false) }
+      : null,
+    withSalary
+      ? { label: "Con salario", clear: () => setWithSalary(false) }
+      : null,
+  ].filter((c): c is { label: string; clear: () => void } => c !== null);
 
   const filterControls = (
     <>
@@ -227,14 +268,7 @@ export default function JobFeed({
             {activeFilters > 0 && (
               <button
                 className="text-xs text-primary font-medium"
-                onClick={() => {
-                  setCity("");
-                  setIndustry("");
-                  setModality("");
-                  setFirstJobOnly(false);
-                  setOnlyVerified(false);
-                  setWithSalary(false);
-                }}
+                onClick={clearAll}
               >
                 Limpiar ({activeFilters})
               </button>
@@ -271,62 +305,64 @@ export default function JobFeed({
       </aside>
 
       <div className="space-y-4">
-        {/* Búsqueda + filtros compactos en móvil */}
-        <div className="space-y-2">
-          <input
-            type="search"
-            className="input bg-white"
-            placeholder="Buscar puesto, empresa o rubro…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <div className="flex gap-2 lg:hidden">
-            <select
-              className="input flex-1"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-            >
-              <option value="">Toda ciudad</option>
-              {cities.map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </select>
-            <select
-              className="input flex-1"
-              value={industry}
-              onChange={(e) => setIndustry(e.target.value)}
-            >
-              <option value="">Todo rubro</option>
-              {industries.map((i) => (
-                <option key={i}>{i}</option>
-              ))}
-            </select>
-          </div>
-          <div className="lg:hidden flex gap-2 overflow-x-auto scroll-thin pb-1">
+        {/* Buscador fijo + acceso a filtros. Antes los dos selectores y la
+            fila de chips ocupaban un tercio de la pantalla antes de la primera
+            vacante; ahora todo eso vive en una hoja y arriba solo quedan los
+            filtros realmente activos. */}
+        <div className="lg:hidden sticky top-[60px] z-20 -mx-4 px-4 py-2 bg-surface/95 backdrop-blur space-y-2">
+          <div className="flex gap-2">
+            <input
+              type="search"
+              className="input bg-white flex-1"
+              placeholder="Buscar puesto, empresa o rubro…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
             <button
-              onClick={() => setFirstJobOnly((v) => !v)}
-              className={`chip min-h-9 px-4 shrink-0 ${
-                firstJobOnly
-                  ? "bg-purple-600 text-white"
-                  : "bg-white text-purple-700 border border-purple-200"
-              }`}
+              onClick={() => setSheetOpen(true)}
+              aria-label="Filtros"
+              className="btn-secondary press shrink-0 relative px-4"
             >
-              ✨ Primer empleo {firstJobOnly ? "✓" : ""}
+              <SlidersHorizontal size={18} />
+              {activeFilters > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-primary text-white text-[11px] font-bold flex items-center justify-center animate-pop">
+                  {activeFilters}
+                </span>
+              )}
             </button>
-            <Link
-              href="/salarios"
-              className="chip min-h-9 px-4 shrink-0 bg-white text-gray-600 border border-gray-200"
-            >
-              💰 Salarios
-            </Link>
-            <Link
-              href="/juegos"
-              className="chip min-h-9 px-4 shrink-0 bg-white text-gray-600 border border-gray-200"
-            >
-              🎮 Worka Play
-            </Link>
           </div>
+
+          {activeFilters > 0 && (
+            <div className="flex gap-1.5 overflow-x-auto scroll-thin pb-0.5">
+              {activeChips.map((c) => (
+                <button
+                  key={c.label}
+                  onClick={c.clear}
+                  className="chip min-h-8 px-3 shrink-0 bg-primary text-white press animate-pop"
+                >
+                  {c.label} <X size={12} />
+                </button>
+              ))}
+              <button
+                onClick={clearAll}
+                className="chip min-h-8 px-3 shrink-0 bg-white text-gray-500 border border-gray-200 press"
+              >
+                Limpiar
+              </button>
+            </div>
+          )}
         </div>
+
+        {/* Buscador de escritorio (en celular vive en la barra fija de arriba) */}
+        <input
+          type="search"
+          className="input bg-white hidden lg:block"
+          placeholder="Buscar puesto, empresa o rubro…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+
+        <RecentJobs />
 
         <p className="text-sm text-gray-500">
           {filtered.length === 1
@@ -358,7 +394,7 @@ export default function JobFeed({
                 Afinalo con el test 🎯
               </Link>
             </p>
-            <div className="grid gap-3 xl:grid-cols-2">
+            <div className="grid gap-3 xl:grid-cols-2 stagger">
               {recommended.map((job) => (
                 <JobCard
                   key={job.id}
@@ -377,7 +413,7 @@ export default function JobFeed({
             <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
               ⭐ Destacadas
             </h2>
-            <div className="grid gap-3 xl:grid-cols-2">
+            <div className="grid gap-3 xl:grid-cols-2 stagger">
               {featured.map((job) => (
                 <JobCard
                   key={job.id}
@@ -397,7 +433,7 @@ export default function JobFeed({
                 Recientes
               </h2>
             )}
-            <div className="grid gap-3 xl:grid-cols-2">
+            <div className="grid gap-3 xl:grid-cols-2 stagger">
               {rest.map((job) => (
                 <JobCard
                   key={job.id}
@@ -423,13 +459,63 @@ export default function JobFeed({
                 Worka.
               </p>
             </div>
-            <div className="grid gap-3 xl:grid-cols-2">
+            <div className="grid gap-3 xl:grid-cols-2 stagger">
               {filteredExternal.map((job) => (
                 <ExternalJobCard key={job.id} job={job} />
               ))}
             </div>
           </section>
         )}
+      </div>
+
+      {/* Hoja de filtros (solo celular). El escritorio los tiene siempre a la
+          vista en la barra lateral. */}
+      {sheetOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 lg:hidden"
+          onClick={() => setSheetOpen(false)}
+          aria-hidden
+        />
+      )}
+      <div
+        role="dialog"
+        aria-label="Filtros"
+        aria-hidden={!sheetOpen}
+        className={`fixed inset-x-0 bottom-0 z-50 lg:hidden bg-white rounded-t-3xl shadow-2xl transition-transform duration-200 ease-out max-h-[88vh] flex flex-col ${
+          sheetOpen ? "translate-y-0" : "translate-y-full pointer-events-none"
+        }`}
+      >
+        <div className="flex items-center justify-between px-5 pt-4 pb-2 shrink-0 border-b border-gray-100">
+          <h2 className="font-bold text-primary-dark">Filtros</h2>
+          <button
+            onClick={() => setSheetOpen(false)}
+            aria-label="Cerrar"
+            className="w-10 h-10 flex items-center justify-center rounded-full text-gray-400 press"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto px-5 py-4 space-y-4">{filterControls}</div>
+
+        <div className="shrink-0 border-t border-gray-100 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] flex gap-2">
+          <button
+            onClick={clearAll}
+            disabled={activeFilters === 0}
+            className="btn-secondary press flex-1 disabled:opacity-40"
+          >
+            Limpiar
+          </button>
+          <button
+            onClick={() => setSheetOpen(false)}
+            className="btn-primary press flex-[2]"
+          >
+            Ver {filtered.length + filteredExternal.length}{" "}
+            {filtered.length + filteredExternal.length === 1
+              ? "vacante"
+              : "vacantes"}
+          </button>
+        </div>
       </div>
     </div>
   );

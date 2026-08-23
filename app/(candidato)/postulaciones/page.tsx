@@ -4,9 +4,9 @@ import {
   getMyInterviews,
   getMySavedJobs,
 } from "@/lib/data";
+import { Bookmark, ChevronRight } from "lucide-react";
 import { StatusChip } from "@/components/Badges";
 import EntityAvatar from "@/components/EntityAvatar";
-import JobCard from "@/components/JobCard";
 import InterviewCard from "@/components/InterviewCard";
 import { formatDate } from "@/lib/format";
 import type { ApplicationStatus } from "@/lib/types";
@@ -29,11 +29,26 @@ export default async function ApplicationsPage() {
     getMySavedJobs(),
     getMyInterviews(),
   ]);
-  const appliedIds = new Set(apps.map((a) => a.job_id));
+  const savedCount = savedJobs.length;
   const inProcess = apps.filter(
     (a) => a.status === "Revisado" || a.status === "Contactado"
   ).length;
   const contacted = apps.filter((a) => a.status === "Contactado").length;
+
+  // Lo que necesita acción va arriba. Antes las postulaciones salían en orden
+  // de envío, así que un "te contactaron" podía quedar sepultado bajo veinte
+  // pendientes y la persona se enteraba tarde.
+  const PRIORITY: Record<string, number> = {
+    Contactado: 0,
+    Revisado: 1,
+    Pendiente: 2,
+    Rechazado: 3,
+  };
+  const ordered = [...apps].sort(
+    (a, b) =>
+      (PRIORITY[a.status] ?? 9) - (PRIORITY[b.status] ?? 9) ||
+      +new Date(b.applied_at) - +new Date(a.applied_at)
+  );
 
   return (
     <div className="space-y-4">
@@ -52,7 +67,7 @@ export default async function ApplicationsPage() {
       </div>
 
       {apps.length > 0 && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3 stagger">
           {[
             { value: apps.length, label: "Enviadas", cls: "text-primary-dark" },
             { value: inProcess, label: "En proceso", cls: "text-primary" },
@@ -63,6 +78,19 @@ export default async function ApplicationsPage() {
               <p className="text-xs text-gray-500 mt-0.5">{s.label}</p>
             </div>
           ))}
+        </div>
+      )}
+
+      {contacted > 0 && (
+        <div className="card p-3.5 bg-emerald-50 border-emerald-200 animate-beat">
+          <p className="text-sm font-semibold text-emerald-800">
+            🎉 {contacted === 1
+              ? "Una empresa te contactó"
+              : `${contacted} empresas te contactaron`}
+          </p>
+          <p className="text-xs text-emerald-700 mt-0.5">
+            Revisá tu WhatsApp. Están arriba de todo en la lista.
+          </p>
         </div>
       )}
 
@@ -82,11 +110,19 @@ export default async function ApplicationsPage() {
         </div>
       )}
 
-      <div className="grid gap-3 lg:grid-cols-2 items-start">
-      {apps.map((app) => {
+      <div className="grid gap-3 lg:grid-cols-2 items-start stagger">
+      {ordered.map((app) => {
         const idx = stepIndex(app.status);
+        const needsAttention = app.status === "Contactado";
         return (
-          <div key={app.id} className="card p-4">
+          <div
+            key={app.id}
+            className={
+              needsAttention
+                ? "card p-4 border-emerald-300 ring-1 ring-emerald-200"
+                : "card p-4"
+            }
+          >
             <div className="flex items-start justify-between gap-2">
               <Link href={`/empleo/${app.job.id}`} className="min-w-0 flex items-start gap-3">
                 <EntityAvatar
@@ -124,19 +160,28 @@ export default async function ApplicationsPage() {
                   return (
                     <li key={step.key} className="flex-1 flex flex-col items-center relative">
                       {i > 0 && (
-                        <span
-                          className={`absolute top-3 right-1/2 w-full h-0.5 ${
-                            reached ? "bg-primary" : "bg-gray-200"
-                          }`}
-                          aria-hidden
-                        />
+                        <>
+                          {/* Riel gris de fondo y, encima, el tramo de color
+                              que se dibuja al entrar: el avance se ve, no hay
+                              que deducirlo comparando círculos. */}
+                          <span
+                            className="absolute top-3 right-1/2 w-full h-0.5 bg-gray-200"
+                            aria-hidden
+                          />
+                          {reached && (
+                            <span
+                              className="absolute top-3 right-1/2 w-full h-0.5 bg-primary animate-fill"
+                              aria-hidden
+                            />
+                          )}
+                        </>
                       )}
                       <span
-                        className={`relative z-10 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                        className={`relative z-10 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
                           reached
-                            ? "bg-primary text-white"
+                            ? "bg-primary text-white animate-pop"
                             : "bg-gray-200 text-gray-400"
-                        }`}
+                        } ${reached && i === idx ? "ring-4 ring-primary/15" : ""}`}
                       >
                         {reached ? "✓" : i + 1}
                       </span>
@@ -169,23 +214,27 @@ export default async function ApplicationsPage() {
       })}
       </div>
 
-      {/* Guardadas para después */}
-      {savedJobs.length > 0 && (
-        <section className="space-y-3 pt-2">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-            ⭐ Guardadas para después
-          </h2>
-          <div className="grid gap-3 lg:grid-cols-2">
-            {savedJobs.map((job) => (
-              <JobCard
-                key={job.id}
-                job={job}
-                alreadyApplied={appliedIds.has(job.id)}
-                initiallySaved
-              />
-            ))}
-          </div>
-        </section>
+      {/* Las guardadas ahora tienen pantalla propia: acá abajo, después de
+          toda la lista de postulaciones, no las encontraba nadie. */}
+      {savedCount > 0 && (
+        <Link
+          href="/guardados"
+          className="card press flex items-center gap-3 p-4 mt-2"
+        >
+          <span className="w-10 h-10 shrink-0 rounded-2xl bg-surface flex items-center justify-center text-primary">
+            <Bookmark size={18} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium text-gray-800">
+              Guardadas para después
+            </span>
+            <span className="block text-xs text-gray-400">
+              {savedCount} {savedCount === 1 ? "vacante" : "vacantes"} esperando
+              tu decisión
+            </span>
+          </span>
+          <ChevronRight size={18} className="text-gray-300 shrink-0" />
+        </Link>
       )}
     </div>
   );

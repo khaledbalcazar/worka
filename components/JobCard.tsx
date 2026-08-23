@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { JobWithCompany } from "@/lib/types";
 import { timeAgo, whatsappShareUrl } from "@/lib/format";
 import { applyToJob, reportJob, toggleSaveJob } from "@/app/actions";
+import { celebrate } from "@/lib/celebrate";
 import EntityAvatar from "./EntityAvatar";
 import {
   FastResponderBadge,
@@ -59,6 +60,7 @@ export default function JobCard({
       if (result.ok) {
         setApplied(true);
         setApplyDone(true);
+        celebrate();
       } else setError(result.error ?? "Ocurrió un error.");
     });
   }

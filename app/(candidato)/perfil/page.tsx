@@ -1,5 +1,6 @@
 import Link from "next/link";
 import ProfileClient from "@/components/ProfileClient";
+import ProfileStrength from "@/components/ProfileStrength";
 import {
   getCurrentCandidate,
   getMyReferences,
@@ -21,7 +22,7 @@ export default async function ProfilePage() {
         <p className="text-sm text-gray-500 mt-1">
           Creá tu perfil en 2 minutos y empezá a postularte con 1 clic.
         </p>
-        <Link href="/onboarding" className="btn-primary mt-4">
+        <Link href="/onboarding" className="btn-primary press mt-4">
           Completar mi perfil
         </Link>
       </div>
@@ -33,10 +34,16 @@ export default async function ProfilePage() {
     getSiteSettings(),
   ]);
   return (
-    <ProfileClient
-      candidate={candidate}
-      references={references}
-      settings={settings}
-    />
+    <div className="space-y-4">
+      <ProfileStrength
+        candidate={candidate}
+        referencesCount={references.length}
+      />
+      <ProfileClient
+        candidate={candidate}
+        references={references}
+        settings={settings}
+      />
+    </div>
   );
 }

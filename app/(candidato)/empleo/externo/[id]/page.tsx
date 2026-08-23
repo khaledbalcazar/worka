@@ -1,3 +1,4 @@
+import JobViewTracker from "@/components/JobViewTracker";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -178,10 +179,16 @@ export default async function ExternalJobPage({
   };
 
   return (
-    <main className="flex-1 bg-surface min-h-screen pb-20">
+    <main className="flex-1 bg-surface min-h-screen pb-36 lg:pb-20">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <JobViewTracker
+        jobId={job.id}
+        title={job.title}
+        company={job.company_name}
+        external
       />
 
       <div className="max-w-2xl mx-auto px-4 py-6">
@@ -352,6 +359,40 @@ export default async function ExternalJobPage({
             Ver vacantes verificadas de Worka →
           </Link>
         </p>
+      </div>
+
+      {/* Barra fija de postulación, igual que en las vacantes de Worka: acá el
+          botón también quedaba al final de una página larga. */}
+      <div className="lg:hidden fixed inset-x-0 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] z-40 bg-white/95 backdrop-blur border-t border-gray-200 px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-primary-dark truncate">
+              {job.salary_range ?? job.title}
+            </p>
+            <p className="text-[11px] text-gray-400 truncate">
+              {job.company_name}
+              {job.city ? ` · ${job.city}` : ""} · sin verificar
+            </p>
+          </div>
+          {loggedIn ? (
+            <a
+              href={mailto ?? job.apply_url ?? "#"}
+              {...(mailto
+                ? {}
+                : { target: "_blank", rel: "noopener noreferrer nofollow" })}
+              className="btn-primary press text-sm shrink-0 px-5"
+            >
+              Postularme
+            </a>
+          ) : (
+            <Link
+              href={`/ingresar?modo=registro&next=${encodeURIComponent(`/empleo/externo/${job.id}`)}`}
+              className="btn-primary press text-sm shrink-0 px-5"
+            >
+              Postularme gratis
+            </Link>
+          )}
+        </div>
       </div>
     </main>
   );

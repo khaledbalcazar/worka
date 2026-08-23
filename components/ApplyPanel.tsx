@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { JobWithCompany } from "@/lib/types";
 import { whatsappShareUrl } from "@/lib/format";
 import { applyToJob } from "@/app/actions";
+import { celebrate } from "@/lib/celebrate";
 
 // Postulación con 1 clic + preguntas de filtro de la vacante.
 export default function ApplyPanel({
@@ -54,8 +55,10 @@ export default function ApplyPanel({
         answer: answers[q.id] ?? false,
       }));
       const result = await applyToJob(job.id, payload);
-      if (result.ok) setStep("done");
-      else setError(result.error ?? "Ocurrió un error.");
+      if (result.ok) {
+        setStep("done");
+        celebrate();
+      } else setError(result.error ?? "Ocurrió un error.");
     });
   }
 
