@@ -24,6 +24,19 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* Buena parte del texto no lo escribimos nosotros: descripciones de avisos
+     importados de otros portales, mensajes, reseñas, bios. Una URL larga o una
+     palabra sin espacios ensancha su contenedor, y como todo cuelga del mismo
+     ancho, la pantalla entera del celular se corre hacia el costado. Cortar la
+     palabra es mucho menos feo que romper el diseño. */
+  overflow-wrap: break-word;
+}
+
+/* Red de seguridad: nada debe generar scroll horizontal en la página. Los
+   carruseles que sí se desplazan de costado declaran su propio overflow-x y
+   no se ven afectados por esto. */
+html {
+  overflow-x: hidden;
 }
 
 /* Las clases de componente van en @layer components a propósito. Sin la capa,

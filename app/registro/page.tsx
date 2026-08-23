@@ -1,7 +1,28 @@
 import Link from "next/link";
 import Logo from "@/components/Logo";
 
-export default function RegisterPage() {
+// Varias pantallas mandan acá con ?next= (por ejemplo una vacante externa,
+// donde la persona llega desde Google y todavía no tiene cuenta). Antes ese
+// destino se descartaba en silencio y, después de registrarse, terminaba en el
+// feed sin la vacante que venía a buscar.
+export default async function RegisterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
+  // Solo rutas internas: un destino externo convertiría esto en un redirect
+  // abierto con el dominio de Worka de fachada.
+  const safeNext =
+    next && next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\")
+      ? next
+      : null;
+  // Quien busca trabajo pasa por el alta de perfil antes de su destino.
+  const candidateNext = safeNext
+    ? `/onboarding?next=${encodeURIComponent(safeNext)}`
+    : "/onboarding";
+  const loginHref = `/ingresar${safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""}`;
+
   return (
     <main className="flex-1 flex flex-col items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm space-y-4">
@@ -16,7 +37,7 @@ export default function RegisterPage() {
             (CV incluido) sin cuenta, para chocar al final con "Iniciá sesión
             primero" y perder todo. Ahora la cuenta se crea antes del alta. */}
         <Link
-          href="/ingresar?modo=registro&next=%2Fonboarding"
+          href={`/ingresar?modo=registro&next=${encodeURIComponent(candidateNext)}`}
           className="card block p-5 hover:border-primary border-2 border-transparent"
         >
           <p className="text-2xl mb-1">👤</p>
@@ -37,7 +58,7 @@ export default function RegisterPage() {
         </Link>
         <p className="text-center text-sm text-gray-500">
           ¿Ya tenés cuenta?{" "}
-          <Link href="/ingresar" className="text-primary font-medium">
+          <Link href={loginHref} className="text-primary font-medium">
             Ingresá
           </Link>
         </p>

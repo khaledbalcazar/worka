@@ -202,13 +202,18 @@ export default async function JobDetailPage({
             </div>
 
             {/* Datos clave */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mt-4">
+            {/* En celular va como lista: en dos columnas, un horario largo
+                estiraba toda la fila y dejaba un hueco muerto al lado. */}
+            <div className="mt-4 divide-y divide-gray-100 sm:divide-y-0 sm:grid sm:grid-cols-3 sm:gap-2.5">
               {facts.map((f) => (
-                <div key={f.label} className="bg-surface rounded-xl px-3 py-2.5">
-                  <p className="text-[11px] text-gray-400 uppercase tracking-wide">
+                <div
+                  key={f.label}
+                  className="flex items-baseline justify-between gap-3 py-2.5 sm:block sm:bg-surface sm:rounded-xl sm:px-3"
+                >
+                  <p className="text-[11px] text-gray-400 uppercase tracking-wide shrink-0">
                     {f.icon} {f.label}
                   </p>
-                  <p className="text-sm font-medium text-gray-700 mt-0.5">
+                  <p className="text-sm font-medium text-gray-700 text-right sm:text-left sm:mt-0.5">
                     {f.value}
                   </p>
                 </div>

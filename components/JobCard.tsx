@@ -72,7 +72,7 @@ export default function JobCard({
   }
 
   return (
-    <article className="card p-4 relative flex flex-col hover:shadow-md transition-shadow">
+    <article className="card p-4 relative flex flex-col min-w-0 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-2">
         <Link href={`/empleo/${job.id}`} className="min-w-0 flex items-start gap-3">
           <EntityAvatar
