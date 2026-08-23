@@ -26,8 +26,15 @@ body {
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
-/* Botones táctiles: mínimo 44px de alto */
-.btn,
+/* Las clases de componente van en @layer components a propósito. Sin la capa,
+   Tailwind v4 las deja "sin capa", y el CSS sin capa le gana a TODAS las
+   utilidades: .btn-secondary { display:inline-flex } vencía a .hidden, así que
+   "Cerrar sesión" (marcado hidden lg:inline-flex) aparecía en el celular, y un
+   `chip px-4` perdía contra el px-2.5 de .chip. Dentro de la capa, cualquier
+   utilidad suelta pisa al componente, que es lo que uno espera al escribirla. */
+@layer components {
+  /* Botones táctiles: mínimo 44px de alto */
+  .btn,
 .btn-primary,
 .btn-secondary,
 .btn-success,
@@ -61,6 +68,7 @@ body {
 
 .chip {
   @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium;
+}
 }
 
 /* Animaciones sutiles */

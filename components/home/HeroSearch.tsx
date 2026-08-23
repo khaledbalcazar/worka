@@ -108,7 +108,7 @@ export default function HeroSearch({ cities = CITIES }: Props) {
 
       {/* Autocompletado */}
       {open && matches.length > 0 && (
-        <div className="absolute top-[calc(100%+8px)] left-0 right-0 bg-white rounded-2xl border border-primary-dark/10 shadow-[0_16px_44px_rgba(27,37,89,0.16)] overflow-hidden z-30">
+        <div className="absolute top-[calc(100%_+_8px)] left-0 right-0 bg-white rounded-2xl border border-primary-dark/10 shadow-[0_16px_44px_rgba(27,37,89,0.16)] overflow-hidden z-30">
           {matches.map((m) => (
             <button
               key={m}

@@ -157,8 +157,10 @@ export default async function JobDetailPage({
     },
   };
 
+  // pb extra en celular: debajo quedan la barra de postulación y la de
+  // navegación, y sin ese respiro tapan el final del contenido.
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-20 lg:pb-0">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

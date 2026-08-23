@@ -45,14 +45,12 @@ export async function generateMetadata(): Promise<Metadata> {
       template: `%s | ${settings.site_name || "Worka"}`,
     },
     description,
-    ...(settings.favicon_url
-      ? {
-          icons: {
-            icon: settings.favicon_url,
-            apple: settings.favicon_url,
-          },
-        }
-      : {}),
+    // Siempre hay ícono de marca: sin un apple-touch-icon, al "Agregar a
+    // inicio" en iPhone el atajo queda con una captura borrosa de la página.
+    icons: {
+      icon: settings.favicon_url || "/icon-192.png",
+      apple: settings.favicon_url || "/icon-192.png",
+    },
     appleWebApp: {
       capable: true,
       title: settings.site_name || "Worka",
@@ -63,6 +61,11 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export const viewport = {
   themeColor: "#1e3a8a",
+  width: "device-width",
+  initialScale: 1,
+  // Necesario para que env(safe-area-inset-*) devuelva algo: sin esto, en los
+  // iPhone con notch la barra inferior queda debajo de la barra de gestos.
+  viewportFit: "cover" as const,
 };
 
 export default function RootLayout({

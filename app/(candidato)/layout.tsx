@@ -1,4 +1,5 @@
 import BottomNav from "@/components/BottomNav";
+import InstallApp from "@/components/InstallApp";
 import CandidateHeader from "@/components/CandidateHeader";
 import MaintenanceGate from "@/components/MaintenanceGate";
 import { getMyNotifications, isLive } from "@/lib/data";
@@ -20,7 +21,8 @@ export default async function CandidateLayout({
       <main className="flex-1 w-full max-w-6xl mx-auto px-4 py-4 lg:py-8 pb-24 lg:pb-10">
         <MaintenanceGate>{children}</MaintenanceGate>
       </main>
-      <BottomNav />
+      <BottomNav loggedIn={loggedIn} />
+      <InstallApp />
     </div>
   );
 }

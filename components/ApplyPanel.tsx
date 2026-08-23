@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import type { JobWithCompany } from "@/lib/types";
 import { whatsappShareUrl } from "@/lib/format";
@@ -22,6 +22,18 @@ export default function ApplyPanel({
   const [answers, setAnswers] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // Solo en celular: la hoja con el detalle de la postulación.
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  // Con la hoja abierta el fondo no debe correrse al arrastrar.
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [sheetOpen]);
 
   // Mucha gente llega a la vacante desde Google, sin cuenta. Antes el botón
   // disparaba la postulación igual y devolvía un "Iniciá sesión" en letra
@@ -52,8 +64,8 @@ export default function ApplyPanel({
     else submit();
   }
 
-  return (
-    <div className="card p-5 space-y-3">
+  const panel = (
+    <div className="space-y-3">
       {step === "idle" && (
         <>
           <div className="text-center pb-1">
@@ -197,5 +209,62 @@ export default function ApplyPanel({
         </p>
       )}
     </div>
+  );
+
+  return (
+    <>
+      {/* Escritorio: el panel vive en la columna derecha, como hasta ahora. */}
+      <div className="hidden lg:block card p-5">{panel}</div>
+
+      {/* Celular: la acción no puede estar al final de una página larga. La
+          persona decide postularse mientras lee, así que el botón viaja con
+          ella y el detalle se abre en una hoja, sin perder el lugar de lectura. */}
+      <div className="lg:hidden">
+        {sheetOpen && (
+          <div
+            className="fixed inset-0 z-50 bg-black/40"
+            onClick={() => setSheetOpen(false)}
+            aria-hidden
+          />
+        )}
+        <div
+          role="dialog"
+          aria-label="Postularme"
+          aria-hidden={!sheetOpen}
+          className={`fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl shadow-2xl transition-transform duration-200 ease-out max-h-[85vh] overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] ${
+            sheetOpen ? "translate-y-0" : "translate-y-full pointer-events-none"
+          }`}
+        >
+          <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-4" />
+          {panel}
+        </div>
+
+        {/* Va justo encima de la barra de navegación, no encima de ella. */}
+        <div className="fixed inset-x-0 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] z-40 bg-white/95 backdrop-blur border-t border-gray-200 px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-primary-dark truncate">
+                {job.salary_range ?? job.title}
+              </p>
+              <p className="text-[11px] text-gray-400 truncate">
+                {job.company.trade_name} · {job.company.location_city}
+              </p>
+            </div>
+            {step === "done" ? (
+              <span className="btn-secondary text-sm shrink-0 pointer-events-none">
+                ✓ Postulado
+              </span>
+            ) : (
+              <button
+                className="btn-primary text-sm shrink-0 px-5"
+                onClick={() => setSheetOpen(true)}
+              >
+                {loggedIn ? "Postularme" : "Postularme gratis"}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
