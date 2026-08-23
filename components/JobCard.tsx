@@ -280,10 +280,24 @@ export default function JobCard({
                 {error && (
                   <p className="text-sm text-danger mt-3">
                     {error}{" "}
-                    {(error.includes("sesión") || error.includes("Iniciá")) && (
-                      <Link href="/ingresar" className="underline font-medium">
-                        Ingresar
+                    {/* El destino viaja para volver a esta misma vacante en
+                        lugar de soltar a la persona en el feed otra vez. */}
+                    {error.includes("Completá tu perfil") ? (
+                      <Link
+                        href={`/onboarding?next=${encodeURIComponent(`/empleo/${job.id}`)}`}
+                        className="underline font-medium"
+                      >
+                        Completar mi perfil
                       </Link>
+                    ) : (
+                      (error.includes("sesión") || error.includes("Iniciá")) && (
+                        <Link
+                          href={`/ingresar?modo=registro&next=${encodeURIComponent(`/empleo/${job.id}`)}`}
+                          className="underline font-medium"
+                        >
+                          Crear cuenta o ingresar
+                        </Link>
+                      )
                     )}
                   </p>
                 )}

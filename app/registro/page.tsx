@@ -12,8 +12,11 @@ export default function RegisterPage() {
           </h1>
           <p className="text-sm text-gray-500">¿Qué estás buscando?</p>
         </div>
+        {/* Antes esto iba directo a /onboarding: se completaban los 4 pasos
+            (CV incluido) sin cuenta, para chocar al final con "Iniciá sesión
+            primero" y perder todo. Ahora la cuenta se crea antes del alta. */}
         <Link
-          href="/onboarding"
+          href="/ingresar?modo=registro&next=%2Fonboarding"
           className="card block p-5 hover:border-primary border-2 border-transparent"
         >
           <p className="text-2xl mb-1">👤</p>

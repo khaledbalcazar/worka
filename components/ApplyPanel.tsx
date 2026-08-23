@@ -10,9 +10,11 @@ import { applyToJob } from "@/app/actions";
 export default function ApplyPanel({
   job,
   alreadyApplied = false,
+  loggedIn = true,
 }: {
   job: JobWithCompany;
   alreadyApplied?: boolean;
+  loggedIn?: boolean;
 }) {
   const [step, setStep] = useState<"idle" | "questions" | "done">(
     alreadyApplied ? "done" : "idle"
@@ -20,6 +22,12 @@ export default function ApplyPanel({
   const [answers, setAnswers] = useState<Record<string, boolean>>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // Mucha gente llega a la vacante desde Google, sin cuenta. Antes el botón
+  // disparaba la postulación igual y devolvía un "Iniciá sesión" en letra
+  // chica, con un link que además perdía la vacante. Ahora el camino se ofrece
+  // de entrada y el destino viaja para volver acá después.
+  const backHere = `next=${encodeURIComponent(`/empleo/${job.id}`)}`;
 
   const hasQuestions = job.filter_questions.length > 0;
   const allAnswered = job.filter_questions.every(
@@ -58,13 +66,34 @@ export default function ApplyPanel({
                 : "Un clic y tu perfil llega a la empresa."}
             </p>
           </div>
-          <button
-            className="btn-primary w-full text-base py-3"
-            onClick={startApply}
-            disabled={pending}
-          >
-            {pending ? "Enviando…" : "Postularme ahora"}
-          </button>
+          {loggedIn ? (
+            <button
+              className="btn-primary w-full text-base py-3"
+              onClick={startApply}
+              disabled={pending}
+            >
+              {pending ? "Enviando…" : "Postularme ahora"}
+            </button>
+          ) : (
+            <>
+              <Link
+                href={`/ingresar?modo=registro&${backHere}`}
+                className="btn-primary w-full text-base py-3"
+              >
+                Crear cuenta y postularme
+              </Link>
+              <Link
+                href={`/ingresar?${backHere}`}
+                className="btn-secondary w-full"
+              >
+                Ya tengo cuenta
+              </Link>
+              <p className="text-[11px] text-gray-400 text-center">
+                Es gratis y te toma 2 minutos. Volvés a esta vacante apenas
+                termines.
+              </p>
+            </>
+          )}
           <a
             href={whatsappShareUrl(job.title, job.id)}
             target="_blank"
@@ -149,8 +178,19 @@ export default function ApplyPanel({
       {error && (
         <p className="text-sm text-danger text-center">
           {error}{" "}
-          {error.includes("sesión") || error.includes("Iniciá") ? (
-            <Link href="/ingresar" className="underline font-medium">
+          {/* Todo error que se pueda resolver necesita su salida a mano. */}
+          {error.includes("Completá tu perfil") ? (
+            <Link
+              href={`/onboarding?${backHere}`}
+              className="underline font-medium"
+            >
+              Completar mi perfil
+            </Link>
+          ) : error.includes("sesión") || error.includes("Iniciá") ? (
+            <Link
+              href={`/ingresar?${backHere}`}
+              className="underline font-medium"
+            >
               Ingresar
             </Link>
           ) : null}

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
-import { DEFAULT_COUNTRY, countryByCode } from "@/lib/countries";
+import { useCountryCookie } from "@/lib/useCountryCookie";
 import { registerCompany, signUpWithEmail } from "@/app/actions";
 import { validateRucFormat } from "@/lib/ruc";
 
@@ -18,14 +18,7 @@ export default function CompanyRegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const [country, setCountryState] = useState(DEFAULT_COUNTRY);
-  useEffect(() => {
-    const code = document.cookie
-      .split("; ")
-      .find((c) => c.startsWith("worka_country="))
-      ?.split("=")[1];
-    if (code) setCountryState(countryByCode(code));
-  }, []);
+  const country = useCountryCookie();
 
   function submit() {
     setError(null);

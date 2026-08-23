@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getJobById, getMyAppliedJobIds } from "@/lib/data";
+import { getJobById, getMyAppliedJobIds, isLive } from "@/lib/data";
+import { getCurrentUser } from "@/lib/supabase/server";
 import { SITE_URL } from "@/lib/supabase/config";
 import { formatDate, timeAgo } from "@/lib/format";
 import ApplyPanel from "@/components/ApplyPanel";
@@ -60,10 +61,13 @@ export default async function JobDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [job, appliedIds] = await Promise.all([
+  const [job, appliedIds, user] = await Promise.all([
     getJobById(id),
     getMyAppliedJobIds(),
+    isLive() ? getCurrentUser() : null,
   ]);
+  // En demo se navega como logueado; en vivo depende de la sesión real.
+  const loggedIn = isLive() ? !!user : true;
   if (!job || job.status !== "Activo") notFound();
 
   // Destino para las apps de mapas: dirección exacta o empresa + ciudad.
@@ -313,7 +317,11 @@ export default async function JobDetailPage({
 
         {/* Panel de postulación: fijo a la derecha en escritorio */}
         <div className="lg:sticky lg:top-20">
-          <ApplyPanel job={job} alreadyApplied={appliedIds.has(job.id)} />
+          <ApplyPanel
+            job={job}
+            alreadyApplied={appliedIds.has(job.id)}
+            loggedIn={loggedIn}
+          />
         </div>
       </div>
     </div>

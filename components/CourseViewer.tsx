@@ -64,12 +64,12 @@ export default function CourseViewer({
     <div className="max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 grid lg:grid-cols-[300px_1fr] gap-6">
       {/* Barra lateral */}
       <aside className="lg:sticky lg:top-20 lg:self-start">
-        <a
+        <Link
           href="/academia"
           className="inline-flex items-center gap-1.5 text-sm text-primary font-medium mb-3"
         >
           <ChevronLeft size={16} /> Academia
-        </a>
+        </Link>
         <h1 className="text-xl font-extrabold text-primary-dark leading-tight">
           {course.title}
         </h1>

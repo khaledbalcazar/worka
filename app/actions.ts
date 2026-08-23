@@ -508,6 +508,18 @@ export async function toggleFollowCompany(
   return { ok: true };
 }
 
+// Supabase tipa los joins anidados de forma ambigua (objeto o array según cómo
+// infiera la relación), así que describimos la forma que estas consultas
+// realmente devuelven en vez de apagar el chequeo con `any`.
+type ApplicantNotifyRow = {
+  candidate_id: string | null;
+  reviewed_at?: string | null;
+  job?: {
+    title?: string | null;
+    company?: { trade_name?: string | null } | null;
+  } | null;
+};
+
 // La empresa contactó al candidato por WhatsApp: el estado pasa a 'Contactado'
 // al instante y el candidato lo ve reflejado en su línea de tiempo + campanita.
 export async function contactApplicant(
@@ -522,16 +534,17 @@ export async function contactApplicant(
     .eq("id", applicationId)
     .maybeSingle();
 
+  const a = app as unknown as ApplicantNotifyRow | null;
+
   const { error } = await supabase
     .from("applications")
     .update({
       status: "Contactado",
-      ...((app as any)?.reviewed_at ? {} : { reviewed_at: new Date().toISOString() }),
+      ...(a?.reviewed_at ? {} : { reviewed_at: new Date().toISOString() }),
     })
     .eq("id", applicationId);
   if (error) return { ok: false, error: "No pudimos actualizar el estado." };
 
-  const a = app as any;
   if (a?.candidate_id) {
     const empresa = a.job?.company?.trade_name ?? "Una empresa";
     await supabase.from("notifications").insert({
@@ -585,7 +598,7 @@ export async function proposeInterview(
   if (error) return { ok: false, error: "No pudimos proponer la entrevista." };
 
   // Notificación al candidato (campanita + queda en su historial).
-  const a = app as any;
+  const a = app as unknown as ApplicantNotifyRow | null;
   if (a?.candidate_id) {
     const empresa = a.job?.company?.trade_name ?? "Una empresa";
     await supabase.from("notifications").insert({
@@ -2202,8 +2215,16 @@ export async function signInWithEmail(
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { ok: false, error: "Email o contraseña incorrectos." };
   const home = await getRoleHome();
+  // Solo destinos internos: un "next" externo haría de esto un redirect
+  // abierto hacia otro sitio con el dominio de Worka como fachada.
+  const internal =
+    next.startsWith("/") && !next.startsWith("//") && !next.startsWith("/\\");
   // Si pidieron una página específica se respeta; si no, según el rol.
-  redirect(next && next !== "/empleos" ? next : home);
+  // Excepción: la cuenta sin perfil va primero al alta, llevándose el destino.
+  if (!internal || next === "/empleos") redirect(home);
+  if (home === "/onboarding")
+    redirect(`/onboarding?next=${encodeURIComponent(next)}`);
+  redirect(next);
 }
 
 export async function signUpWithEmail(

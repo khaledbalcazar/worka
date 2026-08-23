@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
-import { COUNTRIES, DEFAULT_COUNTRY, countryByCode } from "@/lib/countries";
+import { COUNTRIES, countryByCode, type Country } from "@/lib/countries";
+import { useCountryCookie } from "@/lib/useCountryCookie";
 import { setCountry } from "@/app/actions";
 
 // Selector de país con banderitas. Fija la cookie y refresca la página para
@@ -15,18 +16,14 @@ export default function CountrySelector({
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [current, setCurrent] = useState(DEFAULT_COUNTRY);
   const [pending, startTransition] = useTransition();
   const ref = useRef<HTMLDivElement>(null);
 
-  // Refleja el país guardado en la cookie al montar.
-  useEffect(() => {
-    const code = document.cookie
-      .split("; ")
-      .find((c) => c.startsWith("worka_country="))
-      ?.split("=")[1];
-    if (code) setCurrent(countryByCode(code));
-  }, []);
+  // El país vive en la cookie; "elegido" solo guarda la selección local para
+  // que la bandera cambie al instante, antes de que el refresh la confirme.
+  const fromCookie = useCountryCookie();
+  const [chosen, setChosen] = useState<Country | null>(null);
+  const current = chosen ?? fromCookie;
 
   // Cierra el menú al hacer clic afuera.
   useEffect(() => {
@@ -39,7 +36,7 @@ export default function CountrySelector({
   }, []);
 
   function choose(code: string) {
-    setCurrent(countryByCode(code));
+    setChosen(countryByCode(code));
     setOpen(false);
     startTransition(async () => {
       await setCountry(code);

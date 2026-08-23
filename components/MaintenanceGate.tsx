@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import { getSiteSettings } from "@/lib/data";
+import { isSettingOn } from "@/lib/settings";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 
 // Puerta de mantenimiento: si el admin activó maintenance_mode, muestra una
@@ -11,7 +12,7 @@ export default async function MaintenanceGate({
   children: React.ReactNode;
 }) {
   const settings = await getSiteSettings();
-  if (!settings.maintenance_mode) return <>{children}</>;
+  if (!isSettingOn(settings.maintenance_mode)) return <>{children}</>;
 
   // Los admin pasan igual.
   const supabase = await getServerClient();
@@ -29,6 +30,9 @@ export default async function MaintenanceGate({
 
   return (
     <main className="flex-1 flex flex-col items-center justify-center px-4 py-16 text-center">
+      {/* Sin esto Google indexa "Estamos mejorando Worka" en lugar de las
+          vacantes, y la penalización sobrevive al mantenimiento. */}
+      <meta name="robots" content="noindex" />
       <Logo />
       <p className="text-5xl mt-6">🛠️</p>
       <h1 className="text-2xl font-bold text-primary-dark mt-4">

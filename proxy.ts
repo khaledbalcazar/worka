@@ -5,7 +5,16 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
 // Rutas que requieren sesión cuando Supabase está configurado.
-const PROTECTED_PREFIXES = ["/perfil", "/postulaciones", "/admin"];
+// /onboarding y /mensajes se sumaron porque quedaban navegables sin cuenta:
+// se podía llenar el alta entera (incluida la subida del CV) para recién al
+// final chocar con un "Iniciá sesión primero" y perder todo lo cargado.
+const PROTECTED_PREFIXES = [
+  "/perfil",
+  "/postulaciones",
+  "/mensajes",
+  "/onboarding",
+  "/admin",
+];
 
 export async function proxy(request: NextRequest) {
   // Modo demo: sin Supabase, todo es navegable.
@@ -65,6 +74,9 @@ export async function proxy(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.pathname = "/ingresar";
     url.searchParams.set("next", path);
+    // Quien cae en /onboarding sin sesión casi nunca tiene cuenta todavía:
+    // le abrimos directamente el formulario de registro, no el de ingreso.
+    if (path.startsWith("/onboarding")) url.searchParams.set("modo", "registro");
     return NextResponse.redirect(url);
   }
 

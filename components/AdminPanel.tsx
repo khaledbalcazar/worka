@@ -892,10 +892,10 @@ export default function AdminPanel({
               ["help_text", "Texto de ayuda"],
               ["custom_industries", "Rubros extra (separados por coma)"],
               ["custom_cities", "Ciudades extra (separadas por coma)"],
-              ["banner_enabled", "Banner global activo (escribí 'true' o dejá vacío)"],
+              ["banner_enabled", "Banner global activo. SOLO 'true' lo enciende; para apagarlo dejá el campo VACÍO"],
               ["banner_text", "Texto del banner global"],
               ["banner_link", "Link del banner (opcional, ej: /empleos)"],
-              ["maintenance_mode", "Modo mantenimiento (escribí 'true' para activar)"],
+              ["maintenance_mode", "⚠️ Modo mantenimiento: SOLO 'true' lo activa y tumba el sitio para todos menos vos. Para apagarlo dejá el campo VACÍO"],
               ["maintenance_text", "Texto de la pantalla de mantenimiento"],
               // SEO regional: "título | descripción". Vacío = texto automático.
               ["seo_ar", "🇦🇷 SEO Argentina (título | descripción)"],

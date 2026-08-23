@@ -193,7 +193,7 @@ function Quiz() {
 }
 
 function WordGame() {
-  const word = useMemo(todayWord, []);
+  const word = useMemo(() => todayWord(), []);
   const [guesses, setGuesses] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
   const won = guesses.includes(word);

@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { getSiteSettings } from "@/lib/data";
+import { isSettingOn } from "@/lib/settings";
 
 // Banner global configurable desde el admin. Aparece arriba de toda la web
 // si banner_enabled está activo. Server component: lee la config directo.
 export default async function GlobalBanner() {
   const settings = await getSiteSettings();
-  if (!settings.banner_enabled || !settings.banner_text) return null;
+  if (!isSettingOn(settings.banner_enabled) || !settings.banner_text) return null;
 
   const content = (
     <p className="text-sm font-medium text-white text-center px-4 py-2">

@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Logo from "@/components/Logo";
 import { INDUSTRIES } from "@/lib/mock-data";
-import { DEFAULT_COUNTRY, countryByCode } from "@/lib/countries";
+import { useCountryCookie } from "@/lib/useCountryCookie";
 import {
   completeOnboarding,
   uploadAvatar,
@@ -31,6 +31,18 @@ function ErrorNote({ error }: { error: string }) {
   );
 }
 
+// Destino al terminar el alta. Quien llegó acá desde una vacante (por Google,
+// sin cuenta) vuelve a esa vacante en vez de caer en el feed y tener que
+// buscarla de nuevo. Se lee en el handler para no necesitar useSearchParams
+// (que obligaría a envolver toda la página en un Suspense).
+function nextAfterOnboarding(): string {
+  if (typeof window === "undefined") return "/empleos";
+  const raw = new URLSearchParams(window.location.search).get("next");
+  if (!raw || !raw.startsWith("/")) return "/empleos";
+  if (raw.startsWith("//") || raw.startsWith("/\\")) return "/empleos";
+  return raw;
+}
+
 export default function OnboardingPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("contacto");
@@ -49,15 +61,8 @@ export default function OnboardingPage() {
   const avatarInput = useRef<HTMLInputElement>(null);
 
   // País activo (de la cookie que setean las landings). Define ciudades y
-  // prefijo telefónico. Arranca en el default para no romper la hidratación.
-  const [country, setCountryState] = useState(DEFAULT_COUNTRY);
-  useEffect(() => {
-    const code = document.cookie
-      .split("; ")
-      .find((c) => c.startsWith("worka_country="))
-      ?.split("=")[1];
-    if (code) setCountryState(countryByCode(code));
-  }, []);
+  // prefijo telefónico.
+  const country = useCountryCookie();
 
   // Subida REAL del CV al bucket privado. Después, la persona elige sus
   // rubros manualmente (la lectura automática del PDF llega más adelante).
@@ -382,9 +387,11 @@ export default function OnboardingPage() {
             )}
             <button
               className={`${cvUploaded ? "btn-primary" : "btn-secondary"} w-full text-base`}
-              onClick={() => router.push("/empleos")}
+              onClick={() => router.push(nextAfterOnboarding())}
             >
-              Ver empleos para mí
+              {nextAfterOnboarding().startsWith("/empleo/")
+                ? "Volver a la vacante y postularme"
+                : "Ver empleos para mí"}
             </button>
           </div>
         )}

@@ -7,13 +7,33 @@ import Logo from "@/components/Logo";
 import { getBrowserClient } from "@/lib/supabase/client";
 import { signInWithEmail, signUpWithEmail } from "@/app/actions";
 
+// Solo rutas internas: un "next" externo convertiría el ingreso en un
+// redirect abierto hacia otro sitio.
+function safeNext(value: string | null): string | null {
+  if (!value || !value.startsWith("/")) return null;
+  if (value.startsWith("//") || value.startsWith("/\\")) return null;
+  return value;
+}
+
+// Deja el destino en una cookie corta: el ida y vuelta con Google (y el link
+// de confirmación por email) no conserva los parámetros de la URL, así que el
+// callback la lee para devolver a la persona a donde estaba.
+function rememberNext(next: string | null) {
+  if (!next) return;
+  document.cookie = `worka_next=${encodeURIComponent(next)}; path=/; max-age=7200; SameSite=Lax`;
+}
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/empleos";
+  const rawNext = safeNext(searchParams.get("next"));
+  const next = rawNext ?? "/empleos";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  // Quien llega desde "Crear cuenta" ve directamente el alta, no el ingreso.
+  const [mode, setMode] = useState<"login" | "signup">(
+    searchParams.get("modo") === "registro" ? "signup" : "login"
+  );
   const [signupSent, setSignupSent] = useState(false);
   // El callback de auth manda el motivo real del fallo en ?error=
   const [error, setError] = useState<string | null>(
@@ -35,8 +55,8 @@ function LoginForm() {
     // La URL de retorno va SIN query string: Supabase compara este valor
     // contra su lista de Redirect URLs, y cualquier parámetro extra puede
     // hacer que no coincida y te devuelva al Site URL (la home) sin sesión.
-    // El destino lo resuelve el callback con getRoleHome(), que además manda
-    // al onboarding a quien entra por primera vez.
+    // Por eso el destino viaja en cookie y no en la URL.
+    rememberNext(rawNext);
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback` },
@@ -50,6 +70,8 @@ function LoginForm() {
     setError(null);
     startTransition(async () => {
       if (mode === "signup") {
+        // El destino sobrevive al link de confirmación por email vía cookie.
+        rememberNext(rawNext);
         const result = await signUpWithEmail(email, password, {
           worka_role: "candidate",
         });
@@ -59,7 +81,7 @@ function LoginForm() {
         return;
       }
       const result = await signInWithEmail(email, password, next);
-      if (result.demo) router.push("/empleos");
+      if (result.demo) router.push(next);
       else if (!result.ok) setError(result.error ?? "Ocurrió un error.");
     });
   }
@@ -73,6 +95,14 @@ function LoginForm() {
             {mode === "login" ? "Ingresá a tu cuenta" : "Creá tu cuenta gratis"}
           </h1>
         </div>
+
+        {/* Quien viene de una vacante necesita saber que no la pierde. */}
+        {rawNext?.startsWith("/empleo") && (
+          <p className="text-xs text-primary-dark bg-blue-50 rounded-xl px-3 py-2 text-center">
+            📌 Guardamos la vacante: apenas termines, volvés directo a ella para
+            postularte.
+          </p>
+        )}
 
         {signupSent && (
           <div className="text-center py-4 animate-pop">
