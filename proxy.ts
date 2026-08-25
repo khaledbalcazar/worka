@@ -21,10 +21,15 @@ const PROTECTED_PREFIXES = [
 // componentes con Worka, que es justo lo que hace posible enlazar una vacante
 // de Worka Empleos con un proceso de selección.
 //
-// Se dejan pasar sin tocar las rutas de infraestructura: los assets de Next,
-// las APIs y el callback de auth tienen que resolver igual en los dos
-// dominios, y reescribirlos rompería el ingreso.
-const PASSTHROUGH = ["/_next", "/api", "/auth", "/manifest.webmanifest"];
+// Solo estas rutas son de Evaluar; todo lo demás (ingreso, registro,
+// onboarding, términos, assets, APIs y el callback de auth) se sirve tal cual
+// desde Worka, que es la misma aplicación.
+//
+// Es una lista de lo que Evaluar posee y no de lo que hay que excluir: con la
+// lista al revés, cualquier ruta compartida que nadie recordara agregar
+// terminaba reescrita a /evaluar/<algo> y devolvía 404. Fue exactamente lo que
+// pasó con /ingresar, que dejaba a la empresa sin poder entrar.
+const EVALUAR_PATHS = ["/app", "/e/", "/precios"];
 
 function evaluarTarget(request: NextRequest): URL | null {
   const host = request.headers.get("host") ?? "";
@@ -32,7 +37,11 @@ function evaluarTarget(request: NextRequest): URL | null {
 
   const path = request.nextUrl.pathname;
   if (path.startsWith("/evaluar")) return null;
-  if (PASSTHROUGH.some((p) => path.startsWith(p))) return null;
+
+  const own =
+    path === "/" ||
+    EVALUAR_PATHS.some((p) => path === p || path.startsWith(p));
+  if (!own) return null;
 
   const url = request.nextUrl.clone();
   url.pathname = path === "/" ? "/evaluar" : `/evaluar${path}`;
