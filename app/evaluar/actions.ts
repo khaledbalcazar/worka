@@ -393,6 +393,138 @@ export async function applyTemplate(
   return { ok: true, id: stageId };
 }
 
+// Editar una pregunta ya cargada. Faltaba: la única salida era borrarla y
+// escribirla de nuevo, y con eso se perdían las respuestas ya dadas (borrar la
+// pregunta borra en cascada sus respuestas). Corregir una palabra no puede
+// costar el historial del proceso.
+export async function updateQuestion(
+  processId: string,
+  questionId: string,
+  input: {
+    text: string;
+    options: string[];
+    correctIndex: number | null;
+    weight: number;
+    knockout: boolean;
+  }
+): Promise<Result> {
+  const { supabase } = await requireCompany();
+  if (!supabase) return DEMO;
+  const blocked = await requireActiveAccount();
+  if (blocked) return { ok: false, error: blocked };
+  if (!input.text.trim()) return { ok: false, error: "Escribí la pregunta." };
+
+  const { data: current } = await supabase
+    .from("evaluar_questions")
+    .select("kind, options, correct")
+    .eq("id", questionId)
+    .maybeSingle();
+  if (!current) return { ok: false, error: "Esa pregunta ya no existe." };
+
+  const row = current as { kind: string; options: string[]; correct: unknown };
+  const needsOptions = row.kind === "unica" || row.kind === "multiple";
+  const options = needsOptions
+    ? input.options.map((o) => o.trim()).filter(Boolean)
+    : [];
+  if (needsOptions && options.length < 2)
+    return { ok: false, error: "Cargá al menos dos opciones." };
+
+  const correct =
+    needsOptions && input.correctIndex !== null
+      ? (options[input.correctIndex] ?? null)
+      : null;
+
+  const { error } = await supabase
+    .from("evaluar_questions")
+    .update({
+      text: input.text.trim(),
+      options,
+      correct,
+      weight: Math.max(1, input.weight),
+      knockout: input.knockout && correct !== null,
+    })
+    .eq("id", questionId);
+
+  if (error) {
+    console.error("updateQuestion:", error);
+    return { ok: false, error: "No pudimos guardar la pregunta." };
+  }
+  revalidatePath(`/evaluar/app/procesos/${processId}`);
+  return { ok: true };
+}
+
+// Editar una etapa (nombre, descripción, minutos y si va cronometrada).
+export async function updateStage(
+  processId: string,
+  stageId: string,
+  input: {
+    title: string;
+    description?: string;
+    minutes: number;
+    timed: boolean;
+  }
+): Promise<Result> {
+  const { supabase } = await requireCompany();
+  if (!supabase) return DEMO;
+  const blocked = await requireActiveAccount();
+  if (blocked) return { ok: false, error: blocked };
+  if (!input.title.trim())
+    return { ok: false, error: "La etapa necesita un nombre." };
+
+  const { error } = await supabase
+    .from("evaluar_stages")
+    .update({
+      title: input.title.trim(),
+      description: input.description?.trim() ?? "",
+      minutes: Math.max(1, input.minutes),
+      timed: input.timed,
+    })
+    .eq("id", stageId);
+
+  if (error) return { ok: false, error: "No pudimos guardar la etapa." };
+  revalidatePath(`/evaluar/app/procesos/${processId}`);
+  return { ok: true };
+}
+
+// Mover una etapa arriba o abajo. Las etapas quedaban en el orden en que se
+// crearon y no había forma de reacomodarlas.
+export async function moveStage(
+  processId: string,
+  stageId: string,
+  direction: "arriba" | "abajo"
+): Promise<Result> {
+  const { supabase } = await requireCompany();
+  if (!supabase) return DEMO;
+  const blocked = await requireActiveAccount();
+  if (blocked) return { ok: false, error: blocked };
+
+  const { data: stages } = await supabase
+    .from("evaluar_stages")
+    .select("id, position")
+    .eq("process_id", processId)
+    .order("position");
+
+  const list = (stages ?? []) as { id: string; position: number }[];
+  const i = list.findIndex((s) => s.id === stageId);
+  const j = direction === "arriba" ? i - 1 : i + 1;
+  if (i < 0 || j < 0 || j >= list.length) return { ok: true };
+
+  // Se reescriben las posiciones de toda la lista: es barato y deja el orden
+  // consistente aunque hubiera huecos de borrados anteriores.
+  const reordered = [...list];
+  [reordered[i], reordered[j]] = [reordered[j], reordered[i]];
+
+  for (let pos = 0; pos < reordered.length; pos++) {
+    await supabase
+      .from("evaluar_stages")
+      .update({ position: pos })
+      .eq("id", reordered[pos].id);
+  }
+
+  revalidatePath(`/evaluar/app/procesos/${processId}`);
+  return { ok: true };
+}
+
 export async function deleteQuestion(
   processId: string,
   questionId: string

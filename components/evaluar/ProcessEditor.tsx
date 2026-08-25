@@ -6,14 +6,17 @@ import {
   Check,
   Copy,
   Link2,
+  ChevronDown,
+  ChevronUp,
   MessageCircle,
+  Pencil,
   Plus,
   Trash2,
   UserPlus,
   Users,
   X,
 } from "lucide-react";
-import type { ProcessDetail } from "@/lib/evaluar";
+import type { EvaluarQuestion, ProcessDetail } from "@/lib/evaluar";
 import TemplatePicker from "./TemplatePicker";
 import {
   addQuestion,
@@ -23,7 +26,10 @@ import {
   deleteStage,
   inviteBatch,
   inviteParticipant,
+  moveStage,
   updateProcess,
+  updateQuestion,
+  updateStage,
 } from "@/app/evaluar/actions";
 
 type Tab = "etapas" | "candidatos" | "ajustes";
@@ -163,6 +169,13 @@ export default function ProcessEditor({
             run(() => addQuestion(process.id, sid, input))
           }
           onDeleteQuestion={(qid) => run(() => deleteQuestion(process.id, qid))}
+          onUpdateQuestion={(qid, input) =>
+            run(() => updateQuestion(process.id, qid, input))
+          }
+          onMoveStage={(sid, dir) => run(() => moveStage(process.id, sid, dir))}
+          onUpdateStage={(sid, input) =>
+            run(() => updateStage(process.id, sid, input))
+          }
         />
       )}
 
@@ -209,6 +222,9 @@ function StagesTab({
   onDeleteStage,
   onAddQuestion,
   onDeleteQuestion,
+  onUpdateQuestion,
+  onMoveStage,
+  onUpdateStage,
 }: {
   detail: ProcessDetail;
   pending: boolean;
@@ -227,10 +243,27 @@ function StagesTab({
     }
   ) => void;
   onDeleteQuestion: (id: string) => void;
+  onMoveStage: (id: string, dir: "arriba" | "abajo") => void;
+  onUpdateStage: (
+    id: string,
+    i: { title: string; description: string; minutes: number; timed: boolean }
+  ) => void;
+  onUpdateQuestion: (
+    questionId: string,
+    i: {
+      text: string;
+      options: string[];
+      correctIndex: number | null;
+      weight: number;
+      knockout: boolean;
+    }
+  ) => void;
 }) {
   const [newStage, setNewStage] = useState("");
   const [minutes, setMinutes] = useState(5);
   const [openQ, setOpenQ] = useState<string | null>(null);
+  const [editQ, setEditQ] = useState<string | null>(null);
+  const [editS, setEditS] = useState<string | null>(null);
 
   return (
     <div className="space-y-3">
@@ -248,18 +281,71 @@ function StagesTab({
                 </p>
               )}
             </div>
-            <button
-              onClick={() => onDeleteStage(stage.id)}
-              disabled={pending}
-              aria-label="Borrar etapa"
-              className="w-9 h-9 grid place-items-center rounded-full text-slate-300 hover:text-danger press shrink-0"
-            >
-              <Trash2 size={16} />
-            </button>
+            <div className="flex items-center gap-0.5 shrink-0">
+              {/* Reordenar: antes las etapas quedaban para siempre en el orden
+                  en que se crearon. */}
+              <button
+                onClick={() => onMoveStage(stage.id, "arriba")}
+                disabled={pending || i === 0}
+                aria-label="Subir etapa"
+                className="w-8 h-8 grid place-items-center rounded-full text-slate-300 hover:text-primary press disabled:opacity-20"
+              >
+                <ChevronUp size={16} />
+              </button>
+              <button
+                onClick={() => onMoveStage(stage.id, "abajo")}
+                disabled={pending || i === detail.stages.length - 1}
+                aria-label="Bajar etapa"
+                className="w-8 h-8 grid place-items-center rounded-full text-slate-300 hover:text-primary press disabled:opacity-20"
+              >
+                <ChevronDown size={16} />
+              </button>
+              <button
+                onClick={() => setEditS(editS === stage.id ? null : stage.id)}
+                disabled={pending}
+                aria-label="Editar etapa"
+                className="w-8 h-8 grid place-items-center rounded-full text-slate-300 hover:text-primary press"
+              >
+                <Pencil size={15} />
+              </button>
+              <button
+                onClick={() => onDeleteStage(stage.id)}
+                disabled={pending}
+                aria-label="Borrar etapa"
+                className="w-8 h-8 grid place-items-center rounded-full text-slate-300 hover:text-danger press"
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
           </div>
 
+          {editS === stage.id && (
+            <StageForm
+              stage={stage}
+              pending={pending}
+              onCancel={() => setEditS(null)}
+              onSave={(input) => {
+                onUpdateStage(stage.id, input);
+                setEditS(null);
+              }}
+            />
+          )}
+
           <ul className="mt-3 space-y-2">
-            {stage.questions.map((q, qi) => (
+            {stage.questions.map((q, qi) =>
+              editQ === q.id ? (
+                <li key={q.id}>
+                  <QuestionForm
+                    pending={pending}
+                    initial={q}
+                    onCancel={() => setEditQ(null)}
+                    onSave={(input) => {
+                      onUpdateQuestion(q.id, input);
+                      setEditQ(null);
+                    }}
+                  />
+                </li>
+              ) : (
               <li
                 key={q.id}
                 className="flex items-start gap-3 bg-slate-50 rounded-xl px-3 py-2.5"
@@ -291,6 +377,14 @@ function StagesTab({
                   </div>
                 </div>
                 <button
+                  onClick={() => setEditQ(q.id)}
+                  disabled={pending}
+                  aria-label="Editar pregunta"
+                  className="w-8 h-8 grid place-items-center rounded-full text-slate-300 hover:text-primary press shrink-0"
+                >
+                  <Pencil size={14} />
+                </button>
+                <button
                   onClick={() => onDeleteQuestion(q.id)}
                   disabled={pending}
                   aria-label="Borrar pregunta"
@@ -299,7 +393,8 @@ function StagesTab({
                   <X size={14} />
                 </button>
               </li>
-            ))}
+              )
+            )}
           </ul>
 
           {openQ === stage.id ? (
@@ -380,10 +475,13 @@ function StagesTab({
 
 function QuestionForm({
   pending,
+  initial,
   onSave,
   onCancel,
 }: {
   pending: boolean;
+  /** Pregunta existente: si viene, el formulario edita en vez de crear. */
+  initial?: EvaluarQuestion;
   onCancel: () => void;
   onSave: (i: {
     text: string;
@@ -394,14 +492,24 @@ function QuestionForm({
     knockout: boolean;
   }) => void;
 }) {
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initial?.text ?? "");
+  // El tipo no se puede cambiar al editar: pasar de opciones a texto libre
+  // dejaria las respuestas ya dadas sin sentido.
   const [kind, setKind] = useState<
     "unica" | "multiple" | "texto" | "escala" | "numero"
-  >("unica");
-  const [options, setOptions] = useState(["", ""]);
-  const [correctIndex, setCorrectIndex] = useState<number | null>(0);
-  const [weight, setWeight] = useState(1);
-  const [knockout, setKnockout] = useState(false);
+  >((initial?.kind as "unica") ?? "unica");
+  const [options, setOptions] = useState<string[]>(
+    initial && initial.options.length ? initial.options : ["", ""]
+  );
+  const [correctIndex, setCorrectIndex] = useState<number | null>(
+    initial
+      ? initial.options.findIndex((o) => o === initial.correct) >= 0
+        ? initial.options.findIndex((o) => o === initial.correct)
+        : null
+      : 0
+  );
+  const [weight, setWeight] = useState(initial?.weight ?? 1);
+  const [knockout, setKnockout] = useState(initial?.knockout ?? false);
 
   const needsOptions = kind === "unica" || kind === "multiple";
 
@@ -420,8 +528,10 @@ function QuestionForm({
       <div>
         <label className="label">Tipo</label>
         <select
-          className="input"
+          className="input disabled:opacity-60"
           value={kind}
+          disabled={!!initial}
+          title={initial ? "El tipo no se cambia al editar" : undefined}
           onChange={(e) => setKind(e.target.value as typeof kind)}
         >
           <option value="unica">Opción única</option>
@@ -530,7 +640,7 @@ function QuestionForm({
           disabled={pending || !text.trim()}
           className="btn-primary press flex-[2] disabled:opacity-40"
         >
-          Guardar pregunta
+          {initial ? "Guardar cambios" : "Guardar pregunta"}
         </button>
       </div>
     </div>
@@ -832,6 +942,91 @@ function SettingsTab({
       >
         {pending ? "Guardando…" : "Guardar cambios"}
       </button>
+    </div>
+  );
+}
+
+// Edición de una etapa: nombre, descripción, minutos y si va cronometrada.
+function StageForm({
+  stage,
+  pending,
+  onSave,
+  onCancel,
+}: {
+  stage: ProcessDetail["stages"][number];
+  pending: boolean;
+  onCancel: () => void;
+  onSave: (i: {
+    title: string;
+    description: string;
+    minutes: number;
+    timed: boolean;
+  }) => void;
+}) {
+  const [title, setTitle] = useState(stage.title);
+  const [description, setDescription] = useState(stage.description);
+  const [minutes, setMinutes] = useState(stage.minutes);
+  const [timed, setTimed] = useState(!!stage.timed);
+
+  return (
+    <div className="border border-slate-200 rounded-2xl p-4 mt-3 space-y-3 animate-rise">
+      <div>
+        <label className="label">Nombre de la etapa</label>
+        <input
+          className="input"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+      </div>
+      <div>
+        <label className="label">Descripción (opcional)</label>
+        <input
+          className="input"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-4">
+        <label className="text-sm text-slate-700 flex items-center gap-2">
+          Minutos
+          <input
+            type="number"
+            min={1}
+            max={120}
+            className="input w-24"
+            value={minutes}
+            onChange={(e) => setMinutes(Number(e.target.value))}
+          />
+        </label>
+        <label className="text-sm text-slate-700 flex items-center gap-2">
+          <input
+            type="checkbox"
+            className="w-5 h-5 accent-primary"
+            checked={timed}
+            onChange={(e) => setTimed(e.target.checked)}
+          />
+          Con cronómetro
+        </label>
+      </div>
+      {timed && (
+        <p className="text-xs text-slate-500 bg-slate-50 rounded-xl px-3 py-2">
+          Al llegar a cero se entrega lo respondido hasta ahí. Conviene para
+          pruebas de conocimientos o razonamiento; en personalidad el tiempo no
+          agrega nada y solo pone nervioso al candidato.
+        </p>
+      )}
+      <div className="flex gap-2">
+        <button onClick={onCancel} className="btn-secondary press flex-1">
+          Cancelar
+        </button>
+        <button
+          onClick={() => onSave({ title, description, minutes, timed })}
+          disabled={pending || !title.trim()}
+          className="btn-primary press flex-[2] disabled:opacity-40"
+        >
+          Guardar etapa
+        </button>
+      </div>
     </div>
   );
 }

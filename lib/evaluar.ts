@@ -33,6 +33,9 @@ export type EvaluarStage = {
   description: string;
   kind: "cuestionario" | "tarea" | "entrevista";
   minutes: number;
+  /** Etapa con cronómetro (los tests con respuesta correcta). */
+  timed?: boolean;
+  template_key?: string | null;
 };
 
 export type EvaluarQuestion = {
