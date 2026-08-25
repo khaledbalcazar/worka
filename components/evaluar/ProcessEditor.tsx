@@ -8,6 +8,8 @@ import {
   Link2,
   ChevronDown,
   ChevronUp,
+  Columns3,
+  List,
   MessageCircle,
   Pencil,
   Plus,
@@ -18,9 +20,12 @@ import {
 } from "lucide-react";
 import type { EvaluarQuestion, ProcessDetail } from "@/lib/evaluar";
 import TemplatePicker from "./TemplatePicker";
+import CandidateBoard from "./CandidateBoard";
+import { ProcessDesign, ProcessTeam } from "./ProcessSettings";
 import {
   addQuestion,
   addStage,
+  applyRoleTemplate,
   applyTemplate,
   deleteQuestion,
   deleteStage,
@@ -44,6 +49,7 @@ export default function ProcessEditor({
   const router = useRouter();
   const { process, stages, participants } = detail;
   const [tab, setTab] = useState<Tab>("etapas");
+  const [vista, setVista] = useState<"lista" | "tablero">("lista");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -156,6 +162,24 @@ export default function ProcessEditor({
             {label}
           </button>
         ))}
+        {tab === "candidatos" && (
+          <div className="ml-auto flex items-center gap-1 pb-1.5">
+            {(["lista", "tablero"] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => setVista(v)}
+                className={`chip press ${
+                  vista === v
+                    ? "bg-primary text-white"
+                    : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                {v === "lista" ? <List size={13} /> : <Columns3 size={13} />}
+                {v === "lista" ? "Lista" : "Tablero"}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {tab === "etapas" && (
@@ -163,6 +187,7 @@ export default function ProcessEditor({
           detail={detail}
           pending={pending}
           onApplyTemplate={(key) => run(() => applyTemplate(process.id, key))}
+          onApplyRole={(key) => run(() => applyRoleTemplate(process.id, key))}
           onAddStage={(input) => run(() => addStage(process.id, input))}
           onDeleteStage={(sid) => run(() => deleteStage(process.id, sid))}
           onAddQuestion={(sid, input) =>
@@ -179,7 +204,11 @@ export default function ProcessEditor({
         />
       )}
 
-      {tab === "candidatos" && (
+      {tab === "candidatos" && vista === "tablero" && (
+        <CandidateBoard detail={detail} />
+      )}
+
+      {tab === "candidatos" && vista === "lista" && (
         <CandidatesTab
           detail={detail}
           pending={pending}
@@ -201,12 +230,16 @@ export default function ProcessEditor({
       )}
 
       {tab === "ajustes" && (
-        <SettingsTab
+        <div className="space-y-4">
+          <ProcessDesign detail={detail} />
+          <ProcessTeam detail={detail} />
+          <SettingsTab
           detail={detail}
           jobs={jobs}
           pending={pending}
           onSave={(input) => run(() => updateProcess(process.id, input))}
-        />
+          />
+        </div>
       )}
     </div>
   );
@@ -218,6 +251,7 @@ function StagesTab({
   detail,
   pending,
   onApplyTemplate,
+  onApplyRole,
   onAddStage,
   onDeleteStage,
   onAddQuestion,
@@ -229,6 +263,7 @@ function StagesTab({
   detail: ProcessDetail;
   pending: boolean;
   onApplyTemplate: (key: string) => void;
+  onApplyRole: (key: string) => void;
   onAddStage: (i: { title: string; description: string; minutes: number }) => void;
   onDeleteStage: (id: string) => void;
   onAddQuestion: (
@@ -428,7 +463,11 @@ function StagesTab({
           Cinco Grandes, estilo laboral, juicio situacional y razonamiento. Se
           corrigen y se puntúan solos.
         </p>
-        <TemplatePicker pending={pending} onPick={onApplyTemplate} />
+        <TemplatePicker
+          pending={pending}
+          onPick={onApplyTemplate}
+          onPickRole={onApplyRole}
+        />
       </div>
 
       <div className="card p-5">

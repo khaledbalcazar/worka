@@ -3,7 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { TRIAL_DAYS, getMyEvaluarAccess } from "@/lib/evaluar";
-import { LIKERT_LABELS, getTemplate } from "@/lib/evaluar/templates";
+import {
+  LIKERT_LABELS,
+  getRoleTemplate,
+  getTemplate,
+} from "@/lib/evaluar/templates";
 import { emailEnabled, emailLayout, sendEmail } from "@/lib/email";
 import { SITE_URL } from "@/lib/supabase/config";
 
@@ -176,6 +180,10 @@ export async function updateProcess(
     closing_message?: string;
     job_id?: string | null;
     status?: "borrador" | "activo" | "cerrado";
+    theme?: string;
+    brand_color?: string | null;
+    use_company_brand?: boolean;
+    deadline_at?: string | null;
   }
 ): Promise<Result> {
   const { supabase, user } = await requireCompany();
@@ -521,6 +529,221 @@ export async function moveStage(
       .eq("id", reordered[pos].id);
   }
 
+  revalidatePath(`/evaluar/app/procesos/${processId}`);
+  return { ok: true };
+}
+
+// Arma un proceso entero a partir de un rubro: filtro de requisitos propio
+// del puesto + los tests que correspondan, en orden.
+export async function applyRoleTemplate(
+  processId: string,
+  roleKey: string
+): Promise<Result> {
+  const { supabase } = await requireCompany();
+  if (!supabase) return DEMO;
+  const blocked = await requireActiveAccount();
+  if (blocked) return { ok: false, error: blocked };
+
+  const role = getRoleTemplate(roleKey);
+  if (!role) return { ok: false, error: "Ese rubro no existe." };
+
+  const { count } = await supabase
+    .from("evaluar_stages")
+    .select("id", { count: "exact", head: true })
+    .eq("process_id", processId);
+  let position = count ?? 0;
+
+  // 1) Etapa de filtro, con las preguntas propias del puesto.
+  const { data: stage, error: stageError } = await supabase
+    .from("evaluar_stages")
+    .insert({
+      process_id: processId,
+      title: role.screening.title,
+      description: `Requisitos y criterio para ${role.name}.`,
+      minutes: role.screening.minutes,
+      position: position++,
+      template_key: `rubro_${role.key}`,
+    })
+    .select("id")
+    .single();
+
+  if (stageError || !stage) {
+    console.error("applyRoleTemplate stage:", stageError);
+    return { ok: false, error: "No pudimos armar el proceso." };
+  }
+
+  const stageId = (stage as { id: string }).id;
+  const { error: qError } = await supabase.from("evaluar_questions").insert(
+    role.screening.questions.map((q, i) => ({
+      stage_id: stageId,
+      position: i,
+      kind: q.kind,
+      text: q.text,
+      options: q.kind === "likert" ? LIKERT_LABELS : (q.options ?? []),
+      correct: q.correct ?? null,
+      option_scores: q.optionScores ?? null,
+      dimension: q.dimension ?? null,
+      reverse: q.reverse ?? false,
+      weight: q.weight ?? 1,
+      knockout: false,
+    }))
+  );
+  if (qError) {
+    await supabase.from("evaluar_stages").delete().eq("id", stageId);
+    return { ok: false, error: "No pudimos cargar las preguntas del filtro." };
+  }
+
+  // 2) Los tests del catálogo que correspondan al puesto.
+  for (const key of role.stages) {
+    const r = await applyTemplate(processId, key);
+    if (!r.ok) return r;
+  }
+
+  revalidatePath(`/evaluar/app/procesos/${processId}`);
+  return { ok: true };
+}
+
+// ── Borrador y datos del candidato ─────────────────────────────
+
+// Guarda lo respondido sin corregir ni avanzar. Se llama a cada respuesta:
+// antes, si se cortaba el internet en la pregunta 20 de 25, se perdían las 20.
+export async function saveDraft(
+  token: string,
+  answers: Record<string, unknown>
+): Promise<Result> {
+  const supabase = await getServerClient();
+  if (!supabase) return { ok: true };
+  const { error } = await supabase.rpc("evaluar_save_draft", {
+    p_token: token,
+    p_answers: answers,
+  });
+  if (error) return { ok: false, error: "No pudimos guardar el borrador." };
+  return { ok: true };
+}
+
+export async function saveParticipantProfile(
+  token: string,
+  input: { email?: string; phone?: string; city?: string }
+): Promise<Result> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const { error } = await supabase.rpc("evaluar_save_profile", {
+    p_token: token,
+    p_email: input.email ?? "",
+    p_phone: input.phone ?? "",
+    p_city: input.city ?? "",
+  });
+  if (error) return { ok: false, error: "No pudimos guardar tus datos." };
+  revalidatePath(`/evaluar/e/${token}`);
+  return { ok: true };
+}
+
+// Subida del CV de un candidato invitado, que no tiene cuenta de Worka y por
+// lo tanto no puede escribir en Storage con su propia sesión. Se usa el
+// cliente de servicio; si no está configurado, se avisa en vez de fallar raro.
+export async function uploadParticipantCv(
+  token: string,
+  formData: FormData
+): Promise<Result> {
+  const file = formData.get("cv");
+  if (!(file instanceof File) || file.size === 0)
+    return { ok: false, error: "Elegí un archivo." };
+  if (file.size > 5 * 1024 * 1024)
+    return { ok: false, error: "El archivo no puede pasar de 5 MB." };
+  if (file.type !== "application/pdf")
+    return { ok: false, error: "Subí tu CV en PDF." };
+
+  const { getAdminClient } = await import("@/lib/supabase/admin");
+  const admin = getAdminClient();
+  if (!admin)
+    return {
+      ok: false,
+      error:
+        "La subida de archivos no está habilitada. Escribile a la empresa para mandarle tu CV.",
+    };
+
+  const { data: participant } = await admin
+    .from("evaluar_participants")
+    .select("id")
+    .eq("token", token)
+    .maybeSingle();
+  if (!participant) return { ok: false, error: "Enlace inválido." };
+
+  const id = (participant as { id: string }).id;
+  const path = `evaluar/${id}.pdf`;
+  const { error } = await admin.storage
+    .from("cvs")
+    .upload(path, file, { upsert: true, contentType: "application/pdf" });
+
+  if (error) {
+    console.error("uploadParticipantCv:", error);
+    return { ok: false, error: "No pudimos subir el archivo." };
+  }
+
+  await admin
+    .from("evaluar_participants")
+    .update({ cv_url: path })
+    .eq("id", id);
+
+  revalidatePath(`/evaluar/e/${token}`);
+  return { ok: true };
+}
+
+// ── Equipo evaluador ───────────────────────────────────────────
+
+export async function addProcessMember(
+  processId: string,
+  email: string
+): Promise<Result> {
+  const { supabase, user } = await requireCompany();
+  if (!supabase) return DEMO;
+  if (!user) return { ok: false, error: "Iniciá sesión como empresa." };
+  const blocked = await requireActiveAccount();
+  if (blocked) return { ok: false, error: blocked };
+
+  const limpio = email.trim().toLowerCase();
+  if (!limpio) return { ok: false, error: "Escribí el email." };
+
+  // El email vive en auth.users, no en profiles: lo resuelve una función con
+  // permisos elevados que solo responde a quien ya tiene procesos propios.
+  const { data: userId } = await supabase.rpc("fn_user_id_by_email", {
+    p_email: limpio,
+  });
+  if (!userId)
+    return {
+      ok: false,
+      error:
+        "Esa persona todavía no tiene cuenta en Worka. Que se registre con ese email y volvé a intentar.",
+    };
+  if (userId === user.id)
+    return { ok: false, error: "Ya sos el dueño de este proceso." };
+
+  const { error } = await supabase
+    .from("evaluar_process_members")
+    .insert({ process_id: processId, user_id: userId as string });
+
+  if (error && error.code !== "23505") {
+    console.error("addProcessMember:", error);
+    return { ok: false, error: "No pudimos sumar a esa persona." };
+  }
+  revalidatePath(`/evaluar/app/procesos/${processId}`);
+  return { ok: true };
+}
+
+export async function removeProcessMember(
+  processId: string,
+  memberId: string
+): Promise<Result> {
+  const { supabase } = await requireCompany();
+  if (!supabase) return DEMO;
+  const blocked = await requireActiveAccount();
+  if (blocked) return { ok: false, error: blocked };
+
+  const { error } = await supabase
+    .from("evaluar_process_members")
+    .delete()
+    .eq("id", memberId);
+  if (error) return { ok: false, error: "No pudimos quitar a esa persona." };
   revalidatePath(`/evaluar/app/procesos/${processId}`);
   return { ok: true };
 }

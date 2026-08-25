@@ -120,6 +120,38 @@ create policy ev_notes_team_write on evaluar_notes
     )
   );
 
+-- Buscar el id de un usuario por su email, para sumarlo al equipo evaluador.
+-- El email vive en auth.users y no en profiles, así que hace falta una función
+-- con permisos elevados.
+--
+-- Va acotada a quien realmente la necesita: solo responde si quien pregunta
+-- tiene al menos un proceso propio. Sin ese filtro, cualquier usuario logueado
+-- podría averiguar qué direcciones están registradas en Worka.
+create or replace function fn_user_id_by_email(p_email text)
+returns uuid
+language plpgsql stable security definer
+set search_path = public
+as $$
+declare
+  v_id uuid;
+begin
+  if not exists (
+    select 1 from evaluar_processes where company_id = auth.uid()
+  ) then
+    return null;
+  end if;
+
+  select id into v_id
+  from auth.users
+  where lower(email) = lower(trim(p_email))
+  limit 1;
+
+  return v_id;
+end;
+$$;
+
+grant execute on function fn_user_id_by_email(text) to authenticated;
+
 -- ============================================================
 -- Borrador del candidato
 --

@@ -4,7 +4,8 @@ import "server-only";
 // Si no hay RESEND_API_KEY, no rompe: devuelve false y el resto sigue igual
 // (las alertas in-app se entregan de todos modos).
 
-const FROM = process.env.EMAIL_FROM ?? "Worka <alertas@worka.com.py>";
+// El dominio tiene que estar verificado en Resend o el envío se rechaza.
+const FROM = process.env.EMAIL_FROM ?? "Worka <operaciones@worka.click>";
 
 export function emailEnabled(): boolean {
   return !!process.env.RESEND_API_KEY;

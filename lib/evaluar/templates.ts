@@ -405,3 +405,199 @@ export const ALL_DIMENSIONS: Record<string, TemplateDimension> =
   Object.fromEntries(
     TEMPLATES.flatMap((t) => t.dimensions).map((d) => [d.key, d])
   );
+
+// ── Plantillas por rubro ───────────────────────────────────────
+//
+// Un proceso entero ya armado para los puestos que más se buscan en Paraguay.
+// La empresa elige el rubro y le queda listo: la mayor parte del abandono al
+// armar un proceso pasa por tener que decidir qué medir desde cero.
+export type RoleTemplate = {
+  key: string;
+  name: string;
+  icon: string;
+  summary: string;
+  /** Instrumentos del catálogo, en orden. */
+  stages: string[];
+  /** Preguntas de filtro propias del puesto, como primera etapa. */
+  screening: {
+    title: string;
+    minutes: number;
+    questions: TemplateQuestion[];
+  };
+};
+
+// Atajo para las preguntas excluyentes de filtro: sí/no con respuesta correcta.
+function si(text: string, correcta: "Sí" | "No" = "Sí"): TemplateQuestion {
+  return {
+    text,
+    kind: "unica",
+    options: ["Sí", "No"],
+    correct: correcta,
+    weight: 1,
+  };
+}
+
+export const ROLE_TEMPLATES: RoleTemplate[] = [
+  {
+    key: "cajero",
+    name: "Cajero / a",
+    icon: "🧾",
+    summary:
+      "Filtro de experiencia y manejo de efectivo, razonamiento numérico y juicio situacional de mostrador.",
+    stages: ["razonamiento", "sjt_atencion"],
+    screening: {
+      title: "Requisitos del puesto",
+      minutes: 2,
+      questions: [
+        si("¿Tenés experiencia previa manejando caja o efectivo?"),
+        si("¿Podés trabajar los fines de semana o feriados?"),
+        si("¿Tenés disponibilidad para trabajar por turnos rotativos?"),
+        {
+          text: "Si al cerrar la caja te falta dinero, ¿qué hacés?",
+          kind: "unica",
+          dimension: "integridad",
+          options: [
+            "Lo informo enseguida y reviso los movimientos del día.",
+            "Pongo la diferencia de mi bolsillo y no digo nada.",
+            "Espero a ver si aparece mañana.",
+          ],
+          optionScores: {
+            "Lo informo enseguida y reviso los movimientos del día.": 3,
+            "Pongo la diferencia de mi bolsillo y no digo nada.": 1,
+            "Espero a ver si aparece mañana.": 0,
+          },
+        },
+      ],
+    },
+  },
+  {
+    key: "chofer",
+    name: "Chofer / repartidor",
+    icon: "🚚",
+    summary:
+      "Registro, categoría y antecedentes, más juicio situacional en ruta y atención al cliente.",
+    stages: ["sjt_atencion", "estilo_laboral"],
+    screening: {
+      title: "Requisitos del puesto",
+      minutes: 3,
+      questions: [
+        si("¿Tenés registro de conducir profesional vigente?"),
+        si("¿Tenés más de un año de experiencia conduciendo para trabajo?"),
+        si("¿Estás dispuesto/a a presentar tu certificado de antecedentes?"),
+        {
+          text: "Vas con el reparto y el cliente no está en la dirección. ¿Qué hacés?",
+          kind: "unica",
+          dimension: "resolucion",
+          options: [
+            "Lo llamo, espero unos minutos y aviso a la empresa antes de seguir.",
+            "Dejo el paquete con un vecino sin avisar.",
+            "Vuelvo con el paquete sin llamar a nadie.",
+          ],
+          optionScores: {
+            "Lo llamo, espero unos minutos y aviso a la empresa antes de seguir.": 3,
+            "Dejo el paquete con un vecino sin avisar.": 1,
+            "Vuelvo con el paquete sin llamar a nadie.": 0,
+          },
+        },
+      ],
+    },
+  },
+  {
+    key: "call_center",
+    name: "Call center / atención",
+    icon: "🎧",
+    summary:
+      "Disponibilidad horaria y manejo de reclamos, más personalidad y razonamiento verbal.",
+    stages: ["sjt_atencion", "big5"],
+    screening: {
+      title: "Requisitos del puesto",
+      minutes: 3,
+      questions: [
+        si("¿Tenés conexión estable a internet y un lugar tranquilo para trabajar?"),
+        si("¿Tenés experiencia atendiendo clientes por teléfono o chat?"),
+        {
+          text: "Un cliente repite el mismo reclamo por tercera vez y ya está enojado. ¿Qué hacés?",
+          kind: "unica",
+          dimension: "servicio",
+          options: [
+            "Le reconozco la molestia, le digo qué voy a hacer y le doy un plazo concreto.",
+            "Le repito la misma respuesta que le dieron antes.",
+            "Lo derivo a otra área para sacármelo de encima.",
+          ],
+          optionScores: {
+            "Le reconozco la molestia, le digo qué voy a hacer y le doy un plazo concreto.": 3,
+            "Le repito la misma respuesta que le dieron antes.": 1,
+            "Lo derivo a otra área para sacármelo de encima.": 0,
+          },
+        },
+      ],
+    },
+  },
+  {
+    key: "gastronomia",
+    name: "Gastronomía (mozo / cocina)",
+    icon: "🍽️",
+    summary:
+      "Disponibilidad, higiene y ritmo de servicio, más juicio situacional de salón.",
+    stages: ["sjt_atencion", "estilo_laboral"],
+    screening: {
+      title: "Requisitos del puesto",
+      minutes: 3,
+      questions: [
+        si("¿Tenés disponibilidad para trabajar de noche y los fines de semana?"),
+        si("¿Tenés carnet de salud vigente o podés tramitarlo?"),
+        si("¿Tenés experiencia previa en gastronomía?"),
+        {
+          text: "En pleno servicio se cae un plato y el salón está lleno. ¿Qué hacés?",
+          kind: "unica",
+          dimension: "resolucion",
+          options: [
+            "Aviso, limpio rápido para que nadie se lastime y sigo con las mesas.",
+            "Sigo atendiendo y lo limpio cuando baje el movimiento.",
+            "Busco al encargado y espero que me diga qué hacer.",
+          ],
+          optionScores: {
+            "Aviso, limpio rápido para que nadie se lastime y sigo con las mesas.": 3,
+            "Sigo atendiendo y lo limpio cuando baje el movimiento.": 0,
+            "Busco al encargado y espero que me diga qué hacer.": 1,
+          },
+        },
+      ],
+    },
+  },
+  {
+    key: "vendedor",
+    name: "Vendedor / a",
+    icon: "🛍️",
+    summary:
+      "Experiencia y movilidad, personalidad orientada a la venta y juicio situacional comercial.",
+    stages: ["big5", "sjt_atencion"],
+    screening: {
+      title: "Requisitos del puesto",
+      minutes: 3,
+      questions: [
+        si("¿Tenés experiencia en ventas con objetivos o metas?"),
+        si("¿Contás con movilidad propia?"),
+        {
+          text: "Un cliente duda y dice que lo va a pensar. ¿Qué hacés?",
+          kind: "unica",
+          dimension: "servicio",
+          options: [
+            "Le pregunto qué lo frena y le muestro una opción que se ajuste mejor.",
+            "Lo dejo ir sin decir nada.",
+            "Insisto con el mismo producto hasta que se decida.",
+          ],
+          optionScores: {
+            "Le pregunto qué lo frena y le muestro una opción que se ajuste mejor.": 3,
+            "Lo dejo ir sin decir nada.": 1,
+            "Insisto con el mismo producto hasta que se decida.": 0,
+          },
+        },
+      ],
+    },
+  },
+];
+
+export function getRoleTemplate(key: string): RoleTemplate | undefined {
+  return ROLE_TEMPLATES.find((r) => r.key === key);
+}

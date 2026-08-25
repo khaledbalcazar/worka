@@ -23,6 +23,10 @@ export type EvaluarProcess = {
   closing_message: string;
   status: "borrador" | "activo" | "cerrado";
   created_at: string;
+  theme?: string | null;
+  brand_color?: string | null;
+  use_company_brand?: boolean;
+  deadline_at?: string | null;
 };
 
 export type EvaluarStage = {
@@ -69,6 +73,8 @@ export type EvaluarParticipant = {
   source: "worka" | "invitado";
   status: ParticipantStatus;
   stage_index: number;
+  city?: string | null;
+  cv_url?: string | null;
   score: number | null;
   max_score: number | null;
   outcome_note: string | null;
@@ -147,10 +153,17 @@ export async function getMyProcesses(): Promise<ProcessRow[]> {
   }));
 }
 
+export type ProcessMember = {
+  id: string;
+  user_id: string;
+  created_at: string;
+};
+
 export type ProcessDetail = {
   process: EvaluarProcess & { job: { id: string; title: string } | null };
   stages: (EvaluarStage & { questions: EvaluarQuestion[] })[];
   participants: EvaluarParticipant[];
+  members: ProcessMember[];
 };
 
 export async function getProcessDetail(
@@ -169,7 +182,8 @@ export async function getProcessDetail(
     .maybeSingle();
   if (!process) return null;
 
-  const [{ data: stages }, { data: participants }] = await Promise.all([
+  const [{ data: stages }, { data: participants }, { data: members }] =
+    await Promise.all([
     supabase
       .from("evaluar_stages")
       .select("*, evaluar_questions(*)")
@@ -180,6 +194,10 @@ export async function getProcessDetail(
       .select("*")
       .eq("process_id", id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("evaluar_process_members")
+      .select("id, user_id, created_at")
+      .eq("process_id", id),
   ]);
 
   return {
@@ -193,6 +211,7 @@ export async function getProcessDetail(
       ),
     })),
     participants: (participants ?? []) as EvaluarParticipant[],
+    members: (members ?? []) as ProcessMember[],
   };
 }
 

@@ -2,18 +2,39 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Clock, Circle, TimerReset, XCircle } from "lucide-react";
-import { startEvaluation, submitStage } from "@/app/evaluar/actions";
+import {
+  CalendarClock,
+  CheckCircle2,
+  ChevronLeft,
+  Circle,
+  Clock,
+  FileUp,
+  TimerReset,
+  XCircle,
+} from "lucide-react";
+import {
+  saveDraft,
+  saveParticipantProfile,
+  startEvaluation,
+  submitStage,
+  uploadParticipantCv,
+} from "@/app/evaluar/actions";
 import { celebrate } from "@/lib/celebrate";
+import { getTheme, readableOn } from "@/lib/evaluar/themes";
 
 export type Evaluation = {
   participant: {
     id: string;
     full_name: string;
+    email: string | null;
+    phone: string | null;
+    city: string | null;
+    cv_url: string | null;
     status: string;
     stage_index: number;
     score: number | null;
     max_score: number | null;
+    draft: Record<string, unknown> | null;
     outcome_note: string | null;
     completed_at: string | null;
   };
@@ -24,6 +45,10 @@ export type Evaluation = {
     closing_message: string;
     status: string;
     company: string | null;
+    logo: string | null;
+    theme: string | null;
+    brand_color: string | null;
+    deadline_at: string | null;
   };
   stages: {
     id: string;
@@ -45,13 +70,25 @@ export type Evaluation = {
 export default function CandidateRunner({
   token,
   data,
+  vencido,
 }: {
   token: string;
   data: Evaluation;
+  /** El plazo lo evalua el servidor: la hora del navegador es del usuario. */
+  vencido: boolean;
 }) {
   const router = useRouter();
   const { participant, process, stages, events } = data;
-  const [answers, setAnswers] = useState<Record<string, unknown>>({});
+
+  const theme = getTheme(process.theme);
+  const accent = process.brand_color?.trim() || theme.accent;
+  const onAccent = readableOn(accent);
+
+  // El borrador vuelve del servidor: quien cerró la pestaña en la pregunta 20
+  // la reencuentra donde la dejó.
+  const [answers, setAnswers] = useState<Record<string, unknown>>(
+    (participant.draft as Record<string, unknown>) ?? {}
+  );
   const [error, setError] = useState<string | null>(null);
   const [started, setStarted] = useState(participant.status !== "invitado");
   const [pending, startTransition] = useTransition();
@@ -62,22 +99,19 @@ export default function CandidateRunner({
     participant.status === "contratado";
   const stage = stages[participant.stage_index];
 
-  const answered = stage?.questions.every(
-    (q) => answers[q.id] !== undefined && answers[q.id] !== ""
-  );
+  // Una pregunta por pantalla: en el celular una lista de 25 ítems desalienta
+  // antes de empezar.
+  const [qIndex, setQIndex] = useState(0);
+  const question = stage?.questions[qIndex];
+  const respondida =
+    question !== undefined &&
+    answers[question.id] !== undefined &&
+    answers[question.id] !== "";
+  const esUltima = stage ? qIndex >= stage.questions.length - 1 : false;
 
-  // Cronómetro. Solo corre en las etapas marcadas como cronometradas (los
-  // tests con respuesta correcta): sin límite, medir razonamiento se vuelve
-  // medir paciencia, porque cualquiera puede buscar la respuesta.
-  //
-  // El tiempo transcurrido se manda igual en TODAS las etapas: es el dato que
-  // después distingue a quien resolvió de quien tocó cualquier cosa.
-  // El momento de inicio va en una ref y no en estado: no se dibuja en
-  // pantalla, solo se lee al enviar, y como estado obligaría a un render extra.
+
   const startedAtRef = useRef<number | null>(null);
   const [left, setLeft] = useState<number | null>(null);
-  // El envío se guarda en una ref para que el temporizador pueda dispararlo
-  // sin volver a crear el intervalo en cada tecla que toca la persona.
   const enviarRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
@@ -93,8 +127,6 @@ export default function CandidateRunner({
       if (queda <= 0) {
         clearInterval(id);
         setLeft(0);
-        // Se acabó el tiempo: se entrega lo que haya. Congelar la pantalla
-        // sería perder todo lo que la persona ya respondió.
         enviarRef.current?.();
       } else {
         setLeft(queda);
@@ -102,6 +134,15 @@ export default function CandidateRunner({
     }, 1000);
     return () => clearInterval(id);
   }, [started, stage]);
+
+  function responder(value: unknown) {
+    if (!question) return;
+    const next = { ...answers, [question.id]: value };
+    setAnswers(next);
+    // Se guarda en el momento, no al final de la etapa: si se corta la
+    // conexión no se pierde lo ya contestado.
+    void saveDraft(token, next);
+  }
 
   function comenzar() {
     startTransition(async () => {
@@ -124,197 +165,249 @@ export default function CandidateRunner({
         return;
       }
       setAnswers({});
+      setQIndex(0);
       if (result.status === "completado") celebrate();
       router.refresh();
     });
   }
-  // La ref se refresca después de cada render para que el temporizador dispare
-  // siempre la última versión de `enviar`, con las respuestas actuales.
   useEffect(() => {
     enviarRef.current = enviar;
   });
 
   return (
-    <div className="space-y-4">
-      {/* Encabezado: quién evalúa y para qué. */}
-      <div className="card p-5 animate-rise">
-        <p className="text-xs text-slate-400 uppercase tracking-wide">
-          {process.company ?? "Empresa"}
-        </p>
-        <h1 className="text-xl font-bold text-primary-dark mt-0.5">
-          {process.title}
-        </h1>
-        {process.description && (
-          <p className="text-sm text-slate-600 mt-2">{process.description}</p>
-        )}
-        <p className="text-sm text-slate-500 mt-3">
-          Hola{participant.full_name ? `, ${participant.full_name}` : ""}. Esta
-          es tu evaluación.
-        </p>
-      </div>
-
-      {/* Mapa de etapas: se ve el proceso entero desde el principio, no de a
-          una pantalla por vez. Saber cuánto falta es lo que evita abandonar. */}
-      <div className="card p-5">
-        <h2 className="font-semibold text-primary-dark text-sm">
-          Tu proceso, paso a paso
-        </h2>
-        <ol className="mt-3 space-y-2.5">
-          {stages.map((s, i) => {
-            const hecha = i < participant.stage_index;
-            const actual = i === participant.stage_index && !cerrado;
-            return (
-              <li key={s.id} className="flex items-start gap-3">
-                <span className="shrink-0 mt-0.5">
-                  {hecha ? (
-                    <CheckCircle2 size={18} className="text-success" />
-                  ) : actual ? (
-                    <Circle size={18} className="text-primary fill-blue-100" />
-                  ) : (
-                    <Circle size={18} className="text-slate-300" />
-                  )}
-                </span>
-                <div className="min-w-0">
-                  <p
-                    className={`text-sm ${
-                      hecha
-                        ? "text-slate-400 line-through"
-                        : actual
-                          ? "font-semibold text-primary-dark"
-                          : "text-slate-600"
-                    }`}
-                  >
-                    {s.title}
-                  </p>
-                  <p className="text-xs text-slate-400 flex items-center gap-1">
-                    <Clock size={11} /> {s.minutes} min · {s.questions.length}{" "}
-                    {s.questions.length === 1 ? "pregunta" : "preguntas"}
-                  </p>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
-      </div>
-
-      {/* Resultado cerrado */}
-      {cerrado && (
-        <div
-          className={`card p-6 text-center animate-rise ${
-            participant.status === "descartado"
-              ? "bg-slate-50"
-              : "bg-emerald-50 border-emerald-200"
-          }`}
-        >
-          {participant.status === "descartado" ? (
-            <XCircle size={32} className="text-slate-400 mx-auto" />
+    <div className={`min-h-screen ${theme.page}`}>
+      {/* Cabecera con la marca de la empresa: el candidato tiene que sentir
+          que está con el empleador, no en una plataforma ajena. */}
+      <header className={theme.header}>
+        <div className="max-w-2xl mx-auto px-4 h-16 flex items-center gap-3">
+          {process.logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={process.logo}
+              alt={process.company ?? ""}
+              className="w-10 h-10 rounded-xl object-contain bg-white shrink-0"
+            />
           ) : (
-            <CheckCircle2 size={32} className="text-success mx-auto" />
+            <span
+              className="w-10 h-10 rounded-xl grid place-items-center font-bold shrink-0"
+              style={{ background: accent, color: onAccent }}
+            >
+              {(process.company ?? "W")[0]?.toUpperCase()}
+            </span>
           )}
-          <p className="font-bold text-primary-dark mt-2">
-            {participant.status === "descartado"
-              ? "Tu proceso terminó acá"
-              : participant.status === "contratado"
-                ? "¡Fuiste seleccionado/a!"
-                : "Completaste la evaluación"}
-          </p>
-          <p className="text-sm text-slate-600 mt-1.5">
-            {participant.outcome_note ||
-              process.closing_message ||
-              "La empresa está revisando. Te vamos a avisar por acá mismo."}
-          </p>
-          {participant.max_score ? (
-            <p className="text-xs text-slate-500 mt-3">
-              Tu puntaje: {participant.score}/{participant.max_score}
+          <div className="min-w-0">
+            <p className="font-semibold truncate">
+              {process.company ?? "Evaluación"}
             </p>
-          ) : null}
+            <p className="text-xs opacity-70 truncate">{process.title}</p>
+          </div>
         </div>
-      )}
+      </header>
 
-      {/* Etapa en curso */}
-      {!cerrado && stage && (
-        <div className="card p-5">
-          {!started ? (
-            <div className="text-center py-2">
-              <p className="font-semibold text-primary-dark">
-                Cuando quieras, empezamos
-              </p>
-              <p className="text-sm text-slate-500 mt-1">
-                La primera etapa te va a llevar unos {stage.minutes} minutos.
-                Podés cortar y seguir después: se guarda lo que ya respondiste.
-              </p>
-              <button
-                onClick={comenzar}
-                disabled={pending}
-                className="btn-primary press w-full mt-4 text-base py-3"
-              >
-                {pending ? "Abriendo…" : "Empezar evaluación"}
-              </button>
-            </div>
-          ) : (
-            <>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                    Etapa {participant.stage_index + 1} de {stages.length}
-                  </p>
-                  <h2 className="font-bold text-primary-dark">{stage.title}</h2>
-                </div>
-                {/* Cuenta regresiva. Se pone en rojo en el último minuto: si
-                    el tiempo se acaba se entrega solo lo respondido. */}
-                {left !== null && (
-                  <span
-                    className={`chip shrink-0 font-mono font-semibold ${
-                      left <= 60
-                        ? "bg-red-50 text-danger animate-beat"
-                        : "bg-slate-100 text-slate-600"
-                    }`}
-                  >
-                    <TimerReset size={13} />
-                    {String(Math.floor(left / 60)).padStart(2, "0")}:
-                    {String(left % 60).padStart(2, "0")}
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+        {/* Aviso de plazo */}
+        {process.deadline_at && !cerrado && (
+          <p
+            className={`text-sm rounded-2xl px-4 py-2.5 flex items-center gap-2 ${
+              vencido
+                ? "bg-red-50 text-danger"
+                : "bg-white border border-slate-200 " + theme.muted
+            }`}
+          >
+            <CalendarClock size={15} className="shrink-0" />
+            {vencido
+              ? "El plazo para completar esta evaluación ya venció."
+              : `Tenés tiempo hasta el ${new Date(process.deadline_at).toLocaleDateString("es-PY", { day: "numeric", month: "long" })}.`}
+          </p>
+        )}
+
+        {/* Mapa de etapas */}
+        <div className={`${theme.card} p-5`}>
+          <h1 className={`font-bold ${theme.heading}`}>
+            Hola{participant.full_name ? `, ${participant.full_name}` : ""}
+          </h1>
+          {process.description && (
+            <p className={`text-sm mt-1 ${theme.muted}`}>
+              {process.description}
+            </p>
+          )}
+
+          <ol className="mt-4 space-y-2.5">
+            {stages.map((s, i) => {
+              const hecha = i < participant.stage_index;
+              const actual = i === participant.stage_index && !cerrado;
+              return (
+                <li key={s.id} className="flex items-start gap-3">
+                  <span className="shrink-0 mt-0.5">
+                    {hecha ? (
+                      <CheckCircle2 size={18} style={{ color: accent }} />
+                    ) : (
+                      <Circle
+                        size={18}
+                        className={actual ? "" : "text-slate-300"}
+                        style={actual ? { color: accent } : undefined}
+                      />
+                    )}
                   </span>
-                )}
-              </div>
-              {stage.description && (
-                <p className="text-sm text-slate-600 mt-1">
-                  {stage.description}
-                </p>
-              )}
+                  <div className="min-w-0">
+                    <p
+                      className={`text-sm ${
+                        hecha
+                          ? "line-through " + theme.muted
+                          : actual
+                            ? `font-semibold ${theme.heading}`
+                            : theme.muted
+                      }`}
+                    >
+                      {s.title}
+                    </p>
+                    <p className={`text-xs flex items-center gap-1 ${theme.muted}`}>
+                      <Clock size={11} /> {s.minutes} min · {s.questions.length}{" "}
+                      {s.questions.length === 1 ? "pregunta" : "preguntas"}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
 
-              <div className="space-y-5 mt-5">
-                {stage.questions.map((q, i) => (
-                  <div key={q.id}>
-                    <p className="text-sm font-medium text-slate-800">
-                      {i + 1}. {q.text}
+        {/* Resultado cerrado */}
+        {cerrado && (
+          <div className={`${theme.card} p-6 text-center animate-rise`}>
+            {participant.status === "descartado" ? (
+              <XCircle size={32} className="text-slate-400 mx-auto" />
+            ) : (
+              <CheckCircle2 size={32} style={{ color: accent }} className="mx-auto" />
+            )}
+            <p className={`font-bold mt-2 ${theme.heading}`}>
+              {participant.status === "descartado"
+                ? "Tu proceso terminó acá"
+                : participant.status === "contratado"
+                  ? "¡Fuiste seleccionado/a!"
+                  : "Completaste la evaluación"}
+            </p>
+            <p className={`text-sm mt-1.5 ${theme.muted}`}>
+              {participant.outcome_note ||
+                process.closing_message ||
+                "La empresa está revisando. Te vamos a avisar por acá mismo."}
+            </p>
+          </div>
+        )}
+
+        {/* Datos y CV: el invitado no tiene cuenta de Worka, así que sus datos
+            no salen de ningún lado si no se los pedimos. */}
+        {!cerrado && started && (
+          <CandidateData token={token} participant={participant} theme={theme} />
+        )}
+
+        {/* Etapa en curso */}
+        {!cerrado && stage && !vencido && (
+          <div className={`${theme.card} p-5`}>
+            {!started ? (
+              <div className="text-center py-2">
+                <p className={`font-semibold ${theme.heading}`}>
+                  Cuando quieras, empezamos
+                </p>
+                <p className={`text-sm mt-1 ${theme.muted}`}>
+                  La primera etapa te va a llevar unos {stage.minutes} minutos.
+                  Se guarda cada respuesta, así que podés cortar y seguir
+                  después.
+                </p>
+                <button
+                  onClick={comenzar}
+                  disabled={pending}
+                  className="w-full mt-4 text-base py-3 rounded-xl font-semibold press"
+                  style={{ background: accent, color: onAccent }}
+                >
+                  {pending ? "Abriendo…" : "Empezar evaluación"}
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className={`text-[11px] font-semibold uppercase tracking-wide ${theme.muted}`}>
+                      Etapa {participant.stage_index + 1} de {stages.length}
+                    </p>
+                    <h2 className={`font-bold ${theme.heading}`}>
+                      {stage.title}
+                    </h2>
+                  </div>
+                  {left !== null && (
+                    <span
+                      className={`chip shrink-0 font-mono font-semibold ${
+                        left <= 60
+                          ? "bg-red-50 text-danger animate-beat"
+                          : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      <TimerReset size={13} />
+                      {String(Math.floor(left / 60)).padStart(2, "0")}:
+                      {String(left % 60).padStart(2, "0")}
+                    </span>
+                  )}
+                </div>
+
+                {/* Progreso dentro de la etapa */}
+                <div className="mt-4">
+                  <div className="flex justify-between text-xs mb-1.5">
+                    <span className={theme.muted}>
+                      Pregunta {qIndex + 1} de {stage.questions.length}
+                    </span>
+                    <span className={theme.muted}>
+                      {Math.round(((qIndex + 1) / stage.questions.length) * 100)}
+                      %
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-slate-200/70 overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{
+                        width: `${((qIndex + 1) / stage.questions.length) * 100}%`,
+                        background: accent,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {question && (
+                  <div key={question.id} className="mt-5 animate-rise">
+                    <p className={`text-base font-medium ${theme.heading}`}>
+                      {question.text}
                     </p>
 
-                    {/* Escala de acuerdo. Se envía el número, no el texto:
-                        la corrección del lado del servidor necesita el valor
-                        para poder dar vuelta los ítems inversos. */}
-                    {q.kind === "likert" && (
-                      <div className="space-y-2 mt-2">
-                        {q.options.map((o, oi) => {
-                          const valor = oi + 1;
-                          const elegido = answers[q.id] === valor;
+                    {(question.kind === "likert" ||
+                      question.kind === "unica" ||
+                      question.kind === "multiple") && (
+                      <div className="space-y-2 mt-3">
+                        {question.options.map((o, oi) => {
+                          const valor =
+                            question.kind === "likert" ? oi + 1 : o;
+                          const elegido = answers[question.id] === valor;
                           return (
                             <button
                               key={o}
-                              onClick={() =>
-                                setAnswers((a) => ({ ...a, [q.id]: valor }))
-                              }
-                              className={`w-full text-left text-sm px-4 py-2.5 rounded-xl border press transition-colors flex items-center gap-3 ${
+                              onClick={() => responder(valor)}
+                              className="w-full text-left text-sm px-4 py-3 rounded-xl border press transition-colors flex items-center gap-3"
+                              style={
                                 elegido
-                                  ? "bg-primary text-white border-primary"
-                                  : "bg-white border-slate-200 text-slate-700"
-                              }`}
+                                  ? {
+                                      background: accent,
+                                      color: onAccent,
+                                      borderColor: accent,
+                                    }
+                                  : { borderColor: "#e2e8f0" }
+                              }
                             >
                               <span
-                                className={`w-5 h-5 rounded-full border-2 shrink-0 ${
-                                  elegido
-                                    ? "border-white bg-white/30"
-                                    : "border-slate-300"
-                                }`}
+                                className="w-5 h-5 rounded-full border-2 shrink-0"
+                                style={{
+                                  borderColor: elegido ? onAccent : "#cbd5e1",
+                                  background: elegido
+                                    ? "rgba(255,255,255,.35)"
+                                    : "transparent",
+                                }}
                               />
                               {o}
                             </button>
@@ -323,135 +416,248 @@ export default function CandidateRunner({
                       </div>
                     )}
 
-                    {(q.kind === "unica" || q.kind === "multiple") && (
-                      <div className="space-y-2 mt-2">
-                        {q.options.map((o) => {
-                          const elegido = answers[q.id] === o;
+                    {question.kind === "texto" && (
+                      <textarea
+                        className="input min-h-28 mt-3"
+                        placeholder="Escribí tu respuesta"
+                        value={(answers[question.id] as string) ?? ""}
+                        onChange={(e) => responder(e.target.value)}
+                      />
+                    )}
+
+                    {question.kind === "escala" && (
+                      <div className="flex gap-2 mt-3">
+                        {[1, 2, 3, 4, 5].map((n) => {
+                          const elegido = answers[question.id] === n;
                           return (
                             <button
-                              key={o}
-                              onClick={() =>
-                                setAnswers((a) => ({ ...a, [q.id]: o }))
-                              }
-                              className={`w-full text-left text-sm px-4 py-3 rounded-xl border press transition-colors ${
+                              key={n}
+                              onClick={() => responder(n)}
+                              className="flex-1 min-h-12 rounded-xl border font-semibold press"
+                              style={
                                 elegido
-                                  ? "bg-primary text-white border-primary"
-                                  : "bg-white border-slate-200 text-slate-700"
-                              }`}
+                                  ? {
+                                      background: accent,
+                                      color: onAccent,
+                                      borderColor: accent,
+                                    }
+                                  : { borderColor: "#e2e8f0" }
+                              }
                             >
-                              {o}
+                              {n}
                             </button>
                           );
                         })}
                       </div>
                     )}
 
-                    {q.kind === "texto" && (
-                      <textarea
-                        className="input min-h-24 mt-2"
-                        placeholder="Escribí tu respuesta"
-                        value={(answers[q.id] as string) ?? ""}
-                        onChange={(e) =>
-                          setAnswers((a) => ({ ...a, [q.id]: e.target.value }))
-                        }
-                      />
-                    )}
-
-                    {q.kind === "escala" && (
-                      <div className="flex gap-2 mt-2">
-                        {[1, 2, 3, 4, 5].map((n) => (
-                          <button
-                            key={n}
-                            onClick={() =>
-                              setAnswers((a) => ({ ...a, [q.id]: n }))
-                            }
-                            className={`flex-1 min-h-11 rounded-xl border font-semibold press ${
-                              answers[q.id] === n
-                                ? "bg-primary text-white border-primary"
-                                : "bg-white border-slate-200 text-slate-600"
-                            }`}
-                          >
-                            {n}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {q.kind === "numero" && (
+                    {question.kind === "numero" && (
                       <input
                         type="number"
-                        className="input mt-2"
-                        value={(answers[q.id] as number) ?? ""}
-                        onChange={(e) =>
-                          setAnswers((a) => ({
-                            ...a,
-                            [q.id]: Number(e.target.value),
-                          }))
-                        }
+                        className="input mt-3"
+                        value={(answers[question.id] as number) ?? ""}
+                        onChange={(e) => responder(Number(e.target.value))}
                       />
                     )}
                   </div>
-                ))}
-              </div>
+                )}
 
-              {error && (
-                <p className="text-sm text-danger bg-red-50 rounded-xl px-4 py-3 mt-4">
-                  {error}
-                </p>
-              )}
+                {error && (
+                  <p className="text-sm text-danger bg-red-50 rounded-xl px-4 py-3 mt-4">
+                    {error}
+                  </p>
+                )}
 
-              <button
-                onClick={enviar}
-                disabled={pending || !answered}
-                className="btn-primary press w-full mt-5 text-base py-3 disabled:opacity-40"
-              >
-                {pending
-                  ? "Enviando…"
-                  : participant.stage_index + 1 >= stages.length
-                    ? "Terminar evaluación"
-                    : "Siguiente etapa"}
-              </button>
-              {!answered && (
-                <p className="text-xs text-slate-400 text-center mt-2">
-                  Respondé todas las preguntas para continuar.
-                </p>
-              )}
-            </>
-          )}
-        </div>
-      )}
+                <div className="flex gap-2 mt-5">
+                  {qIndex > 0 && (
+                    <button
+                      onClick={() => setQIndex((i) => i - 1)}
+                      className="btn-secondary press shrink-0"
+                      aria-label="Pregunta anterior"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() =>
+                      esUltima ? enviar() : setQIndex((i) => i + 1)
+                    }
+                    disabled={pending || !respondida}
+                    className="flex-1 text-base py-3 rounded-xl font-semibold press disabled:opacity-40"
+                    style={{ background: accent, color: onAccent }}
+                  >
+                    {pending
+                      ? "Enviando…"
+                      : esUltima
+                        ? participant.stage_index + 1 >= stages.length
+                          ? "Terminar evaluación"
+                          : "Terminar etapa"
+                        : "Siguiente"}
+                  </button>
+                </div>
+                {!respondida && (
+                  <p className={`text-xs text-center mt-2 ${theme.muted}`}>
+                    Elegí una respuesta para continuar.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
-      {/* Línea de tiempo: la transparencia hecha pantalla. */}
-      {events.length > 0 && (
-        <div className="card p-5">
-          <h2 className="font-semibold text-primary-dark text-sm">
-            Lo que pasó hasta ahora
-          </h2>
-          <ol className="mt-3 space-y-2">
-            {events.map((e, i) => (
-              <li key={i} className="flex items-start gap-2.5 text-sm">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 mt-1.5" />
-                <span className="min-w-0">
-                  <span className="text-slate-700">{e.message}</span>
-                  <span className="block text-xs text-slate-400">
-                    {new Date(e.at).toLocaleDateString("es-PY", {
-                      day: "numeric",
-                      month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
+        {/* Línea de tiempo */}
+        {events.length > 0 && (
+          <div className={`${theme.card} p-5`}>
+            <h2 className={`font-semibold text-sm ${theme.heading}`}>
+              Lo que pasó hasta ahora
+            </h2>
+            <ol className="mt-3 space-y-2">
+              {events.map((e, i) => (
+                <li key={i} className="flex items-start gap-2.5 text-sm">
+                  <span
+                    className="w-1.5 h-1.5 rounded-full shrink-0 mt-1.5"
+                    style={{ background: accent }}
+                  />
+                  <span className="min-w-0">
+                    <span className={theme.heading}>{e.message}</span>
+                    <span className={`block text-xs ${theme.muted}`}>
+                      {new Date(e.at).toLocaleDateString("es-PY", {
+                        day: "numeric",
+                        month: "short",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
                   </span>
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
 
-      <p className="text-xs text-slate-400 text-center">
-        Guardá este enlace: es tu acceso a esta evaluación. No hace falta crear
-        ninguna cuenta.
-      </p>
+        <p className={`text-xs text-center ${theme.muted}`}>
+          Guardá este enlace: es tu acceso a esta evaluación. Con tecnología de
+          Worka.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Datos de contacto y CV ─────────────────────────────────────
+
+function CandidateData({
+  token,
+  participant,
+  theme,
+}: {
+  token: string;
+  participant: Evaluation["participant"];
+  theme: ReturnType<typeof getTheme>;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState(participant.email ?? "");
+  const [phone, setPhone] = useState(participant.phone ?? "");
+  const [city, setCity] = useState(participant.city ?? "");
+  const [msg, setMsg] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const completo = !!participant.email && !!participant.phone;
+
+  function guardar() {
+    setMsg(null);
+    startTransition(async () => {
+      const r = await saveParticipantProfile(token, { email, phone, city });
+      setMsg(r.ok ? "Datos guardados." : (r.error ?? "No pudimos guardar."));
+      if (r.ok) router.refresh();
+    });
+  }
+
+  function subirCv(file: File | undefined) {
+    if (!file) return;
+    setMsg(null);
+    const fd = new FormData();
+    fd.append("cv", file);
+    startTransition(async () => {
+      const r = await uploadParticipantCv(token, fd);
+      setMsg(r.ok ? "CV subido." : (r.error ?? "No pudimos subir el archivo."));
+      if (r.ok) router.refresh();
+    });
+  }
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className={`${theme.card} p-4 w-full text-left press flex items-center gap-3`}
+      >
+        <FileUp size={18} className={theme.muted} />
+        <span className="min-w-0">
+          <span className={`block text-sm font-medium ${theme.heading}`}>
+            {completo ? "Tus datos y tu CV" : "Completá tus datos de contacto"}
+          </span>
+          <span className={`block text-xs ${theme.muted}`}>
+            {completo
+              ? "Tocá para revisarlos o adjuntar tu CV."
+              : "Así la empresa puede contactarte si avanzás."}
+          </span>
+        </span>
+      </button>
+    );
+  }
+
+  return (
+    <div className={`${theme.card} p-5 space-y-3 animate-rise`}>
+      <h2 className={`font-semibold text-sm ${theme.heading}`}>
+        Tus datos de contacto
+      </h2>
+      <input
+        className="input"
+        type="email"
+        placeholder="tu@email.com"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+      />
+      <input
+        className="input"
+        type="tel"
+        placeholder="WhatsApp"
+        value={phone}
+        onChange={(e) => setPhone(e.target.value)}
+      />
+      <input
+        className="input"
+        placeholder="Ciudad"
+        value={city}
+        onChange={(e) => setCity(e.target.value)}
+      />
+
+      <label className="btn-secondary press w-full cursor-pointer">
+        <FileUp size={15} />
+        {participant.cv_url ? "Reemplazar mi CV (PDF)" : "Adjuntar mi CV (PDF)"}
+        <input
+          type="file"
+          accept="application/pdf"
+          className="hidden"
+          onChange={(e) => subirCv(e.target.files?.[0])}
+        />
+      </label>
+
+      {msg && <p className={`text-sm ${theme.muted}`}>{msg}</p>}
+
+      <div className="flex gap-2">
+        <button onClick={() => setOpen(false)} className="btn-secondary press flex-1">
+          Cerrar
+        </button>
+        <button
+          onClick={guardar}
+          disabled={pending}
+          className="btn-primary press flex-[2]"
+        >
+          {pending ? "Guardando…" : "Guardar datos"}
+        </button>
+      </div>
     </div>
   );
 }

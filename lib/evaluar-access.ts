@@ -46,3 +46,11 @@ export function resolveAccess(account: EvaluarAccount | null): AccessState {
 
   return { account, active: inTrial || paid, inTrial, daysLeft };
 }
+
+// ¿Venció el plazo de la evaluación? Se resuelve del lado del servidor: la
+// hora del navegador la pone el usuario y podría adelantarla para seguir
+// respondiendo después del cierre.
+export function isPastDeadline(deadline: string | null | undefined): boolean {
+  if (!deadline) return false;
+  return new Date(deadline).getTime() < Date.now();
+}

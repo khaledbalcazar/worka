@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { BookOpen, Brain, Check, Sparkles, Target, X } from "lucide-react";
-import { TEMPLATES, type Template } from "@/lib/evaluar/templates";
+import {
+  ROLE_TEMPLATES,
+  TEMPLATES,
+  type Template,
+} from "@/lib/evaluar/templates";
 
 const FAMILY_ICON = {
   personalidad: Sparkles,
@@ -23,9 +27,11 @@ const FAMILY_LABEL = {
 export default function TemplatePicker({
   pending,
   onPick,
+  onPickRole,
 }: {
   pending: boolean;
   onPick: (key: string) => void;
+  onPickRole: (key: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState<Template | null>(null);
@@ -113,6 +119,42 @@ export default function TemplatePicker({
             </div>
           ) : (
             <div className="space-y-2.5">
+              {/* Proceso entero por rubro. Va primero porque a la mayoria le
+                  alcanza con esto y no tiene que decidir nada. */}
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                Proceso completo por puesto
+              </p>
+              {ROLE_TEMPLATES.map((r) => (
+                <button
+                  key={r.key}
+                  onClick={() => {
+                    onPickRole(r.key);
+                    setOpen(false);
+                  }}
+                  disabled={pending}
+                  className="w-full text-left card press p-4 flex gap-3 border-primary/30"
+                >
+                  <span className="w-10 h-10 shrink-0 rounded-2xl bg-blue-50 grid place-items-center text-lg">
+                    {r.icon}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="font-semibold text-primary-dark block">
+                      {r.name}
+                    </span>
+                    <span className="block text-xs text-slate-600 mt-0.5">
+                      {r.summary}
+                    </span>
+                    <span className="block text-[11px] text-slate-400 mt-1">
+                      Filtro del puesto + {r.stages.length} tests, listo para
+                      publicar
+                    </span>
+                  </span>
+                </button>
+              ))}
+
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 pt-3">
+                O un test suelto
+              </p>
               {TEMPLATES.map((t) => {
                 const Icon = FAMILY_ICON[t.family];
                 return (

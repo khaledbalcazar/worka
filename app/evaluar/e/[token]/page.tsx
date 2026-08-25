@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { loadEvaluation } from "@/app/evaluar/actions";
+import { isPastDeadline } from "@/lib/evaluar-access";
 import CandidateRunner, {
   type Evaluation,
 } from "@/components/evaluar/CandidateRunner";
@@ -21,9 +22,7 @@ export default async function EvaluationPage({
   const data = (await loadEvaluation(token)) as Evaluation | null;
   if (!data) notFound();
 
-  return (
-    <div className="max-w-2xl mx-auto px-4 py-6">
-      <CandidateRunner token={token} data={data} />
-    </div>
-  );
+  const vencido = isPastDeadline(data.process.deadline_at);
+
+  return <CandidateRunner token={token} data={data} vencido={vencido} />;
 }
