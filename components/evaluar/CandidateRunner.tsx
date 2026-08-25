@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, Clock, Circle, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, Circle, TimerReset, XCircle } from "lucide-react";
 import { startEvaluation, submitStage } from "@/app/evaluar/actions";
 import { celebrate } from "@/lib/celebrate";
 
@@ -31,6 +31,7 @@ export type Evaluation = {
     description: string;
     kind: string;
     minutes: number;
+    timed?: boolean;
     questions: {
       id: string;
       kind: "unica" | "multiple" | "texto" | "escala" | "numero" | "likert";
@@ -65,6 +66,43 @@ export default function CandidateRunner({
     (q) => answers[q.id] !== undefined && answers[q.id] !== ""
   );
 
+  // Cronómetro. Solo corre en las etapas marcadas como cronometradas (los
+  // tests con respuesta correcta): sin límite, medir razonamiento se vuelve
+  // medir paciencia, porque cualquiera puede buscar la respuesta.
+  //
+  // El tiempo transcurrido se manda igual en TODAS las etapas: es el dato que
+  // después distingue a quien resolvió de quien tocó cualquier cosa.
+  // El momento de inicio va en una ref y no en estado: no se dibuja en
+  // pantalla, solo se lee al enviar, y como estado obligaría a un render extra.
+  const startedAtRef = useRef<number | null>(null);
+  const [left, setLeft] = useState<number | null>(null);
+  // El envío se guarda en una ref para que el temporizador pueda dispararlo
+  // sin volver a crear el intervalo en cada tecla que toca la persona.
+  const enviarRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    if (!started || !stage) return;
+    const inicio = Date.now();
+    startedAtRef.current = inicio;
+    if (!stage.timed) return;
+
+    const total = stage.minutes * 60;
+    queueMicrotask(() => setLeft(total));
+    const id = setInterval(() => {
+      const queda = total - Math.round((Date.now() - inicio) / 1000);
+      if (queda <= 0) {
+        clearInterval(id);
+        setLeft(0);
+        // Se acabó el tiempo: se entrega lo que haya. Congelar la pantalla
+        // sería perder todo lo que la persona ya respondió.
+        enviarRef.current?.();
+      } else {
+        setLeft(queda);
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [started, stage]);
+
   function comenzar() {
     startTransition(async () => {
       await startEvaluation(token);
@@ -76,8 +114,11 @@ export default function CandidateRunner({
   function enviar() {
     if (!stage) return;
     setError(null);
+    const seconds = startedAtRef.current
+      ? Math.round((Date.now() - startedAtRef.current) / 1000)
+      : undefined;
     startTransition(async () => {
-      const result = await submitStage(token, stage.id, answers);
+      const result = await submitStage(token, stage.id, answers, seconds);
       if (!result.ok) {
         setError(result.error ?? "No pudimos guardar tus respuestas.");
         return;
@@ -87,6 +128,11 @@ export default function CandidateRunner({
       router.refresh();
     });
   }
+  // La ref se refresca después de cada render para que el temporizador dispare
+  // siempre la última versión de `enviar`, con las respuestas actuales.
+  useEffect(() => {
+    enviarRef.current = enviar;
+  });
 
   return (
     <div className="space-y-4">
@@ -207,10 +253,29 @@ export default function CandidateRunner({
             </div>
           ) : (
             <>
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                Etapa {participant.stage_index + 1} de {stages.length}
-              </p>
-              <h2 className="font-bold text-primary-dark">{stage.title}</h2>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    Etapa {participant.stage_index + 1} de {stages.length}
+                  </p>
+                  <h2 className="font-bold text-primary-dark">{stage.title}</h2>
+                </div>
+                {/* Cuenta regresiva. Se pone en rojo en el último minuto: si
+                    el tiempo se acaba se entrega solo lo respondido. */}
+                {left !== null && (
+                  <span
+                    className={`chip shrink-0 font-mono font-semibold ${
+                      left <= 60
+                        ? "bg-red-50 text-danger animate-beat"
+                        : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    <TimerReset size={13} />
+                    {String(Math.floor(left / 60)).padStart(2, "0")}:
+                    {String(left % 60).padStart(2, "0")}
+                  </span>
+                )}
+              </div>
               {stage.description && (
                 <p className="text-sm text-slate-600 mt-1">
                   {stage.description}

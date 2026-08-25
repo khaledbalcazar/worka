@@ -39,10 +39,10 @@ export default function EvaluarLandingPage() {
               Empezar mis {TRIAL_DAYS} días gratis <ArrowRight size={18} />
             </Link>
             <Link
-              href="#como-funciona"
+              href="/evaluar/precios"
               className="btn-secondary press text-base px-6 py-3"
             >
-              Ver cómo funciona
+              Ver precios
             </Link>
           </div>
           <p className="text-xs text-slate-400 mt-3">

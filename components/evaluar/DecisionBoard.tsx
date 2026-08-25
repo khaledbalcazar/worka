@@ -2,7 +2,16 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Award, MessageSquarePlus, Trophy, UserX } from "lucide-react";
+import {
+  Award,
+  Download,
+  Eye,
+  EyeOff,
+  FileText,
+  MessageSquarePlus,
+  Trophy,
+  UserX,
+} from "lucide-react";
 import type { BoardData } from "@/lib/evaluar";
 import { ALL_DIMENSIONS } from "@/lib/evaluar/templates";
 import { addNote, setParticipantStatus } from "@/app/evaluar/actions";
@@ -21,7 +30,17 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
   const [noteText, setNoteText] = useState("");
   const [pending, startTransition] = useTransition();
 
+  const [blind, setBlind] = useState(false);
+
   const rendidos = board.candidates.filter((c) => c.percent !== null);
+
+  const funnel = {
+    invitados: board.candidates.length,
+    empezaron: board.candidates.filter((c) => c.status !== "invitado").length,
+    terminaron: board.candidates.filter((c) =>
+      ["completado", "finalista", "contratado"].includes(c.status)
+    ).length,
+  };
 
   function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
     setError(null);
@@ -47,14 +66,59 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-bold text-primary-dark">
-          Tablero de decisión
-        </h1>
-        <p className="text-sm text-slate-500">
-          {rendidos.length} de {board.candidates.length} rindieron. Ordenados
-          por desempeño.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-primary-dark">
+            Tablero de decisión
+          </h1>
+          <p className="text-sm text-slate-500">
+            {rendidos.length} de {board.candidates.length} rindieron. Ordenados
+            por desempeño.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Cribado ciego: oculta nombre y datos de contacto mientras se
+              puntúa. El sesgo por nombre, edad o género es real y documentado;
+              esconderlos durante la comparación es la forma más simple de
+              recortarlo. */}
+          <button
+            onClick={() => setBlind((v) => !v)}
+            className={`btn-secondary press text-xs ${blind ? "border-primary text-primary" : ""}`}
+            title="Ocultar nombres para comparar sin sesgo"
+          >
+            {blind ? <EyeOff size={14} /> : <Eye size={14} />}
+            {blind ? "Ciego" : "Cribado ciego"}
+          </button>
+          <a
+            href={`/evaluar/app/procesos/${board.process.id}/export`}
+            className="btn-secondary press text-xs"
+          >
+            <Download size={14} /> Excel
+          </a>
+        </div>
+      </div>
+
+      {/* Embudo: dice si la evaluación es demasiado larga. Si la mitad
+          abandona en la etapa 2, el problema no son los candidatos. */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 stagger">
+        {[
+          { label: "Invitados", value: funnel.invitados },
+          { label: "Empezaron", value: funnel.empezaron },
+          { label: "Terminaron", value: funnel.terminaron },
+          {
+            label: "Tasa de finalización",
+            value: funnel.invitados
+              ? `${Math.round((funnel.terminaron / funnel.invitados) * 100)}%`
+              : "—",
+          },
+        ].map((s) => (
+          <div key={s.label} className="card p-3.5">
+            <p className="text-xl font-bold text-primary-dark leading-none">
+              {s.value}
+            </p>
+            <p className="text-[11px] text-slate-500 mt-1">{s.label}</p>
+          </div>
+        ))}
       </div>
 
       {error && (
@@ -78,7 +142,9 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="font-semibold text-primary-dark truncate">
-                      {c.full_name || "Sin nombre"}
+                      {blind
+                        ? `Candidato ${i + 1}`
+                        : c.full_name || "Sin nombre"}
                     </p>
                     <p className="text-[11px] text-slate-400">
                       {c.source === "worka" ? "Desde Worka" : "Invitado"}
@@ -216,12 +282,20 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
                     </div>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setNoteFor(c.id)}
-                    className="text-xs text-primary font-medium mt-3 flex items-center gap-1"
-                  >
-                    <MessageSquarePlus size={13} /> Agregar nota
-                  </button>
+                  <div className="flex items-center justify-between gap-2 mt-3">
+                    <button
+                      onClick={() => setNoteFor(c.id)}
+                      className="text-xs text-primary font-medium flex items-center gap-1"
+                    >
+                      <MessageSquarePlus size={13} /> Nota
+                    </button>
+                    <a
+                      href={`/evaluar/app/procesos/${board.process.id}/informe/${c.id}`}
+                      className="text-xs text-slate-500 font-medium flex items-center gap-1"
+                    >
+                      <FileText size={13} /> Informe
+                    </a>
+                  </div>
                 )}
 
                 <div className="flex gap-2 mt-auto pt-4">

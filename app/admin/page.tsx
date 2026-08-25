@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import Logo from "@/components/Logo";
 import AdminPanel from "@/components/AdminPanel";
+import AdminSubscriptions from "@/components/evaluar/AdminSubscriptions";
+import { getEvaluarAccounts } from "@/lib/evaluar";
 import {
   getActiveJobsCount,
   getAllCompanies,
@@ -55,6 +57,7 @@ export default async function AdminPage() {
     detailedReports,
     allJobs,
     customBadges,
+    evaluarAccounts,
   ] = await Promise.all([
     getModerationQueue(),
     getReports(),
@@ -71,6 +74,7 @@ export default async function AdminPage() {
     getDetailedReports(),
     getAllJobsForAdmin(),
     getCustomBadges(),
+    getEvaluarAccounts(),
   ]);
 
   const identityQueue = await Promise.all(
@@ -125,6 +129,12 @@ export default async function AdminPage() {
         allJobs={allJobs}
         customBadges={customBadges}
       />
+
+      {/* Suscripciones de Worka Evaluar. Va como seccion aparte porque el
+          cobro es manual: es la pantalla donde se activa a quien pago. */}
+      <div className="max-w-6xl mx-auto px-4 pb-10">
+        <AdminSubscriptions accounts={evaluarAccounts} />
+      </div>
     </div>
   );
 }

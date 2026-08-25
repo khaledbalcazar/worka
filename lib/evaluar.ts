@@ -1,23 +1,18 @@
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { TRIAL_DAYS } from "@/lib/evaluar-config";
+import {
+  resolveAccess,
+  type AccessState,
+  type EvaluarAccount,
+  type EvaluarStatus,
+} from "@/lib/evaluar-access";
 
-export { TRIAL_DAYS };
+export { TRIAL_DAYS, resolveAccess };
+export type { AccessState, EvaluarAccount, EvaluarStatus };
 
 // Capa de datos de Worka Evaluar. Igual que lib/data.ts, las páginas solo
 // importan de acá.
 
-
-export type EvaluarStatus = "prueba" | "activa" | "vencida" | "cancelada";
-
-export type EvaluarAccount = {
-  company_id: string;
-  status: EvaluarStatus;
-  plan: string;
-  price_gs: number;
-  trial_ends_at: string;
-  paid_until: string | null;
-  created_at: string;
-};
 
 export type EvaluarProcess = {
   id: string;
@@ -82,37 +77,6 @@ export type EvaluarParticipant = {
 };
 
 // ── Suscripción ────────────────────────────────────────────────
-
-// Estado real de la cuenta, ya resuelto contra el reloj: una cuenta guardada
-// como "prueba" con la fecha vencida no habilita nada, y preguntarlo en cada
-// pantalla es la forma de que se cuele un acceso gratis para siempre.
-export type AccessState = {
-  account: EvaluarAccount | null;
-  active: boolean;
-  inTrial: boolean;
-  daysLeft: number;
-};
-
-export function resolveAccess(account: EvaluarAccount | null): AccessState {
-  if (!account) {
-    return { account: null, active: false, inTrial: false, daysLeft: 0 };
-  }
-
-  const now = Date.now();
-  const trialEnd = new Date(account.trial_ends_at).getTime();
-  const paidEnd = account.paid_until
-    ? new Date(account.paid_until).getTime()
-    : 0;
-
-  const inTrial = account.status === "prueba" && trialEnd > now;
-  const paid = account.status === "activa" && paidEnd > now;
-  const daysLeft = Math.max(
-    0,
-    Math.ceil(((inTrial ? trialEnd : paidEnd) - now) / 86_400_000)
-  );
-
-  return { account, active: inTrial || paid, inTrial, daysLeft };
-}
 
 export async function getMyEvaluarAccess(): Promise<AccessState> {
   const supabase = await getServerClient();
@@ -260,6 +224,27 @@ export async function getLinkableJobs(): Promise<
     ...j,
     linked: taken.has(j.id),
   }));
+}
+
+// ── Administración de suscripciones ────────────────────────────
+
+export type EvaluarAccountRow = EvaluarAccount & {
+  company: { trade_name: string; company_name: string } | null;
+};
+
+/** Todas las cuentas de Evaluar, para el backoffice. Solo la ve un admin. */
+export async function getEvaluarAccounts(): Promise<EvaluarAccountRow[]> {
+  const supabase = await getServerClient();
+  if (!supabase) return [];
+
+  // El join va contra companies, que es la única relación directa: los
+  // procesos cuelgan de la empresa, no de la cuenta.
+  const { data } = await supabase
+    .from("evaluar_accounts")
+    .select("*, company:companies(trade_name, company_name)")
+    .order("created_at", { ascending: false });
+
+  return (data ?? []) as unknown as EvaluarAccountRow[];
 }
 
 // ── Tablero de decisión ────────────────────────────────────────

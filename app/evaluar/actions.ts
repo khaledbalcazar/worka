@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { TRIAL_DAYS, getMyEvaluarAccess } from "@/lib/evaluar";
 import { LIKERT_LABELS, getTemplate } from "@/lib/evaluar/templates";
+import { emailEnabled, emailLayout, sendEmail } from "@/lib/email";
+import { SITE_URL } from "@/lib/supabase/config";
 
 type Result = { ok: boolean; error?: string; id?: string; token?: string };
 
@@ -66,6 +68,67 @@ export async function startTrial(): Promise<Result> {
   }
 
   revalidatePath("/evaluar/app");
+  return { ok: true };
+}
+
+// Activa, extiende o corta la suscripción de una empresa. Es lo que cierra el
+// circuito del cobro manual: sin esto habría que editar la tabla a mano en
+// Supabase cada vez que alguien paga.
+//
+// La política de RLS ya exige rol admin para escribir en evaluar_accounts,
+// pero se vuelve a chequear acá para devolver un mensaje claro en vez de un
+// error críptico de la base.
+export async function setEvaluarSubscription(
+  companyId: string,
+  action: "activar_1" | "activar_3" | "activar_12" | "vencer" | "cancelar"
+): Promise<Result> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión." };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+  if ((profile as { role?: string } | null)?.role !== "admin")
+    return { ok: false, error: "Solo un admin puede tocar las suscripciones." };
+
+  const meses =
+    action === "activar_1" ? 1 : action === "activar_3" ? 3 : action === "activar_12" ? 12 : 0;
+
+  let update: Record<string, unknown>;
+  if (meses > 0) {
+    // Si todavía le queda tiempo pago, se suma encima; si no, se cuenta desde
+    // hoy. Renovar antes de que venza no debe hacerle perder días.
+    const { data: current } = await supabase
+      .from("evaluar_accounts")
+      .select("paid_until")
+      .eq("company_id", companyId)
+      .maybeSingle();
+    const prev = (current as { paid_until?: string } | null)?.paid_until;
+    const desde =
+      prev && new Date(prev).getTime() > Date.now()
+        ? new Date(prev)
+        : new Date();
+    desde.setMonth(desde.getMonth() + meses);
+    update = { status: "activa", paid_until: desde.toISOString() };
+  } else {
+    update = { status: action === "vencer" ? "vencida" : "cancelada" };
+  }
+
+  const { error } = await supabase
+    .from("evaluar_accounts")
+    .update(update)
+    .eq("company_id", companyId);
+
+  if (error) {
+    console.error("setEvaluarSubscription:", error);
+    return { ok: false, error: "No pudimos actualizar la suscripción." };
+  }
+
+  revalidatePath("/admin");
   return { ok: true };
 }
 
@@ -287,6 +350,9 @@ export async function applyTemplate(
       minutes: template.minutes,
       position: count ?? 0,
       template_key: template.key,
+      // Los tests con respuesta correcta van cronometrados: sin tiempo límite
+      // dejan de medir razonamiento y pasan a medir paciencia.
+      timed: template.scored === "correcto",
     })
     .select("id")
     .single();
@@ -377,6 +443,115 @@ export async function inviteParticipant(
 
   revalidatePath(`/evaluar/app/procesos/${processId}`);
   return { ok: true, token: (data as { token: string }).token };
+}
+
+// Invitación en lote. Una empresa que evalúa 40 personas no va a cargarlas de
+// a una ni a copiar 40 enlaces a mano: se pegan las filas y listo.
+// Formato por línea: "Nombre, email, teléfono" (email y teléfono opcionales).
+export async function inviteBatch(
+  processId: string,
+  raw: string
+): Promise<Result & { invited?: number; failed?: number }> {
+  const { supabase } = await requireCompany();
+  if (!supabase) return DEMO;
+  const blocked = await requireActiveAccount();
+  if (blocked) return { ok: false, error: blocked };
+
+  const rows = raw
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [name, email, phone] = line
+        .split(/[,;\t]/)
+        .map((p) => p.trim());
+      return { full_name: name ?? "", email: email || null, phone: phone || null };
+    })
+    .filter((r) => r.full_name.length > 0);
+
+  if (rows.length === 0)
+    return { ok: false, error: "No encontramos ningún nombre en esa lista." };
+  if (rows.length > 200)
+    return { ok: false, error: "Máximo 200 por vez." };
+
+  const { data: process } = await supabase
+    .from("evaluar_processes")
+    .select("title, company_id")
+    .eq("id", processId)
+    .maybeSingle();
+
+  const { data, error } = await supabase
+    .from("evaluar_participants")
+    .insert(rows.map((r) => ({ ...r, process_id: processId, source: "invitado" })))
+    .select("token, full_name, email");
+
+  if (error) {
+    console.error("inviteBatch:", error);
+    return { ok: false, error: "No pudimos cargar la lista." };
+  }
+
+  const created = (data ?? []) as {
+    token: string;
+    full_name: string;
+    email: string | null;
+  }[];
+
+  const sent = await notifyParticipants(
+    created,
+    (process as { title?: string } | null)?.title ?? "una evaluación",
+    (process as { company_id?: string } | null)?.company_id
+  );
+
+  revalidatePath(`/evaluar/app/procesos/${processId}`);
+  return { ok: true, invited: created.length, failed: created.length - sent };
+}
+
+// Manda el enlace por email a quien tenga dirección. El que no la tenga queda
+// igual en la lista: la empresa le pasa el enlace por WhatsApp desde el panel.
+async function notifyParticipants(
+  people: { token: string; full_name: string; email: string | null }[],
+  processTitle: string,
+  companyId?: string
+): Promise<number> {
+  if (!emailEnabled()) return 0;
+
+  let companyName = "Una empresa";
+  if (companyId) {
+    const supabase = await getServerClient();
+    const { data } = await supabase!
+      .from("companies")
+      .select("trade_name")
+      .eq("id", companyId)
+      .maybeSingle();
+    companyName = (data as { trade_name?: string } | null)?.trade_name ?? companyName;
+  }
+
+  const base = SITE_URL.replace(/\/$/, "").replace("://", "://evaluar.");
+  let sent = 0;
+  for (const p of people) {
+    if (!p.email) continue;
+    const url = `${base}/e/${p.token}`;
+    const ok = await sendEmail({
+      to: p.email,
+      subject: `${companyName} te invita a una evaluación`,
+      html: emailLayout(`
+        <p>Hola${p.full_name ? ` ${p.full_name}` : ""},</p>
+        <p><strong>${companyName}</strong> te invita a completar la evaluación
+        de <strong>${processTitle}</strong>.</p>
+        <p>No necesitás crear ninguna cuenta: entrá desde este enlace, que es
+        tuyo y personal.</p>
+        <p style="margin:24px 0">
+          <a href="${url}" style="background:#2563eb;color:#fff;padding:12px 20px;border-radius:12px;text-decoration:none;font-weight:600">
+            Empezar mi evaluación
+          </a>
+        </p>
+        <p style="color:#6b7280;font-size:13px">Vas a ver desde el principio
+        cuántas etapas tiene y cuánto te va a llevar cada una.</p>
+      `),
+    });
+    if (ok) sent++;
+  }
+  return sent;
 }
 
 export async function setParticipantStatus(
@@ -517,7 +692,8 @@ export async function startEvaluation(token: string): Promise<Result> {
 export async function submitStage(
   token: string,
   stageId: string,
-  answers: Record<string, unknown>
+  answers: Record<string, unknown>,
+  seconds?: number
 ): Promise<Result & { status?: string }> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
@@ -526,6 +702,7 @@ export async function submitStage(
     p_token: token,
     p_stage_id: stageId,
     p_answers: answers,
+    p_seconds: seconds ?? null,
   });
   if (error) {
     console.error("evaluar_submit_stage:", error);

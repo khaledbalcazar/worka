@@ -32,6 +32,12 @@ export default function EvaluarLayout({
           </Link>
           <nav className="flex items-center gap-1.5 shrink-0">
             <Link
+              href="/evaluar/precios"
+              className="text-sm text-slate-600 px-2 hidden sm:block"
+            >
+              Precios
+            </Link>
+            <Link
               href="/evaluar/app"
               className="btn-secondary press text-xs px-3"
             >

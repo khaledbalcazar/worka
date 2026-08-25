@@ -6,6 +6,7 @@ import {
   Check,
   Copy,
   Link2,
+  MessageCircle,
   Plus,
   Trash2,
   UserPlus,
@@ -20,6 +21,7 @@ import {
   applyTemplate,
   deleteQuestion,
   deleteStage,
+  inviteBatch,
   inviteParticipant,
   updateProcess,
 } from "@/app/evaluar/actions";
@@ -173,6 +175,13 @@ export default function ProcessEditor({
               const r = await inviteParticipant(process.id, input);
               if (r.ok) router.refresh();
               else setError(r.error ?? "No pudimos invitar.");
+            })
+          }
+          onInviteBatch={(raw) =>
+            startTransition(async () => {
+              const r = await inviteBatch(process.id, raw);
+              if (r.ok) router.refresh();
+              else setError(r.error ?? "No pudimos cargar la lista.");
             })
           }
         />
@@ -534,20 +543,39 @@ function CandidatesTab({
   detail,
   pending,
   onInvite,
+  onInviteBatch,
 }: {
   detail: ProcessDetail;
   pending: boolean;
   onInvite: (i: { full_name: string; email?: string; phone?: string }) => void;
+  onInviteBatch: (raw: string) => void;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [bulk, setBulk] = useState(false);
+  const [list, setList] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
 
+  function linkFor(token: string) {
+    return `${window.location.origin}/evaluar/e/${token}`;
+  }
+
   function copyLink(token: string) {
-    const url = `${window.location.origin}/evaluar/e/${token}`;
-    navigator.clipboard?.writeText(url);
+    navigator.clipboard?.writeText(linkFor(token));
     setCopied(token);
     setTimeout(() => setCopied(null), 2000);
+  }
+
+  function waLink(phone: string | null, nombre: string, token: string) {
+    const texto = encodeURIComponent(
+      `Hola${nombre ? ` ${nombre}` : ""}, te invitamos a completar la evaluación de "${detail.process.title}". ` +
+        `Entrá desde acá, es tuyo y personal (no necesitás crear cuenta): ${linkFor(token)}`
+    );
+    // Sin teléfono, WhatsApp abre el selector de contacto igual.
+    const numero = (phone ?? "").replace(/\D/g, "");
+    return numero
+      ? `https://wa.me/${numero}?text=${texto}`
+      : `https://wa.me/?text=${texto}`;
   }
 
   return (
@@ -559,31 +587,74 @@ function CandidatesTab({
         <p className="text-xs text-slate-500 mt-1">
           Le generamos un enlace propio: entra y rinde sin crear ninguna cuenta.
         </p>
-        <div className="flex flex-col sm:flex-row gap-2 mt-3">
-          <input
-            className="input flex-1"
-            placeholder="Nombre y apellido"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <input
-            className="input flex-1"
-            placeholder="Email (opcional)"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <button
-            onClick={() => {
-              onInvite({ full_name: name, email });
-              setName("");
-              setEmail("");
-            }}
-            disabled={pending || !name.trim()}
-            className="btn-primary press disabled:opacity-40"
-          >
-            Invitar
-          </button>
-        </div>
+        {bulk ? (
+          <div className="mt-3 space-y-2">
+            <textarea
+              className="input min-h-32 font-mono text-xs"
+              placeholder={
+                "Una persona por línea:\nMaría González, maria@email.com, 0981123456\nJuan Pérez, juan@email.com\nAna Duarte"
+              }
+              value={list}
+              onChange={(e) => setList(e.target.value)}
+            />
+            <p className="text-xs text-slate-400">
+              Nombre, email y teléfono separados por coma. El email es opcional,
+              pero a quien lo tenga le llega la invitación sola.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setBulk(false)}
+                className="btn-secondary press flex-1"
+              >
+                Cargar de a una
+              </button>
+              <button
+                onClick={() => {
+                  onInviteBatch(list);
+                  setList("");
+                }}
+                disabled={pending || !list.trim()}
+                className="btn-primary press flex-[2] disabled:opacity-40"
+              >
+                Invitar a todos
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex flex-col sm:flex-row gap-2 mt-3">
+              <input
+                className="input flex-1"
+                placeholder="Nombre y apellido"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <input
+                className="input flex-1"
+                placeholder="Email (opcional)"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <button
+                onClick={() => {
+                  onInvite({ full_name: name, email });
+                  setName("");
+                  setEmail("");
+                }}
+                disabled={pending || !name.trim()}
+                className="btn-primary press disabled:opacity-40"
+              >
+                Invitar
+              </button>
+            </div>
+            <button
+              onClick={() => setBulk(true)}
+              className="text-xs text-primary font-medium mt-2"
+            >
+              + Cargar una lista de varios
+            </button>
+          </>
+        )}
       </div>
 
       {detail.participants.length === 0 ? (
@@ -620,6 +691,18 @@ function CandidatesTab({
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <StatusChip status={p.status} />
+                {/* WhatsApp abierto con el mensaje listo. No se manda solo
+                    (eso necesita la API de Meta) pero evita tener que armar el
+                    texto y pegar el enlace a mano, que es donde se pierde
+                    media hora con una lista larga. */}
+                <a
+                  href={waLink(p.phone, p.full_name, p.token)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-secondary press text-xs"
+                >
+                  <MessageCircle size={13} /> WhatsApp
+                </a>
                 <button
                   onClick={() => copyLink(p.token)}
                   className="btn-secondary press text-xs"
