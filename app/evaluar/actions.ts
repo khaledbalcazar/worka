@@ -11,7 +11,14 @@ import {
 import { emailEnabled, emailLayout, sendEmail } from "@/lib/email";
 import { SITE_URL } from "@/lib/supabase/config";
 
-type Result = { ok: boolean; error?: string; id?: string; token?: string };
+type Result = {
+  ok: boolean;
+  error?: string;
+  id?: string;
+  token?: string;
+  emailSent?: boolean;
+  emailReason?: string;
+};
 
 const DEMO: Result = {
   ok: false,
@@ -134,6 +141,53 @@ export async function setEvaluarSubscription(
 
   revalidatePath("/admin");
   return { ok: true };
+}
+
+// Prueba de envío. Sin esto, la única forma de saber si el correo funciona es
+// invitar a alguien de verdad y esperar: si falla no se sabe si es la clave,
+// el remitente o el destinatario.
+export async function sendTestEmail(to: string): Promise<Result> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión." };
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+  if ((profile as { role?: string } | null)?.role !== "admin")
+    return { ok: false, error: "Solo un admin puede probar el envío." };
+
+  if (!emailEnabled())
+    return {
+      ok: false,
+      error:
+        "Falta RESEND_API_KEY en Vercel (o el despliegue todavía no la tomó).",
+    };
+
+  const destino = to.trim();
+  if (!destino.includes("@"))
+    return { ok: false, error: "Escribí un email válido." };
+
+  const ok = await sendEmail({
+    to: destino,
+    subject: "Prueba de envío de Worka",
+    html: emailLayout(`
+      <p>Si estás leyendo esto, el envío de correos de Worka funciona.</p>
+      <p style="color:#6b7280;font-size:13px">Remitente configurado:
+      <code>${process.env.EMAIL_FROM ?? "(por defecto)"}</code></p>
+    `),
+  });
+
+  return ok
+    ? { ok: true }
+    : {
+        ok: false,
+        error:
+          "Resend rechazó el envío. Revisá que el dominio de EMAIL_FROM esté verificado y mirá los logs de Vercel para el motivo exacto.",
+      };
 }
 
 // ── Procesos ───────────────────────────────────────────────────
@@ -779,12 +833,14 @@ export async function inviteParticipant(
   if (!input.full_name.trim())
     return { ok: false, error: "Poné el nombre de la persona." };
 
+  const email = input.email?.trim() || null;
+
   const { data, error } = await supabase
     .from("evaluar_participants")
     .insert({
       process_id: processId,
       full_name: input.full_name.trim(),
-      email: input.email?.trim() || null,
+      email,
       phone: input.phone?.trim() || null,
       source: "invitado",
     })
@@ -796,8 +852,42 @@ export async function inviteParticipant(
     return { ok: false, error: "No pudimos invitar a esa persona." };
   }
 
+  const token = (data as { token: string }).token;
+
+  // El aviso por email también acá: estaba solo en la carga masiva, así que
+  // invitar de a una —que es como se invita casi siempre— creaba el enlace y
+  // no le avisaba a nadie.
+  let emailSent = false;
+  if (email) {
+    const { data: process } = await supabase
+      .from("evaluar_processes")
+      .select("title, company_id")
+      .eq("id", processId)
+      .maybeSingle();
+    const p = process as { title?: string; company_id?: string } | null;
+    emailSent =
+      (await notifyParticipants(
+        [{ token, full_name: input.full_name.trim(), email }],
+        p?.title ?? "una evaluación",
+        p?.company_id
+      )) > 0;
+  }
+
   revalidatePath(`/evaluar/app/procesos/${processId}`);
-  return { ok: true, token: (data as { token: string }).token };
+  return {
+    ok: true,
+    token,
+    emailSent,
+    // Con el motivo a la vista, la empresa sabe si tiene que mandar el enlace
+    // por WhatsApp en vez de quedarse esperando que llegue un correo.
+    emailReason: !email
+      ? "sin_email"
+      : emailSent
+        ? undefined
+        : emailEnabled()
+          ? "fallo"
+          : "sin_configurar",
+  };
 }
 
 // Invitación en lote. Una empresa que evalúa 40 personas no va a cargarlas de

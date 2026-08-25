@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ClipboardCheck } from "lucide-react";
+import { ClipboardCheck, Mail } from "lucide-react";
 import type { EvaluarAccountRow } from "@/lib/evaluar";
 import { resolveAccess } from "@/lib/evaluar-access";
-import { setEvaluarSubscription } from "@/app/evaluar/actions";
+import { sendTestEmail, setEvaluarSubscription } from "@/app/evaluar/actions";
 
 // Suscripciones de Worka Evaluar en el backoffice.
 //
@@ -49,6 +49,8 @@ export default function AdminSubscriptions({
           {error}
         </p>
       )}
+
+      <TestEmail />
 
       {accounts.length === 0 ? (
         <p className="text-sm text-gray-400 mt-4">
@@ -111,5 +113,58 @@ export default function AdminSubscriptions({
         </div>
       )}
     </section>
+  );
+}
+
+// Prueba de envío de correo. Vive acá porque es una tarea de operaciones:
+// cuando un email no llega hay que poder separar en un minuto si el problema
+// es la clave, el remitente o el destinatario.
+function TestEmail() {
+  const [to, setTo] = useState("");
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function probar() {
+    setMsg(null);
+    startTransition(async () => {
+      const r = await sendTestEmail(to);
+      setMsg({
+        ok: r.ok,
+        text: r.ok
+          ? "Enviado. Si no aparece en unos minutos, revisá spam y los Logs de Resend."
+          : (r.error ?? "No pudimos enviar."),
+      });
+    });
+  }
+
+  return (
+    <div className="bg-surface rounded-2xl p-4 mt-4">
+      <p className="text-sm font-medium text-primary-dark flex items-center gap-2">
+        <Mail size={15} /> Probar el envío de correos
+      </p>
+      <div className="flex flex-col sm:flex-row gap-2 mt-2">
+        <input
+          className="input flex-1"
+          type="email"
+          placeholder="tu@email.com"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+        />
+        <button
+          onClick={probar}
+          disabled={pending || !to.trim()}
+          className="btn-secondary press disabled:opacity-40"
+        >
+          {pending ? "Enviando…" : "Enviar prueba"}
+        </button>
+      </div>
+      {msg && (
+        <p
+          className={`text-xs mt-2 ${msg.ok ? "text-success" : "text-danger"}`}
+        >
+          {msg.text}
+        </p>
+      )}
+    </div>
   );
 }

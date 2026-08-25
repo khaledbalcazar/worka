@@ -50,6 +50,7 @@ export default function ProcessEditor({
   const { process, stages, participants } = detail;
   const [tab, setTab] = useState<Tab>("etapas");
   const [vista, setVista] = useState<"lista" | "tablero">("lista");
+  const [aviso, setAviso] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -212,18 +213,43 @@ export default function ProcessEditor({
         <CandidatesTab
           detail={detail}
           pending={pending}
+          aviso={aviso}
           onInvite={(input) =>
             startTransition(async () => {
               const r = await inviteParticipant(process.id, input);
-              if (r.ok) router.refresh();
-              else setError(r.error ?? "No pudimos invitar.");
+              if (!r.ok) {
+                setError(r.error ?? "No pudimos invitar.");
+                return;
+              }
+              // Que la empresa sepa si el correo salio o si tiene que
+              // mandar el enlace por WhatsApp, en vez de quedarse esperando.
+              setAviso(
+                r.emailSent
+                  ? "Invitacion enviada por email."
+                  : r.emailReason === "sin_email"
+                    ? "Listo. Sin email cargado: mandale el enlace por WhatsApp."
+                    : r.emailReason === "sin_configurar"
+                      ? "Listo, pero el envio de correos no esta configurado todavia: mandale el enlace por WhatsApp."
+                      : "Listo, pero el correo no pudo salir: mandale el enlace por WhatsApp."
+              );
+              router.refresh();
             })
           }
           onInviteBatch={(raw) =>
             startTransition(async () => {
               const r = await inviteBatch(process.id, raw);
-              if (r.ok) router.refresh();
-              else setError(r.error ?? "No pudimos cargar la lista.");
+              if (!r.ok) {
+                setError(r.error ?? "No pudimos cargar la lista.");
+                return;
+              }
+              setAviso(
+                `Se cargaron ${r.invited ?? 0}. ${
+                  r.failed
+                    ? `A ${r.failed} no les llego el correo: mandales el enlace por WhatsApp.`
+                    : "Las invitaciones salieron por email."
+                }`
+              );
+              router.refresh();
             })
           }
         />
@@ -693,11 +719,13 @@ function CandidatesTab({
   pending,
   onInvite,
   onInviteBatch,
+  aviso,
 }: {
   detail: ProcessDetail;
   pending: boolean;
   onInvite: (i: { full_name: string; email?: string; phone?: string }) => void;
   onInviteBatch: (raw: string) => void;
+  aviso: string | null;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -729,6 +757,12 @@ function CandidatesTab({
 
   return (
     <div className="space-y-3">
+      {aviso && (
+        <p className="text-sm text-primary bg-blue-50 rounded-xl px-4 py-3">
+          {aviso}
+        </p>
+      )}
+
       <div className="card p-5">
         <h3 className="font-semibold text-primary-dark text-sm flex items-center gap-2">
           <UserPlus size={16} /> Invitar a alguien

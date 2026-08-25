@@ -32,8 +32,15 @@ export async function sendEmail(opts: {
         html: opts.html,
       }),
     });
+    if (!res.ok) {
+      // Sin esto, un remitente no verificado o una key invalida fallan en
+      // silencio y no hay forma de saber por que no llego el correo.
+      const detalle = await res.text().catch(() => "");
+      console.error("Resend rechazo el envio:", res.status, detalle);
+    }
     return res.ok;
-  } catch {
+  } catch (e) {
+    console.error("Resend no respondio:", e);
     return false;
   }
 }
