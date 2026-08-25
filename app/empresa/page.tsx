@@ -1,4 +1,5 @@
 import Link from "next/link";
+import EvaluarPromo from "@/components/evaluar/EvaluarPromo";
 import CompanyDashboard from "@/components/CompanyDashboard";
 import {
   getCompanyStats,
@@ -35,11 +36,16 @@ export default async function CompanyDashboardPage() {
     getCompanyStats(company.id),
   ]);
   return (
-    <CompanyDashboard
-      company={company}
-      jobs={jobs}
-      paymentLink={settings.payment_link}
-      stats={stats}
-    />
+    <div className="space-y-4">
+      {/* Puerta de entrada a Worka Evaluar desde donde la empresa ya trabaja:
+          si vive solo en su propio dominio, nadie se entera de que existe. */}
+      <EvaluarPromo />
+      <CompanyDashboard
+        company={company}
+        jobs={jobs}
+        paymentLink={settings.payment_link}
+        stats={stats}
+      />
+    </div>
   );
 }

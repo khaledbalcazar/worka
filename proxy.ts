@@ -16,9 +16,36 @@ const PROTECTED_PREFIXES = [
   "/admin",
 ];
 
+// Worka Evaluar vive en evaluar.worka.click pero es la misma aplicación: el
+// host se traduce a las rutas /evaluar. Así comparte sesión, base y
+// componentes con Worka, que es justo lo que hace posible enlazar una vacante
+// de Worka Empleos con un proceso de selección.
+//
+// Se dejan pasar sin tocar las rutas de infraestructura: los assets de Next,
+// las APIs y el callback de auth tienen que resolver igual en los dos
+// dominios, y reescribirlos rompería el ingreso.
+const PASSTHROUGH = ["/_next", "/api", "/auth", "/manifest.webmanifest"];
+
+function evaluarTarget(request: NextRequest): URL | null {
+  const host = request.headers.get("host") ?? "";
+  if (!host.startsWith("evaluar.")) return null;
+
+  const path = request.nextUrl.pathname;
+  if (path.startsWith("/evaluar")) return null;
+  if (PASSTHROUGH.some((p) => path.startsWith(p))) return null;
+
+  const url = request.nextUrl.clone();
+  url.pathname = path === "/" ? "/evaluar" : `/evaluar${path}`;
+  return url;
+}
+
 export async function proxy(request: NextRequest) {
+  const evaluarUrl = evaluarTarget(request);
+
   // Modo demo: sin Supabase, todo es navegable.
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return NextResponse.next();
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    return evaluarUrl ? NextResponse.rewrite(evaluarUrl) : NextResponse.next();
+  }
 
   const path = request.nextUrl.pathname;
 
@@ -44,7 +71,14 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  let response = NextResponse.next({ request });
+  // La respuesta se construye como rewrite cuando entra por evaluar.: así el
+  // refresco de sesión y el ruteo por dominio conviven en una sola respuesta.
+  const build = () =>
+    evaluarUrl
+      ? NextResponse.rewrite(evaluarUrl, { request })
+      : NextResponse.next({ request });
+
+  let response = build();
 
   const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     cookies: {
@@ -55,7 +89,7 @@ export async function proxy(request: NextRequest) {
         cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value)
         );
-        response = NextResponse.next({ request });
+        response = build();
         cookiesToSet.forEach(({ name, value, options }) =>
           response.cookies.set(name, value, options)
         );

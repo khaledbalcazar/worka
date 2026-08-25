@@ -8,6 +8,8 @@ import { formatDate, timeAgo } from "@/lib/format";
 import ApplyPanel from "@/components/ApplyPanel";
 import EntityAvatar from "@/components/EntityAvatar";
 import JobViewTracker from "@/components/JobViewTracker";
+import JobEvaluationCta from "@/components/evaluar/JobEvaluationCta";
+import { getProcessForJob, getMyParticipantToken } from "@/lib/evaluar";
 import {
   FastResponderBadge,
   FirstJobBadge,
@@ -69,6 +71,13 @@ export default async function JobDetailPage({
   // En demo se navega como logueado; en vivo depende de la sesión real.
   const loggedIn = isLive() ? !!user : true;
   if (!job || job.status !== "Activo") notFound();
+
+  // ¿La empresa enlazó esta vacante con un proceso de Worka Evaluar? Si sí, el
+  // candidato arranca los tests desde acá, sin salir del aviso.
+  const evaluation = await getProcessForJob(job.id);
+  const evaluationToken = evaluation
+    ? await getMyParticipantToken(evaluation.id)
+    : null;
 
   // Destino para las apps de mapas: dirección exacta o empresa + ciudad.
   // El origen lo resuelve la app con la ubicación del usuario.
@@ -327,7 +336,16 @@ export default async function JobDetailPage({
         </div>
 
         {/* Panel de postulación: fijo a la derecha en escritorio */}
-        <div className="lg:sticky lg:top-20">
+        <div className="lg:sticky lg:top-20 space-y-4">
+          {evaluation && (
+            <JobEvaluationCta
+              processId={evaluation.id}
+              stageCount={evaluation.stage_count}
+              loggedIn={loggedIn}
+              jobId={job.id}
+              alreadyStarted={evaluationToken}
+            />
+          )}
           <ApplyPanel
             job={job}
             alreadyApplied={appliedIds.has(job.id)}
