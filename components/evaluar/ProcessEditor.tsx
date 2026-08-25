@@ -13,9 +13,11 @@ import {
   X,
 } from "lucide-react";
 import type { ProcessDetail } from "@/lib/evaluar";
+import TemplatePicker from "./TemplatePicker";
 import {
   addQuestion,
   addStage,
+  applyTemplate,
   deleteQuestion,
   deleteStage,
   inviteParticipant,
@@ -152,6 +154,7 @@ export default function ProcessEditor({
         <StagesTab
           detail={detail}
           pending={pending}
+          onApplyTemplate={(key) => run(() => applyTemplate(process.id, key))}
           onAddStage={(input) => run(() => addStage(process.id, input))}
           onDeleteStage={(sid) => run(() => deleteStage(process.id, sid))}
           onAddQuestion={(sid, input) =>
@@ -192,6 +195,7 @@ export default function ProcessEditor({
 function StagesTab({
   detail,
   pending,
+  onApplyTemplate,
   onAddStage,
   onDeleteStage,
   onAddQuestion,
@@ -199,6 +203,7 @@ function StagesTab({
 }: {
   detail: ProcessDetail;
   pending: boolean;
+  onApplyTemplate: (key: string) => void;
   onAddStage: (i: { title: string; description: string; minutes: number }) => void;
   onDeleteStage: (id: string) => void;
   onAddQuestion: (
@@ -308,9 +313,23 @@ function StagesTab({
         </div>
       ))}
 
+      {/* El catálogo va primero: para la mayoría de los puestos alcanza con
+          un test listo, y redactar preguntas desde cero es lo que hace que
+          nadie termine de armar el proceso. */}
       <div className="card p-5">
         <h3 className="font-semibold text-primary-dark text-sm">
-          Agregar una etapa
+          Agregar un test ya armado
+        </h3>
+        <p className="text-xs text-slate-500 mt-1 mb-3">
+          Cinco Grandes, estilo laboral, juicio situacional y razonamiento. Se
+          corrigen y se puntúan solos.
+        </p>
+        <TemplatePicker pending={pending} onPick={onApplyTemplate} />
+      </div>
+
+      <div className="card p-5">
+        <h3 className="font-semibold text-primary-dark text-sm">
+          O armar una etapa propia
         </h3>
         <div className="flex flex-col sm:flex-row gap-2 mt-3">
           <input

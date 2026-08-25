@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Award, MessageSquarePlus, Trophy, UserX } from "lucide-react";
 import type { BoardData } from "@/lib/evaluar";
+import { ALL_DIMENSIONS } from "@/lib/evaluar/templates";
 import { addNote, setParticipantStatus } from "@/app/evaluar/actions";
 import { StatusChip } from "./ProcessEditor";
 
@@ -129,6 +130,41 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
                     ` · ${c.answers.length} respuestas`}
                 </p>
 
+                {/* Perfil por rasgo. Va sin colores de "bueno/malo" a
+                    propósito: en personalidad no hay puntaje deseable, y
+                    pintarlo de verde o rojo empujaría a leerlo como un examen
+                    aprobado o reprobado. */}
+                {Object.keys(c.profile).length > 0 && (
+                  <div className="mt-3 space-y-1.5">
+                    {Object.entries(c.profile).map(([key, v]) => {
+                      const pct =
+                        v.max > 0 ? Math.round((v.raw / v.max) * 100) : 0;
+                      const dim = ALL_DIMENSIONS[key];
+                      return (
+                        <div key={key}>
+                          <div className="flex items-baseline justify-between gap-2">
+                            <span
+                              className="text-[11px] text-slate-600 truncate"
+                              title={dim?.high}
+                            >
+                              {dim?.label ?? key}
+                            </span>
+                            <span className="text-[11px] font-semibold text-slate-500 shrink-0">
+                              {pct}%
+                            </span>
+                          </div>
+                          <div className="h-1 rounded-full bg-slate-100 overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-indigo-400 animate-fill"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {c.outcome_note && (
                   <p className="text-xs text-slate-600 bg-slate-50 rounded-xl px-3 py-2 mt-2">
                     {c.outcome_note}
@@ -227,10 +263,22 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
         </div>
       </div>
 
-      <p className="text-xs text-slate-400">
-        Cada decisión que tomás acá le llega al candidato en su línea de tiempo,
-        con el motivo que escribas. Nadie queda esperando sin respuesta.
-      </p>
+      <div className="text-xs text-slate-400 space-y-1.5">
+        <p>
+          Cada decisión que tomás acá le llega al candidato en su línea de
+          tiempo, con el motivo que escribas. Nadie queda esperando sin
+          respuesta.
+        </p>
+        {/* Los tests de personalidad describen estilos, no capacidad. Decirlo
+            en la pantalla donde se decide es lo único que evita que el
+            porcentaje se lea como una nota de examen. */}
+        <p>
+          Las barras de rasgos describen <strong>estilos de trabajo</strong>, no
+          capacidad: no hay perfiles buenos ni malos, y un porcentaje alto no
+          significa mejor candidato. Usalas junto a la entrevista y la
+          experiencia, nunca como único filtro.
+        </p>
+      </div>
     </div>
   );
 }

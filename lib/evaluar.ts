@@ -77,6 +77,8 @@ export type EvaluarParticipant = {
   started_at: string | null;
   completed_at: string | null;
   created_at: string;
+  /** Acumulado por rasgo. Lo llena la corrección del lado de la base. */
+  profile?: Record<string, { raw: number; max: number }>;
 };
 
 // ── Suscripción ────────────────────────────────────────────────
@@ -262,8 +264,12 @@ export async function getLinkableJobs(): Promise<
 
 // ── Tablero de decisión ────────────────────────────────────────
 
+/** Perfil crudo por dimensión, tal como lo acumula la base. */
+export type DimensionScores = Record<string, { raw: number; max: number }>;
+
 export type BoardCandidate = EvaluarParticipant & {
   percent: number | null;
+  profile: DimensionScores;
   answers: { question_id: string; value: unknown; score: number }[];
   notes: { id: string; body: string; rating: number | null; created_at: string }[];
 };
@@ -322,6 +328,7 @@ export async function getBoardData(processId: string): Promise<BoardData | null>
   const candidates: BoardCandidate[] = detail.participants
     .map((p) => ({
       ...p,
+      profile: (p.profile ?? {}) as DimensionScores,
       // El porcentaje se calcula sobre lo que la persona efectivamente rindió,
       // no sobre el total del proceso: comparar a alguien que hizo dos etapas
       // con alguien que hizo una sobre la misma base sería injusto.

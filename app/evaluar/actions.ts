@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { TRIAL_DAYS, getMyEvaluarAccess } from "@/lib/evaluar";
+import { LIKERT_LABELS, getTemplate } from "@/lib/evaluar/templates";
 
 type Result = { ok: boolean; error?: string; id?: string; token?: string };
 
@@ -254,6 +255,76 @@ export async function addQuestion(
   }
   revalidatePath(`/evaluar/app/procesos/${processId}`);
   return { ok: true };
+}
+
+// Instancia una plantilla del catálogo como una etapa real del proceso, con
+// sus preguntas copiadas. Se copia y no se referencia a propósito: si mañana
+// corrijo un ítem del catálogo, un proceso que ya está corriendo no cambia de
+// contenido a mitad de camino (y los resultados siguen siendo comparables).
+export async function applyTemplate(
+  processId: string,
+  templateKey: string
+): Promise<Result> {
+  const { supabase } = await requireCompany();
+  if (!supabase) return DEMO;
+  const blocked = await requireActiveAccount();
+  if (blocked) return { ok: false, error: blocked };
+
+  const template = getTemplate(templateKey);
+  if (!template) return { ok: false, error: "Esa plantilla no existe." };
+
+  const { count } = await supabase
+    .from("evaluar_stages")
+    .select("id", { count: "exact", head: true })
+    .eq("process_id", processId);
+
+  const { data: stage, error: stageError } = await supabase
+    .from("evaluar_stages")
+    .insert({
+      process_id: processId,
+      title: template.name,
+      description: template.summary,
+      minutes: template.minutes,
+      position: count ?? 0,
+      template_key: template.key,
+    })
+    .select("id")
+    .single();
+
+  if (stageError || !stage) {
+    console.error("applyTemplate stage:", stageError);
+    return { ok: false, error: "No pudimos agregar la plantilla." };
+  }
+
+  const stageId = (stage as { id: string }).id;
+  const rows = template.questions.map((q, i) => ({
+    stage_id: stageId,
+    position: i,
+    kind: q.kind,
+    text: q.text,
+    options: q.kind === "likert" ? LIKERT_LABELS : (q.options ?? []),
+    correct: q.correct ?? null,
+    option_scores: q.optionScores ?? null,
+    dimension: q.dimension ?? null,
+    reverse: q.reverse ?? false,
+    weight: q.weight ?? 1,
+    knockout: false,
+  }));
+
+  const { error: qError } = await supabase
+    .from("evaluar_questions")
+    .insert(rows);
+
+  if (qError) {
+    console.error("applyTemplate questions:", qError);
+    // Sin preguntas la etapa no sirve para nada y dejaría al candidato ante
+    // una pantalla vacía: se deshace.
+    await supabase.from("evaluar_stages").delete().eq("id", stageId);
+    return { ok: false, error: "No pudimos cargar las preguntas." };
+  }
+
+  revalidatePath(`/evaluar/app/procesos/${processId}`);
+  return { ok: true, id: stageId };
 }
 
 export async function deleteQuestion(

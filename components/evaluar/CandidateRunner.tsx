@@ -33,7 +33,7 @@ export type Evaluation = {
     minutes: number;
     questions: {
       id: string;
-      kind: "unica" | "multiple" | "texto" | "escala" | "numero";
+      kind: "unica" | "multiple" | "texto" | "escala" | "numero" | "likert";
       text: string;
       options: string[];
     }[];
@@ -223,6 +223,40 @@ export default function CandidateRunner({
                     <p className="text-sm font-medium text-slate-800">
                       {i + 1}. {q.text}
                     </p>
+
+                    {/* Escala de acuerdo. Se envía el número, no el texto:
+                        la corrección del lado del servidor necesita el valor
+                        para poder dar vuelta los ítems inversos. */}
+                    {q.kind === "likert" && (
+                      <div className="space-y-2 mt-2">
+                        {q.options.map((o, oi) => {
+                          const valor = oi + 1;
+                          const elegido = answers[q.id] === valor;
+                          return (
+                            <button
+                              key={o}
+                              onClick={() =>
+                                setAnswers((a) => ({ ...a, [q.id]: valor }))
+                              }
+                              className={`w-full text-left text-sm px-4 py-2.5 rounded-xl border press transition-colors flex items-center gap-3 ${
+                                elegido
+                                  ? "bg-primary text-white border-primary"
+                                  : "bg-white border-slate-200 text-slate-700"
+                              }`}
+                            >
+                              <span
+                                className={`w-5 h-5 rounded-full border-2 shrink-0 ${
+                                  elegido
+                                    ? "border-white bg-white/30"
+                                    : "border-slate-300"
+                                }`}
+                              />
+                              {o}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     {(q.kind === "unica" || q.kind === "multiple") && (
                       <div className="space-y-2 mt-2">
