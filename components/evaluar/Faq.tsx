@@ -1,0 +1,81 @@
+"use client";
+
+import { useState } from "react";
+
+// Preguntas frecuentes. Se abren de a una: leer cinco respuestas largas al
+// mismo tiempo es peor que no tenerlas.
+const FAQS = [
+  {
+    q: "¿Necesito una cuenta de Worka Empleos para usar Worka Evaluar?",
+    a: "Sí. Worka Evaluar se integra con tus vacantes de Worka Empleos para que los candidatos arranquen la evaluación desde el propio aviso. Crear la cuenta de empresa en Worka también es gratis.",
+  },
+  {
+    q: "¿Cómo funciona el período de prueba?",
+    a: "Tenés 15 días de acceso completo, sin restricciones y sin tarjeta. Si al final decidís seguir, coordinamos el pago por transferencia o link de pago. No hay cobro automático: la renovación la confirmás vos.",
+  },
+  {
+    q: "¿Los candidatos necesitan crear una cuenta para rendir?",
+    a: "No, y es a propósito: cada cuenta que se pide es gente que abandona. Entran con un enlace propio y personal, responden y listo. Se guarda cada respuesta, así que pueden cortar y seguir después.",
+  },
+  {
+    q: "¿Qué tests incluye?",
+    a: "Cuatro instrumentos listos: los Cinco Grandes (personalidad), estilo laboral (competencias de trabajo), juicio situacional (qué haría la persona en situaciones reales) y razonamiento (series numéricas, fichas de dominó y analogías). Además hay procesos completos ya armados para cajero, chofer, call center, gastronomía y vendedor.",
+  },
+  {
+    q: "¿Puedo invitar candidatos que no vienen de Worka Empleos?",
+    a: "Sí. Además del enlace con tu vacante, podés invitar por email o WhatsApp a cualquier persona, venga de donde venga. También podés pegar una lista y cargar hasta 200 de una vez.",
+  },
+  {
+    q: "¿Los resultados de personalidad sirven para descartar gente?",
+    a: "No, y no lo recomendamos. Los tests de personalidad describen estilos de trabajo, no capacidad: no hay perfiles buenos ni malos. Lo decimos en la propia pantalla donde se decide. Sirven junto a la entrevista y la experiencia, nunca como único filtro.",
+  },
+];
+
+export default function Faq() {
+  const [abierta, setAbierta] = useState<number | null>(0);
+
+  return (
+    <div className="divide-y divide-edge border-y border-edge">
+      {FAQS.map((f, i) => {
+        const open = abierta === i;
+        return (
+          <div key={f.q}>
+            <button
+              onClick={() => setAbierta(open ? null : i)}
+              aria-expanded={open}
+              className="w-full text-left py-5 flex items-start justify-between gap-4 group"
+            >
+              <span
+                className={`font-medium transition-colors ${
+                  open ? "text-cream" : "text-mist group-hover:text-cream"
+                }`}
+              >
+                {f.q}
+              </span>
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={`shrink-0 mt-0.5 text-copper transition-transform duration-200 ${
+                  open ? "rotate-180" : ""
+                }`}
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+            {open && (
+              <p className="text-sm text-mist leading-relaxed pb-5 pr-8 animate-rise">
+                {f.a}
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}

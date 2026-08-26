@@ -18,6 +18,23 @@
   --color-success: #10b981;
   --color-danger: #ef4444;
   --color-warning: #f59e0b;
+
+  /* Paleta de Worka Evaluar: oscura y sobria, para separarla de Worka
+     Empleos sin dejar de ser la misma casa. Solo se usa en /evaluar. */
+  --color-navy: #080d1a;
+  --color-panel: #0f1729;
+  --color-well: #162040;
+  --color-copper: #cf7a52;
+  --color-copper-lite: #e8a07a;
+  --color-cream: #f0ebe0;
+  --color-mist: #7a7168;
+  --color-edge: #1e2d4a;
+}
+
+/* Títulos de Evaluar. La variable la define el layout de /evaluar con
+   next/font, así que fuera de ahí la clase no hace nada. */
+.font-heading {
+  font-family: var(--font-playfair), Georgia, serif;
 }
 
 body {
