@@ -6,6 +6,8 @@ import { planOf } from "@/lib/evaluar-plans";
 import PrintButton from "@/components/evaluar/PrintButton";
 import VideoPlayback from "@/components/evaluar/VideoPlayback";
 import CvLink from "@/components/evaluar/CvLink";
+import ProfileRadar from "@/components/evaluar/ProfileRadar";
+import PercentileBar from "@/components/evaluar/PercentileBar";
 
 export const metadata = {
   title: "Informe del candidato",
@@ -218,60 +220,89 @@ export default async function InformePage({
               ni malos. El percentil compara contra el resto de las personas
               evaluadas en Worka Evaluar.
             </p>
-            <div className="space-y-3.5 mt-3">
-              {dims.map((d) => (
-                <div key={d.key}>
-                  <div className="flex justify-between text-sm gap-3">
-                    <span className="text-slate-700 font-medium">{d.label}</span>
-                    <span className="text-slate-500 shrink-0">
-                      {d.pct}%
-                      {d.percentile !== null && (
-                        <span className="text-primary font-semibold">
-                          {" · percentil "}
-                          {d.percentile}
-                        </span>
-                      )}
-                    </span>
-                  </div>
+            {/* La forma entera de un vistazo, antes del detalle rasgo por
+                rasgo. Con el perfil ideal encima, la pregunta que importa
+                deja de ser "cuánto sacó" y pasa a ser "cuánto se parece a lo
+                que buscamos", que es la que se está tratando de contestar. */}
+            <ProfileRadar
+              dimensions={dims}
+              ideal={board.process.ideal_profile}
+            />
 
-                  {/* La barra es el puntaje propio; la marca es dónde cae
-                      contra los demás. Dos lecturas distintas en un solo
-                      renglón, que es lo que se mira al comparar gente. */}
-                  <div className="relative h-1.5 rounded-full bg-slate-100 overflow-hidden mt-1">
-                    <div
-                      className="h-full rounded-full bg-indigo-400"
-                      style={{ width: `${d.pct}%` }}
-                    />
-                  </div>
-                  {d.percentile !== null && (
-                    <div className="relative h-2 mt-0.5">
-                      <span
-                        className="absolute top-0 w-0.5 h-2 bg-primary-dark rounded-full -translate-x-1/2"
-                        style={{ left: `${d.percentile}%` }}
-                        aria-hidden
+            <div className="space-y-4 mt-5">
+              {dims.map((d) => (
+                <div
+                  key={d.key}
+                  className="sm:flex sm:items-start sm:gap-5 break-inside-avoid"
+                >
+                  <div className="sm:flex-1 min-w-0">
+                    <div className="flex justify-between text-sm gap-3">
+                      <span className="text-slate-700 font-medium">
+                        {d.label}
+                      </span>
+                      <span className="text-slate-500 shrink-0">{d.pct}%</span>
+                    </div>
+                    <div className="relative h-1.5 rounded-full bg-slate-100 overflow-hidden mt-1">
+                      <div
+                        className="h-full rounded-full bg-indigo-400"
+                        style={{ width: `${d.pct}%` }}
                       />
                     </div>
-                  )}
-
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    {d.pct >= 60 ? d.high : d.low}
-                  </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    {d.percentile !== null ? (
-                      <>
-                        Más alto que el {d.percentile}% de {d.sample} personas
-                        evaluadas.
-                      </>
-                    ) : (
-                      <>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      {d.pct >= 60 ? d.high : d.low}
+                    </p>
+                    {d.percentile === null && (
+                      <p className="text-[11px] text-slate-400 mt-1">
                         Todavía no hay baremo para este rasgo: {d.sample} de las{" "}
                         {MIN_MUESTRA} respuestas que hacen falta para comparar.
-                      </>
+                      </p>
                     )}
-                  </p>
+                  </div>
+
+                  {/* La campana con la marca: "percentil 85" no le dice nada
+                      a quien no trabaja con estadística, y quien decide una
+                      contratación casi nunca lo hace. */}
+                  <div className="shrink-0 mt-2 sm:mt-0">
+                    <PercentileBar d={d} />
+                  </div>
                 </div>
               ))}
             </div>
+          </section>
+        )}
+
+        {/* Cómo leer esto. Un informe que no se sabe leer se lee mal: lo más
+            común es tomar el rasgo más alto como si fuera una nota. */}
+        {dims.length > 0 && (
+          <section className="mt-6 rounded-2xl bg-slate-50 border border-slate-200 p-4 break-inside-avoid">
+            <h2 className="font-bold text-primary-dark text-sm">
+              Cómo leer este informe
+            </h2>
+            <ul className="text-xs text-slate-600 mt-2 space-y-1.5 leading-relaxed">
+              <li>
+                <strong className="font-semibold">El porcentaje</strong> es
+                cuánto marcó la persona en ese rasgo. No es una nota: 30% en
+                extraversión no es peor que 80%, es distinto.
+              </li>
+              <li>
+                <strong className="font-semibold">El percentil</strong> compara
+                contra el resto de los evaluados. P85 significa que quedó por
+                encima del 85% de ellos.
+              </li>
+              <li>
+                <strong className="font-semibold">
+                  La línea verde punteada
+                </strong>{" "}
+                del gráfico es lo que pediste para el puesto. Mientras más se
+                superponga con la violeta, más se parece este candidato a lo que
+                buscás.
+              </li>
+              <li>
+                Un rasgo alto o bajo no descarta a nadie por sí solo. Esto entra
+                a la conversación junto a la entrevista y la experiencia, nunca
+                en lugar de ellas.
+              </li>
+            </ul>
           </section>
         )}
 

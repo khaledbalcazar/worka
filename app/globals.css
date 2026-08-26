@@ -262,3 +262,39 @@ html {
   scrollbar-width: thin;
 }
 
+
+/* ── Impresión ─────────────────────────────────────────────────
+   El informe del candidato se guarda como PDF desde el navegador, así que
+   el papel no es un detalle: es el formato en el que mas se mira. Sin
+   estas reglas los navegadores tiran los fondos de color (y ahí el gráfico
+   se imprime en blanco) y cortan las secciones por la mitad. */
+@media print {
+  @page {
+    margin: 14mm;
+  }
+
+  html,
+  body {
+    background: #fff;
+  }
+
+  /* Que los rellenos del radar, la campana y los avisos salgan en papel.
+     Por defecto el navegador los descarta para ahorrar tinta, y justamente
+     ahí está la información. */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Nada de cortar un rasgo entre dos hojas. */
+  section,
+  figure,
+  .break-inside-avoid {
+    break-inside: avoid;
+  }
+
+  h1,
+  h2 {
+    break-after: avoid;
+  }
+}
