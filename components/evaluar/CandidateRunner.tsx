@@ -18,7 +18,9 @@ import {
   startEvaluation,
   submitStage,
   uploadParticipantCv,
+  uploadVideoAnswer,
 } from "@/app/evaluar/actions";
+import VideoAnswer from "./VideoAnswer";
 import { celebrate } from "@/lib/celebrate";
 import { getTheme, readableOn } from "@/lib/evaluar/themes";
 
@@ -59,7 +61,16 @@ export type Evaluation = {
     timed?: boolean;
     questions: {
       id: string;
-      kind: "unica" | "multiple" | "texto" | "escala" | "numero" | "likert";
+      kind:
+        | "unica"
+        | "multiple"
+        | "texto"
+        | "escala"
+        | "numero"
+        | "likert"
+        | "video";
+      /** Tope de grabacion, solo para las de video. */
+      max_seconds?: number;
       text: string;
       options: string[];
     }[];
@@ -458,6 +469,37 @@ export default function CandidateRunner({
                         value={(answers[question.id] as number) ?? ""}
                         onChange={(e) => responder(Number(e.target.value))}
                       />
+                    )}
+
+                    {/* El video no pasa por `answers`: se sube apenas se
+                        graba, con su propia acción. Meter un blob de treinta
+                        megas en el estado de la etapa y mandarlo recién al
+                        enviar sería jugarse toda la respuesta a que la
+                        conexión aguante ese último tirón. */}
+                    {question.kind === "video" && (
+                      <div className="mt-3">
+                        <VideoAnswer
+                          maxSeconds={question.max_seconds ?? 90}
+                          saved={!!answers[question.id]}
+                          onUpload={async (blob) => {
+                            const fd = new FormData();
+                            fd.append(
+                              "video",
+                              blob,
+                              blob.type === "video/mp4" ? "r.mp4" : "r.webm"
+                            );
+                            const r = await uploadVideoAnswer(
+                              token,
+                              question.id,
+                              fd
+                            );
+                            // Se marca respondida para que el paso deje de
+                            // pedirla y el borrador la recuerde al volver.
+                            if (r.ok) responder("video");
+                            return r;
+                          }}
+                        />
+                      </div>
                     )}
                   </div>
                 )}

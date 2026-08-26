@@ -481,11 +481,12 @@ export async function addQuestion(
   stageId: string,
   input: {
     text: string;
-    kind: "unica" | "multiple" | "texto" | "escala" | "numero";
+    kind: "unica" | "multiple" | "texto" | "escala" | "numero" | "video";
     options: string[];
     correctIndex: number | null;
     weight: number;
     knockout: boolean;
+    maxSeconds?: number;
   }
 ): Promise<Result> {
   const { supabase } = await requireCompany();
@@ -530,6 +531,9 @@ export async function addQuestion(
     correct,
     weight: Math.max(1, input.weight),
     knockout: input.knockout && correct !== null,
+    // Solo tiene sentido en las de video, pero la columna tiene default y un
+    // valor de más en el resto no molesta a nadie.
+    max_seconds: Math.min(300, Math.max(30, input.maxSeconds ?? 90)),
   });
 
   if (error) {
@@ -1428,4 +1432,122 @@ async function notifyCompanyOfCompletion(token: string) {
     // quedó guardada.
     console.error("notifyCompanyOfCompletion:", e);
   }
+}
+
+// ── Entrevista asincrónica ─────────────────────────────────────
+
+// Guarda la respuesta en video de una pregunta.
+//
+// Sube con la service role porque el candidato no tiene cuenta: su
+// credencial es el token del enlace, que se valida acá contra la fila del
+// participante. El bucket es privado y se lee siempre con URL firmada.
+export async function uploadVideoAnswer(
+  token: string,
+  questionId: string,
+  formData: FormData
+): Promise<Result> {
+  const file = formData.get("video");
+  if (!(file instanceof File) || file.size === 0)
+    return { ok: false, error: "No llegó la grabación. Probá de nuevo." };
+  if (file.size > 50 * 1024 * 1024)
+    return {
+      ok: false,
+      error: "El video quedó muy pesado. Grabá una respuesta más corta.",
+    };
+  if (!["video/webm", "video/mp4"].includes(file.type))
+    return { ok: false, error: "Formato de video no soportado." };
+
+  const { getAdminClient } = await import("@/lib/supabase/admin");
+  const admin = getAdminClient();
+  if (!admin)
+    return {
+      ok: false,
+      error: "La entrevista en video no está habilitada en este momento.",
+    };
+
+  const { data: participant } = await admin
+    .from("evaluar_participants")
+    .select("id")
+    .eq("token", token)
+    .maybeSingle();
+  if (!participant) return { ok: false, error: "Enlace inválido." };
+
+  const pid = (participant as { id: string }).id;
+  const ext = file.type === "video/mp4" ? "mp4" : "webm";
+  // La primera carpeta es el id del participante: la política de lectura del
+  // bucket se apoya en eso para cortar por empresa dueña.
+  const path = `${pid}/${questionId}.${ext}`;
+
+  const { error: upError } = await admin.storage
+    .from("entrevistas")
+    .upload(path, file, { upsert: true, contentType: file.type });
+
+  if (upError) {
+    console.error("uploadVideoAnswer:", upError);
+    return { ok: false, error: "No pudimos subir el video. Probá de nuevo." };
+  }
+
+  // La respuesta queda como cualquier otra: el video es el valor. Sin puntaje,
+  // porque no hay respuesta correcta y lo juzga una persona.
+  const { error: ansError } = await admin.from("evaluar_answers").upsert(
+    {
+      participant_id: pid,
+      question_id: questionId,
+      value: { video: path, type: file.type },
+      score: 0,
+    },
+    { onConflict: "participant_id,question_id" }
+  );
+
+  if (ansError) {
+    console.error("uploadVideoAnswer answer:", ansError);
+    return { ok: false, error: "Subimos el video pero no pudimos guardarlo." };
+  }
+
+  revalidatePath(`/evaluar/e/${token}`);
+  return { ok: true };
+}
+
+// URL firmada para que la empresa mire el video. Corta a propósito: un enlace
+// a la grabación de alguien buscando trabajo no puede quedar dando vueltas.
+export async function getVideoUrl(
+  participantId: string,
+  questionId: string
+): Promise<{ ok: boolean; url?: string; error?: string }> {
+  const { supabase, user } = await requireCompany();
+  if (!supabase) return { ok: false, error: "Modo demostración." };
+  if (!user) return { ok: false, error: "Iniciá sesión." };
+
+  // La política de evaluar_participants ya corta por empresa dueña: si el
+  // participante no es de un proceso suyo, esto vuelve vacío.
+  const { data: participant } = await supabase
+    .from("evaluar_participants")
+    .select("id")
+    .eq("id", participantId)
+    .maybeSingle();
+  if (!participant) return { ok: false, error: "No encontramos al candidato." };
+
+  const { data: answer } = await supabase
+    .from("evaluar_answers")
+    .select("value")
+    .eq("participant_id", participantId)
+    .eq("question_id", questionId)
+    .maybeSingle();
+
+  const path = (answer as { value?: { video?: string } } | null)?.value?.video;
+  if (!path) return { ok: false, error: "Todavía no hay video." };
+
+  const { getAdminClient } = await import("@/lib/supabase/admin");
+  const admin = getAdminClient();
+  if (!admin) return { ok: false, error: "No pudimos abrir el video." };
+
+  const { data, error } = await admin.storage
+    .from("entrevistas")
+    .createSignedUrl(path, 60 * 10);
+
+  if (error || !data) {
+    console.error("getVideoUrl:", error);
+    return { ok: false, error: "No pudimos abrir el video." };
+  }
+  return { ok: true, url: data.signedUrl };
 }

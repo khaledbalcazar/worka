@@ -301,7 +301,8 @@ function StagesTab({
     stageId: string,
     i: {
       text: string;
-      kind: "unica" | "multiple" | "texto" | "escala" | "numero";
+      kind: "unica" | "multiple" | "texto" | "escala" | "numero" | "video";
+    maxSeconds: number;
       options: string[];
       correctIndex: number | null;
       weight: number;
@@ -555,7 +556,8 @@ function QuestionForm({
   onCancel: () => void;
   onSave: (i: {
     text: string;
-    kind: "unica" | "multiple" | "texto" | "escala" | "numero";
+    kind: "unica" | "multiple" | "texto" | "escala" | "numero" | "video";
+    maxSeconds: number;
     options: string[];
     correctIndex: number | null;
     weight: number;
@@ -566,7 +568,7 @@ function QuestionForm({
   // El tipo no se puede cambiar al editar: pasar de opciones a texto libre
   // dejaria las respuestas ya dadas sin sentido.
   const [kind, setKind] = useState<
-    "unica" | "multiple" | "texto" | "escala" | "numero"
+    "unica" | "multiple" | "texto" | "escala" | "numero" | "video"
   >((initial?.kind as "unica") ?? "unica");
   const [options, setOptions] = useState<string[]>(
     initial && initial.options.length ? initial.options : ["", ""]
@@ -578,6 +580,7 @@ function QuestionForm({
         : null
       : 0
   );
+  const [maxSeconds, setMaxSeconds] = useState(initial?.max_seconds ?? 90);
   const [weight, setWeight] = useState(initial?.weight ?? 1);
   const [knockout, setKnockout] = useState(initial?.knockout ?? false);
 
@@ -609,8 +612,32 @@ function QuestionForm({
           <option value="texto">Respuesta escrita</option>
           <option value="escala">Escala 1 a 5</option>
           <option value="numero">Número</option>
+          <option value="video">Respuesta en video</option>
         </select>
       </div>
+
+      {/* Tope de grabación. Va por pregunta porque "contá de vos" y "resolvé
+          este caso" no piden lo mismo, y sin tope el que habla diez minutos
+          parece más completo que el que contesta en uno. */}
+      {kind === "video" && (
+        <div>
+          <label className="label">Tiempo máximo de grabación</label>
+          <select
+            className="input"
+            value={maxSeconds}
+            onChange={(e) => setMaxSeconds(Number(e.target.value))}
+          >
+            <option value={60}>1 minuto</option>
+            <option value={90}>1 minuto y medio</option>
+            <option value={120}>2 minutos</option>
+            <option value={180}>3 minutos</option>
+          </select>
+          <p className="text-xs text-slate-500 mt-1.5">
+            El candidato graba cuando puede y puede repetirlo antes de enviar.
+            Vos lo mirás desde el informe, sin coordinar agenda.
+          </p>
+        </div>
+      )}
 
       {needsOptions && (
         <div>
@@ -705,7 +732,15 @@ function QuestionForm({
         </button>
         <button
           onClick={() =>
-            onSave({ text, kind, options, correctIndex, weight, knockout })
+            onSave({
+              text,
+              kind,
+              options,
+              correctIndex,
+              weight,
+              knockout,
+              maxSeconds,
+            })
           }
           disabled={pending || !text.trim()}
           className="btn-primary press flex-[2] disabled:opacity-40"

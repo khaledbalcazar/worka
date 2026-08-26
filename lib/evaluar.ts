@@ -56,6 +56,8 @@ export type EvaluarQuestion = {
   weight: number;
   knockout: boolean;
   dimension?: string | null;
+  /** Tope de grabacion, solo para las preguntas de video. */
+  max_seconds?: number;
 };
 
 export type ParticipantStatus =
