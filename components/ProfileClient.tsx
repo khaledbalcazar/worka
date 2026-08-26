@@ -66,6 +66,10 @@ export default function ProfileClient({
   const [editSaved, setEditSaved] = useState(false);
   const [firstJobMode, setFirstJobMode] = useState(candidate.first_job_mode);
   const [alertsEnabled, setAlertsEnabled] = useState(candidate.alerts_enabled);
+  // El pie de cada correo dice que se pueden apagar: tiene que ser cierto.
+  const [emailsEnabled, setEmailsEnabled] = useState(
+    candidate.email_notifications !== false
+  );
   const [visibleToCompanies, setVisibleToCompanies] = useState(
     candidate.visible_to_companies
   );
@@ -412,6 +416,27 @@ export default function ProfileClient({
                 type="checkbox"
                 checked={firstJobMode}
                 onChange={(e) => toggleFirstJob(e.target.checked)}
+                className="w-5 h-5 accent-primary"
+              />
+            </label>
+
+            <label className="flex items-center justify-between gap-3 cursor-pointer">
+              <div>
+                <p className="text-sm font-medium text-gray-700">
+                  📧 Avisos por email
+                </p>
+                <p className="text-xs text-gray-500">
+                  Cuando tu postulación avanza, te contactan o te proponen una
+                  entrevista. La campanita sigue funcionando igual.
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                checked={emailsEnabled}
+                onChange={(e) => {
+                  setEmailsEnabled(e.target.checked);
+                  updateCandidatePrefs({ email_notifications: e.target.checked });
+                }}
                 className="w-5 h-5 accent-primary"
               />
             </label>

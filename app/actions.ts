@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { notify, notifyMany } from "@/lib/notify";
 import { redirect } from "next/navigation";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { slugify as toSlug } from "@/lib/slug";
@@ -109,6 +110,21 @@ export async function applyToJob(
         "Llegaste al límite de 20 postulaciones por día. Mañana podés seguir: apuntá a las vacantes que mejor encajen con tu perfil.",
     };
 
+  // Datos de la vacante para los avisos: quién publica y cómo se llama.
+  const { data: jobRow } = await supabase
+    .from("jobs")
+    .select("title, company_id, company:companies(trade_name)")
+    .eq("id", jobId)
+    .maybeSingle();
+  const j = jobRow as unknown as {
+    title?: string;
+    company_id?: string;
+    company?: { trade_name?: string } | null;
+  } | null;
+  const jobTitle = j?.title ?? "una vacante";
+  const companyId = j?.company_id ?? null;
+  const empresaNombre = j?.company?.trade_name ?? "la empresa";
+
   const { data: application, error } = await supabase
     .from("applications")
     .insert({ job_id: jobId, candidate_id: user.id })
@@ -155,7 +171,46 @@ export async function applyToJob(
           reviewed_at: new Date().toISOString(),
         })
         .eq("id", application.id);
+
+      // Un descarte automático se avisa igual, y en el momento: enterarse hoy
+      // duele menos que esperar tres semanas una respuesta que no va a llegar.
+      await notify({
+        userId: user.id,
+        icon: "📋",
+        title: "Tu postulación no siguió esta vez",
+        body: `Para "${jobTitle}" buscaban un perfil distinto. Seguí postulándote: hay más vacantes de tu rubro.`,
+        href: "/postulaciones",
+        cta: "Ver más vacantes",
+      });
+      revalidatePath("/postulaciones");
+      return { ok: true };
     }
+  }
+
+  // Confirmación al candidato: sin esto queda sin saber si su postulación
+  // llegó, que es la primera pregunta que se hace cualquiera.
+  await notify({
+    userId: user.id,
+    icon: "✅",
+    title: "Postulación enviada",
+    body: `Tu perfil llegó a ${empresaNombre} por "${jobTitle}".`,
+    emailBody: `Tu perfil llegó a <strong>${empresaNombre}</strong> por la vacante de <strong>${jobTitle}</strong>. Te vamos a avisar por acá cada vez que tu postulación avance.`,
+    href: "/postulaciones",
+    cta: "Ver mis postulaciones",
+  });
+
+  // Aviso a la empresa. Era el hueco más grande: nadie le decía que alguien
+  // se había postulado, así que los candidatos esperaban días a que a alguien
+  // se le ocurriera entrar al panel.
+  if (companyId) {
+    await notify({
+      userId: companyId,
+      icon: "🎯",
+      title: `Nueva postulación para ${jobTitle}`,
+      body: `${candidate.full_name} se postuló. Revisá su perfil y su CV.`,
+      href: `/empresa/vacantes/${jobId}`,
+      cta: "Ver la postulación",
+    });
   }
 
   revalidatePath("/postulaciones");
@@ -547,12 +602,13 @@ export async function contactApplicant(
 
   if (a?.candidate_id) {
     const empresa = a.job?.company?.trade_name ?? "Una empresa";
-    await supabase.from("notifications").insert({
-      user_id: a.candidate_id,
+    await notify({
+      userId: a.candidate_id,
       icon: "💬",
       title: `${empresa} te contactó`,
       body: `Te escribieron por WhatsApp por "${a.job?.title ?? "una vacante"}". ¡Revisá tu teléfono!`,
       href: "/postulaciones",
+      cta: "Ver mi postulación",
     });
   }
   revalidatePath("/postulaciones");
@@ -601,12 +657,13 @@ export async function proposeInterview(
   const a = app as unknown as ApplicantNotifyRow | null;
   if (a?.candidate_id) {
     const empresa = a.job?.company?.trade_name ?? "Una empresa";
-    await supabase.from("notifications").insert({
-      user_id: a.candidate_id,
+    await notify({
+      userId: a.candidate_id,
       icon: "📅",
       title: "Te propusieron una entrevista",
       body: `${empresa} te propuso una entrevista para "${a.job?.title ?? "una vacante"}". Confirmá desde tus postulaciones.`,
       href: "/postulaciones",
+      cta: "Confirmar la entrevista",
     });
   }
   revalidatePath("/postulaciones");
@@ -668,12 +725,54 @@ export async function sendChatMessage(
     content: content.slice(0, 1000),
   });
   if (error) return { ok: false, error: "No pudimos enviar el mensaje." };
+
+  // Aviso a la otra parte. Un chat sin aviso es un chat que nadie lee: el
+  // mensaje quedaba esperando a que la persona entrara por casualidad.
+  const { data: app } = await supabase
+    .from("applications")
+    .select("candidate_id, job:jobs(title, company_id, company:companies(trade_name))")
+    .eq("id", applicationId)
+    .maybeSingle();
+
+  const a = app as unknown as {
+    candidate_id: string;
+    job?: {
+      title?: string;
+      company_id?: string;
+      company?: { trade_name?: string } | null;
+    } | null;
+  } | null;
+
+  if (a?.job) {
+    const puesto = a.job.title ?? "una vacante";
+    if (sender === "company" && a.candidate_id) {
+      await notify({
+        userId: a.candidate_id,
+        icon: "✉️",
+        title: `${a.job.company?.trade_name ?? "Una empresa"} te escribió`,
+        body: `Tenés un mensaje nuevo por "${puesto}".`,
+        href: "/mensajes",
+        cta: "Leer el mensaje",
+      });
+    } else if (sender === "candidate" && a.job.company_id) {
+      await notify({
+        userId: a.job.company_id,
+        icon: "✉️",
+        title: `Mensaje nuevo por ${puesto}`,
+        body: "Un candidato te escribió desde el chat de la postulación.",
+        href: "/empresa/mensajes",
+        cta: "Leer el mensaje",
+      });
+    }
+  }
+
   return { ok: true };
 }
 
 export async function updateCandidatePrefs(prefs: {
   first_job_mode?: boolean;
   alerts_enabled?: boolean;
+  email_notifications?: boolean;
   visible_to_companies?: boolean;
   public_profile?: boolean;
   preferences_modality?: string;
@@ -787,14 +886,18 @@ export async function createJob(input: {
       .contains("preferences_industry", [input.industry])
       .limit(300);
     if (matches && matches.length > 0) {
-      await supabase.from("notifications").insert(
-        matches.map((c: { id: string }) => ({
-          user_id: c.id,
+      // Solo campanita, sin `cta`: el correo de vacantes nuevas lo manda el
+      // cron diario de alertas, agrupado. Mandar uno por cada publicación
+      // sería varios correos al día a la misma persona.
+      await notifyMany(
+        matches.map((c: { id: string }) => c.id),
+        (userId) => ({
+          userId,
           icon: "✨",
           title: `Nueva vacante de ${input.industry}`,
           body: `${input.title} — coincide con tus rubros de interés.`,
           href: `/empleo/${job.id}`,
-        }))
+        })
       );
     }
   } catch {
@@ -1356,14 +1459,14 @@ export async function warnCompany(
   if (!supabase) return DEMO;
   if (!(await assertAdmin()))
     return { ok: false, error: "Solo el admin puede hacer esto." };
-  const { error } = await supabase.from("notifications").insert({
-    user_id: companyId,
+  await notify({
+    userId: companyId,
     icon: "⚠️",
     title: "Advertencia del equipo de Worka",
     body: `Tu vacante "${jobTitle}" recibió denuncias de la comunidad. Revisala: si incumple las reglas (pedir dinero, datos falsos), será eliminada.`,
     href: "/empresa",
+    cta: "Revisar mi vacante",
   });
-  if (error) return { ok: false, error: "No pudimos enviar la advertencia." };
   return { ok: true };
 }
 

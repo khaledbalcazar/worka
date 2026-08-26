@@ -231,6 +231,7 @@ export interface Candidate {
   preferences_modality: string;
   first_job_mode: boolean;
   alerts_enabled: boolean;
+  email_notifications?: boolean;
   visible_to_companies: boolean;
   public_profile: boolean;
   open_to_other_cities: boolean;
