@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Logo from "@/components/Logo";
 import AdminPanel from "@/components/AdminPanel";
 import AdminSubscriptions from "@/components/evaluar/AdminSubscriptions";
+import EmailTemplates from "@/components/admin/EmailTemplates";
 import { getEvaluarAccounts } from "@/lib/evaluar";
 import {
   getActiveJobsCount,
@@ -21,6 +22,7 @@ import {
   getGlobalStats,
   getPendingIndustryTags,
   getSiteSettings,
+  getEmailTemplateOverrides,
   isLive,
 } from "@/lib/data";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
@@ -58,6 +60,7 @@ export default async function AdminPage() {
     allJobs,
     customBadges,
     evaluarAccounts,
+    emailOverrides,
   ] = await Promise.all([
     getModerationQueue(),
     getReports(),
@@ -75,6 +78,7 @@ export default async function AdminPage() {
     getAllJobsForAdmin(),
     getCustomBadges(),
     getEvaluarAccounts(),
+    getEmailTemplateOverrides(),
   ]);
 
   const identityQueue = await Promise.all(
@@ -134,6 +138,11 @@ export default async function AdminPage() {
           cobro es manual: es la pantalla donde se activa a quien pago. */}
       <div className="max-w-6xl mx-auto px-4 pb-10">
         <AdminSubscriptions accounts={evaluarAccounts} />
+      </div>
+
+      {/* Editor de los correos que manda la plataforma. */}
+      <div className="max-w-6xl mx-auto px-4 pb-10">
+        <EmailTemplates overrides={emailOverrides} />
       </div>
     </div>
   );

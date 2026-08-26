@@ -929,6 +929,23 @@ export async function getAllExternalJobsForSitemap(): Promise<
   return salida;
 }
 
+/** Plantillas de correo editadas desde el admin. Solo las que se tocaron. */
+export async function getEmailTemplateOverrides(): Promise<
+  { key: string; subject: string; body: string; enabled: boolean }[]
+> {
+  const supabase = await getServerClient();
+  if (!supabase) return [];
+  const { data } = await supabase
+    .from("email_templates")
+    .select("key, subject, body, enabled");
+  return (data ?? []) as {
+    key: string;
+    subject: string;
+    body: string;
+    enabled: boolean;
+  }[];
+}
+
 export async function externalJobsEnabled(): Promise<boolean> {
   const settings = await getSiteSettings();
   return settings.external_jobs_enabled === "true";

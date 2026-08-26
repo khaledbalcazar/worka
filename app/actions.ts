@@ -181,6 +181,10 @@ export async function applyToJob(
         body: `Para "${jobTitle}" buscaban un perfil distinto. Seguí postulándote: hay más vacantes de tu rubro.`,
         href: "/postulaciones",
         cta: "Ver más vacantes",
+        template: {
+          key: "postulacion_descartada",
+          vars: { nombre: candidate.full_name, puesto: jobTitle },
+        },
       });
       revalidatePath("/postulaciones");
       return { ok: true };
@@ -197,6 +201,14 @@ export async function applyToJob(
     emailBody: `Tu perfil llegó a <strong>${empresaNombre}</strong> por la vacante de <strong>${jobTitle}</strong>. Te vamos a avisar por acá cada vez que tu postulación avance.`,
     href: "/postulaciones",
     cta: "Ver mis postulaciones",
+    template: {
+      key: "postulacion_enviada",
+      vars: {
+        nombre: candidate.full_name,
+        empresa: empresaNombre,
+        puesto: jobTitle,
+      },
+    },
   });
 
   // Aviso a la empresa. Era el hueco más grande: nadie le decía que alguien
@@ -210,6 +222,10 @@ export async function applyToJob(
       body: `${candidate.full_name} se postuló. Revisá su perfil y su CV.`,
       href: `/empresa/vacantes/${jobId}`,
       cta: "Ver la postulación",
+      template: {
+        key: "postulacion_nueva",
+        vars: { nombre: candidate.full_name, puesto: jobTitle },
+      },
     });
   }
 
@@ -609,6 +625,14 @@ export async function contactApplicant(
       body: `Te escribieron por WhatsApp por "${a.job?.title ?? "una vacante"}". ¡Revisá tu teléfono!`,
       href: "/postulaciones",
       cta: "Ver mi postulación",
+      template: {
+        key: "empresa_contacto",
+        vars: {
+          nombre: "",
+          empresa,
+          puesto: a.job?.title ?? "una vacante",
+        },
+      },
     });
   }
   revalidatePath("/postulaciones");
@@ -664,6 +688,14 @@ export async function proposeInterview(
       body: `${empresa} te propuso una entrevista para "${a.job?.title ?? "una vacante"}". Confirmá desde tus postulaciones.`,
       href: "/postulaciones",
       cta: "Confirmar la entrevista",
+      template: {
+        key: "entrevista_propuesta",
+        vars: {
+          nombre: "",
+          empresa,
+          puesto: a.job?.title ?? "una vacante",
+        },
+      },
     });
   }
   revalidatePath("/postulaciones");
@@ -753,6 +785,10 @@ export async function sendChatMessage(
         body: `Tenés un mensaje nuevo por "${puesto}".`,
         href: "/mensajes",
         cta: "Leer el mensaje",
+        template: {
+          key: "mensaje_nuevo",
+          vars: { nombre: "", empresa: a.job.company?.trade_name ?? "", puesto },
+        },
       });
     } else if (sender === "candidate" && a.job.company_id) {
       await notify({
@@ -762,6 +798,10 @@ export async function sendChatMessage(
         body: "Un candidato te escribió desde el chat de la postulación.",
         href: "/empresa/mensajes",
         cta: "Leer el mensaje",
+        template: {
+          key: "mensaje_nuevo",
+          vars: { nombre: "", empresa: "", puesto },
+        },
       });
     }
   }
