@@ -263,6 +263,10 @@ export async function updateProcess(
     brand_color?: string | null;
     use_company_brand?: boolean;
     deadline_at?: string | null;
+    org_unit?: string;
+    department?: string;
+    manager_name?: string;
+    manager_email?: string;
   }
 ): Promise<Result> {
   const { supabase, user } = await requireCompany();
@@ -1005,19 +1009,39 @@ export async function addProcessMember(
   const limpio = email.trim().toLowerCase();
   if (!limpio) return { ok: false, error: "Escribí el email." };
 
+  // Para qué concurso lo están sumando: sin eso el correo dice "te sumaron a
+  // un proceso" y el jefe de área no sabe a cuál de las tres búsquedas.
+  const { data: proc } = await supabase
+    .from("evaluar_processes")
+    .select("title, org_unit, department")
+    .eq("id", processId)
+    .eq("company_id", user.id)
+    .maybeSingle();
+  if (!proc) return { ok: false, error: "Ese proceso ya no existe." };
+  const p = proc as { title: string; org_unit?: string; department?: string };
+
   // El email vive en auth.users, no en profiles: lo resuelve una función con
   // permisos elevados que solo responde a quien ya tiene procesos propios.
   const { data: userId } = await supabase.rpc("fn_user_id_by_email", {
     p_email: limpio,
   });
-  if (!userId)
-    return {
-      ok: false,
-      error:
-        "Esa persona todavía no tiene cuenta en Worka. Que se registre con ese email y volvé a intentar.",
-    };
+
   if (userId === user.id)
     return { ok: false, error: "Ya sos el dueño de este proceso." };
+
+  // Sin cuenta no se puede dar acceso todavía, pero antes eso era un callejón
+  // sin salida: el mensaje mandaba a la empresa a avisarle por su cuenta. Se
+  // le escribe invitándolo a registrarse, que es lo que había que hacer igual.
+  if (!userId) {
+    const invitado = await notifyTeamMember(limpio, p, null);
+    return {
+      ok: true,
+      emailSent: invitado,
+      emailReason: invitado
+        ? "Todavía no tiene cuenta en Worka: le mandamos una invitación para que se registre con ese email. Cuando lo haga, volvé a sumarlo."
+        : "Todavía no tiene cuenta en Worka y no pudimos enviarle el correo. Pedile que se registre con ese email.",
+    };
+  }
 
   const { error } = await supabase
     .from("evaluar_process_members")
@@ -1027,8 +1051,59 @@ export async function addProcessMember(
     console.error("addProcessMember:", error);
     return { ok: false, error: "No pudimos sumar a esa persona." };
   }
+
+  // El aviso va aunque ya estuviera (código 23505): que alguien reintente
+  // sumarlo suele ser justamente porque nunca se enteró.
+  const avisado = await notifyTeamMember(limpio, p, processId);
+
   revalidatePath(`/evaluar/app/procesos/${processId}`);
-  return { ok: true };
+  return {
+    ok: true,
+    emailSent: avisado,
+    emailReason: avisado
+      ? undefined
+      : "Lo sumamos, pero no pudimos avisarle por correo. Pasale el enlace vos.",
+  };
+}
+
+// Aviso al evaluador que suman al concurso. Con processId entra a mirar; sin
+// él, todavía no tiene cuenta y lo que se le manda es a registrarse.
+async function notifyTeamMember(
+  email: string,
+  proc: { title: string; org_unit?: string; department?: string },
+  processId: string | null
+): Promise<boolean> {
+  if (!emailEnabled()) return false;
+
+  const base = SITE_URL.replace(/\/$/, "").replace("://", "://evaluar.");
+  const url = processId ? `${base}/app/procesos/${processId}` : `${base}/app`;
+
+  // La unidad y el departamento van en el asunto: quien recibe tres de estos
+  // por semana necesita distinguirlos sin abrirlos.
+  const donde = [proc.org_unit, proc.department].filter(Boolean).join(" · ");
+
+  return sendEmail({
+    to: email,
+    subject: `Te sumaron al concurso de ${proc.title}${donde ? ` (${donde})` : ""}`,
+    html: emailLayout(`
+      <p>Hola,</p>
+      <p>Te sumaron como evaluador del concurso de
+      <strong>${proc.title}</strong>${donde ? ` — ${donde}` : ""}.</p>
+      ${
+        processId
+          ? `<p>Vas a poder ver a los candidatos, sus resultados y dejar tus
+             notas para el resto del equipo.</p>`
+          : `<p>Para poder entrar necesitás una cuenta de Worka con
+             <strong>${email}</strong>. Creala desde el enlace y avisale a
+             quien te sumó para que te dé acceso.</p>`
+      }
+      <p style="margin:24px 0">
+        <a href="${url}" style="background:#2563eb;color:#fff;padding:12px 20px;border-radius:12px;text-decoration:none;font-weight:600">
+          ${processId ? "Ver el concurso" : "Crear mi cuenta"}
+        </a>
+      </p>
+    `),
+  });
 }
 
 export async function removeProcessMember(

@@ -85,6 +85,21 @@ export default async function InformePage({
               {c.full_name || "Sin nombre"}
             </h1>
             <p className="text-sm text-slate-600 mt-1">{board.process.title}</p>
+            {/* Para qué área se llamó. Sin esto, el informe impreso llega a
+                un escritorio que no participó de la búsqueda y no distingue
+                dos concursos del mismo puesto. */}
+            {(board.process.org_unit || board.process.department) && (
+              <p className="text-sm text-slate-500">
+                {[board.process.org_unit, board.process.department]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            )}
+            {board.process.manager_name && (
+              <p className="text-xs text-slate-400 mt-0.5">
+                Responsable: {board.process.manager_name}
+              </p>
+            )}
           </div>
           <div className="text-right shrink-0">
             <p className="font-bold text-primary-dark">Worka Evaluar</p>

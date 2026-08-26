@@ -24,6 +24,7 @@ import CandidateBoard from "./CandidateBoard";
 import {
   IdealProfile,
   ProcessDesign,
+  ProcessOrg,
   ProcessTeam,
 } from "./ProcessSettings";
 import {
@@ -261,6 +262,7 @@ export default function ProcessEditor({
 
       {tab === "ajustes" && (
         <div className="space-y-4">
+          <ProcessOrg detail={detail} />
           <IdealProfile detail={detail} />
           <ProcessDesign detail={detail} />
           <ProcessTeam detail={detail} />

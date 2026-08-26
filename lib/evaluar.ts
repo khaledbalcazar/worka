@@ -30,6 +30,11 @@ export type EvaluarProcess = {
   deadline_at?: string | null;
   archived?: boolean;
   ideal_profile?: Record<string, number>;
+  /** Para que unidad y departamento se llama el concurso. */
+  org_unit?: string;
+  department?: string;
+  manager_name?: string;
+  manager_email?: string;
 };
 
 export type EvaluarStage = {
@@ -43,6 +48,17 @@ export type EvaluarStage = {
   /** Etapa con cronómetro (los tests con respuesta correcta). */
   timed?: boolean;
   template_key?: string | null;
+  /** Que es esta etapa y que se espera, en criollo. */
+  intro?: string;
+  /** Pregunta de ejemplo resuelta, para ver el formato sin presion. */
+  demo?: StageDemo | null;
+};
+
+export type StageDemo = {
+  text: string;
+  options: string[];
+  answer: string;
+  explain: string;
 };
 
 export type EvaluarQuestion = {

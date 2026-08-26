@@ -9,6 +9,7 @@ import {
   UserPlus,
   Users,
   X,
+  Building2,
 } from "lucide-react";
 import type { ProcessDetail } from "@/lib/evaluar";
 import { THEMES, readableOn } from "@/lib/evaluar/themes";
@@ -374,6 +375,149 @@ export function IdealProfile({ detail }: { detail: ProcessDetail }) {
       >
         {pending ? "Guardando…" : "Guardar perfil ideal"}
       </button>
+    </div>
+  );
+}
+
+// ── Datos del concurso ─────────────────────────────────────────
+
+// Para qué unidad y departamento se está llamando, y quién es el responsable.
+//
+// En una empresa de un local alcanza con el nombre del puesto. En una con
+// sucursales, o en el sector público, no: "Cajero" no distingue nada, y el
+// informe termina sobre el escritorio de alguien que no participó de la
+// búsqueda y no sabe qué está mirando.
+export function ProcessOrg({ detail }: { detail: ProcessDetail }) {
+  const router = useRouter();
+  const { process } = detail;
+  const [orgUnit, setOrgUnit] = useState(process.org_unit ?? "");
+  const [department, setDepartment] = useState(process.department ?? "");
+  const [managerName, setManagerName] = useState(process.manager_name ?? "");
+  const [managerEmail, setManagerEmail] = useState(process.manager_email ?? "");
+  const [aviso, setAviso] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function guardar() {
+    setError(null);
+    setAviso(null);
+    startTransition(async () => {
+      const r = await updateProcess(process.id, {
+        org_unit: orgUnit.trim(),
+        department: department.trim(),
+        manager_name: managerName.trim(),
+        manager_email: managerEmail.trim().toLowerCase(),
+      });
+      if (r.ok) router.refresh();
+      else setError(r.error ?? "No pudimos guardar.");
+    });
+  }
+
+  // Guardar el email del jefe y darle acceso son dos cosas distintas: se puede
+  // querer dejarlo asentado en el informe sin que entre a mirar candidatos.
+  function invitar() {
+    setError(null);
+    setAviso(null);
+    startTransition(async () => {
+      const r = await addProcessMember(process.id, managerEmail.trim());
+      if (!r.ok) {
+        setError(r.error ?? "No pudimos invitarlo.");
+        return;
+      }
+      setAviso(
+        r.emailReason ??
+          `Le avisamos a ${managerEmail.trim()} que ya puede ver el concurso.`
+      );
+      router.refresh();
+    });
+  }
+
+  const emailValido = /.+@.+\..+/.test(managerEmail.trim());
+
+  return (
+    <div className="card p-5 space-y-4">
+      <div>
+        <h2 className="font-semibold text-primary-dark flex items-center gap-2">
+          <Building2 size={17} /> Para qué área es el concurso
+        </h2>
+        <p className="text-xs text-slate-500 mt-1">
+          Aparece en el informe y en el correo al equipo. Sirve para no
+          confundir dos búsquedas del mismo puesto en áreas distintas.
+        </p>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-3">
+        <div>
+          <label className="label">Unidad organizacional</label>
+          <input
+            className="input"
+            placeholder="Ej: Sucursal Centro"
+            value={orgUnit}
+            onChange={(e) => setOrgUnit(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="label">Departamento</label>
+          <input
+            className="input"
+            placeholder="Ej: Atención al cliente"
+            value={department}
+            onChange={(e) => setDepartment(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="label">Jefe o encargado</label>
+          <input
+            className="input"
+            placeholder="Nombre y apellido"
+            value={managerName}
+            onChange={(e) => setManagerName(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="label">Su email</label>
+          <input
+            type="email"
+            className="input"
+            placeholder="jefe@empresa.com"
+            value={managerEmail}
+            onChange={(e) => setManagerEmail(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {error && (
+        <p className="text-sm text-danger bg-red-50 rounded-xl px-3.5 py-2.5">
+          {error}
+        </p>
+      )}
+      {aviso && (
+        <p className="text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5">
+          {aviso}
+        </p>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={guardar}
+          disabled={pending}
+          className="btn-primary press text-sm disabled:opacity-50"
+        >
+          Guardar
+        </button>
+        <button
+          onClick={invitar}
+          disabled={pending || !emailValido}
+          title={
+            emailValido
+              ? "Le damos acceso para ver candidatos y dejar notas"
+              : "Cargá primero un email válido"
+          }
+          className="btn-secondary press text-sm disabled:opacity-40"
+        >
+          <UserPlus size={15} /> Invitarlo a ver el concurso
+        </button>
+      </div>
     </div>
   );
 }
