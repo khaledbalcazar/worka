@@ -1,4 +1,5 @@
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/admin";
 import { TRIAL_DAYS } from "@/lib/evaluar-config";
 import {
   resolveAccess,
@@ -548,7 +549,16 @@ export async function getBoardData(processId: string): Promise<BoardData | null>
 export async function getProcessForJob(
   jobId: string
 ): Promise<{ id: string; title: string; stage_count: number } | null> {
-  const supabase = await getServerClient();
+  // Se lee con el cliente administrativo a propósito. Esta consulta corre en
+  // la página pública de la vacante, o sea con la sesión del candidato, y la
+  // única política sobre evaluar_processes deja leer a la empresa dueña. Con
+  // el cliente normal siempre devolvía null: la vacante enlazada se mostraba
+  // como una común y la evaluación quedaba invisible para todo el mundo.
+  //
+  // No se abre una política pública en su lugar porque la fila guarda el
+  // perfil ideal del puesto, y un candidato que lo lee sabe qué contestar.
+  // Acá salen tres campos elegidos a mano y nada más.
+  const supabase = getAdminClient() ?? (await getServerClient());
   if (!supabase) return null;
 
   const { data } = await supabase

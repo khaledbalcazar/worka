@@ -10,6 +10,7 @@ import {
 } from "@/lib/evaluar/templates";
 import { emailEnabled, emailLayout, sendEmail } from "@/lib/email";
 import { SITE_URL } from "@/lib/supabase/config";
+import { planOf, upgradeMessage, type PlanLimits } from "@/lib/evaluar-plans";
 
 type Result = {
   ok: boolean;
@@ -41,6 +42,30 @@ async function requireActiveAccount(): Promise<string | null> {
   if (!access.active)
     return "Tu prueba terminó. Activá tu suscripción para seguir usando Evaluar.";
   return null;
+}
+
+// El plan vigente, resuelto siempre del lado del servidor: el plan que dice
+// el navegador lo elige el usuario.
+async function planNow(): Promise<PlanLimits> {
+  return planOf(await getMyEvaluarAccess());
+}
+
+// Procesos publicados hoy, sin contar el que se está por publicar. El límite
+// del plan Esencial es sobre los que están corriendo a la vez, no sobre los
+// que se crearon alguna vez: cerrar una búsqueda tiene que liberar el lugar.
+async function countActiveProcesses(
+  supabase: NonNullable<Awaited<ReturnType<typeof getServerClient>>>,
+  companyId: string,
+  exceptId?: string
+): Promise<number> {
+  let q = supabase
+    .from("evaluar_processes")
+    .select("id", { count: "exact", head: true })
+    .eq("company_id", companyId)
+    .eq("status", "activo");
+  if (exceptId) q = q.neq("id", exceptId);
+  const { count } = await q;
+  return count ?? 0;
 }
 
 // ── Cuenta y prueba ────────────────────────────────────────────
@@ -245,6 +270,25 @@ export async function updateProcess(
   if (!user) return { ok: false, error: "Iniciá sesión como empresa." };
   const blocked = await requireActiveAccount();
   if (blocked) return { ok: false, error: blocked };
+
+  // Publicar es lo que consume el cupo del plan. El tope se cuenta acá y no
+  // al crear, porque un borrador todavía no ocupa lugar, y cerrar una
+  // búsqueda tiene que liberarlo.
+  if (input.status === "activo") {
+    const plan = await planNow();
+    if (plan.activeProcesses !== null) {
+      const activos = await countActiveProcesses(supabase, user.id, id);
+      if (activos >= plan.activeProcesses) {
+        return {
+          ok: false,
+          error:
+            `Tu plan ${plan.label} permite ${plan.activeProcesses} procesos ` +
+            `activos a la vez y ya tenés ${activos}. Cerrá uno o pasá al ` +
+            `plan Profesional.`,
+        };
+      }
+    }
+  }
 
   const { error } = await supabase
     .from("evaluar_processes")
@@ -899,6 +943,9 @@ export async function addProcessMember(
   const { supabase, user } = await requireCompany();
   if (!supabase) return DEMO;
   if (!user) return { ok: false, error: "Iniciá sesión como empresa." };
+  const plan = await planNow();
+  if (!plan.team)
+    return { ok: false, error: upgradeMessage("Sumar gente del equipo", plan) };
   const blocked = await requireActiveAccount();
   if (blocked) return { ok: false, error: blocked };
 
@@ -1046,6 +1093,9 @@ export async function inviteBatch(
 ): Promise<Result & { invited?: number; failed?: number }> {
   const { supabase } = await requireCompany();
   if (!supabase) return DEMO;
+  const plan = await planNow();
+  if (!plan.bulkInvite)
+    return { ok: false, error: upgradeMessage("Invitar por lista", plan) };
   const blocked = await requireActiveAccount();
   if (blocked) return { ok: false, error: blocked };
 

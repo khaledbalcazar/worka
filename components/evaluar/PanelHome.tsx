@@ -17,6 +17,7 @@ import {
   Users,
 } from "lucide-react";
 import type { AccessState, PanelData, ProcessRow } from "@/lib/evaluar";
+import { planOf } from "@/lib/evaluar-plans";
 import { TRIAL_DAYS } from "@/lib/evaluar-config";
 import NewProcess from "./NewProcess";
 import { duplicateProcess, setProcessArchived } from "@/app/evaluar/actions";
@@ -41,6 +42,8 @@ export default function PanelHome({
   const [pending, startTransition] = useTransition();
 
   const { processes, alerts, activity, stats } = panel;
+  const plan = planOf(access);
+  const activos = processes.filter((p) => p.status === "activo").length;
   const nuevo = processes.length === 0;
 
   function run(fn: () => Promise<{ ok: boolean; error?: string; id?: string }>) {
@@ -79,6 +82,25 @@ export default function PanelHome({
                 : "Gracias por confiar en Worka Evaluar."
               : "Escribinos para reactivar tu cuenta y no perder ningún proceso."}
           </p>
+          {/* Cupo del plan. Se muestra siempre, no solo cuando se llena: que
+              la empresa descubra el límite recién al querer publicar el
+              cuarto proceso es la peor forma de enterarse. */}
+          {plan.activeProcesses !== null && (
+            <p className="text-xs text-slate-600 mt-1.5">
+              Plan <strong className="font-semibold">{plan.label}</strong> ·{" "}
+              <span className={activos >= plan.activeProcesses ? "text-amber-700 font-semibold" : ""}>
+                {activos} de {plan.activeProcesses} procesos activos
+              </span>
+              {activos >= plan.activeProcesses && (
+                <>
+                  {" — "}
+                  <Link href="/evaluar/precios" className="underline hover:text-primary">
+                    ampliar plan
+                  </Link>
+                </>
+              )}
+            </p>
+          )}
         </div>
         {!access.active && (
           <a
