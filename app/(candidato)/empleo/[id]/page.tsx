@@ -8,8 +8,8 @@ import { formatDate, timeAgo } from "@/lib/format";
 import ApplyPanel from "@/components/ApplyPanel";
 import EntityAvatar from "@/components/EntityAvatar";
 import JobViewTracker from "@/components/JobViewTracker";
-import JobEvaluationCta from "@/components/evaluar/JobEvaluationCta";
-import { getProcessForJob, getMyParticipantToken } from "@/lib/evaluar";
+import LinkedJobPanel from "@/components/evaluar/LinkedJobPanel";
+import { getProcessForJob, getMyParticipation } from "@/lib/evaluar";
 import {
   FastResponderBadge,
   FirstJobBadge,
@@ -75,8 +75,8 @@ export default async function JobDetailPage({
   // ¿La empresa enlazó esta vacante con un proceso de Worka Evaluar? Si sí, el
   // candidato arranca los tests desde acá, sin salir del aviso.
   const evaluation = await getProcessForJob(job.id);
-  const evaluationToken = evaluation
-    ? await getMyParticipantToken(evaluation.id)
+  const participation = evaluation
+    ? await getMyParticipation(evaluation.id)
     : null;
 
   // Destino para las apps de mapas: dirección exacta o empresa + ciudad.
@@ -337,20 +337,25 @@ export default async function JobDetailPage({
 
         {/* Panel de postulación: fijo a la derecha en escritorio */}
         <div className="lg:sticky lg:top-20 space-y-4">
-          {evaluation && (
-            <JobEvaluationCta
+          {/* Con evaluacion enlazada hay UN solo camino, en orden: mostrar
+              tambien el panel normal dejaba postularse salteando los tests,
+              que es justo lo que la empresa quiere evitar al enlazarlo. */}
+          {evaluation ? (
+            <LinkedJobPanel
+              job={job}
+              alreadyApplied={appliedIds.has(job.id)}
+              loggedIn={loggedIn}
               processId={evaluation.id}
               stageCount={evaluation.stage_count}
+              participation={participation}
+            />
+          ) : (
+            <ApplyPanel
+              job={job}
+              alreadyApplied={appliedIds.has(job.id)}
               loggedIn={loggedIn}
-              jobId={job.id}
-              alreadyStarted={evaluationToken}
             />
           )}
-          <ApplyPanel
-            job={job}
-            alreadyApplied={appliedIds.has(job.id)}
-            loggedIn={loggedIn}
-          />
         </div>
       </div>
     </div>

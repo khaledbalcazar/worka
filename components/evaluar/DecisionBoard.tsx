@@ -73,7 +73,7 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
           </h1>
           <p className="text-sm text-slate-500">
             {rendidos.length} de {board.candidates.length} rindieron. Ordenados
-            por desempeño.
+            por {board.candidates.some((c) => c.fit !== null) ? "ajuste al puesto" : "desempeño"}.
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -154,6 +154,19 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
                     <Trophy size={16} className="text-amber-500 shrink-0" />
                   )}
                 </div>
+
+                {/* Ajuste al perfil del puesto: cuando la empresa dijo que
+                    importa, es el numero que manda y por el que se ordena. */}
+                {c.fit !== null && (
+                  <div className="mt-3 rounded-2xl bg-indigo-50 px-3 py-2">
+                    <p className="text-[11px] text-indigo-700 font-semibold uppercase tracking-wide">
+                      Ajuste al puesto
+                    </p>
+                    <p className="text-2xl font-bold text-indigo-900 leading-none mt-0.5">
+                      {c.fit}%
+                    </p>
+                  </div>
+                )}
 
                 <div className="mt-3">
                   {c.percent !== null ? (

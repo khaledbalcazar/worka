@@ -21,7 +21,11 @@ import {
 import type { EvaluarQuestion, ProcessDetail } from "@/lib/evaluar";
 import TemplatePicker from "./TemplatePicker";
 import CandidateBoard from "./CandidateBoard";
-import { ProcessDesign, ProcessTeam } from "./ProcessSettings";
+import {
+  IdealProfile,
+  ProcessDesign,
+  ProcessTeam,
+} from "./ProcessSettings";
 import {
   addQuestion,
   addStage,
@@ -257,6 +261,7 @@ export default function ProcessEditor({
 
       {tab === "ajustes" && (
         <div className="space-y-4">
+          <IdealProfile detail={detail} />
           <ProcessDesign detail={detail} />
           <ProcessTeam detail={detail} />
           <SettingsTab

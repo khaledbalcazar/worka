@@ -857,6 +857,39 @@ export async function uploadParticipantCv(
   return { ok: true };
 }
 
+// Que rasgos importan para este puesto y cuanto. Los pesos van de 1 a 3; el
+// 0 se descarta al guardar para que el perfil no se llene de ruido.
+export async function setIdealProfile(
+  processId: string,
+  weights: Record<string, number>
+): Promise<Result> {
+  const { supabase, user } = await requireCompany();
+  if (!supabase) return DEMO;
+  if (!user) return { ok: false, error: "Iniciá sesión como empresa." };
+  const blocked = await requireActiveAccount();
+  if (blocked) return { ok: false, error: blocked };
+
+  const limpio: Record<string, number> = {};
+  for (const [k, v] of Object.entries(weights)) {
+    const n = Math.round(Number(v));
+    if (n >= 1 && n <= 3) limpio[k] = n;
+  }
+
+  const { error } = await supabase
+    .from("evaluar_processes")
+    .update({ ideal_profile: limpio })
+    .eq("id", processId)
+    .eq("company_id", user.id);
+
+  if (error) {
+    console.error("setIdealProfile:", error);
+    return { ok: false, error: "No pudimos guardar el perfil ideal." };
+  }
+  revalidatePath(`/evaluar/app/procesos/${processId}`);
+  revalidatePath(`/evaluar/app/procesos/${processId}/tablero`);
+  return { ok: true };
+}
+
 // ── Equipo evaluador ───────────────────────────────────────────
 
 export async function addProcessMember(

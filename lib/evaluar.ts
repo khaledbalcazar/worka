@@ -54,6 +54,7 @@ export type EvaluarQuestion = {
   correct: unknown;
   weight: number;
   knockout: boolean;
+  dimension?: string | null;
 };
 
 export type ParticipantStatus =
@@ -425,6 +426,8 @@ export type DimensionScores = Record<string, { raw: number; max: number }>;
 
 export type BoardCandidate = EvaluarParticipant & {
   percent: number | null;
+  /** Ajuste al perfil ideal del puesto, 0-100. Null si no se definio. */
+  fit: number | null;
   profile: DimensionScores;
   answers: { question_id: string; value: unknown; score: number }[];
   notes: { id: string; body: string; rating: number | null; created_at: string }[];
@@ -435,6 +438,34 @@ export type BoardData = {
   stages: (EvaluarStage & { questions: EvaluarQuestion[] })[];
   candidates: BoardCandidate[];
 };
+
+// Ajuste al perfil ideal: promedio de los rasgos que importan, ponderado por
+// cuánto importa cada uno.
+//
+// Ordenar por puntaje bruto trata igual a un cajero y a un supervisor. Acá la
+// empresa dice qué pesa para ESE puesto y el orden lo refleja. Se calcula solo
+// sobre los rasgos que la persona efectivamente rindió: penalizar por una
+// etapa que todavía no hizo la dejaría última sin motivo.
+export function fitScore(
+  profile: DimensionScores,
+  ideal: Record<string, number> | undefined
+): number | null {
+  if (!ideal) return null;
+  const claves = Object.keys(ideal).filter((k) => (ideal[k] ?? 0) > 0);
+  if (claves.length === 0) return null;
+
+  let suma = 0;
+  let pesos = 0;
+  for (const k of claves) {
+    const v = profile[k];
+    if (!v || v.max <= 0) continue;
+    const peso = ideal[k];
+    suma += (v.raw / v.max) * peso;
+    pesos += peso;
+  }
+  if (pesos === 0) return null;
+  return Math.round((suma / pesos) * 100);
+}
 
 export async function getBoardData(processId: string): Promise<BoardData | null> {
   const detail = await getProcessDetail(processId);
@@ -494,9 +525,18 @@ export async function getBoardData(processId: string): Promise<BoardData | null>
           : null,
       answers: answerMap.get(p.id) ?? [],
       notes: noteMap.get(p.id) ?? [],
+      fit: fitScore(
+        (p.profile ?? {}) as DimensionScores,
+        detail.process.ideal_profile
+      ),
     }))
-    // Mejor puntaje primero; los que no rindieron todavía, al final.
-    .sort((a, b) => (b.percent ?? -1) - (a.percent ?? -1));
+    // Si la empresa definió qué importa para el puesto, se ordena por ajuste;
+    // si no, por puntaje bruto. Los que no rindieron van siempre al final.
+    .sort((a, b) =>
+      a.fit !== null || b.fit !== null
+        ? (b.fit ?? -1) - (a.fit ?? -1)
+        : (b.percent ?? -1) - (a.percent ?? -1)
+    );
 
   return { process: detail.process, stages: detail.stages, candidates };
 }
@@ -532,9 +572,13 @@ export async function getProcessForJob(
 }
 
 // El token del candidato en un proceso, si ya fue dado de alta.
-export async function getMyParticipantToken(
+export type MyParticipation = { token: string; status: ParticipantStatus };
+
+// Estado del candidato dentro del proceso, no solo su token: la vacante
+// necesita saber si ya rindio para dibujar bien el camino.
+export async function getMyParticipation(
   processId: string
-): Promise<string | null> {
+): Promise<MyParticipation | null> {
   const supabase = await getServerClient();
   if (!supabase) return null;
   const user = await getCurrentUser();
@@ -542,10 +586,10 @@ export async function getMyParticipantToken(
 
   const { data } = await supabase
     .from("evaluar_participants")
-    .select("token")
+    .select("token, status")
     .eq("process_id", processId)
     .eq("candidate_id", user.id)
     .maybeSingle();
 
-  return (data as { token: string } | null)?.token ?? null;
+  return (data as MyParticipation | null) ?? null;
 }

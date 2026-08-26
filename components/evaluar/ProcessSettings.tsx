@@ -2,12 +2,21 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarClock, Palette, UserPlus, Users, X } from "lucide-react";
+import {
+  CalendarClock,
+  Palette,
+  Target,
+  UserPlus,
+  Users,
+  X,
+} from "lucide-react";
 import type { ProcessDetail } from "@/lib/evaluar";
 import { THEMES, readableOn } from "@/lib/evaluar/themes";
+import { ALL_DIMENSIONS } from "@/lib/evaluar/templates";
 import {
   addProcessMember,
   removeProcessMember,
+  setIdealProfile,
   updateProcess,
 } from "@/app/evaluar/actions";
 
@@ -243,6 +252,128 @@ export function ProcessTeam({ detail }: { detail: ProcessDetail }) {
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+// ── Perfil ideal del puesto ────────────────────────────────────
+
+export function IdealProfile({ detail }: { detail: ProcessDetail }) {
+  const router = useRouter();
+  const [pesos, setPesos] = useState<Record<string, number>>(
+    detail.process.ideal_profile ?? {}
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  // Solo los rasgos que este proceso realmente mide: ofrecer los 20 del
+  // catálogo cuando el proceso mide 5 sería pedirle a la empresa que decida
+  // sobre cosas que nadie va a responder.
+  const disponibles = [
+    ...new Set(
+      detail.stages
+        .flatMap((s) => s.questions.map((q) => q.dimension))
+        .filter((d): d is string => !!d)
+    ),
+  ];
+
+  if (disponibles.length === 0) {
+    return (
+      <div className="card p-5">
+        <h2 className="font-semibold text-primary-dark flex items-center gap-2">
+          <Target size={17} /> Perfil ideal del puesto
+        </h2>
+        <p className="text-sm text-slate-500 mt-2">
+          Agregá un test de personalidad, estilo laboral o juicio situacional y
+          acá vas a poder decir qué rasgos importan para este puesto.
+        </p>
+      </div>
+    );
+  }
+
+  function guardar() {
+    setError(null);
+    startTransition(async () => {
+      const limpio = Object.fromEntries(
+        Object.entries(pesos).filter(([, v]) => v > 0)
+      );
+      const r = await setIdealProfile(detail.process.id, limpio);
+      if (r.ok) router.refresh();
+      else setError(r.error ?? "No pudimos guardar.");
+    });
+  }
+
+  const elegidos = Object.values(pesos).filter((v) => v > 0).length;
+
+  return (
+    <div className="card p-5 space-y-4">
+      <div>
+        <h2 className="font-semibold text-primary-dark flex items-center gap-2">
+          <Target size={17} /> Perfil ideal del puesto
+        </h2>
+        <p className="text-xs text-slate-500 mt-1">
+          Decí qué rasgos importan para <strong>este</strong> puesto y cuánto.
+          El tablero va a ordenar por ajuste real en vez de por puntaje bruto,
+          que trata igual a un cajero y a un supervisor.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        {disponibles.map((key) => {
+          const dim = ALL_DIMENSIONS[key];
+          const peso = pesos[key] ?? 0;
+          return (
+            <div key={key} className="flex items-center gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm text-slate-800 truncate">
+                  {dim?.label ?? key}
+                </p>
+                {dim && (
+                  <p className="text-[11px] text-slate-400 truncate">
+                    Alto: {dim.high}
+                  </p>
+                )}
+              </div>
+              <div className="flex gap-1 shrink-0">
+                {[
+                  { v: 0, l: "No" },
+                  { v: 1, l: "Suma" },
+                  { v: 2, l: "Importa" },
+                  { v: 3, l: "Clave" },
+                ].map((o) => (
+                  <button
+                    key={o.v}
+                    onClick={() => setPesos((p) => ({ ...p, [key]: o.v }))}
+                    className={`chip press ${
+                      peso === o.v
+                        ? "bg-primary text-white"
+                        : "bg-slate-100 text-slate-500"
+                    }`}
+                  >
+                    {o.l}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {error && <p className="text-sm text-danger">{error}</p>}
+
+      <p className="text-xs text-slate-400">
+        {elegidos === 0
+          ? "Sin rasgos elegidos, el tablero ordena por puntaje bruto."
+          : `${elegidos} ${elegidos === 1 ? "rasgo elegido" : "rasgos elegidos"}. El ajuste se calcula solo sobre lo que cada persona ya rindió.`}
+      </p>
+
+      <button
+        onClick={guardar}
+        disabled={pending}
+        className="btn-primary press w-full"
+      >
+        {pending ? "Guardando…" : "Guardar perfil ideal"}
+      </button>
     </div>
   );
 }
