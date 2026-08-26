@@ -52,7 +52,20 @@ export type Norms = Record<string, number[]>;
 // candidatos de una empresa no es un baremo: la mayoría de los procesos tiene
 // diez o quince personas. Lo que sale de acá son números agregados, nunca una
 // fila de nadie: quién puntuó qué no cruza el límite de la empresa dueña.
+//
+// Se guarda en memoria un rato porque la recorrida es completa y abrir cinco
+// informes seguidos para comparar candidatos es lo normal, no la excepción:
+// sin esto serían cinco recorridas idénticas. Un evaluado nuevo mueve el
+// percentil de forma imperceptible sobre una muestra de cientos, así que
+// media hora de desfasaje no cambia ninguna decisión.
+const NORMS_TTL = 30 * 60 * 1000;
+let normsCache: { at: number; data: Norms } | null = null;
+
 export async function getNorms(): Promise<Norms> {
+  if (normsCache && Date.now() - normsCache.at < NORMS_TTL) {
+    return normsCache.data;
+  }
+
   const admin = getAdminClient();
   if (!admin) return {};
 
@@ -77,6 +90,7 @@ export async function getNorms(): Promise<Norms> {
   }
 
   for (const key of Object.keys(norms)) norms[key].sort((a, b) => a - b);
+  normsCache = { at: Date.now(), data: norms };
   return norms;
 }
 
