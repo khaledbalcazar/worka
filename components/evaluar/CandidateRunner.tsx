@@ -59,6 +59,15 @@ export type Evaluation = {
     kind: string;
     minutes: number;
     timed?: boolean;
+    /** Que es esta etapa y que se espera, en criollo. */
+    intro?: string;
+    /** Ejemplo resuelto, para ver el formato sin que corra el reloj. */
+    demo?: {
+      text: string;
+      options: string[];
+      answer: string;
+      explain: string;
+    } | null;
     questions: {
       id: string;
       kind:
@@ -125,8 +134,18 @@ export default function CandidateRunner({
   const [left, setLeft] = useState<number | null>(null);
   const enviarRef = useRef<(() => void) | null>(null);
 
+  // Explicación de la etapa. Se muestra una vez por etapa, no una vez por
+  // evaluación: la segunda prueba no se parece en nada a la primera, y quien
+  // ya entendió los Cinco Grandes no sabe todavía qué es un dominó.
+  const [briefingListo, setBriefingListo] = useState<string | null>(null);
+  const verBriefing =
+    started && !!stage && !!stage.intro && briefingListo !== stage.id;
+
   useEffect(() => {
-    if (!started || !stage) return;
+    // El cronómetro arranca recién cuando se cerró la explicación. Si no,
+    // leer las instrucciones sale del tiempo de la prueba, que es exactamente
+    // el apuro que la explicación venía a sacar.
+    if (!started || !stage || verBriefing) return;
     const inicio = Date.now();
     startedAtRef.current = inicio;
     if (!stage.timed) return;
@@ -144,7 +163,7 @@ export default function CandidateRunner({
       }
     }, 1000);
     return () => clearInterval(id);
-  }, [started, stage]);
+  }, [started, stage, verBriefing]);
 
   function responder(value: unknown) {
     if (!question) return;
@@ -334,6 +353,16 @@ export default function CandidateRunner({
                   {pending ? "Abriendo…" : "Empezar evaluación"}
                 </button>
               </div>
+            ) : verBriefing && stage.intro ? (
+              <StageBriefing
+                stage={stage}
+                numero={participant.stage_index + 1}
+                total={stages.length}
+                theme={theme}
+                accent={accent}
+                onAccent={onAccent}
+                onListo={() => setBriefingListo(stage.id)}
+              />
             ) : (
               <>
                 <div className="flex items-start justify-between gap-3">
@@ -700,6 +729,134 @@ function CandidateData({
           {pending ? "Guardando…" : "Guardar datos"}
         </button>
       </div>
+    </div>
+  );
+}
+
+// Explicación de la etapa, antes de que corra el reloj.
+//
+// Antes el candidato entraba directo a una etapa llamada "Los Cinco Grandes" y
+// no sabía si era un examen, cuánto duraba ni si se podía equivocar. Eso no
+// mide lo que se quiere medir: mide cuánta ansiedad tolera alguien en los
+// primeros dos minutos, que no es lo que la empresa está buscando.
+//
+// El ejemplo resuelto es la parte que más rinde. Explicar "es una escala del 1
+// al 5" no sirve de nada; ver una pregunta contestada, con el por qué al lado,
+// se entiende de una.
+function StageBriefing({
+  stage,
+  numero,
+  total,
+  theme,
+  accent,
+  onAccent,
+  onListo,
+}: {
+  stage: Evaluation["stages"][number];
+  numero: number;
+  total: number;
+  theme: ReturnType<typeof getTheme>;
+  accent: string;
+  onAccent: string;
+  onListo: () => void;
+}) {
+  const demo = stage.demo;
+
+  return (
+    <div className="animate-rise">
+      <p
+        className={`text-[11px] font-semibold uppercase tracking-wide ${theme.muted}`}
+      >
+        Etapa {numero} de {total}
+      </p>
+      <h2 className={`font-bold text-lg mt-0.5 ${theme.heading}`}>
+        {stage.title}
+      </h2>
+
+      <div className="flex flex-wrap gap-2 mt-3">
+        <span className="chip bg-slate-100 text-slate-600">
+          <Clock size={13} /> {stage.minutes} min aprox.
+        </span>
+        <span className="chip bg-slate-100 text-slate-600">
+          {stage.questions.length}{" "}
+          {stage.questions.length === 1 ? "pregunta" : "preguntas"}
+        </span>
+        {/* Que haya o no reloj cambia por completo cómo se encara la prueba,
+            así que se dice antes y no cuando ya está corriendo. */}
+        <span
+          className={`chip ${
+            stage.timed
+              ? "bg-amber-50 text-amber-700"
+              : "bg-emerald-50 text-emerald-700"
+          }`}
+        >
+          {stage.timed ? (
+            <>
+              <TimerReset size={13} /> Con tiempo
+            </>
+          ) : (
+            <>
+              <CheckCircle2 size={13} /> Sin apuro
+            </>
+          )}
+        </span>
+      </div>
+
+      <p className={`text-sm mt-4 leading-relaxed ${theme.muted}`}>
+        {stage.intro}
+      </p>
+
+      {demo && (
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            Así se ve
+          </p>
+          <p className="text-sm font-medium text-slate-800 mt-1.5">
+            {demo.text}
+          </p>
+
+          <div className="space-y-1.5 mt-3">
+            {demo.options.map((o) => {
+              const correcta = o === demo.answer;
+              return (
+                <div
+                  key={o}
+                  className={`text-sm rounded-xl px-3 py-2 border flex items-start gap-2 ${
+                    correcta
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                      : "border-slate-200 bg-white text-slate-500"
+                  }`}
+                >
+                  {correcta ? (
+                    <CheckCircle2 size={15} className="shrink-0 mt-0.5" />
+                  ) : (
+                    <Circle size={15} className="shrink-0 mt-0.5 opacity-40" />
+                  )}
+                  <span>{o}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          <p className="text-xs text-slate-600 mt-3 leading-relaxed">
+            <strong className="font-semibold">Por qué:</strong> {demo.explain}
+          </p>
+        </div>
+      )}
+
+      <button
+        onClick={onListo}
+        className="w-full mt-5 text-base py-3 rounded-xl font-semibold press"
+        style={{ background: accent, color: onAccent }}
+      >
+        Entendí, empezar
+      </button>
+
+      {stage.timed && (
+        <p className={`text-xs text-center mt-2 ${theme.muted}`}>
+          El tiempo empieza a correr cuando toques el botón, no antes.
+        </p>
+      )}
     </div>
   );
 }

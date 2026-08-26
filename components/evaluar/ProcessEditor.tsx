@@ -1076,12 +1076,14 @@ function StageForm({
     description: string;
     minutes: number;
     timed: boolean;
+    intro: string;
   }) => void;
 }) {
   const [title, setTitle] = useState(stage.title);
   const [description, setDescription] = useState(stage.description);
   const [minutes, setMinutes] = useState(stage.minutes);
   const [timed, setTimed] = useState(!!stage.timed);
+  const [intro, setIntro] = useState(stage.intro ?? "");
 
   return (
     <div className="border border-slate-200 rounded-2xl p-4 mt-3 space-y-3 animate-rise">
@@ -1130,12 +1132,27 @@ function StageForm({
           agrega nada y solo pone nervioso al candidato.
         </p>
       )}
+
+      <div>
+        <label className="label">Qué le explicamos al candidato</label>
+        <textarea
+          className="input min-h-24"
+          placeholder="Ej: No es un examen y no hay respuestas correctas. Son frases sobre cómo trabajás…"
+          value={intro}
+          onChange={(e) => setIntro(e.target.value)}
+        />
+        <p className="text-xs text-slate-500 mt-1.5">
+          Se muestra antes de que empiece la etapa, y en las cronometradas el
+          reloj arranca recién cuando la persona la cierra. Las plantillas ya
+          vienen con su explicación y su ejemplo resuelto.
+        </p>
+      </div>
       <div className="flex gap-2">
         <button onClick={onCancel} className="btn-secondary press flex-1">
           Cancelar
         </button>
         <button
-          onClick={() => onSave({ title, description, minutes, timed })}
+          onClick={() => onSave({ title, description, minutes, timed, intro })}
           disabled={pending || !title.trim()}
           className="btn-primary press flex-[2] disabled:opacity-40"
         >

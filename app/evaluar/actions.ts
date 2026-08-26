@@ -578,6 +578,11 @@ export async function applyTemplate(
       minutes: template.minutes,
       position: count ?? 0,
       template_key: template.key,
+      // Qué es la prueba y un ejemplo resuelto. Sin esto el candidato entra a
+      // una etapa llamada "Los Cinco Grandes" sin saber si es un examen ni si
+      // se puede equivocar, y eso mide ansiedad, no lo que se quiere medir.
+      intro: template.intro,
+      demo: template.demo,
       // Los tests con respuesta correcta van cronometrados: sin tiempo límite
       // dejan de medir razonamiento y pasan a medir paciencia.
       timed: template.scored === "correcto",
@@ -690,6 +695,7 @@ export async function updateStage(
     description?: string;
     minutes: number;
     timed: boolean;
+    intro?: string;
   }
 ): Promise<Result> {
   const { supabase } = await requireCompany();
@@ -706,6 +712,7 @@ export async function updateStage(
       description: input.description?.trim() ?? "",
       minutes: Math.max(1, input.minutes),
       timed: input.timed,
+      intro: input.intro?.trim() ?? "",
     })
     .eq("id", stageId);
 

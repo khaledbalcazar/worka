@@ -44,6 +44,17 @@ export type Template = {
   source: string;
   dimensions: TemplateDimension[];
   questions: TemplateQuestion[];
+  /** Que es esta prueba y que se espera, dicho al candidato. */
+  intro: string;
+  /** Ejemplo resuelto, para ver el formato sin que corra el reloj. */
+  demo: TemplateDemo;
+};
+
+export type TemplateDemo = {
+  text: string;
+  options: string[];
+  answer: string;
+  explain: string;
 };
 
 export const LIKERT_LABELS = [
@@ -99,6 +110,20 @@ const bigFive: Template = {
       low: "Se altera más ante imprevistos y tensión.",
     },
   ],
+  intro:
+    "No es un examen y no hay respuestas correctas. Son frases sobre cómo " +
+    "trabajás; marcá cuánto se parecen a vos. Contestá lo primero que se te " +
+    "venga: pensarlo de más no mejora el resultado, lo enturbia. Nadie " +
+    "queda afuera por esto — describe tu estilo de trabajo, no cuánto servís.",
+  demo: {
+    text: "Ejemplo: «Termino lo que empiezo, aunque se ponga aburrido.»",
+    options: LIKERT_LABELS,
+    answer: "De acuerdo",
+    explain:
+      "Si en general terminás lo que arrancás pero alguna vez lo dejaste, " +
+      "«De acuerdo» es más honesto que «Muy de acuerdo». La escala mide qué " +
+      "tanto, no sí o no.",
+  },
   questions: [
     // Extraversión
     { text: "Me siento cómodo/a rodeado/a de gente.", kind: "likert", dimension: "extraversion" },
@@ -161,6 +186,20 @@ const workStyle: Template = {
     { key: "autonomia", label: "Autonomía", high: "Avanza sin que le marquen cada paso.", low: "Prefiere instrucciones claras." },
     { key: "planificacion", label: "Planificación", high: "Ordena el trabajo antes de arrancar.", low: "Resuelve sobre la marcha." },
   ],
+  intro:
+    "Igual que la anterior: frases sobre tu forma de trabajar, sin respuestas " +
+    "correctas. Acá se mira cómo te movés en un equipo — si preferís que te " +
+    "marquen los pasos o arrancar solo, si te sale ordenar al grupo o aportar " +
+    "sin dirigir. Ninguna de las dos puntas es mejor; sirven para saber en qué " +
+    "puesto ibas a estar más cómodo.",
+  demo: {
+    text: "Ejemplo: «Cuando el equipo se traba, soy el que propone por dónde seguir.»",
+    options: LIKERT_LABELS,
+    answer: "Ni acuerdo ni desacuerdo",
+    explain:
+      "Si a veces sí y a veces no, el punto del medio es la respuesta correcta " +
+      "para vos. No es «no sé»: es «depende», y eso también es información.",
+  },
   questions: [
     { text: "Cuando un grupo no arranca, suelo ser quien organiza.", kind: "likert", dimension: "liderazgo" },
     { text: "Me incomoda tener que decirle a otro cómo hacer su trabajo.", kind: "likert", dimension: "liderazgo", reverse: true },
@@ -216,6 +255,27 @@ const sjt: Template = {
     { key: "resolucion", label: "Resolución de problemas", high: "Encuentra la salida práctica.", low: "Deriva o espera instrucciones." },
     { key: "equipo_sjt", label: "Compañerismo", high: "Sostiene al equipo en el apuro.", low: "Se enfoca solo en su parte." },
   ],
+  intro:
+    "Situaciones que pasan de verdad en el mostrador y en el teléfono. Vas a " +
+    "ver varias formas de reaccionar y tenés que elegir qué harías vos. Acá sí " +
+    "hay opciones mejores que otras, pero casi ninguna es un disparate: la " +
+    "diferencia está en el orden de prioridades. Elegí lo que harías de verdad, " +
+    "no lo que suena más lindo.",
+  demo: {
+    text:
+      "Ejemplo: un cliente reclama a los gritos por algo que no fue culpa tuya " +
+      "y hay gente esperando detrás. ¿Qué hacés?",
+    options: [
+      "Le explico que el error no fue mío y sigo con el próximo",
+      "Lo escucho, le pido disculpas por la espera y lo llevo a un costado para resolverlo",
+      "Llamo al encargado y me corro del problema",
+    ],
+    answer:
+      "Lo escucho, le pido disculpas por la espera y lo llevo a un costado para resolverlo",
+    explain:
+      "Atiende al cliente y libera la fila, que son los dos problemas a la vez. " +
+      "Tener razón no resuelve ninguno de los dos.",
+  },
   questions: [
     {
       text: "Un cliente vuelve furioso porque el producto que compró ayer salió fallado. No tiene el ticket. ¿Qué hacés?",
@@ -375,6 +435,20 @@ const reasoning: Template = {
     { key: "abstracto", label: "Razonamiento abstracto", high: "Ve la lógica en figuras y series.", low: "Necesita ejemplos concretos." },
     { key: "verbal", label: "Razonamiento verbal", high: "Maneja relaciones entre conceptos.", low: "Trabaja mejor con instrucciones literales." },
   ],
+  intro:
+    "Esta sí es una prueba con respuestas correctas, y tiene tiempo. Son series, " +
+    "fichas de dominó y analogías: se resuelven mirando qué regla se repite. Si " +
+    "una no te sale, pasá a la siguiente y volvé después — quedarse trabado es " +
+    "lo que más puntos cuesta. Casi nadie llega a contestar todas, así que no te " +
+    "asustes si se termina el tiempo.",
+  demo: {
+    text: "Ejemplo: 2, 4, 8, 16, ¿qué número sigue?",
+    options: ["18", "24", "32", "64"],
+    answer: "32",
+    explain:
+      "Cada número es el doble del anterior, así que 16 × 2 = 32. La clave " +
+      "siempre es encontrar qué operación se repite entre un paso y el siguiente.",
+  },
   questions: [
     { text: "¿Qué número sigue? 2, 4, 8, 16, ___", kind: "unica", dimension: "numerico", options: ["18", "24", "32", "64"], correct: "32" },
     { text: "¿Qué número sigue? 3, 6, 5, 10, 9, ___", kind: "unica", dimension: "numerico", options: ["18", "12", "14", "11"], correct: "18" },
