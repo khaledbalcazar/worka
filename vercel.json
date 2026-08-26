@@ -12,6 +12,10 @@
     {
       "path": "/api/cron/evaluar-recordatorios",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/cron/evaluar-resumen",
+      "schedule": "0 12 * * *"
     }
   ]
 }

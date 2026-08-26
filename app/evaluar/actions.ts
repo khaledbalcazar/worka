@@ -261,6 +261,120 @@ export async function updateProcess(
   return { ok: true };
 }
 
+// Copia un proceso entero con sus etapas y preguntas, sin los candidatos.
+// La búsqueda del mes que viene suele ser la misma del mes pasado, y hoy
+// había que armarla de cero cada vez.
+export async function duplicateProcess(id: string): Promise<Result> {
+  const { supabase, user } = await requireCompany();
+  if (!supabase) return DEMO;
+  if (!user) return { ok: false, error: "Iniciá sesión como empresa." };
+  const blocked = await requireActiveAccount();
+  if (blocked) return { ok: false, error: blocked };
+
+  const { data: original } = await supabase
+    .from("evaluar_processes")
+    .select("*")
+    .eq("id", id)
+    .eq("company_id", user.id)
+    .maybeSingle();
+  if (!original) return { ok: false, error: "Ese proceso ya no existe." };
+
+  const o = original as Record<string, unknown>;
+  const { data: copia, error } = await supabase
+    .from("evaluar_processes")
+    .insert({
+      company_id: user.id,
+      title: `${o.title as string} (copia)`,
+      description: o.description,
+      closing_message: o.closing_message,
+      theme: o.theme,
+      brand_color: o.brand_color,
+      use_company_brand: o.use_company_brand,
+      ideal_profile: o.ideal_profile ?? {},
+      // La vacante enlazada NO se copia: una vacante solo puede tener un
+      // proceso, y copiar el enlace le robaría el suyo al original.
+      job_id: null,
+      status: "borrador",
+    })
+    .select("id")
+    .single();
+
+  if (error || !copia) {
+    console.error("duplicateProcess:", error);
+    return { ok: false, error: "No pudimos duplicar el proceso." };
+  }
+  const nuevoId = (copia as { id: string }).id;
+
+  const { data: stages } = await supabase
+    .from("evaluar_stages")
+    .select("*, evaluar_questions(*)")
+    .eq("process_id", id)
+    .order("position");
+
+  for (const s of (stages ?? []) as unknown as (Record<string, unknown> & {
+    evaluar_questions: Record<string, unknown>[];
+  })[]) {
+    const { data: nuevaEtapa } = await supabase
+      .from("evaluar_stages")
+      .insert({
+        process_id: nuevoId,
+        title: s.title,
+        description: s.description,
+        kind: s.kind,
+        minutes: s.minutes,
+        position: s.position,
+        timed: s.timed ?? false,
+        template_key: s.template_key ?? null,
+      })
+      .select("id")
+      .single();
+    if (!nuevaEtapa) continue;
+
+    const preguntas = s.evaluar_questions ?? [];
+    if (preguntas.length === 0) continue;
+
+    await supabase.from("evaluar_questions").insert(
+      preguntas.map((q) => ({
+        stage_id: (nuevaEtapa as { id: string }).id,
+        position: q.position,
+        kind: q.kind,
+        text: q.text,
+        options: q.options,
+        correct: q.correct ?? null,
+        option_scores: q.option_scores ?? null,
+        dimension: q.dimension ?? null,
+        reverse: q.reverse ?? false,
+        weight: q.weight ?? 1,
+        knockout: q.knockout ?? false,
+      }))
+    );
+  }
+
+  revalidatePath("/evaluar/app");
+  return { ok: true, id: nuevoId };
+}
+
+export async function setProcessArchived(
+  id: string,
+  archived: boolean
+): Promise<Result> {
+  const { supabase, user } = await requireCompany();
+  if (!supabase) return DEMO;
+  if (!user) return { ok: false, error: "Iniciá sesión como empresa." };
+
+  // Archivar se permite siempre, incluso con la suscripción vencida: ordenar
+  // lo propio no puede quedar bloqueado detrás del pago.
+  const { error } = await supabase
+    .from("evaluar_processes")
+    .update({ archived })
+    .eq("id", id)
+    .eq("company_id", user.id);
+
+  if (error) return { ok: false, error: "No pudimos archivar el proceso." };
+  revalidatePath("/evaluar/app");
+  return { ok: true };
+}
+
 // ── Etapas y preguntas ─────────────────────────────────────────
 
 export async function addStage(
@@ -1153,6 +1267,82 @@ export async function submitStage(
     console.error("evaluar_submit_stage:", error);
     return { ok: false, error: error.message };
   }
+  const status = (data as { status: string } | null)?.status;
+
+  // Alguien terminó: avisarle a la empresa en el momento es lo que evita que
+  // un buen candidato espere tres días a que alguien entre al panel.
+  if (status === "completado") {
+    void notifyCompanyOfCompletion(token);
+  }
+
   revalidatePath(`/evaluar/e/${token}`);
-  return { ok: true, status: (data as { status: string } | null)?.status };
+  return { ok: true, status };
+}
+
+// Correo a la empresa cuando un candidato completa. Usa el cliente de
+// servicio porque acá no hay sesión de empresa: quien está del otro lado es
+// el candidato, que entró con un token y no puede leer datos del empleador.
+async function notifyCompanyOfCompletion(token: string) {
+  if (!emailEnabled()) return;
+  const { getAdminClient } = await import("@/lib/supabase/admin");
+  const admin = getAdminClient();
+  if (!admin) return;
+
+  try {
+    const { data } = await admin
+      .from("evaluar_participants")
+      .select(
+        "id, full_name, score, max_score, company_notified_at, process:evaluar_processes(id, title, company_id)"
+      )
+      .eq("token", token)
+      .maybeSingle();
+
+    const p = data as unknown as {
+      id: string;
+      full_name: string;
+      score: number | null;
+      max_score: number | null;
+      company_notified_at: string | null;
+      process: { id: string; title: string; company_id: string } | null;
+    } | null;
+    // Ya avisado: no repetir si algo vuelve a pasar por acá.
+    if (!p?.process || p.company_notified_at) return;
+
+    const { data: auth } = await admin.auth.admin.getUserById(
+      p.process.company_id
+    );
+    const to = auth?.user?.email;
+    if (!to) return;
+
+    const base = SITE_URL.replace(/\/$/, "").replace("://", "://evaluar.");
+    const pct =
+      p.score !== null && p.max_score
+        ? ` Puntaje: <strong>${Math.round((p.score / p.max_score) * 100)}%</strong>.`
+        : "";
+
+    await sendEmail({
+      to,
+      subject: `${p.full_name || "Un candidato"} completó tu evaluación`,
+      html: emailLayout(`
+        <p><strong>${p.full_name || "Un candidato"}</strong> terminó la
+        evaluación de <strong>${p.process.title}</strong>.${pct}</p>
+        <p style="margin:24px 0">
+          <a href="${base}/app/procesos/${p.process.id}/tablero" style="background:#2563eb;color:#fff;padding:12px 20px;border-radius:12px;text-decoration:none;font-weight:600">
+            Ver en el tablero de decisión
+          </a>
+        </p>
+        <p style="color:#6b7280;font-size:13px">Cuanto antes le respondas, más
+        chances de que siga interesado.</p>
+      `),
+    });
+
+    await admin
+      .from("evaluar_participants")
+      .update({ company_notified_at: new Date().toISOString() })
+      .eq("id", p.id);
+  } catch (e) {
+    // Que falle el aviso no puede romper la entrega del candidato, que ya
+    // quedó guardada.
+    console.error("notifyCompanyOfCompletion:", e);
+  }
 }

@@ -27,6 +27,8 @@ export type EvaluarProcess = {
   brand_color?: string | null;
   use_company_brand?: boolean;
   deadline_at?: string | null;
+  archived?: boolean;
+  ideal_profile?: Record<string, number>;
 };
 
 export type EvaluarStage = {
@@ -246,6 +248,153 @@ export async function getLinkableJobs(): Promise<
     ...j,
     linked: taken.has(j.id),
   }));
+}
+
+// ── Panel: lo que necesita atención ────────────────────────────
+
+export type PanelAlert = {
+  kind: "revisar" | "borrador" | "plazo";
+  processId: string;
+  processTitle: string;
+  count: number;
+  detail: string;
+};
+
+export type PanelActivity = {
+  at: string;
+  message: string;
+  processTitle: string;
+};
+
+export type PanelData = {
+  processes: ProcessRow[];
+  alerts: PanelAlert[];
+  activity: PanelActivity[];
+  stats: { activos: number; enCurso: number; completados: number };
+};
+
+// Todo lo del panel en una sola pasada. La pregunta que la empresa se hace al
+// entrar no es "qué procesos tengo" sino "qué está esperando algo mío": sin
+// esto hay que abrir proceso por proceso para descubrir que seis personas
+// terminaron y nadie las miró.
+export async function getPanelData(): Promise<PanelData> {
+  const vacio: PanelData = {
+    processes: [],
+    alerts: [],
+    activity: [],
+    stats: { activos: 0, enCurso: 0, completados: 0 },
+  };
+
+  const supabase = await getServerClient();
+  if (!supabase) return vacio;
+  const user = await getCurrentUser();
+  if (!user) return vacio;
+
+  const processes = await getMyProcesses();
+  const visibles = processes.filter((p) => !p.archived);
+  if (visibles.length === 0) return { ...vacio, processes: visibles };
+
+  const ids = visibles.map((p) => p.id);
+  const titulo = new Map(visibles.map((p) => [p.id, p.title]));
+
+  const [{ data: participants }, { data: events }] = await Promise.all([
+    supabase
+      .from("evaluar_participants")
+      .select("id, process_id, status, full_name, completed_at")
+      .in("process_id", ids),
+    supabase
+      .from("evaluar_events")
+      .select("kind, message, created_at, participant:evaluar_participants(process_id)")
+      .order("created_at", { ascending: false })
+      .limit(15),
+  ]);
+
+  const gente = (participants ?? []) as {
+    id: string;
+    process_id: string;
+    status: string;
+    full_name: string;
+    completed_at: string | null;
+  }[];
+
+  const alerts: PanelAlert[] = [];
+
+  // 1) Terminaron y nadie los movió: es lo más urgente que existe acá.
+  for (const p of visibles) {
+    const esperando = gente.filter(
+      (g) => g.process_id === p.id && g.status === "completado"
+    ).length;
+    if (esperando > 0) {
+      alerts.push({
+        kind: "revisar",
+        processId: p.id,
+        processTitle: p.title,
+        count: esperando,
+        detail:
+          esperando === 1
+            ? "1 persona terminó y espera tu decisión"
+            : `${esperando} personas terminaron y esperan tu decisión`,
+      });
+    }
+  }
+
+  // 2) Procesos armados que nunca se publicaron: trabajo hecho sin usar.
+  for (const p of visibles) {
+    if (p.status === "borrador" && p.stage_count > 0) {
+      alerts.push({
+        kind: "borrador",
+        processId: p.id,
+        processTitle: p.title,
+        count: 1,
+        detail: "Está armado pero sin publicar: nadie puede rendirlo todavía",
+      });
+    }
+  }
+
+  // 3) Plazos que vencen dentro de la semana.
+  const enUnaSemana = Date.now() + 7 * 86_400_000;
+  for (const p of visibles) {
+    if (!p.deadline_at || p.status !== "activo") continue;
+    const cierre = new Date(p.deadline_at).getTime();
+    if (cierre > Date.now() && cierre < enUnaSemana) {
+      const dias = Math.ceil((cierre - Date.now()) / 86_400_000);
+      alerts.push({
+        kind: "plazo",
+        processId: p.id,
+        processTitle: p.title,
+        count: dias,
+        detail:
+          dias === 1 ? "Cierra mañana" : `Cierra en ${dias} días`,
+      });
+    }
+  }
+
+  const activity: PanelActivity[] = (
+    (events ?? []) as unknown as {
+      message: string;
+      created_at: string;
+      participant: { process_id: string } | null;
+    }[]
+  )
+    .filter((e) => e.participant && titulo.has(e.participant.process_id))
+    .map((e) => ({
+      at: e.created_at,
+      message: e.message,
+      processTitle: titulo.get(e.participant!.process_id) ?? "",
+    }));
+
+  return {
+    processes: visibles,
+    alerts,
+    activity,
+    stats: {
+      activos: visibles.filter((p) => p.status === "activo").length,
+      enCurso: gente.filter((g) => g.status === "en_curso").length,
+      completados: gente.filter((g) =>
+        ["completado", "finalista", "contratado"].includes(g.status)
+      ).length,
+    },
+  };
 }
 
 // ── Administración de suscripciones ────────────────────────────
