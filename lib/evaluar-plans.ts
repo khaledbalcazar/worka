@@ -24,6 +24,8 @@ export type PlanLimits = {
   team: boolean;
   /** Informe por candidato y exportación a Excel. */
   reports: boolean;
+  /** Asistente de IA: armar pruebas a medida del puesto. */
+  ai: boolean;
 };
 
 export const PLANS: Record<PlanKey, PlanLimits> = {
@@ -34,6 +36,7 @@ export const PLANS: Record<PlanKey, PlanLimits> = {
     bulkInvite: false,
     team: false,
     reports: false,
+    ai: false,
   },
   profesional: {
     key: "profesional",
@@ -42,6 +45,7 @@ export const PLANS: Record<PlanKey, PlanLimits> = {
     bulkInvite: true,
     team: true,
     reports: true,
+    ai: true,
   },
   corporativo: {
     key: "corporativo",
@@ -50,6 +54,7 @@ export const PLANS: Record<PlanKey, PlanLimits> = {
     bulkInvite: true,
     team: true,
     reports: true,
+    ai: true,
   },
 };
 

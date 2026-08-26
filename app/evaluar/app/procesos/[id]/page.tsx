@@ -3,7 +3,12 @@ import { notFound, redirect } from "next/navigation";
 import { BarChart3, ChevronLeft } from "lucide-react";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { isLive } from "@/lib/data";
-import { getLinkableJobs, getProcessDetail } from "@/lib/evaluar";
+import {
+  getLinkableJobs,
+  getMyEvaluarAccess,
+  getProcessDetail,
+} from "@/lib/evaluar";
+import { planOf } from "@/lib/evaluar-plans";
 import ProcessEditor from "@/components/evaluar/ProcessEditor";
 
 export const metadata = { title: "Proceso" };
@@ -20,9 +25,10 @@ export default async function ProcessPage({
     if (!user) redirect(`/ingresar?next=%2Fevaluar%2Fapp%2Fprocesos%2F${id}`);
   }
 
-  const [detail, jobs] = await Promise.all([
+  const [detail, jobs, access] = await Promise.all([
     getProcessDetail(id),
     getLinkableJobs(),
+    getMyEvaluarAccess(),
   ]);
   if (!detail) notFound();
 
@@ -43,7 +49,7 @@ export default async function ProcessPage({
         </Link>
       </div>
 
-      <ProcessEditor detail={detail} jobs={jobs} />
+      <ProcessEditor detail={detail} jobs={jobs} plan={planOf(access)} />
     </div>
   );
 }

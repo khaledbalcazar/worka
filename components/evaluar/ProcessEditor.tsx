@@ -19,7 +19,9 @@ import {
   X,
 } from "lucide-react";
 import type { EvaluarQuestion, ProcessDetail } from "@/lib/evaluar";
+import type { PlanLimits } from "@/lib/evaluar-plans";
 import TemplatePicker from "./TemplatePicker";
+import AiStageGenerator from "./AiStageGenerator";
 import CandidateBoard from "./CandidateBoard";
 import {
   IdealProfile,
@@ -47,9 +49,11 @@ type Tab = "etapas" | "candidatos" | "ajustes";
 export default function ProcessEditor({
   detail,
   jobs,
+  plan,
 }: {
   detail: ProcessDetail;
   jobs: { id: string; title: string; linked: boolean }[];
+  plan: PlanLimits;
 }) {
   const router = useRouter();
   const { process, stages, participants } = detail;
@@ -192,6 +196,7 @@ export default function ProcessEditor({
         <StagesTab
           detail={detail}
           pending={pending}
+          plan={plan}
           onApplyTemplate={(key) => run(() => applyTemplate(process.id, key))}
           onApplyRole={(key) => run(() => applyRoleTemplate(process.id, key))}
           onAddStage={(input) => run(() => addStage(process.id, input))}
@@ -283,6 +288,7 @@ export default function ProcessEditor({
 function StagesTab({
   detail,
   pending,
+  plan,
   onApplyTemplate,
   onApplyRole,
   onAddStage,
@@ -295,6 +301,7 @@ function StagesTab({
 }: {
   detail: ProcessDetail;
   pending: boolean;
+  plan: PlanLimits;
   onApplyTemplate: (key: string) => void;
   onApplyRole: (key: string) => void;
   onAddStage: (i: { title: string; description: string; minutes: number }) => void;
@@ -304,7 +311,7 @@ function StagesTab({
     i: {
       text: string;
       kind: "unica" | "multiple" | "texto" | "escala" | "numero" | "video";
-    maxSeconds: number;
+      maxSeconds: number;
       options: string[];
       correctIndex: number | null;
       weight: number;
@@ -503,6 +510,12 @@ function StagesTab({
           onPickRole={onApplyRole}
         />
       </div>
+
+      <AiStageGenerator
+        processId={detail.process.id}
+        canUse={plan.ai}
+        planLabel={plan.label}
+      />
 
       <div className="card p-5">
         <h3 className="font-semibold text-primary-dark text-sm">

@@ -3,8 +3,9 @@ import { redirect } from "next/navigation";
 import Logo from "@/components/Logo";
 import AdminPanel from "@/components/AdminPanel";
 import AdminSubscriptions from "@/components/evaluar/AdminSubscriptions";
+import AdminAiKeys from "@/components/evaluar/AdminAiKeys";
 import EmailTemplates from "@/components/admin/EmailTemplates";
-import { getEvaluarAccounts } from "@/lib/evaluar";
+import { getAiKeys, getEvaluarAccounts } from "@/lib/evaluar";
 import {
   getActiveJobsCount,
   getAllCompanies,
@@ -61,6 +62,7 @@ export default async function AdminPage() {
     customBadges,
     evaluarAccounts,
     emailOverrides,
+    aiKeys,
   ] = await Promise.all([
     getModerationQueue(),
     getReports(),
@@ -79,6 +81,7 @@ export default async function AdminPage() {
     getCustomBadges(),
     getEvaluarAccounts(),
     getEmailTemplateOverrides(),
+    getAiKeys(),
   ]);
 
   const identityQueue = await Promise.all(
@@ -138,6 +141,12 @@ export default async function AdminPage() {
           cobro es manual: es la pantalla donde se activa a quien pago. */}
       <div className="max-w-6xl mx-auto px-4 pb-10">
         <AdminSubscriptions accounts={evaluarAccounts} />
+      </div>
+
+      {/* Claves del asistente de IA. Varias por proveedor: con una sola, el
+          tope por minuto de Groq lo deja caido justo cuando mas se usa. */}
+      <div className="max-w-6xl mx-auto px-4 pb-10">
+        <AdminAiKeys keys={aiKeys} />
       </div>
 
       {/* Editor de los correos que manda la plataforma. */}

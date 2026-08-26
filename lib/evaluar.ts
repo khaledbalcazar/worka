@@ -621,3 +621,39 @@ export async function getMyParticipation(
 
   return (data as MyParticipation | null) ?? null;
 }
+
+// Claves de IA para el backoffice. La clave sale enmascarada: el admin
+// necesita distinguirlas, no volver a leerlas enteras.
+export type AiKeyRow = {
+  id: string;
+  provider: string;
+  label: string;
+  masked: string;
+  active: boolean;
+  last_used_at: string | null;
+  failed_at: string | null;
+  fail_reason: string | null;
+  created_at: string;
+};
+
+export async function getAiKeys(): Promise<AiKeyRow[]> {
+  const supabase = await getServerClient();
+  if (!supabase) return [];
+
+  const { data } = await supabase
+    .from("evaluar_ai_keys")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  return ((data ?? []) as (AiKeyRow & { api_key: string })[]).map((k) => ({
+    id: k.id,
+    provider: k.provider,
+    label: k.label,
+    masked: k.api_key.slice(0, 6) + "…" + k.api_key.slice(-4),
+    active: k.active,
+    last_used_at: k.last_used_at,
+    failed_at: k.failed_at,
+    fail_reason: k.fail_reason,
+    created_at: k.created_at,
+  }));
+}

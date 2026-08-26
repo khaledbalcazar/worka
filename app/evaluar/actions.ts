@@ -1682,3 +1682,246 @@ export async function getVideoUrl(
   }
   return { ok: true, url: data.signedUrl };
 }
+
+// ── Asistente de IA ────────────────────────────────────────────
+
+// Arma una etapa entera a partir de lo que la empresa pide en criollo.
+//
+// Es lo que destraba el momento donde más gente abandona: armar un proceso
+// desde cero. Las plantillas del catálogo cubren los puestos más buscados,
+// pero quien contrata un tornero o un analista de laboratorio se quedaba sin
+// nada. Lo que sale es un borrador editable, nunca algo que se publique solo.
+export async function generateStageWithAi(
+  processId: string,
+  pedido: string
+): Promise<Result & { added?: number }> {
+  const { supabase } = await requireCompany();
+  if (!supabase) return DEMO;
+  const plan = await planNow();
+  if (!plan.ai)
+    return { ok: false, error: upgradeMessage("El asistente de IA", plan) };
+  const blocked = await requireActiveAccount();
+  if (blocked) return { ok: false, error: blocked };
+
+  const texto = pedido.trim();
+  if (texto.length < 10)
+    return {
+      ok: false,
+      error: "Contame un poco más: qué puesto es y qué querés medir.",
+    };
+
+  const { callAi } = await import("@/lib/evaluar/ai");
+  const r = await callAi({
+    json: true,
+    maxTokens: 3000,
+    system: [
+      "Sos un especialista en selección de personal en Paraguay.",
+      "Armás pruebas de conocimiento y juicio situacional para puestos concretos.",
+      "Escribís en español rioplatense con voseo, claro y sin tecnicismos.",
+      "",
+      "Devolvés SOLO un objeto JSON con esta forma exacta:",
+      '{"title":"...","intro":"...","minutes":8,"timed":true,"questions":[',
+      '  {"text":"...","options":["a","b","c","d"],"correct":"a"}',
+      "]}",
+      "",
+      "Reglas:",
+      "- Entre 6 y 12 preguntas.",
+      "- Cada pregunta con 3 o 4 opciones y UNA correcta, copiada textual de options.",
+      "- Nada de preguntas sobre edad, sexo, religión, estado civil, hijos,",
+      "  embarazo, salud, nacionalidad ni afiliación política: además de",
+      "  discriminatorio, no predice desempeño.",
+      "- El intro le explica al candidato qué es la prueba, en dos o tres frases.",
+      "- timed en true solo si hay respuestas correctas y objetivas.",
+    ].join("\n"),
+    user: texto,
+  });
+
+  if (!r.ok) return { ok: false, error: r.error };
+
+  type Generada = {
+    title?: string;
+    intro?: string;
+    minutes?: number;
+    timed?: boolean;
+    questions?: { text?: string; options?: string[]; correct?: string }[];
+  };
+
+  let plan_: Generada;
+  try {
+    plan_ = JSON.parse(r.text) as Generada;
+  } catch {
+    console.error("generateStageWithAi: JSON inválido", r.text.slice(0, 300));
+    return {
+      ok: false,
+      error: "El asistente devolvió algo que no pudimos leer. Probá de nuevo.",
+    };
+  }
+
+  // Se filtra acá y no se confía en el modelo: una pregunta sin opciones o con
+  // una "correcta" que no está entre ellas rompería la corrección más tarde,
+  // cuando ya haya gente rindiendo.
+  const preguntas = (plan_.questions ?? [])
+    .map((q) => ({
+      text: (q.text ?? "").trim(),
+      options: (q.options ?? []).map((o) => String(o).trim()).filter(Boolean),
+      correct: (q.correct ?? "").trim(),
+    }))
+    .filter(
+      (q) =>
+        q.text.length > 3 &&
+        q.options.length >= 2 &&
+        q.options.includes(q.correct)
+    );
+
+  if (preguntas.length === 0)
+    return {
+      ok: false,
+      error: "El asistente no logró armar preguntas válidas. Probá de nuevo.",
+    };
+
+  const { count } = await supabase
+    .from("evaluar_stages")
+    .select("id", { count: "exact", head: true })
+    .eq("process_id", processId);
+
+  const { data: stage, error: stageError } = await supabase
+    .from("evaluar_stages")
+    .insert({
+      process_id: processId,
+      title: (plan_.title ?? "Prueba generada").trim().slice(0, 120),
+      description: "Borrador armado con el asistente. Revisalo antes de publicar.",
+      intro: (plan_.intro ?? "").trim(),
+      minutes: Math.min(60, Math.max(1, plan_.minutes ?? 8)),
+      timed: plan_.timed !== false,
+      position: count ?? 0,
+    })
+    .select("id")
+    .single();
+
+  if (stageError || !stage) {
+    console.error("generateStageWithAi stage:", stageError);
+    return { ok: false, error: "No pudimos crear la etapa." };
+  }
+
+  const stageId = (stage as { id: string }).id;
+  const { error: qError } = await supabase.from("evaluar_questions").insert(
+    preguntas.map((q, i) => ({
+      stage_id: stageId,
+      position: i,
+      kind: "unica",
+      text: q.text,
+      options: q.options,
+      correct: q.correct,
+      weight: 1,
+      knockout: false,
+    }))
+  );
+
+  if (qError) {
+    console.error("generateStageWithAi questions:", qError);
+    await supabase.from("evaluar_stages").delete().eq("id", stageId);
+    return { ok: false, error: "No pudimos guardar las preguntas." };
+  }
+
+  revalidatePath(`/evaluar/app/procesos/${processId}`);
+  return { ok: true, id: stageId, added: preguntas.length };
+}
+
+// ── Claves de IA (solo admin) ──────────────────────────────────
+
+async function requireAdmin() {
+  const supabase = await getServerClient();
+  if (!supabase) return { supabase: null, ok: false as const };
+  const user = await getCurrentUser();
+  if (!user) return { supabase, ok: false as const };
+  const { data } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+  return {
+    supabase,
+    ok: (data as { role?: string } | null)?.role === "admin",
+  };
+}
+
+export async function addAiKey(input: {
+  provider: string;
+  label: string;
+  apiKey: string;
+}): Promise<Result> {
+  const { supabase, ok } = await requireAdmin();
+  if (!supabase) return DEMO;
+  if (!ok) return { ok: false, error: "Solo un admin puede tocar las claves." };
+
+  const clave = input.apiKey.trim();
+  if (clave.length < 20) return { ok: false, error: "Esa clave no parece válida." };
+
+  const { error } = await supabase.from("evaluar_ai_keys").insert({
+    provider: input.provider.trim() || "groq",
+    label: input.label.trim(),
+    api_key: clave,
+  });
+
+  if (error) {
+    console.error("addAiKey:", error);
+    return { ok: false, error: "No pudimos guardar la clave." };
+  }
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+export async function setAiKeyActive(
+  id: string,
+  active: boolean
+): Promise<Result> {
+  const { supabase, ok } = await requireAdmin();
+  if (!supabase) return DEMO;
+  if (!ok) return { ok: false, error: "Solo un admin puede tocar las claves." };
+
+  // Reactivar limpia la marca de falla: si no, la clave volvería a quedar
+  // fuera de la rueda por un error que ya se corrigió.
+  const { error } = await supabase
+    .from("evaluar_ai_keys")
+    .update(
+      active
+        ? { active: true, failed_at: null, fail_reason: null }
+        : { active: false }
+    )
+    .eq("id", id);
+
+  if (error) return { ok: false, error: "No pudimos actualizar la clave." };
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+export async function deleteAiKey(id: string): Promise<Result> {
+  const { supabase, ok } = await requireAdmin();
+  if (!supabase) return DEMO;
+  if (!ok) return { ok: false, error: "Solo un admin puede tocar las claves." };
+
+  const { error } = await supabase.from("evaluar_ai_keys").delete().eq("id", id);
+  if (error) return { ok: false, error: "No pudimos borrar la clave." };
+  revalidatePath("/admin");
+  return { ok: true };
+}
+
+// Prueba de verdad contra la API, no un chequeo de formato: una clave copiada
+// a medias tiene el largo correcto y falla recién cuando la usa una empresa.
+export async function testAiKeys(): Promise<Result & { detalle?: string }> {
+  const { supabase, ok } = await requireAdmin();
+  if (!supabase) return DEMO;
+  if (!ok) return { ok: false, error: "Solo un admin puede probar las claves." };
+
+  const { callAi } = await import("@/lib/evaluar/ai");
+  const r = await callAi({
+    system: "Respondé con una sola palabra.",
+    user: "Decí: funciona",
+    maxTokens: 16,
+  });
+
+  revalidatePath("/admin");
+  return r.ok
+    ? { ok: true, detalle: `El asistente respondió: "${r.text.slice(0, 60)}"` }
+    : { ok: false, error: r.error };
+}
