@@ -896,13 +896,62 @@ export async function uploadParticipantCv(
     return { ok: false, error: "No pudimos subir el archivo." };
   }
 
-  await admin
+  // El error de esta actualización se chequea a propósito. Antes se ignoraba,
+  // y como la columna cv_url llegó recién en la 025, el archivo se subía al
+  // storage pero la ficha nunca quedaba marcada: el candidato veía "listo" y
+  // del otro lado no aparecía ningún CV.
+  const { error: markError } = await admin
     .from("evaluar_participants")
     .update({ cv_url: path })
     .eq("id", id);
 
+  if (markError) {
+    console.error("uploadParticipantCv marca:", markError);
+    return {
+      ok: false,
+      error: "Subimos el archivo pero no pudimos adjuntarlo a tu evaluación.",
+    };
+  }
+
   revalidatePath(`/evaluar/e/${token}`);
   return { ok: true };
+}
+
+// URL firmada del CV de un candidato de un proceso, para la empresa.
+//
+// Va por acá y no por getCandidateCvUrl porque aquella busca en la carpeta
+// del candidato de Worka Empleos, y quien rinde una evaluación puede no tener
+// cuenta: su archivo vive bajo el id del participante.
+export async function getParticipantCvUrl(
+  participantId: string
+): Promise<{ ok: boolean; url?: string; error?: string }> {
+  const { supabase, user } = await requireCompany();
+  if (!supabase) return { ok: false, error: "Modo demostración." };
+  if (!user) return { ok: false, error: "Iniciá sesión." };
+
+  // La política de evaluar_participants ya corta por empresa dueña.
+  const { data: participant } = await supabase
+    .from("evaluar_participants")
+    .select("cv_url")
+    .eq("id", participantId)
+    .maybeSingle();
+
+  const path = (participant as { cv_url?: string | null } | null)?.cv_url;
+  if (!path) return { ok: false, error: "Este candidato no adjuntó CV." };
+
+  const { getAdminClient } = await import("@/lib/supabase/admin");
+  const admin = getAdminClient();
+  if (!admin) return { ok: false, error: "No pudimos abrir el CV." };
+
+  const { data, error } = await admin.storage
+    .from("cvs")
+    .createSignedUrl(path, 60 * 10);
+
+  if (error || !data) {
+    console.error("getParticipantCvUrl:", error);
+    return { ok: false, error: "No pudimos abrir el CV." };
+  }
+  return { ok: true, url: data.signedUrl };
 }
 
 // Que rasgos importan para este puesto y cuanto. Los pesos van de 1 a 3; el

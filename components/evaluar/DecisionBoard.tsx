@@ -13,6 +13,7 @@ import {
   UserX,
 } from "lucide-react";
 import type { BoardData } from "@/lib/evaluar";
+import CvLink from "./CvLink";
 import { ALL_DIMENSIONS } from "@/lib/evaluar/templates";
 import { addNote, setParticipantStatus } from "@/app/evaluar/actions";
 import { StatusChip } from "./ProcessEditor";
@@ -149,6 +150,13 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
                     <p className="text-[11px] text-slate-400">
                       {c.source === "worka" ? "Desde Worka" : "Invitado"}
                     </p>
+                    {/* En comparación a ciegas no va: el CV lleva nombre,
+                        edad y foto, que es justo lo que se está tapando. */}
+                    {c.cv_url && !blind && (
+                      <div className="mt-1.5">
+                        <CvLink participantId={c.id} compact />
+                      </div>
+                    )}
                   </div>
                   {lider && (
                     <Trophy size={16} className="text-amber-500 shrink-0" />

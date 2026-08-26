@@ -5,6 +5,7 @@ import { getCandidateReport, MIN_MUESTRA } from "@/lib/evaluar/report";
 import { planOf } from "@/lib/evaluar-plans";
 import PrintButton from "@/components/evaluar/PrintButton";
 import VideoPlayback from "@/components/evaluar/VideoPlayback";
+import CvLink from "@/components/evaluar/CvLink";
 
 export const metadata = {
   title: "Informe del candidato",
@@ -124,6 +125,13 @@ export default async function InformePage({
             </div>
           ))}
         </div>
+
+        {/* CV adjunto. Antes se subía y no aparecía en ningún lado. */}
+        {c.cv_url && (
+          <div className="mt-4">
+            <CvLink participantId={pid} />
+          </div>
+        )}
 
         {/* Pruebas con vara objetiva */}
         {c.percent !== null && (
