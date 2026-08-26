@@ -17,6 +17,7 @@ import { getCurrentCandidate, getExternalJob } from "@/lib/data";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { SITE_URL } from "@/lib/supabase/config";
 import { timeAgo } from "@/lib/format";
+import { countryByCode } from "@/lib/countries";
 
 const BASE = SITE_URL.replace(/\/$/, "");
 
@@ -69,6 +70,8 @@ export default async function ExternalJobPage({
   if (!job) notFound();
 
   const loggedIn = !!user;
+  // Pais real de la vacante: define el marcado para Google y la moneda.
+  const pais = countryByCode(job.country);
   const pageUrl = `${BASE}/empleo/externo/${job.id}`;
 
   // Correo de postulación ya redactado: el candidato solo adjunta su CV.
@@ -152,7 +155,7 @@ export default async function ExternalJobPage({
       ? {
           baseSalary: {
             "@type": "MonetaryAmount",
-            currency: "PYG",
+            currency: pais.currencyCode,
             value: {
               "@type": "QuantitativeValue",
               minValue: Math.min(...salaryNums),
@@ -165,14 +168,24 @@ export default async function ExternalJobPage({
     ...(job.modality === "Remoto"
       ? { jobLocationType: "TELECOMMUTE" }
       : {}),
+    // El país sale de la vacante, no de una constante.
+    //
+    // Antes acá decía siempre "PY": a Google se le declaraba que un aviso de
+    // Bogotá estaba en Paraguay, así que Google for Jobs se lo mostraba a
+    // paraguayos y nunca a colombianos. Es la razón por la que las vacantes
+    // regionales no llegaban a su público.
     jobLocation: {
       "@type": "Place",
       address: {
         "@type": "PostalAddress",
-        addressLocality: job.city ?? "Asunción",
-        addressRegion: job.city ?? "Central",
-        addressCountry: "PY",
+        addressLocality: job.city ?? pais.cities[0] ?? pais.name,
+        addressRegion: job.city ?? pais.name,
+        addressCountry: pais.code.toUpperCase(),
       },
+    },
+    applicantLocationRequirements: {
+      "@type": "Country",
+      name: pais.name,
     },
     ...(job.industry ? { industry: job.industry } : {}),
     url: pageUrl,

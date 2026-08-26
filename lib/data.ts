@@ -894,6 +894,41 @@ export async function getPendingIdentities(): Promise<Candidate[]> {
 // ── Vacantes externas (agregador) ──
 
 // Interruptor general: si está apagado, las externas no existen para nadie.
+// Todas las vacantes externas activas, para el sitemap.
+//
+// getExternalJobs corta en 200 porque alimenta el feed, donde nadie scrollea
+// mil avisos. Usar esa misma función para el sitemap dejaba afuera a las otras
+// ~760: como ordena por fecha de importación, entraba solo la última tanda y
+// las vacantes de Argentina, Colombia o Chile nunca llegaban a Google.
+//
+// Se pagina porque PostgREST devuelve como mucho 1000 filas por consulta.
+export async function getAllExternalJobsForSitemap(): Promise<
+  { id: string; imported_at: string }[]
+> {
+  if (!(await externalJobsEnabled())) return [];
+  const supabase = await getServerClient();
+  if (!supabase) return [];
+
+  const salida: { id: string; imported_at: string }[] = [];
+  const PAGINA = 1000;
+  for (let desde = 0; ; desde += PAGINA) {
+    const { data, error } = await supabase
+      .from("external_jobs")
+      .select("id, imported_at")
+      .eq("status", "activa")
+      .order("imported_at", { ascending: false })
+      .range(desde, desde + PAGINA - 1);
+
+    if (error) break;
+    const filas = (data ?? []) as { id: string; imported_at: string }[];
+    salida.push(...filas);
+    if (filas.length < PAGINA) break;
+    // Tope de seguridad: un sitemap admite 50.000 URLs.
+    if (salida.length >= 45_000) break;
+  }
+  return salida;
+}
+
 export async function externalJobsEnabled(): Promise<boolean> {
   const settings = await getSiteSettings();
   return settings.external_jobs_enabled === "true";

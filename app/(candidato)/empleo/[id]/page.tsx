@@ -10,6 +10,7 @@ import EntityAvatar from "@/components/EntityAvatar";
 import JobViewTracker from "@/components/JobViewTracker";
 import LinkedJobPanel from "@/components/evaluar/LinkedJobPanel";
 import { getProcessForJob, getMyParticipation } from "@/lib/evaluar";
+import { countryByCode } from "@/lib/countries";
 import {
   FastResponderBadge,
   FirstJobBadge,
@@ -79,6 +80,11 @@ export default async function JobDetailPage({
     ? await getMyParticipation(evaluation.id)
     : null;
 
+  // Pais de la empresa que publica: define el marcado para Google y la
+  // moneda. Antes estaba fijo en Paraguay, asi que una vacante argentina se
+  // le declaraba a Google como paraguaya y nunca llegaba a su publico.
+  const pais = countryByCode(job.company.country);
+
   // Destino para las apps de mapas: dirección exacta o empresa + ciudad.
   // El origen lo resuelve la app con la ubicación del usuario.
   const destination = encodeURIComponent(
@@ -139,7 +145,7 @@ export default async function JobDetailPage({
       ? {
           baseSalary: {
             "@type": "MonetaryAmount",
-            currency: "PYG",
+            currency: pais.currencyCode,
             value: {
               "@type": "QuantitativeValue",
               minValue: Math.min(...salaryNums),
@@ -157,12 +163,12 @@ export default async function JobDetailPage({
         streetAddress: job.address ?? undefined,
         addressLocality: job.company.location_city,
         addressRegion: job.company.location_city,
-        addressCountry: "PY",
+        addressCountry: pais.code.toUpperCase(),
       },
     },
     applicantLocationRequirements: {
       "@type": "Country",
-      name: "Paraguay",
+      name: pais.name,
     },
   };
 

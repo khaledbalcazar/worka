@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 import {
   getActiveJobs,
   getAllCompanies,
-  getExternalJobs,
+  getAllExternalJobsForSitemap,
   getPublishedPosts,
   getPublishedCourses,
 } from "@/lib/data";
@@ -55,7 +55,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // Vacantes externas activas: también llevan JSON-LD de JobPosting, así
     // que Google for Jobs las puede indexar y traen tráfico a la plataforma.
-    const external = await getExternalJobs();
+    //
+    // Se piden TODAS, no las del feed: aquella consulta corta en 200 y dejaba
+    // fuera del sitemap a las vacantes regionales, que por eso nunca se
+    // indexaban.
+    const external = await getAllExternalJobsForSitemap();
     for (const job of external) {
       entries.push({
         url: `${base}/empleo/externo/${job.id}`,
