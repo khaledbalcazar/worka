@@ -1885,6 +1885,7 @@ export async function addAiKey(input: {
   provider: string;
   label: string;
   apiKey: string;
+  model?: string;
 }): Promise<Result> {
   const { supabase, ok } = await requireAdmin();
   if (!supabase) return DEMO;
@@ -1897,6 +1898,7 @@ export async function addAiKey(input: {
     provider: input.provider.trim() || "groq",
     label: input.label.trim(),
     api_key: clave,
+    ...(input.model?.trim() ? { model: input.model.trim() } : {}),
   });
 
   if (error) {
@@ -1995,5 +1997,34 @@ export async function setEvaluarPlan(
   // El panel de la empresa y el backoffice muestran los dos el cupo del plan.
   revalidatePath("/admin");
   revalidatePath("/evaluar/app");
+  return { ok: true };
+}
+
+// Cambiar el modelo de una clave.
+//
+// Va aparte del alta porque es lo que mas se toca: Groq retira modelos
+// seguido, y cuando eso pasa hay que poder corregirlo sin volver a cargar la
+// credencial. Se limpia la marca de falla, que suele venir justamente de ahi.
+export async function setAiKeyModel(
+  id: string,
+  model: string
+): Promise<Result> {
+  const { supabase, ok } = await requireAdmin();
+  if (!supabase) return DEMO;
+  if (!ok) return { ok: false, error: "Solo un admin puede tocar las claves." };
+
+  const limpio = model.trim();
+  if (!limpio) return { ok: false, error: "Escribí el nombre del modelo." };
+
+  const { error } = await supabase
+    .from("evaluar_ai_keys")
+    .update({ model: limpio, failed_at: null, fail_reason: null })
+    .eq("id", id);
+
+  if (error) {
+    console.error("setAiKeyModel:", error);
+    return { ok: false, error: "No pudimos cambiar el modelo." };
+  }
+  revalidatePath("/admin");
   return { ok: true };
 }

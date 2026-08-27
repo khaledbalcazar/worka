@@ -631,6 +631,7 @@ export type AiKeyRow = {
   provider: string;
   label: string;
   masked: string;
+  model: string;
   active: boolean;
   last_used_at: string | null;
   failed_at: string | null;
@@ -652,6 +653,7 @@ export async function getAiKeys(): Promise<AiKeyRow[]> {
     provider: k.provider,
     label: k.label,
     masked: k.api_key.slice(0, 6) + "…" + k.api_key.slice(-4),
+    model: k.model,
     active: k.active,
     last_used_at: k.last_used_at,
     failed_at: k.failed_at,

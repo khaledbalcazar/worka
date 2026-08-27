@@ -8,8 +8,10 @@ import {
   addAiKey,
   deleteAiKey,
   setAiKeyActive,
+  setAiKeyModel,
   testAiKeys,
 } from "@/app/evaluar/actions";
+import { MODELOS_SUGERIDOS } from "@/lib/evaluar/modelos";
 
 // Claves de IA del asistente de Worka Evaluar.
 //
@@ -26,6 +28,7 @@ export default function AdminAiKeys({ keys }: { keys: AiKeyRow[] }) {
   const [abierto, setAbierto] = useState(false);
   const [label, setLabel] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [model, setModel] = useState(MODELOS_SUGERIDOS[0]);
   const [aviso, setAviso] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -51,6 +54,14 @@ export default function AdminAiKeys({ keys }: { keys: AiKeyRow[] }) {
 
   return (
     <div className="card p-5 space-y-4">
+      {/* Fuera del formulario de alta: las filas de abajo tambien lo usan, y
+          ahi adentro solo existia con el formulario abierto. */}
+      <datalist id="modelos-groq">
+        {MODELOS_SUGERIDOS.map((m) => (
+          <option key={m} value={m} />
+        ))}
+      </datalist>
+
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-semibold text-primary-dark flex items-center gap-2">
@@ -118,6 +129,22 @@ export default function AdminAiKeys({ keys }: { keys: AiKeyRow[] }) {
               y solo la lee el servidor: nunca viaja al navegador de nadie.
             </p>
           </div>
+          <div>
+            <label className="label">Modelo</label>
+            <input
+              className="input font-mono text-sm"
+              list="modelos-groq"
+              placeholder="llama-3.3-70b-versatile"
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+            />
+            <p className="text-xs text-slate-500 mt-1.5">
+              La lista es una sugerencia, no un límite: podés escribir
+              cualquiera. Groq retira modelos seguido — si el asistente
+              empieza a fallar, casi siempre es por acá.
+            </p>
+          </div>
+
           <div className="flex gap-2">
             <button
               onClick={() => setAbierto(false)}
@@ -128,7 +155,7 @@ export default function AdminAiKeys({ keys }: { keys: AiKeyRow[] }) {
             <button
               onClick={() => {
                 run(
-                  () => addAiKey({ provider: "groq", label, apiKey }),
+                  () => addAiKey({ provider: "groq", label, apiKey, model }),
                   "Clave guardada."
                 );
                 setLabel("");
@@ -160,7 +187,21 @@ export default function AdminAiKeys({ keys }: { keys: AiKeyRow[] }) {
                     {k.masked}
                   </span>
                 </p>
-                <p className="text-[11px] text-slate-500">
+                <div className="flex items-center gap-2 mt-1">
+                  <label className="text-[11px] text-slate-500">Modelo</label>
+                  <input
+                    className="input py-0.5 text-[11px] font-mono w-auto flex-1 min-w-0"
+                    list="modelos-groq"
+                    defaultValue={k.model}
+                    disabled={pending}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      if (v && v !== k.model)
+                        run(() => setAiKeyModel(k.id, v), "Modelo actualizado.");
+                    }}
+                  />
+                </div>
+                <p className="text-[11px] text-slate-500 mt-0.5">
                   {k.active ? "Activa" : "Apagada"}
                   {k.last_used_at &&
                     ` · usada ${new Date(k.last_used_at).toLocaleString("es-PY", {

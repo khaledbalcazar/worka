@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import type { BoardData } from "@/lib/evaluar";
 import CvLink from "./CvLink";
+import VideoPlayback from "./VideoPlayback";
+import BoardMetrics from "./BoardMetrics";
 import { MOTIVOS_DESCARTE, etiquetaMotivo } from "@/lib/evaluar/motivos";
 import { ALL_DIMENSIONS } from "@/lib/evaluar/templates";
 import { addNote, setParticipantStatus } from "@/app/evaluar/actions";
@@ -34,6 +36,25 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
 
   const [blind, setBlind] = useState(false);
   const [descartarA, setDescartarA] = useState<string | null>(null);
+
+  // Una respuesta en video se reconoce por su valor: la accion de subida
+  // guarda { video: ruta, type }. Asi no hace falta traerse el tipo de cada
+  // pregunta solo para dibujar el tablero.
+  function videosDe(c: BoardData["candidates"][number]) {
+    return c.answers.filter(
+      (a) =>
+        a.value !== null &&
+        typeof a.value === "object" &&
+        "video" in (a.value as Record<string, unknown>)
+    );
+  }
+
+  const preguntas = new Map(
+    board.stages.flatMap((st) => st.questions.map((q) => [q.id, q.text]))
+  );
+  function textoPregunta(id: string) {
+    return preguntas.get(id) ?? "Respuesta en video";
+  }
 
   const rendidos = board.candidates.filter((c) => c.percent !== null);
 
@@ -139,6 +160,8 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
           </div>
         ))}
       </div>
+
+      <BoardMetrics board={board} />
 
       {/* Por qué se cae la gente.
           El embudo de arriba dice cuántos se pierden; esto dice por qué, que
@@ -257,6 +280,24 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
                     <p className="text-sm text-slate-400">Sin rendir todavía</p>
                   )}
                 </div>
+
+                {/* Las respuestas en video, acá mismo.
+                    Antes solo se veían dentro del informe, que es del plan
+                    Profesional: una empresa del plan Esencial le pedía al
+                    candidato que se grabara y después no podía mirarlo. El
+                    video es la respuesta de la persona, no una analítica. */}
+                {videosDe(c).length > 0 && !blind && (
+                  <div className="mt-3 space-y-2">
+                    {videosDe(c).map((v) => (
+                      <VideoPlayback
+                        key={v.question_id}
+                        participantId={c.id}
+                        questionId={v.question_id}
+                        text={textoPregunta(v.question_id)}
+                      />
+                    ))}
+                  </div>
+                )}
 
                 <div className="mt-3">
                   <StatusChip status={c.status} />

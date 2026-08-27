@@ -157,7 +157,11 @@ function likertIndex(value: unknown, options: string[] | null): number | null {
   return i >= 0 ? i + 1 : null;
 }
 
-export function qualityFlags(answers: AnswerRow[]): QualityFlag[] {
+export function qualityFlags(
+  answers: AnswerRow[],
+  /** Segundos que tardó cada etapa, de evaluar_participants.stage_times. */
+  stageTimes?: Record<string, number>
+): QualityFlag[] {
   const flags: QualityFlag[] = [];
 
   const likert = answers
@@ -182,28 +186,29 @@ export function qualityFlags(answers: AnswerRow[]): QualityFlag[] {
     }
   }
 
-  // 2. Velocidad. Se mide con el hueco entre respuestas consecutivas y se usa
-  //    la mediana, no el promedio: quien deja el test abierto y vuelve a la
-  //    hora tiene un hueco enorme que se comería cualquier promedio.
-  const tiempos = answers
-    .map((a) => new Date(a.created_at).getTime())
-    .filter((t) => Number.isFinite(t))
-    .sort((a, b) => a - b);
-  if (tiempos.length >= 8) {
-    const huecos: number[] = [];
-    for (let i = 1; i < tiempos.length; i++) {
-      huecos.push((tiempos[i] - tiempos[i - 1]) / 1000);
-    }
-    huecos.sort((a, b) => a - b);
-    const mediana = huecos[Math.floor(huecos.length / 2)];
-    if (mediana < SEG_POR_ITEM) {
+  // 2. Velocidad.
+  //
+  // Se mide con el tiempo real de cada etapa, no con la distancia entre los
+  // created_at de las respuestas. Ese era el cálculo anterior y estaba mal de
+  // raíz: la corrección inserta todas las respuestas de una etapa dentro de
+  // una sola transacción, así que comparten el mismo instante. Los huecos
+  // daban cero y la señal saltaba para absolutamente todo el mundo, incluida
+  // la gente que se había tomado su tiempo.
+  const segundos = Object.values(stageTimes ?? {}).filter(
+    (s): s is number => typeof s === "number" && s > 0
+  );
+  if (segundos.length > 0 && answers.length >= 8) {
+    const total = segundos.reduce((s, x) => s + x, 0);
+    const porItem = total / answers.length;
+    if (porItem < SEG_POR_ITEM) {
       flags.push({
         kind: "apurada",
         label: "Contestó demasiado rápido",
         detail:
-          `Mediana de ${mediana.toFixed(1)} segundos por pregunta. Abajo de ` +
-          `${SEG_POR_ITEM} no alcanza ni para leer el ítem.`,
-        severity: mediana < 1.5 ? "alerta" : "aviso",
+          `${porItem.toFixed(1)} segundos por pregunta (${Math.round(total)} ` +
+          `segundos para ${answers.length}). Abajo de ${SEG_POR_ITEM} no ` +
+          `alcanza ni para leer el ítem.`,
+        severity: porItem < 1.5 ? "alerta" : "aviso",
       });
     }
   }
@@ -270,7 +275,7 @@ export async function getCandidateReport(
   // participante no es de un proceso suyo, esto vuelve vacío.
   const { data: participant } = await supabase
     .from("evaluar_participants")
-    .select("id, profile")
+    .select("id, profile, stage_times")
     .eq("id", participantId)
     .maybeSingle();
   if (!participant) return null;
@@ -287,16 +292,15 @@ export async function getCandidateReport(
   ]);
 
   const filas = (answers ?? []) as unknown as AnswerRow[];
-  const tiempos = filas
-    .map((a) => new Date(a.created_at).getTime())
-    .filter((t) => Number.isFinite(t));
+  const tiemposEtapa =
+    (participant as { stage_times?: Record<string, number> }).stage_times ?? {};
 
   return {
     dimensions: normDimensions(
       (participant as { profile: Record<string, DimensionScore> }).profile ?? {},
       norms
     ),
-    quality: qualityFlags(filas),
+    quality: qualityFlags(filas, tiemposEtapa),
     videos: filas
       .filter((a) => a.question?.kind === "video" && a.question?.id)
       .map((a) => ({
@@ -304,12 +308,14 @@ export async function getCandidateReport(
         text: a.question!.text,
       })),
     answered: filas.length,
-    minutes:
-      tiempos.length >= 2
-        ? Math.max(
-            1,
-            Math.round((Math.max(...tiempos) - Math.min(...tiempos)) / 60000)
-          )
-        : null,
+    // De los tiempos por etapa, no de los created_at: esos son todos el
+    // mismo instante porque la correccion inserta todo junto.
+    minutes: (() => {
+      const total = Object.values(tiemposEtapa).reduce<number>(
+        (s, x) => s + (typeof x === "number" && x > 0 ? x : 0),
+        0
+      );
+      return total > 0 ? Math.max(1, Math.round(total / 60)) : null;
+    })(),
   };
 }

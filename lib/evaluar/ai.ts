@@ -17,6 +17,7 @@ export type AiKey = {
   provider: string;
   label: string;
   api_key: string;
+  model: string;
   active: boolean;
   last_used_at: string | null;
   failed_at: string | null;
@@ -24,9 +25,11 @@ export type AiKey = {
   created_at: string;
 };
 
-/** Modelo por defecto. Groq es OpenAI-compatible, así que el resto es igual. */
+/** Groq es OpenAI-compatible, así que el resto de la llamada es igual. */
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+
+import { MODELOS_SUGERIDOS } from "./modelos";
+export { MODELOS_SUGERIDOS };
 
 /** Una clave marcada como fallada vuelve a intentarse después de esto. */
 const REINTENTO_MS = 10 * 60 * 1000;
@@ -93,7 +96,7 @@ export async function callAi(input: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: GROQ_MODEL,
+          model: k.model || MODELOS_SUGERIDOS[0],
           temperature: 0.4,
           max_tokens: input.maxTokens ?? 2048,
           ...(input.json ? { response_format: { type: "json_object" } } : {}),
@@ -115,10 +118,17 @@ export async function callAi(input: {
             ? { active: false }
             : {}),
         });
+        // 404 y "decommissioned" son modelo retirado o mal escrito. Decirlo
+        // con todas las letras ahorra media hora de buscar en el lugar
+        // equivocado: la clave esta bien, el modelo no.
+        const esModelo =
+          res.status === 404 || /model|decommission/i.test(cuerpo);
         ultimoError =
           res.status === 429
             ? "El asistente está saturado. Probá de nuevo en un minuto."
-            : "El asistente rechazó la consulta.";
+            : esModelo
+              ? `El modelo "${k.model}" no está disponible en Groq. Cambialo desde el backoffice.`
+              : "El asistente rechazó la consulta.";
         continue;
       }
 
