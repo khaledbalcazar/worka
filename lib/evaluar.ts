@@ -100,6 +100,8 @@ export type EvaluarParticipant = {
   score: number | null;
   max_score: number | null;
   outcome_note: string | null;
+  /** Motivo tipificado del descarte. */
+  reject_reason?: string | null;
   started_at: string | null;
   completed_at: string | null;
   created_at: string;

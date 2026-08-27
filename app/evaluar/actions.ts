@@ -8,6 +8,10 @@ import {
   getRoleTemplate,
   getTemplate,
 } from "@/lib/evaluar/templates";
+import {
+  MOTIVOS_POR_KEY,
+  motivoEsCompartible,
+} from "@/lib/evaluar/motivos";
 import { emailEnabled, emailLayout, sendEmail } from "@/lib/email";
 import { SITE_URL } from "@/lib/supabase/config";
 import {
@@ -1341,16 +1345,32 @@ export async function setParticipantStatus(
   processId: string,
   participantId: string,
   status: "finalista" | "descartado" | "contratado" | "completado",
-  note?: string
+  note?: string,
+  /** Motivo tipificado. Solo tiene sentido al descartar. */
+  reason?: string
 ): Promise<Result> {
   const { supabase } = await requireCompany();
   if (!supabase) return DEMO;
   const blocked = await requireActiveAccount();
   if (blocked) return { ok: false, error: blocked };
 
+  // Se exige el motivo al descartar. Es lo único que después permite
+  // contestar "por qué se me cae la gente": con texto libre se puede leer de
+  // a uno y no se puede contar.
+  if (status === "descartado") {
+    if (!reason || !MOTIVOS_POR_KEY[reason])
+      return { ok: false, error: "Elegí por qué se descarta a esta persona." };
+  }
+
   const { error } = await supabase
     .from("evaluar_participants")
-    .update({ status, outcome_note: note?.trim() || null })
+    .update({
+      status,
+      outcome_note: note?.trim() || null,
+      // Al reactivar o avanzar se limpia: un motivo de descarte colgado de
+      // alguien que sigue en carrera ensucia el reporte.
+      reject_reason: status === "descartado" ? reason : null,
+    })
     .eq("id", participantId);
   if (error) return { ok: false, error: "No pudimos actualizar el estado." };
 
@@ -1362,10 +1382,20 @@ export async function setParticipantStatus(
     descartado: "El proceso se cerró para vos en esta oportunidad.",
     completado: "Terminaste la evaluación. La empresa está revisando.",
   };
+
+  // El motivo interno no se le cuenta al candidato salvo los dos que no
+  // dicen nada en su contra. "No cumple un requisito" sin contexto, mandado
+  // por un sistema, hace más daño que el silencio.
+  const paraElCandidato =
+    note?.trim() ||
+    (status === "descartado" && motivoEsCompartible(reason)
+      ? `${mensajes.descartado} Motivo: ${MOTIVOS_POR_KEY[reason!].label.toLowerCase()}.`
+      : mensajes[status]);
+
   await supabase.from("evaluar_events").insert({
     participant_id: participantId,
     kind: status,
-    message: note?.trim() || mensajes[status],
+    message: paraElCandidato,
   });
 
   revalidatePath(`/evaluar/app/procesos/${processId}`);

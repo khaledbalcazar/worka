@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { BoardData } from "@/lib/evaluar";
 import CvLink from "./CvLink";
+import { MOTIVOS_DESCARTE, etiquetaMotivo } from "@/lib/evaluar/motivos";
 import { ALL_DIMENSIONS } from "@/lib/evaluar/templates";
 import { addNote, setParticipantStatus } from "@/app/evaluar/actions";
 import { StatusChip } from "./ProcessEditor";
@@ -32,8 +33,25 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
   const [pending, startTransition] = useTransition();
 
   const [blind, setBlind] = useState(false);
+  const [descartarA, setDescartarA] = useState<string | null>(null);
 
   const rendidos = board.candidates.filter((c) => c.percent !== null);
+
+  // Conteo de motivos, del más frecuente al menos. Solo cuenta a los que
+  // tienen motivo cargado: los descartados de antes de esta pantalla no lo
+  // tienen, y contarlos como "sin motivo" seria ensuciar el reporte con un
+  // dato que nadie omitio a proposito.
+  const descartadosConMotivo = board.candidates.filter(
+    (c) => c.status === "descartado" && c.reject_reason
+  );
+  const descartados = descartadosConMotivo.length;
+  const motivos = Object.entries(
+    descartadosConMotivo.reduce<Record<string, number>>((acc, c) => {
+      const k = c.reject_reason as string;
+      acc[k] = (acc[k] ?? 0) + 1;
+      return acc;
+    }, {})
+  ).sort((a, b) => b[1] - a[1]);
 
   const funnel = {
     invitados: board.candidates.length,
@@ -122,6 +140,40 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
         ))}
       </div>
 
+      {/* Por qué se cae la gente.
+          El embudo de arriba dice cuántos se pierden; esto dice por qué, que
+          es lo único que se puede accionar. Si la mitad se cae por "no
+          acordamos las condiciones", el problema no está en los candidatos
+          ni en la evaluación: está en el aviso. */}
+      {motivos.length > 0 && (
+        <section className="card p-4">
+          <h2 className="text-sm font-semibold text-primary-dark">
+            Por qué se descartó
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {descartados} de {board.candidates.length} descartados.
+          </p>
+          <div className="space-y-2 mt-3">
+            {motivos.map(([key, cuenta]) => (
+              <div key={key}>
+                <div className="flex justify-between text-xs gap-3">
+                  <span className="text-slate-700">{etiquetaMotivo(key)}</span>
+                  <span className="text-slate-500 shrink-0">
+                    {cuenta} ({Math.round((cuenta / descartados) * 100)}%)
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mt-1">
+                  <div
+                    className="h-full rounded-full bg-slate-400"
+                    style={{ width: `${(cuenta / descartados) * 100}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {error && (
         <p className="text-sm text-danger bg-red-50 rounded-xl px-4 py-3">
           {error}
@@ -208,6 +260,13 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
 
                 <div className="mt-3">
                   <StatusChip status={c.status} />
+                  {/* El motivo al lado del estado: "descartado" sin el porqué
+                      obliga a abrir la ficha para entender qué pasó. */}
+                  {c.reject_reason && (
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      {etiquetaMotivo(c.reject_reason)}
+                    </p>
+                  )}
                 </div>
 
                 <p className="text-xs text-slate-500 mt-3">
@@ -319,17 +378,32 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
                   </div>
                 )}
 
-                <div className="flex gap-2 mt-auto pt-4">
-                  <button
-                    onClick={() =>
+                {/* Motivo del descarte.
+                    Se pide antes de descartar y no después: preguntado
+                    después nadie vuelve a completarlo, y sin el motivo no se
+                    puede contestar por qué se cae la gente. */}
+                {descartarA === c.id && (
+                  <MotivoDescarteForm
+                    pending={pending}
+                    onCancel={() => setDescartarA(null)}
+                    onConfirm={(reason, nota) => {
                       run(() =>
                         setParticipantStatus(
                           board.process.id,
                           c.id,
-                          "descartado"
+                          "descartado",
+                          nota,
+                          reason
                         )
-                      )
-                    }
+                      );
+                      setDescartarA(null);
+                    }}
+                  />
+                )}
+
+                <div className="flex gap-2 mt-auto pt-4">
+                  <button
+                    onClick={() => setDescartarA(c.id)}
                     disabled={pending || c.status === "descartado"}
                     className="btn-secondary press text-xs flex-1 disabled:opacity-40"
                   >
@@ -373,6 +447,87 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
           significa mejor candidato. Usalas junto a la entrevista y la
           experiencia, nunca como único filtro.
         </p>
+      </div>
+    </div>
+  );
+}
+
+// Por qué se descarta a esta persona.
+//
+// Se pide antes de descartar, no después. Preguntado después nadie vuelve a
+// completarlo, y sin el motivo el reporte no puede contestar la única
+// pregunta que importa cuando una búsqueda no funciona: en qué punto y por
+// qué se está cayendo la gente.
+//
+// La nota libre sigue existiendo y suma detalle. Lo que agrega la categoría
+// es que se pueda contar.
+function MotivoDescarteForm({
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  pending: boolean;
+  onCancel: () => void;
+  onConfirm: (reason: string, nota: string) => void;
+}) {
+  const [reason, setReason] = useState("");
+  const [nota, setNota] = useState("");
+
+  const elegido = MOTIVOS_DESCARTE.find((m) => m.key === reason);
+
+  return (
+    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 animate-rise">
+      <p className="text-xs font-semibold text-primary-dark">
+        ¿Por qué se descarta?
+      </p>
+
+      <div className="space-y-1 mt-2">
+        {MOTIVOS_DESCARTE.map((m) => (
+          <label
+            key={m.key}
+            className={`flex items-start gap-2 text-xs rounded-lg px-2 py-1.5 cursor-pointer ${
+              reason === m.key ? "bg-white border border-primary" : ""
+            }`}
+            title={m.detalle}
+          >
+            <input
+              type="radio"
+              name="motivo"
+              className="mt-0.5 accent-primary shrink-0"
+              checked={reason === m.key}
+              onChange={() => setReason(m.key)}
+            />
+            <span className="text-slate-700">{m.label}</span>
+          </label>
+        ))}
+      </div>
+
+      {elegido && (
+        <p className="text-[11px] text-slate-500 mt-2">{elegido.detalle}</p>
+      )}
+
+      <textarea
+        className="input text-xs min-h-14 mt-2"
+        placeholder={
+          elegido?.pideDetalle
+            ? "Contá brevemente qué pasó (recomendado para este motivo)"
+            : "Detalle, si querés dejarlo asentado"
+        }
+        value={nota}
+        onChange={(e) => setNota(e.target.value)}
+      />
+
+      <div className="flex gap-2 mt-2">
+        <button onClick={onCancel} className="btn-secondary press text-xs flex-1">
+          Cancelar
+        </button>
+        <button
+          onClick={() => onConfirm(reason, nota)}
+          disabled={pending || !reason}
+          className="btn-primary press text-xs flex-[2] disabled:opacity-40"
+        >
+          Descartar
+        </button>
       </div>
     </div>
   );
