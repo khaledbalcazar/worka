@@ -67,8 +67,23 @@ export const TRIAL_PLAN: PlanKey = "profesional";
 export function planOf(access: AccessState): PlanLimits {
   if (!access.active) return PLANS.esencial;
   if (access.inTrial) return PLANS[TRIAL_PLAN];
+
   const key = access.account?.plan as PlanKey | undefined;
-  return (key && PLANS[key]) || PLANS.esencial;
+  if (key && PLANS[key]) return PLANS[key];
+
+  // Un plan que no existe degrada la cuenta a esencial, y eso antes pasaba en
+  // el más absoluto silencio: la empresa perdía el informe, el asistente y el
+  // equipo, y no había nada en ningún log que explicara por qué. Pasa cuando
+  // alguien toca la tabla por SQL directo y escribe un valor que el código no
+  // conoce. La base ahora lo rechaza (migración 031), pero el aviso queda por
+  // si el dato llega de otro lado.
+  if (key) {
+    console.warn(
+      `evaluar: plan desconocido "${key}" en la cuenta ${access.account?.company_id}. ` +
+        `Se está tratando como esencial. Valores válidos: ${Object.keys(PLANS).join(", ")}.`
+    );
+  }
+  return PLANS.esencial;
 }
 
 // El texto que ve la empresa cuando se topa con el límite. Dice qué plan lo
