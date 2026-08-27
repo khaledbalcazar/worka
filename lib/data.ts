@@ -855,17 +855,33 @@ export async function getAdminUsers(): Promise<{
     roles.set(p.id, { role: p.role, created_at: p.created_at });
 
   if (admin) {
-    const { data } = await admin.auth.admin.listUsers({ perPage: 200 });
-    return {
-      users: (data?.users ?? []).map((u) => ({
-        id: u.id,
-        email: u.email ?? null,
-        role: roles.get(u.id)?.role ?? "sin perfil",
-        name: names.get(u.id) ?? "—",
-        created_at: u.created_at,
-      })),
-      fullAccess: true,
-    };
+    // GoTrue devuelve 500 al listar usuarios si alguna fila de auth.users
+    // tiene NULL en las columnas de token (email_change_token_new y
+    // parecidas): su lector no sabe convertir NULL a texto. Es un bug de
+    // Supabase, no de acá, y la fila se arregla poniendo cadena vacía.
+    //
+    // Mientras tanto no puede costar el backoffice entero: si la lista no
+    // viene, se arma con lo que hay en profiles. Se pierden los emails, que
+    // es exactamente lo que aporta el cliente administrativo, pero el resto
+    // del panel sigue en pie.
+    try {
+      const { data, error } = await admin.auth.admin.listUsers({
+        perPage: 200,
+      });
+      if (error) throw error;
+      return {
+        users: (data?.users ?? []).map((u) => ({
+          id: u.id,
+          email: u.email ?? null,
+          role: roles.get(u.id)?.role ?? "sin perfil",
+          name: names.get(u.id) ?? "—",
+          created_at: u.created_at,
+        })),
+        fullAccess: true,
+      };
+    } catch (e) {
+      console.error("getAdminUsers: listUsers falló, sigo sin emails", e);
+    }
   }
 
   return {

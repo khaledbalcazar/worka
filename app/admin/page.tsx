@@ -30,6 +30,23 @@ import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 
 export const metadata = { title: "Backoffice" };
 
+// Cada panel del backoffice trae sus datos por su cuenta, y una sola consulta
+// rota tumbaba la pantalla entera: el Promise.all rechaza con la primera que
+// falle y la pagina devuelve 500. Paso justo con un 500 del endpoint de
+// usuarios de Supabase Auth, y el resultado fue quedarse sin backoffice —
+// sin poder moderar, sin poder cobrar y sin poder ver por que.
+//
+// Ahora lo que falla devuelve su valor vacio y deja un rastro en el log. Un
+// panel en blanco es un problema; no poder entrar es otro mucho mas caro.
+async function seguro<T>(etiqueta: string, fn: () => Promise<T>, vacio: T): Promise<T> {
+  try {
+    return await fn();
+  } catch (e) {
+    console.error(`admin: fallo ${etiqueta}`, e);
+    return vacio;
+  }
+}
+
 export default async function AdminPage() {
   // En modo live, solo el rol 'admin' puede entrar.
   if (isLive()) {
@@ -64,24 +81,40 @@ export default async function AdminPage() {
     emailOverrides,
     aiKeys,
   ] = await Promise.all([
-    getModerationQueue(),
-    getReports(),
-    getPendingCompanies(),
-    getAllCompanies(),
-    getActiveJobsCount(),
-    getPendingIdentities(),
-    getAllReferences(),
-    getBoostRequests(),
-    getSiteSettings(),
-    getPendingIndustryTags(),
-    getAdminUsers(),
-    getGlobalStats(),
-    getDetailedReports(),
-    getAllJobsForAdmin(),
-    getCustomBadges(),
-    getEvaluarAccounts(),
-    getEmailTemplateOverrides(),
-    getAiKeys(),
+    seguro("getModerationQueue", () => getModerationQueue(), []),
+    seguro("getReports", () => getReports(), []),
+    seguro("getPendingCompanies", () => getPendingCompanies(), []),
+    seguro("getAllCompanies", () => getAllCompanies(), []),
+    seguro("getActiveJobsCount", () => getActiveJobsCount(), 0),
+    seguro("getPendingIdentities", () => getPendingIdentities(), []),
+    seguro("getAllReferences", () => getAllReferences(), []),
+    seguro("getBoostRequests", () => getBoostRequests(), []),
+    seguro("getSiteSettings", () => getSiteSettings(), {} as Awaited<
+      ReturnType<typeof getSiteSettings>
+    >),
+    seguro("getPendingIndustryTags", () => getPendingIndustryTags(), []),
+    seguro("getAdminUsers", () => getAdminUsers(), {
+      users: [],
+      fullAccess: false,
+    }),
+    // Ceros y no null: pasar null solo mudaria el crash al componente que
+    // lee globalStats.candidates.
+    seguro("getGlobalStats", () => getGlobalStats(), {
+      candidates: 0,
+      companies: 0,
+      activeJobs: 0,
+      totalJobs: 0,
+      applications: 0,
+      applicationsThisWeek: 0,
+      contactedRate: 0,
+      signupsByDay: [],
+    }),
+    seguro("getDetailedReports", () => getDetailedReports(), []),
+    seguro("getAllJobsForAdmin", () => getAllJobsForAdmin(), []),
+    seguro("getCustomBadges", () => getCustomBadges(), []),
+    seguro("getEvaluarAccounts", () => getEvaluarAccounts(), []),
+    seguro("getEmailTemplateOverrides", () => getEmailTemplateOverrides(), []),
+    seguro("getAiKeys", () => getAiKeys(), []),
   ]);
 
   const identityQueue = await Promise.all(
