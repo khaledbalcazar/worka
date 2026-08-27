@@ -5,8 +5,13 @@ import Link from "next/link";
 import EvaluarLogo from "./EvaluarLogo";
 import NocturneFx from "./NocturneFx";
 
+// Cinco entradas es el techo antes de que el encabezado se vuelva un indice.
+// Instrumentos y El informe quedan fuera: se llega a los dos bajando desde
+// Plataforma, que es lo que hace cualquiera que esta evaluando la compra.
 const NAV = [
   { href: "/evaluar#plataforma", label: "Plataforma" },
+  { href: "/evaluar#ia", label: "Asistente IA" },
+  { href: "/evaluar#talento", label: "Talento humano" },
   { href: "/evaluar#como-funciona", label: "Cómo funciona" },
   { href: "/evaluar/precios", label: "Precios" },
 ];
@@ -47,7 +52,7 @@ export default function MarketingShell({
             <EvaluarLogo />
           </Link>
 
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden lg:flex items-center gap-5">
             {NAV.map((item) => (
               <Link
                 key={item.href}
@@ -75,7 +80,7 @@ export default function MarketingShell({
           </nav>
 
           <button
-            className="md:hidden p-2"
+            className="lg:hidden p-2"
             style={{ color: "rgba(233,233,237,.7)" }}
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Menú"
@@ -108,7 +113,7 @@ export default function MarketingShell({
 
         {menuOpen && (
           <div
-            className="md:hidden px-6 py-4 flex flex-col gap-3"
+            className="lg:hidden px-6 py-4 flex flex-col gap-3"
             style={{
               borderTop: "1px solid rgba(233,233,237,.08)",
               background: "var(--color-bg)",
