@@ -59,7 +59,11 @@ export default function ProcessEditor({
 }) {
   const router = useRouter();
   const { process, stages, participants, esDueno } = detail;
-  const [tab, setTab] = useState<Tab>("etapas");
+  const [tab, setTab] = useState<Tab>(
+    process.status !== "borrador" && participants.length > 0
+      ? "candidatos"
+      : "etapas"
+  );
   const [vista, setVista] = useState<"lista" | "tablero">("lista");
   const [aviso, setAviso] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +83,26 @@ export default function ProcessEditor({
   // Un proceso sin etapas no se puede publicar: el candidato entraría a una
   // evaluación vacía.
   const canPublish = stages.length > 0 && totalQuestions > 0;
+
+  // El embudo, calculado una vez. "Esperando" es el numero que importa: son
+  // los que ya terminaron y nadie miro todavia.
+  const esperando = participants.filter((p) => p.status === "completado").length;
+  const embudo = [
+    { v: participants.length, l: "invitados", ac: false },
+    {
+      v: participants.filter((p) => p.status === "en_curso").length,
+      l: "rindiendo",
+      ac: false,
+    },
+    { v: esperando, l: "te esperan", ac: esperando > 0 },
+    {
+      v: participants.filter((p) =>
+        ["finalista", "contratado"].includes(p.status)
+      ).length,
+      l: "finalistas",
+      ac: false,
+    },
+  ];
 
   return (
     <div className="space-y-4">
@@ -191,6 +215,36 @@ export default function ProcessEditor({
             )}
           </div>
         </div>
+
+        {/* Donde esta parada la gente. Es lo primero que se pregunta quien
+            entra a un proceso ya publicado, y estaba a dos clics. */}
+        {participants.length > 0 && (
+          <div
+            className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-xl overflow-hidden mt-4"
+            style={{
+              background: "var(--nk-line, #e2e8f0)",
+              border: "1px solid var(--nk-line, #e2e8f0)",
+            }}
+          >
+            {embudo.map((e) => (
+              <div
+                key={e.l}
+                className="px-4 py-3"
+                style={{ background: "var(--nk-deep, #f8fafc)" }}
+              >
+                <p
+                  className="text-xl font-medium leading-none m-0"
+                  style={{ color: e.ac ? "var(--nk-300)" : undefined }}
+                >
+                  {e.v}
+                </p>
+                <p className="nk-mono mt-1.5" style={{ color: "rgba(233,233,237,.42)" }}>
+                  {e.l}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
 
         {!canPublish && process.status !== "activo" && (
           <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2 mt-3">
@@ -391,6 +445,22 @@ function StagesTab({
   ) => void;
 }) {
   const [openQ, setOpenQ] = useState<string | null>(null);
+  // Plegadas de entrada, salvo que la etapa sea corta: con cinco preguntas
+  // esconderlas es un clic de mas, con veinticinco es lo que hace legible la
+  // pantalla. La que se esta editando se abre sola.
+  const [abiertas, setAbiertas] = useState<Set<string>>(
+    () =>
+      new Set(
+        detail.stages.filter((st) => st.questions.length <= 6).map((st) => st.id)
+      )
+  );
+  const alternar = (id: string) =>
+    setAbiertas((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
   const [editQ, setEditQ] = useState<string | null>(null);
   const [editS, setEditS] = useState<string | null>(null);
 
@@ -460,6 +530,23 @@ function StagesTab({
             />
           )}
 
+          {stage.questions.length > 0 && !abiertas.has(stage.id) && (
+            <button
+              onClick={() => alternar(stage.id)}
+              className="w-full mt-3 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-3 text-sm press"
+              style={{
+                border: "1px dashed var(--nk-line, #e2e8f0)",
+                color: "rgba(233,233,237,.55)",
+              }}
+            >
+              <span>
+                Ver las {stage.questions.length} preguntas
+              </span>
+              <ChevronDown size={16} />
+            </button>
+          )}
+
+          {abiertas.has(stage.id) && (
           <ul className="mt-3 space-y-2">
             {stage.questions.map((q, qi) =>
               editQ === q.id ? (
@@ -525,6 +612,17 @@ function StagesTab({
               )
             )}
           </ul>
+          )}
+
+          {stage.questions.length > 6 && abiertas.has(stage.id) && (
+            <button
+              onClick={() => alternar(stage.id)}
+              className="w-full mt-2 py-2 text-xs press"
+              style={{ color: "rgba(233,233,237,.45)" }}
+            >
+              <ChevronUp size={14} /> Plegar las preguntas
+            </button>
+          )}
 
           {openQ === stage.id ? (
             <QuestionForm
@@ -538,7 +636,7 @@ function StagesTab({
           ) : (
             <button
               onClick={() => setOpenQ(stage.id)}
-              className="btn-secondary press text-sm w-full mt-3"
+              className="btn-secondary press text-sm flex-1 mt-3"
             >
               <Plus size={15} /> Agregar pregunta
             </button>

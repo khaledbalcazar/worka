@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, TrendingDown, TrendingUp } from "lucide-react";
+import { Plus, Trash2, TrendingDown, TrendingUp, X } from "lucide-react";
 import type { Ciclo, Desempeno } from "@/lib/evaluar/desempeno-tipos";
 import { brechas, promedioDe } from "@/lib/evaluar/desempeno-tipos";
 import AvisarEmpleado from "./AvisarEmpleado";
@@ -53,6 +53,15 @@ export default function CicloEditor({ detalle }: { detalle: CicloDetalle }) {
 
   const enviadas = evaluaciones.filter((e) => e.status === "enviada").length;
 
+  // Primero lo que falta. En un ciclo de treinta personas, las quince ya
+  // cerradas no aportan nada arriba de la pantalla.
+  const PESO: Record<string, number> = { pendiente: 0, en_curso: 1, enviada: 2 };
+  personas.sort((a, b) => {
+    const fa = Math.min(...a[1].map((e) => PESO[e.status] ?? 0));
+    const fb = Math.min(...b[1].map((e) => PESO[e.status] ?? 0));
+    return fa - fb || a[0].localeCompare(b[0]);
+  });
+
   return (
     <div className="space-y-4">
       <div className="card p-5">
@@ -66,11 +75,36 @@ export default function CicloEditor({ detalle }: { detalle: CicloDetalle }) {
                 {ciclo.description}
               </p>
             )}
-            <p className="text-xs text-slate-500 mt-2">
-              {evaluaciones.length === 0
-                ? "Sin personas cargadas"
-                : `${enviadas} de ${evaluaciones.length} evaluaciones enviadas`}
-            </p>
+            {evaluaciones.length > 0 && (
+              <div className="mt-3 max-w-sm">
+                <div className="flex justify-between text-xs mb-1.5">
+                  <span style={{ color: "rgba(233,233,237,.55)" }}>
+                    {enviadas} de {evaluaciones.length} enviadas
+                  </span>
+                  <span style={{ color: "rgba(233,233,237,.42)" }}>
+                    {Math.round((enviadas / evaluaciones.length) * 100)}%
+                  </span>
+                </div>
+                <div
+                  className="h-1.5 rounded-full overflow-hidden"
+                  style={{ background: "var(--nk-line, #e2e8f0)" }}
+                >
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${(enviadas / evaluaciones.length) * 100}%`,
+                      background:
+                        "linear-gradient(90deg,var(--nk-700),var(--nk-400))",
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+            {evaluaciones.length === 0 && (
+              <p className="text-xs text-slate-500 mt-2">
+                Sin personas cargadas
+              </p>
+            )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <span
@@ -125,11 +159,32 @@ export default function CicloEditor({ detalle }: { detalle: CicloDetalle }) {
 
       {/* Alta de personas */}
       {ciclo.status !== "cerrado" &&
-        (abierto ? (
+        (abierto || evaluaciones.length === 0 ? (
           <div className="card p-5 space-y-3 animate-rise">
-            <h2 className="font-semibold text-primary-dark text-sm">
-              Agregar a alguien al ciclo
-            </h2>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="font-semibold text-primary-dark text-sm">
+                  {evaluaciones.length === 0
+                    ? "Empezá cargando a la primera persona"
+                    : "Agregar a alguien al ciclo"}
+                </h2>
+                {evaluaciones.length === 0 && (
+                  <p className="text-xs text-slate-500 mt-1">
+                    Cargás a la persona y a quien la evalúa. Cuando estén
+                    todos, abrís el ciclo y cada jefe carga la suya.
+                  </p>
+                )}
+              </div>
+              {evaluaciones.length > 0 && (
+                <button
+                  onClick={() => setAbierto(false)}
+                  className="text-slate-400 hover:text-slate-600 shrink-0"
+                  aria-label="Cerrar"
+                >
+                  <X size={18} />
+                </button>
+              )}
+            </div>
             <div className="grid sm:grid-cols-2 gap-3">
               <div>
                 <label className="label">Nombre y apellido</label>
