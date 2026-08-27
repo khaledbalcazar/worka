@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import {
   Archive,
   ArrowRight,
-  BellRing,
   CalendarClock,
   CheckCircle2,
   Copy,
@@ -49,6 +48,11 @@ export default function PanelHome({
     plan.activeProcesses !== null && activos >= plan.activeProcesses;
   const tranquilo = access.active && !access.inTrial && !cupoLleno;
   const nuevo = processes.length === 0;
+  // Del mismo embudo que el resto: sin gente que haya empezado no hay tasa
+  // que calcular, y un 0% ahi seria mentira.
+  const base = stats.enCurso + stats.completados;
+  const terminacion =
+    base > 0 ? Math.round((stats.completados / base) * 100) : null;
 
   function run(fn: () => Promise<{ ok: boolean; error?: string; id?: string }>) {
     setError(null);
@@ -142,6 +146,29 @@ export default function PanelHome({
         </p>
       )}
 
+      {/* Encabezado: lo primero es qué está esperando algo de vos, no el
+          nombre de la pantalla. */}
+      {!nuevo && (
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p
+              className="nk-mono m-0"
+              style={{ color: "rgba(233,233,237,.4)" }}
+            >
+              {alerts.length > 0 ? "Necesita tu atención" : "Todo al día"}
+            </p>
+            <h1 className="text-2xl sm:text-3xl font-medium mt-2 m-0 tracking-[-.02em]">
+              {alerts.length === 0
+                ? "Nada te está esperando"
+                : alerts.length === 1
+                  ? "Una cosa te está esperando"
+                  : `${alerts.length} cosas te están esperando`}
+            </h1>
+          </div>
+          {access.active && <NewProcess jobs={jobs} />}
+        </div>
+      )}
+
       {/* Cuenta nueva: primeros pasos en vez de una pantalla vacía. */}
       {nuevo ? (
         <FirstSteps jobs={jobs} active={access.active} />
@@ -150,9 +177,6 @@ export default function PanelHome({
           {/* Lo que necesita tu atención */}
           {alerts.length > 0 && (
             <section>
-              <h2 className="text-sm font-semibold text-primary-dark flex items-center gap-2 mb-2">
-                <BellRing size={16} /> Necesita tu atención
-              </h2>
               <div className="grid gap-2 sm:grid-cols-2 stagger">
                 {alerts.map((a, i) => {
                   const Icon =
@@ -161,12 +185,6 @@ export default function PanelHome({
                       : a.kind === "borrador"
                         ? FileEdit
                         : CalendarClock;
-                  const tono =
-                    a.kind === "revisar"
-                      ? "border-emerald-300 bg-emerald-50"
-                      : a.kind === "plazo"
-                        ? "border-amber-300 bg-amber-50"
-                        : "border-slate-200";
                   return (
                     <Link
                       key={`${a.kind}-${a.processId}-${i}`}
@@ -175,10 +193,37 @@ export default function PanelHome({
                           ? `/evaluar/app/procesos/${a.processId}/tablero`
                           : `/evaluar/app/procesos/${a.processId}`
                       }
-                      className={`card press p-4 flex items-start gap-3 ${tono}`}
+                      className="card press p-4 flex items-start gap-3 relative overflow-hidden"
+                      style={{
+                        borderColor:
+                          a.kind === "revisar" ? "#423a6a" : "var(--nk-line)",
+                        background:
+                          a.kind === "revisar"
+                            ? "linear-gradient(150deg,#232532,#1b1d29)"
+                            : "var(--nk-card)",
+                      }}
                     >
-                      <span className="w-9 h-9 shrink-0 rounded-xl bg-white grid place-items-center text-primary">
-                        <Icon size={17} />
+                      <span
+                        className="absolute left-0 top-0 bottom-0 w-0.5"
+                        style={{
+                          background:
+                            a.kind === "revisar"
+                              ? "var(--color-accent)"
+                              : "#75798c",
+                        }}
+                        aria-hidden
+                      />
+                      <span
+                        className="w-10 h-10 shrink-0 rounded-[10px] grid place-items-center"
+                        style={{
+                          border: `1px solid ${a.kind === "revisar" ? "rgba(145,132,217,.4)" : "rgba(233,233,237,.14)"}`,
+                          color:
+                            a.kind === "revisar"
+                              ? "var(--color-accent)"
+                              : "rgba(233,233,237,.7)",
+                        }}
+                      >
+                        <Icon size={18} />
                       </span>
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm font-medium text-primary-dark">
@@ -196,29 +241,53 @@ export default function PanelHome({
             </section>
           )}
 
-          {/* Números de la operación */}
-          <div className="grid grid-cols-3 gap-2.5 stagger">
+          {/* Números de la operación.
+              Una sola placa con separadores de un píxel, no cuatro tarjetas
+              sueltas: son cuatro lecturas del mismo embudo y leerlas juntas
+              es el punto. */}
+          <div
+            className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-xl overflow-hidden"
+            style={{
+              background: "var(--nk-line)",
+              border: "1px solid var(--nk-line)",
+            }}
+          >
             {[
-              { v: stats.activos, l: "Procesos activos" },
-              { v: stats.enCurso, l: "Rindiendo ahora" },
-              { v: stats.completados, l: "Completaron" },
+              { v: `${stats.activos}`, l: "procesos activos", ac: false },
+              { v: `${stats.enCurso}`, l: "rindiendo ahora", ac: true },
+              { v: `${stats.completados}`, l: "completaron", ac: false },
+              {
+                v: terminacion === null ? "—" : `${terminacion}%`,
+                l: "terminan el proceso",
+                ac: false,
+              },
             ].map((s) => (
-              <div key={s.l} className="card p-4">
-                <p className="text-2xl font-bold text-primary-dark leading-none">
+              <div key={s.l} className="p-5" style={{ background: "#1a1c26" }}>
+                <p
+                  className="text-3xl font-medium leading-none m-0 tracking-[-.02em]"
+                  style={{ color: s.ac ? "var(--nk-300)" : "var(--color-text)" }}
+                >
                   {s.v}
                 </p>
-                <p className="text-[11px] text-slate-500 mt-1">{s.l}</p>
+                <p
+                  className="nk-mono mt-2"
+                  style={{ color: "rgba(233,233,237,.42)" }}
+                >
+                  {s.l}
+                </p>
               </div>
             ))}
           </div>
 
           {/* Procesos */}
           <section>
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
-              <h2 className="text-sm font-semibold text-primary-dark">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <p className="nk-mono m-0" style={{ color: "rgba(233,233,237,.4)" }}>
                 Tus procesos
-              </h2>
-              {access.active && <NewProcess jobs={jobs} />}
+              </p>
+              <span className="text-[12.5px]" style={{ color: "rgba(233,233,237,.45)" }}>
+                {processes.length}
+              </span>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 stagger">
@@ -237,9 +306,9 @@ export default function PanelHome({
           {/* Actividad reciente */}
           {activity.length > 0 && (
             <section>
-              <h2 className="text-sm font-semibold text-primary-dark mb-2">
+              <p className="nk-mono mb-3" style={{ color: "rgba(233,233,237,.4)" }}>
                 Últimos movimientos
-              </h2>
+              </p>
               <ol className="card divide-y divide-slate-100">
                 {activity.slice(0, 8).map((a, i) => (
                   <li key={i} className="px-4 py-2.5 flex items-baseline gap-3">

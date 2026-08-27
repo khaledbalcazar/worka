@@ -1,65 +1,64 @@
-// Logo de Worka Evaluar.
+// Marca de Worka Evaluar: la W del trazo continuo y el tilde de verificación.
 //
-// La W de Worka dentro de un marco con una marca de verificación: la casa es
-// la misma, pero el producto es el de evaluar. Va en SVG y no en imagen para
-// que herede el color del contexto y se vea nítido en cualquier tamaño.
-export function EvaluarMark({
-  size = 32,
-  className = "",
-}: {
-  size?: number;
-  className?: string;
-}) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 32 32"
-      fill="none"
-      aria-hidden
-      className={className}
-    >
-      <rect width="32" height="32" rx="9" fill="currentColor" />
-      {/* W */}
-      <path
-        d="M7.5 10.5 L10.6 20.2 L13.2 13.8 L15.8 20.2 L18.9 10.5"
-        stroke="var(--color-navy, #080d1a)"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-      {/* Marca de verificación: lo que distingue a Evaluar de Worka. */}
-      <path
-        d="M20.4 16.6 L22.6 18.8 L26.2 13.4"
-        stroke="var(--color-navy, #080d1a)"
-        strokeWidth="2.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </svg>
-  );
-}
-
+// El tilde va en color de texto y no en el acento a propósito: es lo que
+// distingue a Evaluar de Worka Empleos, y en acento se perdía dentro de la W.
 export default function EvaluarLogo({
-  size = 32,
-  tone = "dark",
+  size = 30,
+  withText = true,
 }: {
   size?: number;
-  /** "dark" para fondo oscuro (texto crema), "light" para fondo claro. */
-  tone?: "dark" | "light";
+  /** Solo la marca, sin el nombre al lado. */
+  withText?: boolean;
 }) {
   return (
-    <span className="flex items-center gap-2.5 min-w-0">
-      <EvaluarMark size={size} className="text-copper shrink-0" />
-      <span
-        className={`font-heading font-semibold tracking-tight truncate ${
-          tone === "dark" ? "text-cream" : "text-primary-dark"
-        }`}
+    <span style={{ display: "flex", alignItems: "center", gap: 11 }}>
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 32 32"
+        fill="none"
+        style={{ color: "var(--color-accent)" }}
+        aria-hidden
       >
-        Worka <span className="text-copper">Evaluar</span>
-      </span>
+        <rect
+          x="0.6"
+          y="0.6"
+          width="30.8"
+          height="30.8"
+          rx="9"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.2"
+        />
+        <path
+          d="M7.5 10.5 L10.6 20.2 L13.2 13.8 L15.8 20.2 L18.9 10.5"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+        <path
+          d="M20.4 16.6 L22.6 18.8 L26.2 13.4"
+          stroke="#e9e9ed"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+      </svg>
+      {withText && (
+        <span
+          style={{
+            fontSize: size >= 28 ? 16 : 14.5,
+            fontWeight: 500,
+            letterSpacing: "-.01em",
+            color: "#e9e9ed",
+          }}
+        >
+          Worka <span style={{ color: "var(--color-accent)" }}>Evaluar</span>
+        </span>
+      )}
     </span>
   );
 }

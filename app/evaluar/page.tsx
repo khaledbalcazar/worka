@@ -3,184 +3,272 @@ import MarketingShell from "@/components/evaluar/MarketingShell";
 import Faq from "@/components/evaluar/Faq";
 import { TRIAL_DAYS } from "@/lib/evaluar-config";
 
-// Portada de Worka Evaluar.
 export const metadata = {
+  title: "Worka Evaluar — Selección de personal sin fricción",
   description:
-    "Conectá tu vacante de Worka Empleos y los candidatos empiezan la evaluación en el mismo aviso. Tests listos, tablero de decisión y devolución automática. 15 días gratis.",
+    "Software de reclutamiento y evaluación de candidatos. Enlazá tu vacante de Worka y la gente empieza los tests desde el propio aviso. 15 días de prueba gratis.",
 };
 
-const FEATURES = [
+const MUTED = "rgba(233,233,237,.6)";
+const FAINT = "rgba(233,233,237,.45)";
+
+const DIFERENCIALES = [
   {
-    num: "01",
-    title: "La evaluación empieza en el aviso",
-    desc: "Enlazás el proceso a tu vacante de Worka y quien se postula arranca los tests en el momento en que está interesado. Nadie pierde el hilo entre el aviso y una plataforma aparte.",
+    n: "01",
+    t: "La evaluación empieza en el aviso",
+    d: "Enlazás el proceso a tu vacante de Worka y quien se postula arranca los tests en el momento en que está interesado. Nadie pierde el hilo entre el aviso y una plataforma aparte.",
   },
   {
-    num: "02",
-    title: "Tablero de decisión comparativo",
-    desc: "Los finalistas lado a lado con la evidencia de cada uno: puntaje por etapa, respuestas y notas del equipo. Decidís en minutos y queda registrado por qué.",
+    n: "02",
+    t: "Tablero de decisión comparativo",
+    d: "Los finalistas lado a lado con la evidencia de cada uno: puntaje por etapa, respuestas y notas del equipo. Decidís en minutos y queda registrado por qué.",
   },
   {
-    num: "03",
-    title: "El candidato sabe siempre dónde está",
-    desc: "Ve su etapa, cuánto falta y en qué terminó, con devolución incluso si queda afuera. La gente termina los procesos cuando entiende el proceso.",
+    n: "03",
+    t: "El candidato sabe siempre dónde está",
+    d: "Ve su etapa, cuánto falta y en qué terminó, con devolución incluso si queda afuera. La gente termina los procesos cuando entiende el proceso.",
   },
   {
-    num: "04",
-    title: "Tests listos para usar",
-    desc: "Cinco Grandes, estilo laboral, juicio situacional y razonamiento, ya redactados y con corrección automática. O un proceso entero por puesto: cajero, chofer, call center.",
+    n: "04",
+    t: "Tests listos para usar",
+    d: "Cinco Grandes, estilo laboral, juicio situacional, razonamiento e integridad, ya redactados y con corrección automática. O un proceso entero por puesto: cajero, chofer, call center.",
   },
 ];
 
 const PASOS = [
   {
-    n: "1",
     t: "Armá el proceso",
     d: "Elegís un puesto del catálogo y te queda listo con sus etapas, preguntas y tests.",
   },
   {
-    n: "2",
     t: "Enlazá tu vacante",
     d: "Elegís una vacante activa de Worka y el proceso queda pegado al aviso.",
   },
   {
-    n: "3",
     t: "La gente rinde",
     d: "Desde el aviso o por invitación, sin crear ninguna cuenta. Se corrige solo.",
   },
   {
-    n: "4",
     t: "Decidí",
     d: "Compará finalistas en el tablero, dejá notas y cerrá el proceso.",
   },
 ];
 
-const PORQUE = [
-  {
-    t: "Sin cuentas que crear",
-    d: "El candidato entra con un enlace propio. Cada cuenta que pedís es gente que abandona.",
-  },
-  {
-    t: "Sin respuestas correctas inventadas",
-    d: "Los tests de personalidad describen estilos de trabajo, no capacidad. Lo decimos en la pantalla donde se decide.",
-  },
-  {
-    t: "Sin nadie esperando en el vacío",
-    d: "Cada decisión que tomás le llega al candidato con su motivo. Incluso el no.",
-  },
+// Los números son del producto, no inventados: cinco instrumentos en el
+// catálogo, cinco procesos por puesto, y el total real de ítems redactados.
+const CIFRAS = [
+  { v: "5", l: "tests listos" },
+  { v: "5", l: "procesos por puesto" },
+  { v: "96", l: "preguntas redactadas" },
+  { v: "0", l: "cuentas que crear" },
 ];
 
 export default function EvaluarLandingPage() {
   return (
     <MarketingShell>
-      {/* ── PORTADA ── */}
-      <section className="grid md:grid-cols-2 min-h-[88vh]">
-        <div className="flex flex-col justify-center px-8 md:px-14 lg:px-20 py-20 order-2 md:order-1">
-          <span className="inline-flex items-center gap-2 text-xs font-medium text-copper border border-copper/30 bg-copper/10 rounded-full px-3 py-1.5 mb-8 self-start">
-            <span className="w-1.5 h-1.5 rounded-full bg-copper animate-pulse" />
-            {TRIAL_DAYS} días gratis · sin tarjeta
-          </span>
+      {/* ── Portada ─────────────────────────────────────────── */}
+      <section className="relative">
+        <canvas
+          data-grid
+          className="absolute inset-0 w-full h-full pointer-events-none opacity-90"
+          aria-hidden
+        />
 
-          <h1 className="font-heading font-black text-[2.6rem] md:text-[3.2rem] lg:text-[3.9rem] leading-[1.08] text-cream mb-7">
-            Seleccioná
-            <br />
-            al mejor,
-            <br />
-            <em className="italic text-copper">sin fricciones.</em>
-          </h1>
-
-          <p className="text-mist text-[1.05rem] leading-relaxed mb-9 max-w-[420px]">
-            Conectá tu vacante de Worka Empleos y los candidatos empiezan la
-            evaluación{" "}
-            <strong className="text-cream font-medium">
-              en el mismo aviso
-            </strong>{" "}
-            — sin cuentas externas, sin correos que no abren.
-          </p>
-
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/evaluar/app"
-              className="inline-flex items-center gap-2 px-6 py-3.5 bg-copper text-navy font-semibold rounded-xl hover:bg-copper-lite transition-colors text-[0.95rem]"
+        <div className="relative z-[2] max-w-[1160px] mx-auto px-6 sm:px-8 py-20 md:py-24 grid gap-10 lg:grid-cols-[1.05fr_.95fr] items-center">
+          <div data-parallax data-depth="8">
+            <span
+              className="inline-flex items-center gap-2.5 rounded-full px-3 py-1.5 mb-7"
+              style={{ border: "1px solid rgba(145,132,217,.35)" }}
             >
-              Empezar mis {TRIAL_DAYS} días gratis
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14" />
-                <path d="m12 5 7 7-7 7" />
-              </svg>
-            </Link>
-            <Link
-              href="#como-funciona"
-              className="inline-flex items-center px-6 py-3.5 border border-edge text-mist hover:text-cream hover:border-cream/20 rounded-xl transition-colors text-[0.95rem]"
+              <span
+                className="w-1.5 h-1.5 rounded-full nk-beat"
+                style={{ background: "var(--color-accent)" }}
+              />
+              <span className="nk-mono" style={{ color: "var(--nk-300)" }}>
+                {TRIAL_DAYS} días · sin tarjeta
+              </span>
+            </span>
+
+            <h1 className="text-[44px] sm:text-[58px] lg:text-[66px] leading-[1.03] tracking-[-.03em] font-medium mb-6">
+              Decidí a quién contratás con{" "}
+              <span style={{ color: "var(--color-accent)" }}>evidencia</span>,
+              no con una entrevista.
+            </h1>
+
+            <p
+              className="text-base leading-relaxed max-w-[440px] mb-8"
+              style={{ color: MUTED }}
             >
-              Ver cómo funciona
-            </Link>
+              Enlazás tu vacante de Worka Empleos y la evaluación empieza en el
+              propio aviso. Corrección automática, tablero comparativo y
+              devolución para todos —{" "}
+              <span style={{ color: "var(--color-text)" }}>
+                sin que el candidato cree una cuenta
+              </span>
+              .
+            </p>
+
+            <div className="flex gap-3 flex-wrap">
+              <Link href="/evaluar/app" className="nk-cta">
+                Empezar mis {TRIAL_DAYS} días
+                <svg
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                >
+                  <path d="M5 12h14" />
+                  <path d="m12 5 7 7-7 7" />
+                </svg>
+              </Link>
+              <Link href="/evaluar/precios" className="nk-ghost">
+                Ver precios
+              </Link>
+            </div>
+
+            <div className="flex gap-7 mt-11">
+              <div>
+                <p className="nk-mono mb-1.5" style={{ color: FAINT }}>
+                  Sin cuenta para rendir
+                </p>
+                <p className="text-2xl font-medium m-0">0 pasos</p>
+              </div>
+              <div style={{ width: 1, background: "rgba(233,233,237,.12)" }} />
+              <div>
+                <p className="nk-mono mb-1.5" style={{ color: FAINT }}>
+                  Prueba completa
+                </p>
+                <p className="text-2xl font-medium m-0">{TRIAL_DAYS} días</p>
+              </div>
+            </div>
           </div>
 
-          <p className="text-xs text-mist/70 mt-6">
-            Necesitás una cuenta de empresa en Worka. Crearla también es gratis.
-          </p>
-        </div>
+          {/* Muestra del tablero. Es una ilustración de la pantalla real, no
+              una captura: mantenerla en HTML la deja nítida en cualquier
+              pantalla y no se despinta cuando el producto cambia de color. */}
+          <div data-parallax data-depth="-16" className="relative hidden lg:block">
+            <div
+              data-tilt
+              className="relative rounded-[14px] p-5 overflow-hidden"
+              style={{
+                background: "linear-gradient(165deg,#232532,#1a1c28)",
+                border: "1px solid var(--nk-line-2)",
+                boxShadow: "0 16px 40px rgba(0,0,0,.65)",
+                transition: "transform .18s ease-out",
+              }}
+            >
+              <div
+                className="absolute left-0 right-0 top-0 h-[120px] pointer-events-none nk-sweep"
+                style={{
+                  background:
+                    "linear-gradient(180deg,rgba(145,132,217,.14),transparent)",
+                }}
+                aria-hidden
+              />
+              <div className="flex items-center justify-between mb-4">
+                <span className="nk-mono" style={{ color: FAINT }}>
+                  Tablero de decisión
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span
+                    className="w-1.5 h-1.5 rounded-full nk-beat"
+                    style={{ background: "var(--nk-400)" }}
+                  />
+                  <span className="nk-mono" style={{ color: "var(--nk-300)" }}>
+                    en vivo
+                  </span>
+                </span>
+              </div>
 
-        {/* Panel derecho: una maqueta del producto, no una foto de archivo.
-            Mostrar la herramienta real dice más que gente sonriendo. */}
-        <div className="relative bg-panel border-l border-edge overflow-hidden order-1 md:order-2 px-8 md:px-10 py-14 md:py-0 flex items-center">
-          <div
-            className="absolute inset-0 opacity-[0.35] pointer-events-none"
-            style={{
-              backgroundImage:
-                "radial-gradient(circle at 75% 25%, rgba(207,122,82,.20), transparent 55%)",
-            }}
-          />
+              <p className="text-xl font-medium m-0">Cajero/a · Sucursal Centro</p>
+              <p className="text-[12.5px] mt-0.5 mb-5" style={{ color: MUTED }}>
+                3 etapas · 18 candidatos · cierra en 6 días
+              </p>
 
-          <div className="relative w-full max-w-sm mx-auto space-y-3">
-            <div className="bg-navy/70 backdrop-blur-sm border border-edge rounded-2xl px-4 py-3 flex items-center gap-3">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-              <div className="min-w-0">
-                <p className="text-[10px] text-mist uppercase tracking-widest">
-                  Proceso activo
-                </p>
-                <p className="text-xs font-semibold text-cream truncate">
-                  Cajero/a · 3 etapas
-                </p>
+              <div className="flex flex-col gap-3.5">
+                {[
+                  { n: "Lucía M.", v: 92, alto: true },
+                  { n: "Rodrigo P.", v: 78, alto: false },
+                  { n: "Ana G.", v: 61, alto: false },
+                ].map((c, i) => (
+                  <div key={c.n}>
+                    <div className="flex justify-between items-baseline mb-1.5">
+                      <span className="text-[13px]">{c.n}</span>
+                      <span
+                        className="text-xs font-mono"
+                        style={{
+                          color: c.alto ? "var(--nk-300)" : MUTED,
+                        }}
+                      >
+                        {c.v}
+                      </span>
+                    </div>
+                    <div
+                      className="h-[3px] rounded-full overflow-hidden"
+                      style={{ background: "var(--nk-line)" }}
+                    >
+                      <div
+                        className="h-full rounded-full nk-grow"
+                        style={{
+                          width: `${c.v}%`,
+                          animationDelay: `${i * 0.15}s`,
+                          background: c.alto
+                            ? "linear-gradient(90deg,#5d5294,#b5abfc)"
+                            : c.v > 70
+                              ? "linear-gradient(90deg,#423a6a,#968ae0)"
+                              : "#595d6c",
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div
+                className="mt-5 pt-4 grid grid-cols-3 gap-3"
+                style={{ borderTop: "1px solid rgba(233,233,237,.1)" }}
+              >
+                {[
+                  { l: "Razonamiento", v: "12/12", ac: false },
+                  { l: "Situacional", v: "9/10", ac: false },
+                  { l: "Integridad", v: "sin señales", ac: true },
+                ].map((x) => (
+                  <div key={x.l}>
+                    <p className="nk-mono mb-1.5" style={{ color: FAINT }}>
+                      {x.l}
+                    </p>
+                    <p
+                      className="text-[15px] m-0"
+                      style={{ color: x.ac ? "var(--nk-300)" : undefined }}
+                    >
+                      {x.v}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
 
-            <div className="bg-navy/70 backdrop-blur-sm border border-edge rounded-2xl px-4 py-4">
-              <p className="text-[10px] text-mist uppercase tracking-widest mb-3">
-                Ajuste al puesto
-              </p>
-              {[
-                { name: "Lucía M.", score: 92, color: "bg-emerald-400" },
-                { name: "Rodrigo P.", score: 78, color: "bg-copper" },
-                { name: "Ana G.", score: 61, color: "bg-mist" },
-              ].map((c) => (
-                <div key={c.name} className="mb-2.5 last:mb-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[11px] text-cream">{c.name}</span>
-                    <span className="text-[11px] text-mist">{c.score}%</span>
-                  </div>
-                  <div className="h-1 rounded-full bg-edge overflow-hidden">
-                    <div
-                      className={`h-full rounded-full ${c.color}`}
-                      style={{ width: `${c.score}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
-              <p className="text-[10px] text-mist/60 mt-3">
-                Ejemplo de cómo se ve el tablero.
-              </p>
-            </div>
-
-            <div className="bg-navy/70 backdrop-blur-sm border border-edge rounded-2xl px-5 py-4">
-              <p className="text-[10px] text-mist uppercase tracking-widest mb-1">
+            <div
+              data-tilt
+              className="absolute rounded-xl px-4 py-3.5"
+              style={{
+                left: -84,
+                bottom: -78,
+                width: 236,
+                background: "#1a1c28",
+                border: "1px solid var(--nk-line-2)",
+                boxShadow: "0 16px 40px rgba(0,0,0,.6)",
+                transition: "transform .18s ease-out",
+              }}
+            >
+              <p className="nk-mono mb-2" style={{ color: FAINT }}>
                 Etapa en curso
               </p>
-              <p className="font-heading font-black text-2xl text-cream leading-none">
-                Razonamiento
-              </p>
-              <p className="text-[10px] text-mist/70 mt-1.5">
+              <p className="text-[17px] font-medium m-0">Razonamiento</p>
+              <p className="text-[11.5px] mt-1.5 m-0" style={{ color: FAINT }}>
                 12 preguntas · 10 min · cronometrada
               </p>
             </div>
@@ -188,108 +276,120 @@ export default function EvaluarLandingPage() {
         </div>
       </section>
 
-      {/* ── QUÉ INCLUYE ── */}
-      <div className="border-y border-edge bg-panel">
-        <div className="max-w-6xl mx-auto px-6 py-9">
-          <dl className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {[
-              { v: "4", l: "tests listos para usar" },
-              { v: "5", l: "procesos armados por puesto" },
-              { v: "69", l: "preguntas ya redactadas" },
-              { v: `${TRIAL_DAYS}`, l: "días de prueba, sin tarjeta" },
-            ].map((s) => (
-              <div key={s.l} className="text-center">
-                <dt className="font-heading font-bold text-3xl text-copper">
-                  {s.v}
-                </dt>
-                <dd className="text-xs text-mist mt-1 leading-snug">{s.l}</dd>
-              </div>
-            ))}
-          </dl>
+      {/* ── Cifras ──────────────────────────────────────────── */}
+      <div
+        className="relative z-[2]"
+        style={{
+          background: "linear-gradient(180deg,var(--nk-band),#1f2350)",
+          borderTop: "1px solid rgba(233,233,237,.1)",
+          borderBottom: "1px solid rgba(233,233,237,.1)",
+        }}
+      >
+        <div className="max-w-[1160px] mx-auto px-6 sm:px-8 py-8 grid grid-cols-2 md:grid-cols-4 gap-7">
+          {CIFRAS.map((c) => (
+            <div key={c.l}>
+              <p className="text-[34px] font-medium m-0 tracking-[-.02em]">
+                {c.v}
+              </p>
+              <p
+                className="nk-mono mt-1.5"
+                style={{ color: "rgba(233,233,237,.55)" }}
+              >
+                {c.l}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* ── FUNCIONALIDADES ── */}
+      {/* ── Plataforma ──────────────────────────────────────── */}
       <section
-        id="funcionalidades"
-        className="max-w-6xl mx-auto px-6 py-20 md:py-24"
+        id="plataforma"
+        className="relative z-[2] max-w-[1160px] mx-auto px-6 sm:px-8 py-20 md:py-24 scroll-mt-20"
       >
-        <header className="mb-12">
-          <p className="text-xs font-medium text-copper uppercase tracking-widest mb-3">
-            Funcionalidades
-          </p>
-          <h2 className="font-heading font-black text-3xl md:text-4xl text-cream max-w-2xl leading-tight">
-            Lo que no vas a encontrar en otro lado
-          </h2>
-        </header>
-
-        <div className="grid md:grid-cols-2 gap-px bg-edge border border-edge rounded-2xl overflow-hidden">
-          {FEATURES.map((f) => (
-            <div key={f.num} className="bg-navy p-7 md:p-9">
-              <p className="font-heading font-black text-copper/40 text-3xl mb-4">
-                {f.num}
+        <p className="nk-mono mb-3.5" style={{ color: "var(--color-accent)" }}>
+          Plataforma
+        </p>
+        <h2 className="text-[30px] md:text-[38px] font-medium max-w-[640px] mb-11">
+          Lo que no vas a encontrar en otro lado
+        </h2>
+        <div className="grid md:grid-cols-2 gap-4">
+          {DIFERENCIALES.map((d) => (
+            <div
+              key={d.n}
+              data-tilt
+              className="rounded-xl p-8"
+              style={{
+                background: "var(--nk-card)",
+                border: "1px solid var(--nk-line)",
+                transition: "transform .18s ease-out, border-color .3s ease",
+              }}
+            >
+              <p
+                className="font-mono text-xs mb-5 m-0"
+                style={{ color: "var(--color-accent)" }}
+              >
+                {d.n}
               </p>
-              <h3 className="font-heading font-bold text-xl text-cream mb-2.5">
-                {f.title}
-              </h3>
-              <p className="text-sm text-mist leading-relaxed">{f.desc}</p>
+              <h3 className="text-[21px] font-medium mb-2.5">{d.t}</h3>
+              <p
+                className="text-sm leading-[1.7] m-0"
+                style={{ color: "rgba(233,233,237,.55)" }}
+              >
+                {d.d}
+              </p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── CÓMO FUNCIONA ── */}
-      <section id="como-funciona" className="bg-panel border-y border-edge">
-        <div className="max-w-6xl mx-auto px-6 py-20 md:py-24">
-          <header className="mb-12">
-            <p className="text-xs font-medium text-copper uppercase tracking-widest mb-3">
-              Cómo funciona
-            </p>
-            <h2 className="font-heading font-black text-3xl md:text-4xl text-cream max-w-2xl leading-tight">
-              Cuatro pasos y el proceso corre solo
-            </h2>
-          </header>
-
-          <ol className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {PASOS.map((p) => (
-              <li key={p.n} className="relative">
-                <span className="font-heading font-black text-5xl text-copper/25 leading-none">
-                  {p.n}
+      {/* ── Cómo funciona ───────────────────────────────────── */}
+      <section
+        id="como-funciona"
+        className="relative z-[2] scroll-mt-20"
+        style={{
+          borderTop: "1px solid rgba(233,233,237,.08)",
+          background: "var(--nk-deep)",
+        }}
+      >
+        <div className="max-w-[1160px] mx-auto px-6 sm:px-8 py-20">
+          <p className="nk-mono mb-3.5" style={{ color: "var(--color-accent)" }}>
+            Cómo funciona
+          </p>
+          <h2 className="text-[30px] md:text-[38px] font-medium max-w-[600px] mb-12">
+            Cuatro pasos y el proceso corre solo
+          </h2>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 relative">
+            {/* La línea que une los pasos. Solo en pantalla ancha: apilados
+                en columna, una línea horizontal no une nada. */}
+            <div
+              className="absolute left-0 right-0 hidden lg:block"
+              style={{
+                top: 11,
+                height: 1,
+                background:
+                  "linear-gradient(90deg,rgba(145,132,217,.5),rgba(145,132,217,.12))",
+              }}
+              aria-hidden
+            />
+            {PASOS.map((p, i) => (
+              <div key={p.t} className="relative">
+                <span
+                  className="grid place-items-center w-[22px] h-[22px] rounded-full font-mono text-[11px] font-medium"
+                  style={{
+                    background: "var(--color-bg)",
+                    border: `1px solid ${i < 2 ? "var(--color-accent)" : "rgba(145,132,217,.5)"}`,
+                    color: i < 2 ? "var(--color-accent)" : "rgba(233,233,237,.7)",
+                  }}
+                >
+                  {i + 1}
                 </span>
-                <h3 className="font-heading font-bold text-lg text-cream mt-3">
-                  {p.t}
-                </h3>
-                <p className="text-sm text-mist mt-1.5 leading-relaxed">{p.d}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      {/* ── POR QUÉ FUNCIONA ── */}
-      <section className="max-w-6xl mx-auto px-6 py-20 md:py-24">
-        <div className="grid lg:grid-cols-[1fr_1.2fr] gap-12 items-start">
-          <header>
-            <p className="text-xs font-medium text-copper uppercase tracking-widest mb-3">
-              Por qué funciona
-            </p>
-            <h2 className="font-heading font-black text-3xl md:text-4xl text-cream leading-tight">
-              La gente termina lo que entiende
-            </h2>
-            <p className="text-sm text-mist mt-4 leading-relaxed">
-              La mayoría de los procesos de selección se caen por el mismo
-              motivo: le piden al candidato más de lo que le explican.
-            </p>
-          </header>
-
-          <div className="divide-y divide-edge border-y border-edge">
-            {PORQUE.map((r) => (
-              <div key={r.t} className="py-6">
-                <h3 className="font-heading font-bold text-lg text-cream">
-                  {r.t}
-                </h3>
-                <p className="text-sm text-mist mt-1.5 leading-relaxed">
-                  {r.d}
+                <h3 className="text-[17px] font-medium mt-5 mb-2">{p.t}</h3>
+                <p
+                  className="text-[13.5px] leading-[1.65] m-0"
+                  style={{ color: "rgba(233,233,237,.52)" }}
+                >
+                  {p.d}
                 </p>
               </div>
             ))}
@@ -297,41 +397,35 @@ export default function EvaluarLandingPage() {
         </div>
       </section>
 
-      {/* ── PREGUNTAS ── */}
-      <section className="bg-panel border-y border-edge">
-        <div className="max-w-3xl mx-auto px-6 py-20 md:py-24">
-          <header className="mb-10">
-            <p className="text-xs font-medium text-copper uppercase tracking-widest mb-3">
-              Preguntas frecuentes
-            </p>
-            <h2 className="font-heading font-black text-3xl md:text-4xl text-cream leading-tight">
-              Lo que nos preguntan siempre
-            </h2>
-          </header>
-          <Faq />
-        </div>
+      {/* ── Preguntas ───────────────────────────────────────── */}
+      <section className="relative z-[2] max-w-[760px] mx-auto px-6 sm:px-8 py-20">
+        <p className="nk-mono mb-3.5" style={{ color: "var(--color-accent)" }}>
+          Preguntas
+        </p>
+        <h2 className="text-[30px] md:text-[38px] font-medium mb-9">
+          Lo que más nos preguntan
+        </h2>
+        <Faq />
       </section>
 
-      {/* ── CIERRE ── */}
-      <section className="max-w-6xl mx-auto px-6 py-20 md:py-28 text-center">
-        <h2 className="font-heading font-black text-3xl md:text-5xl text-cream leading-tight max-w-2xl mx-auto">
-          Probalo con un proceso <em className="italic text-copper">real</em>.
+      {/* ── Cierre ──────────────────────────────────────────── */}
+      <section className="relative z-[2] max-w-[1160px] mx-auto px-6 sm:px-8 pt-4 pb-24 text-center">
+        <h2 className="text-[34px] md:text-[46px] font-medium tracking-[-.03em] max-w-[660px] mx-auto leading-[1.1]">
+          Probalo con un proceso{" "}
+          <span style={{ color: "var(--color-accent)" }}>real</span>.
         </h2>
-        <p className="text-mist mt-5 max-w-lg mx-auto leading-relaxed">
+        <p
+          className="mt-5 mx-auto max-w-[480px] leading-relaxed"
+          style={{ color: "rgba(233,233,237,.55)" }}
+        >
           {TRIAL_DAYS} días completos, sin tarjeta y sin cobro automático. Si al
           final no te sirve, no pagás nada.
         </p>
-        <div className="flex flex-wrap gap-3 justify-center mt-9">
-          <Link
-            href="/evaluar/app"
-            className="px-7 py-4 bg-copper text-navy font-semibold rounded-xl hover:bg-copper-lite transition-colors"
-          >
+        <div className="flex gap-3 justify-center mt-8 flex-wrap">
+          <Link href="/evaluar/app" className="nk-cta">
             Empezar gratis
           </Link>
-          <Link
-            href="/evaluar/precios"
-            className="px-7 py-4 border border-edge text-mist hover:text-cream hover:border-cream/20 rounded-xl transition-colors"
-          >
+          <Link href="/evaluar/precios" className="nk-ghost">
             Ver precios
           </Link>
         </div>

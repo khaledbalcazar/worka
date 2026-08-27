@@ -3,18 +3,20 @@
 import { useState } from "react";
 import Link from "next/link";
 import EvaluarLogo from "./EvaluarLogo";
+import NocturneFx from "./NocturneFx";
 
 const NAV = [
-  { href: "/evaluar#funcionalidades", label: "Funcionalidades" },
+  { href: "/evaluar#plataforma", label: "Plataforma" },
   { href: "/evaluar#como-funciona", label: "Cómo funciona" },
   { href: "/evaluar/precios", label: "Precios" },
 ];
 
-// Marco oscuro de la parte pública de Worka Evaluar.
+// Marco de la parte pública de Worka Evaluar.
 //
 // Va aparte del panel de trabajo a propósito: una landing de venta y una
-// pantalla donde se comparan candidatos todo el día no piden lo mismo. Acá
-// manda la marca; allá, la legibilidad de los datos.
+// pantalla donde se comparan candidatos todo el día no piden lo mismo. Los
+// dos comparten ahora el mismo idioma oscuro, pero la portada puede permitirse
+// la grilla reactiva y el parallax que en una jornada de trabajo cansarían.
 export default function MarketingShell({
   children,
 }: {
@@ -23,42 +25,58 @@ export default function MarketingShell({
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="bg-navy text-cream font-[family-name:var(--font-dm-sans)] min-h-screen flex flex-col">
+    <div className="nk min-h-screen flex flex-col">
       {/* Fondo fijo: el body del sitio es claro, y sin esto asoma gris en el
           rebote del scroll y en los bordes de pantallas altas. */}
-      <div className="fixed inset-0 -z-10 bg-navy" aria-hidden />
-      <header className="sticky top-0 z-50 border-b border-edge bg-navy/95 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
+      <div
+        className="fixed inset-0 -z-10"
+        style={{ background: "var(--color-bg)" }}
+        aria-hidden
+      />
+      <NocturneFx />
+
+      <header
+        className="sticky top-0 z-50 backdrop-blur-sm"
+        style={{
+          borderBottom: "1px solid rgba(233,233,237,.08)",
+          background: "color-mix(in srgb, var(--color-bg) 92%, transparent)",
+        }}
+      >
+        <div className="max-w-[1160px] mx-auto px-6 sm:px-8 h-16 flex items-center justify-between gap-4">
           <Link href="/evaluar" className="shrink-0">
             <EvaluarLogo />
           </Link>
 
-          <nav className="hidden md:flex items-center gap-5">
+          <nav className="hidden md:flex items-center gap-6">
             {NAV.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-sm text-mist hover:text-cream transition-colors"
+                className="text-[13.5px] transition-colors"
+                style={{ color: "rgba(233,233,237,.6)" }}
               >
                 {item.label}
               </Link>
             ))}
             <Link
               href="/evaluar/app"
-              className="text-sm px-4 py-2 border border-edge text-mist hover:text-cream hover:border-cream/20 rounded-lg transition-colors"
+              className="nk-ghost"
+              style={{ padding: "8px 14px", fontSize: 13 }}
             >
               Mi panel
             </Link>
             <Link
               href="/evaluar/app"
-              className="text-sm px-4 py-2 bg-copper text-navy font-semibold rounded-lg hover:bg-copper-lite transition-colors"
+              className="nk-cta"
+              style={{ padding: "8px 16px", fontSize: 13 }}
             >
               Empezar gratis
             </Link>
           </nav>
 
           <button
-            className="md:hidden p-2 text-mist hover:text-cream transition-colors"
+            className="md:hidden p-2"
+            style={{ color: "rgba(233,233,237,.7)" }}
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Menú"
             aria-expanded={menuOpen}
@@ -69,9 +87,8 @@ export default function MarketingShell({
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="2"
+              strokeWidth="1.6"
               strokeLinecap="round"
-              strokeLinejoin="round"
             >
               {menuOpen ? (
                 <>
@@ -80,9 +97,9 @@ export default function MarketingShell({
                 </>
               ) : (
                 <>
-                  <path d="M4 6h16" />
+                  <path d="M4 7h16" />
                   <path d="M4 12h16" />
-                  <path d="M4 18h16" />
+                  <path d="M4 17h16" />
                 </>
               )}
             </svg>
@@ -90,13 +107,20 @@ export default function MarketingShell({
         </div>
 
         {menuOpen && (
-          <div className="md:hidden border-t border-edge bg-navy px-6 py-4 flex flex-col gap-3">
+          <div
+            className="md:hidden px-6 py-4 flex flex-col gap-3"
+            style={{
+              borderTop: "1px solid rgba(233,233,237,.08)",
+              background: "var(--color-bg)",
+            }}
+          >
             {NAV.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setMenuOpen(false)}
-                className="text-sm text-mist hover:text-cream py-1 transition-colors"
+                className="text-sm py-1"
+                style={{ color: "rgba(233,233,237,.6)" }}
               >
                 {item.label}
               </Link>
@@ -104,14 +128,15 @@ export default function MarketingShell({
             <Link
               href="/evaluar/app"
               onClick={() => setMenuOpen(false)}
-              className="text-sm text-mist py-1"
+              className="text-sm py-1"
+              style={{ color: "rgba(233,233,237,.6)" }}
             >
               Mi panel
             </Link>
             <Link
               href="/evaluar/app"
               onClick={() => setMenuOpen(false)}
-              className="mt-2 text-sm px-4 py-2.5 bg-copper text-navy font-semibold rounded-lg text-center"
+              className="nk-cta mt-2"
             >
               Empezar gratis
             </Link>
@@ -121,34 +146,32 @@ export default function MarketingShell({
 
       <main className="flex-1">{children}</main>
 
-      <footer className="border-t border-edge">
-        <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
+      <footer style={{ borderTop: "1px solid rgba(233,233,237,.08)" }}>
+        <div className="max-w-[1160px] mx-auto px-6 sm:px-8 py-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
           <div>
-            <EvaluarLogo size={28} />
-            <p className="text-xs text-mist mt-2.5 max-w-xs">
+            <EvaluarLogo size={26} />
+            <p
+              className="text-xs mt-2.5 max-w-xs leading-relaxed"
+              style={{ color: "rgba(233,233,237,.45)" }}
+            >
               Software de selección de personal. Parte de{" "}
               <a
                 href="https://worka.click"
-                className="text-copper hover:text-copper-lite transition-colors"
+                style={{ color: "var(--color-accent)" }}
               >
                 Worka
               </a>
               , la plataforma de empleo de Paraguay.
             </p>
           </div>
-          <div className="flex flex-wrap gap-5 text-xs text-mist">
-            <Link href="/evaluar/precios" className="hover:text-cream transition-colors">
-              Precios
-            </Link>
-            <Link href="/terminos" className="hover:text-cream transition-colors">
-              Términos
-            </Link>
-            <Link href="/privacidad" className="hover:text-cream transition-colors">
-              Privacidad
-            </Link>
-            <a href="https://worka.click" className="hover:text-cream transition-colors">
-              Worka Empleos
-            </a>
+          <div
+            className="flex flex-wrap gap-5 text-xs"
+            style={{ color: "rgba(233,233,237,.45)" }}
+          >
+            <Link href="/evaluar/precios">Precios</Link>
+            <Link href="/terminos">Términos</Link>
+            <Link href="/privacidad">Privacidad</Link>
+            <a href="https://worka.click">Worka Empleos</a>
           </div>
         </div>
       </footer>

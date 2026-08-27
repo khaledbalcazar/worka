@@ -35,7 +35,7 @@ export default function Faq() {
   const [abierta, setAbierta] = useState<number | null>(0);
 
   return (
-    <div className="divide-y divide-edge border-y border-edge">
+    <div className="divide-y divide-[rgba(233,233,237,.08)] border-y border-[rgba(233,233,237,.08)]">
       {FAQS.map((f, i) => {
         const open = abierta === i;
         return (
@@ -47,7 +47,7 @@ export default function Faq() {
             >
               <span
                 className={`font-medium transition-colors ${
-                  open ? "text-cream" : "text-mist group-hover:text-cream"
+                  open ? "text-[#e9e9ed]" : "text-[rgba(233,233,237,.6)] group-hover:text-[#e9e9ed]"
                 }`}
               >
                 {f.q}
@@ -61,7 +61,7 @@ export default function Faq() {
                 strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                className={`shrink-0 mt-0.5 text-copper transition-transform duration-200 ${
+                className={`shrink-0 mt-0.5 text-[var(--color-accent)] transition-transform duration-200 ${
                   open ? "rotate-180" : ""
                 }`}
               >
@@ -69,7 +69,7 @@ export default function Faq() {
               </svg>
             </button>
             {open && (
-              <p className="text-sm text-mist leading-relaxed pb-5 pr-8 animate-rise">
+              <p className="text-sm text-[rgba(233,233,237,.6)] leading-relaxed pb-5 pr-8 animate-rise">
                 {f.a}
               </p>
             )}
