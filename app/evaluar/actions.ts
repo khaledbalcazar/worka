@@ -10,7 +10,13 @@ import {
 } from "@/lib/evaluar/templates";
 import { emailEnabled, emailLayout, sendEmail } from "@/lib/email";
 import { SITE_URL } from "@/lib/supabase/config";
-import { planOf, upgradeMessage, type PlanLimits } from "@/lib/evaluar-plans";
+import {
+  PLANS,
+  planOf,
+  upgradeMessage,
+  type PlanKey,
+  type PlanLimits,
+} from "@/lib/evaluar-plans";
 
 type Result = {
   ok: boolean;
@@ -1924,4 +1930,40 @@ export async function testAiKeys(): Promise<Result & { detalle?: string }> {
   return r.ok
     ? { ok: true, detalle: `El asistente respondió: "${r.text.slice(0, 60)}"` }
     : { ok: false, error: r.error };
+}
+
+// Asigna el plan de una empresa.
+//
+// Va aparte de setEvaluarSubscription porque son dos cosas distintas: una es
+// hasta cuándo tiene acceso y la otra es qué habilita ese acceso. Se pagan
+// juntas pero se corrigen por separado — lo más común es tener que subir de
+// plan a alguien que ya está al día.
+//
+// Sin esto, el plan se quedaba en el 'esencial' que pone la base por defecto
+// y no había forma de moverlo salvo editando la tabla a mano en Supabase.
+export async function setEvaluarPlan(
+  companyId: string,
+  plan: PlanKey
+): Promise<Result> {
+  const { supabase, ok } = await requireAdmin();
+  if (!supabase) return DEMO;
+  if (!ok) return { ok: false, error: "Solo un admin puede cambiar el plan." };
+
+  if (!PLANS[plan])
+    return { ok: false, error: "Ese plan no existe." };
+
+  const { error } = await supabase
+    .from("evaluar_accounts")
+    .update({ plan })
+    .eq("company_id", companyId);
+
+  if (error) {
+    console.error("setEvaluarPlan:", error);
+    return { ok: false, error: "No pudimos cambiar el plan." };
+  }
+
+  // El panel de la empresa y el backoffice muestran los dos el cupo del plan.
+  revalidatePath("/admin");
+  revalidatePath("/evaluar/app");
+  return { ok: true };
 }

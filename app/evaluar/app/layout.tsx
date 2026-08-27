@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { LogOut } from "lucide-react";
 import EvaluarLogo from "@/components/evaluar/EvaluarLogo";
+import { signOut } from "@/app/actions";
 
 // Marco del panel de trabajo. Se queda claro a propósito: acá se comparan
 // candidatos y se leen tablas durante horas, y el oscuro de la landing —que
@@ -29,6 +31,21 @@ export default function EvaluarAppLayout({
             >
               Planes
             </Link>
+
+            {/* Cerrar sesión no estaba en ningún lado del panel: para salir
+                había que ir hasta Worka Empleos. Va como formulario y no como
+                botón de cliente porque signOut ya es una acción de servidor:
+                así funciona igual con JavaScript deshabilitado. */}
+            <form action={signOut}>
+              <button
+                type="submit"
+                className="btn-secondary press text-xs px-3"
+                title="Cerrar sesión"
+              >
+                <LogOut size={14} />
+                <span className="hidden sm:inline">Salir</span>
+              </button>
+            </form>
           </nav>
         </div>
       </header>

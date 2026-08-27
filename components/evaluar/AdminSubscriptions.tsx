@@ -4,7 +4,12 @@ import { useState, useTransition } from "react";
 import { ClipboardCheck, Mail } from "lucide-react";
 import type { EvaluarAccountRow } from "@/lib/evaluar";
 import { resolveAccess } from "@/lib/evaluar-access";
-import { sendTestEmail, setEvaluarSubscription } from "@/app/evaluar/actions";
+import {
+  sendTestEmail,
+  setEvaluarPlan,
+  setEvaluarSubscription,
+} from "@/app/evaluar/actions";
+import { PLANS, type PlanKey } from "@/lib/evaluar-plans";
 
 // Suscripciones de Worka Evaluar en el backoffice.
 //
@@ -31,6 +36,17 @@ export default function AdminSubscriptions({
         setDone(companyId);
         setTimeout(() => setDone(null), 2500);
       } else setError(r.error ?? "No pudimos actualizar.");
+    });
+  }
+
+  function cambiarPlan(companyId: string, plan: PlanKey) {
+    setError(null);
+    startTransition(async () => {
+      const r = await setEvaluarPlan(companyId, plan);
+      if (r.ok) {
+        setDone(companyId);
+        setTimeout(() => setDone(null), 2500);
+      } else setError(r.error ?? "No pudimos cambiar el plan.");
     });
   }
 
@@ -78,6 +94,34 @@ export default function AdminSubscriptions({
                         : `Paga · vence en ${estado.daysLeft} días`
                       : `Sin acceso (${a.status})`}
                   </p>
+
+                  {/* El plan va aparte de los meses: son dos cosas distintas.
+                      Una es hasta cuándo tiene acceso, la otra es qué le
+                      habilita ese acceso, y lo más común es tener que subir
+                      de plan a alguien que ya está al día. */}
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <label className="text-xs text-gray-500">Plan</label>
+                    <select
+                      className="input py-1 text-xs w-auto"
+                      value={a.plan ?? "esencial"}
+                      disabled={pending}
+                      onChange={(e) =>
+                        cambiarPlan(a.company_id, e.target.value as PlanKey)
+                      }
+                    >
+                      {Object.values(PLANS).map((p) => (
+                        <option key={p.key} value={p.key}>
+                          {p.label}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="text-[11px] text-gray-400">
+                      {(PLANS[(a.plan ?? "esencial") as PlanKey] ?? PLANS.esencial)
+                        .activeProcesses === null
+                        ? "procesos sin límite"
+                        : `hasta ${PLANS[(a.plan ?? "esencial") as PlanKey].activeProcesses} procesos`}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1.5 shrink-0">
