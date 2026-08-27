@@ -141,18 +141,18 @@ export async function agregarEvaluado(
   if (!input.nombre.trim())
     return { ok: false, error: "Escribí el nombre de la persona." };
 
-  // Quien evalúa tiene que tener cuenta: va a entrar a cargar.
+  const evalEmail = input.evaluadorEmail.trim().toLowerCase();
+  if (!/.+@.+..+/.test(evalEmail))
+    return { ok: false, error: "Escribí un email válido para quien evalúa." };
+
+  // Si ya tiene cuenta se enlaza ahora; si no, la fila queda esperando y se
+  // resuelve sola cuando entre con ese correo. Exigir la cuenta primero era
+  // un callejón sin salida: RRHH no podía cargar hasta que el jefe se
+  // registrara, y el jefe no tenía motivo para registrarse hasta que lo
+  // cargaran.
   const { data: evaluadorId } = await supabase.rpc("fn_user_id_by_email", {
-    p_email: input.evaluadorEmail.trim().toLowerCase(),
+    p_email: evalEmail,
   });
-  if (!evaluadorId)
-    return {
-      ok: false,
-      error:
-        "No encontramos una cuenta de Worka con ese email. Tiene que ser el " +
-        "mismo con el que se registró, y quien evalúa necesita cuenta porque " +
-        "va a entrar a cargar la evaluación.",
-    };
 
   // A quién se evalúa puede no tenerla: se guarda igual y ve su evaluación
   // cuando se registre con ese email.
@@ -174,13 +174,23 @@ export async function agregarEvaluado(
   };
 
   const filas: Record<string, unknown>[] = [
-    { ...base, evaluador_id: evaluadorId as string, tipo: "jefe" },
+    {
+      ...base,
+      evaluador_id: (evaluadorId as string | null) ?? null,
+      evaluador_email: evalEmail,
+      tipo: "jefe",
+    },
   ];
 
   // La autoevaluación solo tiene sentido si la persona tiene cuenta: es ella
   // quien la carga.
-  if (input.conAuto && empleadoId) {
-    filas.push({ ...base, evaluador_id: empleadoId, tipo: "auto" });
+  if (input.conAuto && (empleadoId || input.empleadoEmail?.trim())) {
+    filas.push({
+      ...base,
+      evaluador_id: empleadoId,
+      evaluador_email: input.empleadoEmail!.trim().toLowerCase(),
+      tipo: "auto",
+    });
   }
 
   const { error } = await supabase.from("evaluar_desempeno").insert(filas);
@@ -192,7 +202,14 @@ export async function agregarEvaluado(
   }
 
   revalidatePath(`/evaluar/app/desempeno/${cicloId}`);
-  return { ok: true };
+  return {
+    ok: true,
+    // Que quede claro que la fila quedó esperando y por qué: si no, la
+    // persona aparece cargada y nadie entiende por qué el jefe no la ve.
+    error: evaluadorId
+      ? undefined
+      : `Cargada. ${evalEmail} todavía no tiene cuenta en Worka: cuando se registre con ese correo, la evaluación le va a aparecer sola.`,
+  };
 }
 
 export async function quitarEvaluado(

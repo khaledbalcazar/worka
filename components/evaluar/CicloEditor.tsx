@@ -300,10 +300,20 @@ export default function CicloEditor({ detalle }: { detalle: CicloDetalle }) {
                     ? "enviada"
                     : e.status === "en_curso"
                       ? "a medio cargar"
-                      : "sin empezar"}
+                      : !e.evaluador_id
+                        ? "esperando que se registre"
+                        : "sin empezar"}
                 </span>
               ))}
             </div>
+
+            {lista.some((e) => !e.evaluador_id) && (
+              <p className="text-[11px] text-amber-700 mt-2">
+                Alguien de esta fila todavía no tiene cuenta en Worka. La
+                evaluación le va a aparecer sola cuando entre con el correo que
+                cargaste.
+              </p>
+            )}
 
             {/* Brechas entre cómo se ve y cómo la ven.
                 Es la lectura más útil de una autoevaluación y casi ninguna

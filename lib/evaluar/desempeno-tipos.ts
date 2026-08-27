@@ -27,7 +27,9 @@ export type Desempeno = {
   empleado_puesto: string;
   empleado_area: string;
   conduce: boolean;
-  evaluador_id: string;
+  evaluador_id: string | null;
+  /** A quien se le asigno, aunque todavia no tenga cuenta. */
+  evaluador_email: string;
   tipo: "jefe" | "auto" | "par";
   status: "pendiente" | "en_curso" | "enviada";
   puntajes: Record<string, number>;

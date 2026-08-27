@@ -69,10 +69,18 @@ export async function getMisPendientes(): Promise<
   const user = await getCurrentUser();
   if (!user) return [];
 
+  // Dos casos: las que ya estan enlazadas a la cuenta, y las que quedaron
+  // esperando por email porque la persona se registro despues de que la
+  // cargaran. Las dos son "me toca evaluar".
+  const email = (user.email ?? "").toLowerCase();
+  const filtro = email
+    ? `evaluador_id.eq.${user.id},and(evaluador_id.is.null,evaluador_email.eq.${email})`
+    : `evaluador_id.eq.${user.id}`;
+
   const { data } = await supabase
     .from("evaluar_desempeno")
     .select("*, ciclo:evaluar_ciclos(title, status)")
-    .eq("evaluador_id", user.id)
+    .or(filtro)
     .order("created_at", { ascending: false });
 
   return (data ?? []) as unknown as (Desempeno & {
