@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import EvaluarLogo from "./EvaluarLogo";
 import NocturneFx from "./NocturneFx";
+import VentasBurbuja from "./VentasBurbuja";
 
 // Cinco entradas es el techo antes de que el encabezado se vuelva un indice.
 // Instrumentos y El informe quedan fuera: se llega a los dos bajando desde
@@ -39,6 +40,7 @@ export default function MarketingShell({
         aria-hidden
       />
       <NocturneFx />
+      <VentasBurbuja />
 
       <header
         className="sticky top-0 z-50 backdrop-blur-sm"

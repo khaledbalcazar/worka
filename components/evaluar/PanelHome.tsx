@@ -19,6 +19,7 @@ import type { AccessState, PanelData, ProcessRow } from "@/lib/evaluar";
 import { planOf } from "@/lib/evaluar-plans";
 import { TRIAL_DAYS } from "@/lib/evaluar-config";
 import NewProcess from "./NewProcess";
+import VentasCta from "./VentasCta";
 import { duplicateProcess, setProcessArchived } from "@/app/evaluar/actions";
 
 // Panel de Worka Evaluar.
@@ -128,14 +129,13 @@ export default function PanelHome({
           )}
         </div>
         {!access.active && (
-          <a
-            href="https://wa.me/595981000000?text=Quiero%20activar%20Worka%20Evaluar"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-primary press text-sm shrink-0"
+          <VentasCta
+            variante="cta"
+            className="shrink-0"
+            mensaje="Hola, se me vencio el acceso a Worka Evaluar y quiero reactivarlo."
           >
-            Activar suscripción
-          </a>
+            Reactivar mi cuenta
+          </VentasCta>
         )}
       </div>
       )}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import MarketingShell from "@/components/evaluar/MarketingShell";
 import Faq from "@/components/evaluar/Faq";
 import { TRIAL_DAYS } from "@/lib/evaluar-config";
+import VentasCta from "@/components/evaluar/VentasCta";
 
 export const metadata = {
   title: "Worka Evaluar — Selección de personal sin fricción",
@@ -15,42 +16,42 @@ const FAINT = "rgba(233,233,237,.45)";
 const DIFERENCIALES = [
   {
     n: "01",
-    t: "La evaluación empieza en el aviso",
-    d: "Enlazás el proceso a tu vacante de Worka y quien se postula arranca los tests en el momento en que está interesado. Nadie pierde el hilo entre el aviso y una plataforma aparte.",
+    t: "Se postulan y ya están rindiendo",
+    d: "El test arranca en el propio aviso, mientras la persona todavía está entusiasmada. Nada de mandarle un link tres días después para que no lo abra nunca: cuando entrás a mirar, ya tenés a los veinte medidos.",
   },
   {
     n: "02",
-    t: "Tablero de decisión comparativo",
-    d: "Los finalistas lado a lado con la evidencia de cada uno: puntaje por etapa, respuestas y notas del equipo. Decidís en minutos y queda registrado por qué.",
+    t: "Elegís en diez minutos, no en dos semanas",
+    d: "Los finalistas lado a lado con el puntaje de cada uno, sus respuestas y lo que opinó tu equipo. Se acabó el ida y vuelta de audios preguntando «¿este cuál era?».",
   },
   {
     n: "03",
-    t: "El candidato sabe siempre dónde está",
-    d: "Ve su etapa, cuánto falta y en qué terminó, con devolución incluso si queda afuera. La gente termina los procesos cuando entiende el proceso.",
+    t: "Nadie te queda mal hablando",
+    d: "Cada candidato ve en qué etapa está, cuánto le falta y cómo terminó — incluso si queda afuera. Los que no quedan se van sin bronca, y esos son los que después te recomiendan.",
   },
   {
     n: "04",
-    t: "Tests listos para usar",
-    d: "Cinco Grandes, estilo laboral, juicio situacional, razonamiento e integridad, ya redactados y con corrección automática. O un proceso entero por puesto: cajero, chofer, call center.",
+    t: "Ya está todo escrito",
+    d: "No tenés que inventar una sola pregunta. Cinco pruebas listas y cinco procesos completos por puesto: elegís, publicás y listo.",
   },
 ];
 
 const PASOS = [
   {
-    t: "Armá el proceso",
-    d: "Elegís un puesto del catálogo y te queda listo con sus etapas, preguntas y tests.",
+    t: "Elegí el puesto",
+    d: "Cajero, chofer, call center, gastronomía o vendedor. Te queda armado con sus etapas y preguntas.",
   },
   {
-    t: "Enlazá tu vacante",
-    d: "Elegís una vacante activa de Worka y el proceso queda pegado al aviso.",
+    t: "Pegalo a tu aviso",
+    d: "Un clic sobre una vacante que ya tenés publicada en Worka. Listo, está online.",
   },
   {
-    t: "La gente rinde",
-    d: "Desde el aviso o por invitación, sin crear ninguna cuenta. Se corrige solo.",
+    t: "Andá a hacer otra cosa",
+    d: "La gente rinde de noche, el domingo, desde el celular. Se corrige solo y vos no tocás nada.",
   },
   {
-    t: "Decidí",
-    d: "Compará finalistas en el tablero, dejá notas y cerrá el proceso.",
+    t: "Volvé y elegí",
+    d: "Los mejores ya están ordenados arriba, con la evidencia al lado. Decidís y cerrás.",
   },
 ];
 
@@ -93,50 +94,50 @@ const INSTRUMENTOS = [
 const TALENTO = [
   {
     k: "Desempeño",
-    t: "Evaluación por competencias, con anclajes de conducta",
-    d: "Ciclos por período, con la evaluación del jefe y la autoevaluación de la persona. El empleado la lee y deja constancia — que no es lo mismo que estar de acuerdo, y la pantalla lo dice.",
-    dato: "10 competencias con cinco descripciones observables cada una",
+    t: "Que la evaluación anual deje de ser un trámite",
+    d: "El jefe no elige una estrella: elige la frase que describe lo que vio. Por eso un 4 significa lo mismo en depósito que en ventas, y la persona sale de la reunión sabiendo exactamente qué tiene que hacer distinto.",
+    dato: "10 competencias, con las cinco conductas escritas",
   },
   {
     k: "Autoevaluación",
-    t: "Dónde se ven distinto la persona y su jefe",
-    d: "Es la lectura más útil de una autoevaluación y casi ninguna plataforma la muestra. Una brecha grande hacia arriba dice que la devolución no está llegando; una hacia abajo, que se subestima y probablemente no pide lo que le corresponde.",
-    dato: "El punto por donde conviene empezar la conversación",
+    t: "Enterate de lo que tu gente no te dice",
+    d: "Cuando alguien se pone 5 y su jefe le pone 2, ahí tenés la conversación que venías postergando hace un año. Y al revés: el que se subestima es el que nunca te va a pedir el aumento que se merece — hasta que se va.",
+    dato: "Te marcamos por dónde empezar a hablar",
   },
   {
     k: "Integridad",
-    t: "Actitudes, no confesiones",
-    d: "Mide qué le parece aceptable a la persona en situaciones de trabajo. No pregunta si robó: un cuestionario que pide admitir delitos te convierte en depositario de una confesión, y quien lo hizo no lo marca igual.",
-    dato: "Resultado en bandas, nunca en veredictos",
+    t: "Lo que no vas a ver en un CV",
+    d: "Nueve señales sobre el cuidado de lo ajeno, el trato con los compañeros y el manejo de la información. Sin acusar a nadie: te decimos con quién conviene charlar un poco más antes de darle las llaves.",
+    dato: "Y te avisa si contestó para quedar bien",
   },
 ];
 
 const INFORME = [
   {
-    t: "Percentiles",
-    d: "Dónde cae contra el resto de los evaluados, dibujado como campana. «Percentil 85» no le dice nada a quien no trabaja con estadística.",
+    t: "¿Es bueno o parece bueno?",
+    d: "Un 72% no significa nada solo. Te mostramos si ese candidato está arriba o abajo del resto de la gente que rindió, dibujado para que se entienda de un vistazo.",
   },
   {
-    t: "Perfil contra el puesto",
-    d: "Un radar con los rasgos y, encima, lo que pediste para el puesto. La pregunta deja de ser cuánto sacó y pasa a ser cuánto se parece.",
+    t: "¿Se parece a lo que buscás?",
+    d: "Vos decís qué importa para el puesto y el gráfico superpone las dos formas. Mientras más se pisan, más cerca está de lo que necesitás.",
   },
   {
-    t: "Calidad de la respuesta",
-    d: "Si contestó todo igual, demasiado rápido o contradiciéndose. Va arriba del perfil: si la respuesta no es confiable, lo de abajo no describe a nadie.",
+    t: "¿Contestó en serio?",
+    d: "Si marcó todo igual, si voló las preguntas o si se contradijo, te lo decimos antes de que leas el resto. Nadie decide con un dato que no vale.",
   },
   {
-    t: "Métricas del grupo",
-    d: "Si la prueba separa. Cuando todos sacan entre 68 y 72, ese puntaje no distingue a nadie y elegir por él es echar a suerte.",
+    t: "¿Sirvió la prueba?",
+    d: "Si los veinte sacaron parecido, esa prueba no te está separando a nadie y elegir por ahí es tirar una moneda. Te lo avisamos para que la ajustes.",
   },
 ];
 
 // Los números son del producto, no inventados: cinco instrumentos en el
 // catálogo, cinco procesos por puesto, y el total real de ítems redactados.
 const CIFRAS = [
-  { v: "5", l: "tests listos" },
-  { v: "5", l: "procesos por puesto" },
-  { v: "96", l: "preguntas redactadas" },
-  { v: "0", l: "cuentas que crear" },
+  { v: "5 min", l: "y tenés el proceso online" },
+  { v: "96", l: "preguntas ya escritas" },
+  { v: "0", l: "cuentas que crear el candidato" },
+  { v: "24/7", l: "rinden cuando pueden" },
 ];
 
 export default function EvaluarLandingPage() {
@@ -166,22 +167,23 @@ export default function EvaluarLandingPage() {
             </span>
 
             <h1 className="text-[44px] sm:text-[58px] lg:text-[66px] leading-[1.03] tracking-[-.03em] font-medium mb-6">
-              Decidí a quién contratás con{" "}
-              <span style={{ color: "var(--color-accent)" }}>evidencia</span>,
-              no con una entrevista.
+              La entrevista te{" "}
+              <span style={{ color: "var(--color-accent)" }}>miente</span>.
+              <br />
+              Los datos, no.
             </h1>
 
             <p
               className="text-base leading-relaxed max-w-[440px] mb-8"
               style={{ color: MUTED }}
             >
-              Enlazás tu vacante de Worka Empleos y la evaluación empieza en el
-              propio aviso. Corrección automática, tablero comparativo y
-              devolución para todos —{" "}
+              Todos caemos: el que cae simpático en la entrevista arranca el
+              lunes y a los dos meses ya no está. Worka Evaluar te muestra
+              quién sabe hacer el trabajo{" "}
               <span style={{ color: "var(--color-text)" }}>
-                sin que el candidato cree una cuenta
+                antes de que le des el puesto
               </span>
-              .
+              — y sin que nadie tenga que crear una cuenta.
             </p>
 
             <div className="flex gap-3 flex-wrap">
@@ -208,16 +210,16 @@ export default function EvaluarLandingPage() {
             <div className="flex gap-7 mt-11">
               <div>
                 <p className="nk-mono mb-1.5" style={{ color: FAINT }}>
-                  Sin cuenta para rendir
+                  Armás el proceso en
                 </p>
-                <p className="text-2xl font-medium m-0">0 pasos</p>
+                <p className="text-2xl font-medium m-0">5 minutos</p>
               </div>
               <div style={{ width: 1, background: "rgba(233,233,237,.12)" }} />
               <div>
                 <p className="nk-mono mb-1.5" style={{ color: FAINT }}>
-                  Prueba completa
+                  Y lo probás
                 </p>
-                <p className="text-2xl font-medium m-0">{TRIAL_DAYS} días</p>
+                <p className="text-2xl font-medium m-0">gratis {TRIAL_DAYS} días</p>
               </div>
             </div>
           </div>
@@ -387,7 +389,7 @@ export default function EvaluarLandingPage() {
           Plataforma
         </p>
         <h2 className="text-[30px] md:text-[38px] font-medium max-w-[640px] mb-11">
-          Lo que no vas a encontrar en otro lado
+          Contratar mal te sale carísimo. Esto lo evita.
         </h2>
         <div className="grid md:grid-cols-2 gap-4">
           {DIFERENCIALES.map((d) => (
@@ -430,17 +432,17 @@ export default function EvaluarLandingPage() {
             Instrumentos
           </p>
           <h2 className="text-[30px] md:text-[38px] font-medium max-w-[680px] mb-4">
-            Cinco pruebas escritas y corregidas, no cinco plantillas vacías
+            Publicá hoy. Ya está todo escrito.
           </h2>
           <p
             className="text-sm leading-relaxed max-w-[560px] mb-11"
             style={{ color: MUTED }}
           >
-            96 ítems redactados en castellano de acá, con su corrección y su
-            interpretación ya escritas. Los de personalidad usan el IPIP, un
-            banco de dominio público hecho para esto;{" "}
+            Otras plataformas te dan la plantilla vacía y el trabajo de
+            llenarla. Acá abrís, elegís y publicás: 96 preguntas escritas en
+            castellano de acá, que se corrigen y se interpretan solas.{" "}
             <span style={{ color: "var(--color-text)" }}>
-              no reproducimos ningún instrumento licenciado
+              Cero horas de tu tiempo redactando
             </span>
             .
           </p>
@@ -558,26 +560,27 @@ export default function EvaluarLandingPage() {
                 Asistente de IA
               </p>
               <h2 className="text-[30px] md:text-[38px] font-medium mb-5">
-                Describí el puesto en una línea y te arma la prueba
+                Contratás un tornero. ¿Y ahora qué le preguntás?
               </h2>
               <p
                 className="text-[15px] leading-relaxed mb-4"
                 style={{ color: "rgba(233,233,237,.7)" }}
               >
                 El catálogo cubre los puestos que más se buscan en Paraguay.
-                Para el resto —un tornero, un analista de laboratorio, un
-                encargado de depósito— antes te quedabas frente a una pantalla
-                en blanco, que es donde la mayoría abandona.
+                Pero cuando el puesto es raro, el que sabe qué preguntar sos
+                vos — y no tenés tres horas para armar un test.
               </p>
               <p
                 className="text-[15px] leading-relaxed"
                 style={{ color: "rgba(233,233,237,.7)" }}
               >
-                Le contás qué puesto es y qué te importa que sepan, y te deja la
-                prueba armada{" "}
-                <span style={{ color: "var(--color-text)" }}>como borrador</span>
-                : la revisás y la editás como cualquier otra. Nunca se publica
-                sola.
+                Escribí una línea sobre el puesto y en{" "}
+                <span style={{ color: "var(--color-text)" }}>
+                  treinta segundos
+                </span>{" "}
+                tenés la prueba armada, con sus opciones y sus respuestas
+                correctas. La revisás, la editás y la publicás. Nunca sale sola
+                al aire: vos tenés la última palabra.
               </p>
 
               <div
@@ -695,15 +698,15 @@ export default function EvaluarLandingPage() {
             Gestión de talento humano
           </p>
           <h2 className="text-[30px] md:text-[38px] font-medium max-w-[700px] mb-4">
-            No termina cuando la persona entra
+            Contratar es la mitad del trabajo
           </h2>
           <p
             className="text-sm leading-relaxed max-w-[580px] mb-12"
             style={{ color: MUTED }}
           >
-            La misma plataforma sigue con quien ya trabaja con vos: evaluación
-            de desempeño por competencias, integridad laboral y el historial de
-            cada persona período a período.
+            La gente buena no se va por plata: se va porque nadie le dijo cómo
+            venía ni hacia dónde iba. La misma plataforma que te ayuda a
+            elegirlos te ayuda a no perderlos.
           </p>
 
           <div className="grid gap-4 lg:grid-cols-3">
@@ -826,15 +829,15 @@ export default function EvaluarLandingPage() {
             El informe
           </p>
           <h2 className="text-[30px] md:text-[38px] font-medium max-w-[640px] mb-4">
-            Un porcentaje solo no dice nada
+            Dejá de contratar por corazonada
           </h2>
           <p
             className="text-sm leading-relaxed max-w-[560px] mb-11"
             style={{ color: MUTED }}
           >
-            Un 72% puede ser el mejor de la camada o la mitad de abajo. Y si la
-            persona contestó en cuarenta segundos, ese número no describe a
-            nadie. Las dos cosas están en el informe, y la segunda va arriba.
+            Cada candidato te llega con un informe que contesta las cuatro
+            preguntas que de verdad te hacés antes de decidir. En una hoja, y
+            listo para imprimir y llevar a la reunión.
           </p>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -886,7 +889,7 @@ export default function EvaluarLandingPage() {
             Cómo funciona
           </p>
           <h2 className="text-[30px] md:text-[38px] font-medium max-w-[600px] mb-12">
-            Cuatro pasos y el proceso corre solo
+            Hoy lo armás. Mañana ya tenés gente rindiendo.
           </h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 relative">
             {/* La línea que une los pasos. Solo en pantalla ancha: apilados
@@ -944,20 +947,23 @@ export default function EvaluarLandingPage() {
           <span style={{ color: "var(--color-accent)" }}>real</span>.
         </h2>
         <p
-          className="mt-5 mx-auto max-w-[480px] leading-relaxed"
+          className="mt-5 mx-auto max-w-[500px] leading-relaxed"
           style={{ color: "rgba(233,233,237,.55)" }}
         >
-          {TRIAL_DAYS} días completos, sin tarjeta y sin cobro automático. Si al
-          final no te sirve, no pagás nada.
+          Tomá tu próxima búsqueda y hacela acá. {TRIAL_DAYS} días completos,
+          sin tarjeta y sin cobro automático: si no te sirve, cerrás la pestaña
+          y no pagaste nada.
         </p>
         <div className="flex gap-3 justify-center mt-8 flex-wrap">
           <Link href="/evaluar/app" className="nk-cta">
             Empezar gratis
           </Link>
-          <Link href="/evaluar/precios" className="nk-ghost">
-            Ver precios
-          </Link>
+          <VentasCta mensaje="Hola, quiero que me cuenten sobre Worka Evaluar antes de empezar." />
         </div>
+        <p className="text-[12.5px] mt-5" style={{ color: FAINT }}>
+          ¿Sos consultora de RRHH o tenés varias sucursales? Escribinos y lo
+          armamos a tu medida.
+        </p>
       </section>
     </MarketingShell>
   );

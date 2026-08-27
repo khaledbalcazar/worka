@@ -2,6 +2,7 @@ import Link from "next/link";
 import MarketingShell from "@/components/evaluar/MarketingShell";
 import { getSiteSettings } from "@/lib/data";
 import { TRIAL_DAYS } from "@/lib/evaluar-config";
+import VentasCta from "@/components/evaluar/VentasCta";
 
 export const metadata = {
   title: "Precios",
@@ -145,6 +146,15 @@ export default async function PreciosPage() {
                 ))}
               </ul>
 
+              {p.nombre === "Corporativo" ? (
+                <VentasCta
+                  variante="cta"
+                  className="w-full mt-7"
+                  mensaje="Hola, me interesa el plan Corporativo de Worka Evaluar."
+                >
+                  Hablar con ventas
+                </VentasCta>
+              ) : (
               <Link
                 href="/evaluar/app"
                 className={`block text-center w-full mt-7 px-5 py-3 rounded-xl font-semibold transition-colors ${
@@ -155,6 +165,7 @@ export default async function PreciosPage() {
               >
                 Empezar gratis
               </Link>
+              )}
             </div>
           ))}
         </div>
@@ -168,14 +179,12 @@ export default async function PreciosPage() {
             plan y seguís donde estabas: no se pierde ningún proceso ni ninguna
             evaluación en curso.
           </p>
-          <a
-            href="https://wa.me/595981000000?text=Quiero%20activar%20Worka%20Evaluar"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex mt-5 px-5 py-3 nk-ghost w-full rounded-xl transition-colors text-sm"
+          <VentasCta
+            className="mt-5"
+            mensaje="Hola, quiero activar mi plan de Worka Evaluar."
           >
-            Hablar por WhatsApp
-          </a>
+            Coordinar el pago
+          </VentasCta>
         </div>
       </div>
     </MarketingShell>
