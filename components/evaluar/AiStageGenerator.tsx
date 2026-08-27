@@ -25,10 +25,13 @@ export default function AiStageGenerator({
   processId,
   canUse,
   planLabel,
+  bare,
 }: {
   processId: string;
   canUse: boolean;
   planLabel: string;
+  /** Sin tarjeta ni titulo propio: ya vive dentro de otra. */
+  bare?: boolean;
 }) {
   const router = useRouter();
   const [pedido, setPedido] = useState("");
@@ -38,10 +41,12 @@ export default function AiStageGenerator({
 
   if (!canUse) {
     return (
-      <div className="card p-5">
-        <h3 className="font-semibold text-primary-dark text-sm flex items-center gap-2">
-          <Bot size={16} /> Armar una prueba con el asistente
-        </h3>
+      <div className={bare ? "" : "card p-5"}>
+        {!bare && (
+          <h3 className="font-semibold text-primary-dark text-sm flex items-center gap-2">
+            <Bot size={16} /> Armar una prueba con el asistente
+          </h3>
+        )}
         <p className="text-xs text-slate-500 mt-1">
           Le contás qué puesto es y te arma la prueba de conocimientos, lista
           para revisar. Viene con el plan Profesional; el tuyo es {planLabel}.
@@ -74,11 +79,13 @@ export default function AiStageGenerator({
   }
 
   return (
-    <div className="card p-5">
-      <h3 className="font-semibold text-primary-dark text-sm flex items-center gap-2">
-        <Bot size={16} /> Armar una prueba con el asistente
-      </h3>
-      <p className="text-xs text-slate-500 mt-1 mb-3">
+    <div className={bare ? "" : "card p-5"}>
+      {!bare && (
+        <h3 className="font-semibold text-primary-dark text-sm flex items-center gap-2">
+          <Bot size={16} /> Armar una prueba con el asistente
+        </h3>
+      )}
+      <p className="text-xs text-slate-500 mb-3">
         Contale qué puesto es y qué te importa que sepan. Te deja la prueba
         armada como borrador, para que la revises y la edites.
       </p>

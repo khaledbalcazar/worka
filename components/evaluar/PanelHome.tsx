@@ -44,6 +44,10 @@ export default function PanelHome({
   const { processes, alerts, activity, stats } = panel;
   const plan = planOf(access);
   const activos = processes.filter((p) => p.status === "activo").length;
+  // Nada que resolver: paga, al dia y con cupo de sobra.
+  const cupoLleno =
+    plan.activeProcesses !== null && activos >= plan.activeProcesses;
+  const tranquilo = access.active && !access.inTrial && !cupoLleno;
   const nuevo = processes.length === 0;
 
   function run(fn: () => Promise<{ ok: boolean; error?: string; id?: string }>) {
@@ -57,7 +61,24 @@ export default function PanelHome({
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
-      {/* Suscripción */}
+      {/* Suscripción.
+          Solo ocupa el lugar de arriba cuando hay algo que hacer con ella:
+          la prueba corriendo, el cupo lleno o el acceso vencido. Una cuenta
+          paga y al día no necesita un cartel todos los días — antes empujaba
+          hacia abajo lo único que la empresa entra a mirar, que es qué está
+          esperando algo de ella. */}
+      {tranquilo ? (
+        <p className="text-xs text-slate-500 flex flex-wrap items-center gap-x-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+          Suscripción activa · plan {plan.label}
+          {plan.activeProcesses !== null && (
+            <>
+              {" · "}
+              {activos} de {plan.activeProcesses} procesos activos
+            </>
+          )}
+        </p>
+      ) : (
       <div
         className={`card p-4 flex flex-wrap items-center justify-between gap-3 ${
           access.active
@@ -113,6 +134,7 @@ export default function PanelHome({
           </a>
         )}
       </div>
+      )}
 
       {error && (
         <p className="text-sm text-danger bg-red-50 rounded-xl px-4 py-3">

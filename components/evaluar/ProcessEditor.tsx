@@ -7,6 +7,7 @@ import {
   Copy,
   Link2,
   ChevronDown,
+  Clock,
   ChevronUp,
   Columns3,
   List,
@@ -73,6 +74,7 @@ export default function ProcessEditor({
   }
 
   const totalQuestions = stages.reduce((a, s) => a + s.questions.length, 0);
+  const minutosTotales = stages.reduce((a, s) => a + (s.minutes || 0), 0);
   // Un proceso sin etapas no se puede publicar: el candidato entraría a una
   // evaluación vacía.
   const canPublish = stages.length > 0 && totalQuestions > 0;
@@ -86,6 +88,15 @@ export default function ProcessEditor({
             <h1 className="text-xl font-bold text-primary-dark">
               {process.title}
             </h1>
+            {/* Para qué área se llama. Distingue dos búsquedas del mismo
+                puesto, que es lo que pasa apenas hay más de una sucursal. */}
+            {(process.org_unit || process.department) && (
+              <p className="text-sm text-slate-500 mt-0.5">
+                {[process.org_unit, process.department]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            )}
             {process.job ? (
               <p className="text-sm text-primary mt-1 flex items-center gap-1.5">
                 <Link2 size={14} /> Enlazado a «{process.job.title}»
@@ -94,6 +105,37 @@ export default function ProcessEditor({
               <p className="text-sm text-slate-400 mt-1">
                 Sin vacante enlazada
               </p>
+            )}
+
+            {/* Cuánto le lleva al candidato. Es el número que decide cuánta
+                gente termina, y no estaba en ningún lado: se armaban procesos
+                de cuarenta minutos sin que nadie lo notara hasta ver que la
+                mitad abandonaba. */}
+            {stages.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2.5">
+                <span className="chip bg-slate-100 text-slate-600">
+                  {stages.length}{" "}
+                  {stages.length === 1 ? "etapa" : "etapas"}
+                </span>
+                <span className="chip bg-slate-100 text-slate-600">
+                  {totalQuestions}{" "}
+                  {totalQuestions === 1 ? "pregunta" : "preguntas"}
+                </span>
+                <span
+                  className={`chip ${
+                    minutosTotales > 30
+                      ? "bg-amber-50 text-amber-700"
+                      : "bg-slate-100 text-slate-600"
+                  }`}
+                  title={
+                    minutosTotales > 30
+                      ? "Arriba de media hora la mitad de la gente abandona"
+                      : undefined
+                  }
+                >
+                  <Clock size={13} /> {minutosTotales} min para el candidato
+                </span>
+              </div>
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -335,8 +377,6 @@ function StagesTab({
     }
   ) => void;
 }) {
-  const [newStage, setNewStage] = useState("");
-  const [minutes, setMinutes] = useState(5);
   const [openQ, setOpenQ] = useState<string | null>(null);
   const [editQ, setEditQ] = useState<string | null>(null);
   const [editS, setEditS] = useState<string | null>(null);
@@ -493,68 +533,19 @@ function StagesTab({
         </div>
       ))}
 
-      {/* El catálogo va primero: para la mayoría de los puestos alcanza con
-          un test listo, y redactar preguntas desde cero es lo que hace que
-          nadie termine de armar el proceso. */}
-      <div className="card p-5">
-        <h3 className="font-semibold text-primary-dark text-sm">
-          Agregar un test ya armado
-        </h3>
-        <p className="text-xs text-slate-500 mt-1 mb-3">
-          Cinco Grandes, estilo laboral, juicio situacional y razonamiento. Se
-          corrigen y se puntúan solos.
-        </p>
-        <TemplatePicker
-          pending={pending}
-          onPick={onApplyTemplate}
-          onPickRole={onApplyRole}
-        />
-      </div>
-
-      <AiStageGenerator
-        processId={detail.process.id}
-        canUse={plan.ai}
-        planLabel={plan.label}
+      {/* Las tres formas de sumar una etapa, en una sola tarjeta.
+          Antes eran tres tarjetas grandes siempre abiertas debajo de las
+          etapas: quien ya armó su proceso tenía media pantalla ocupada por
+          instrucciones de cómo armarlo. Se abre sola cuando todavía no hay
+          nada, que es cuando de verdad hace falta. */}
+      <AddStagePanel
+        detail={detail}
+        pending={pending}
+        plan={plan}
+        onApplyTemplate={onApplyTemplate}
+        onApplyRole={onApplyRole}
+        onAddStage={onAddStage}
       />
-
-      <div className="card p-5">
-        <h3 className="font-semibold text-primary-dark text-sm">
-          O armar una etapa propia
-        </h3>
-        <div className="flex flex-col sm:flex-row gap-2 mt-3">
-          <input
-            className="input flex-1"
-            placeholder="Ej: Conocimientos del puesto"
-            value={newStage}
-            onChange={(e) => setNewStage(e.target.value)}
-          />
-          <div className="flex gap-2">
-            <input
-              type="number"
-              min={1}
-              max={120}
-              className="input w-24"
-              value={minutes}
-              onChange={(e) => setMinutes(Number(e.target.value))}
-              aria-label="Minutos estimados"
-            />
-            <button
-              onClick={() => {
-                onAddStage({ title: newStage, description: "", minutes });
-                setNewStage("");
-              }}
-              disabled={pending || !newStage.trim()}
-              className="btn-primary press disabled:opacity-40"
-            >
-              Agregar
-            </button>
-          </div>
-        </div>
-        <p className="text-xs text-slate-400 mt-2">
-          Los minutos se le muestran al candidato antes de empezar: saber cuánto
-          le va a llevar es lo que evita que abandone a la mitad.
-        </p>
-      </div>
     </div>
   );
 }
@@ -1171,6 +1162,163 @@ function StageForm({
         >
           Guardar etapa
         </button>
+      </div>
+    </div>
+  );
+}
+
+// Las tres formas de sumar una etapa, juntas.
+//
+// Antes eran tres tarjetas grandes, siempre abiertas, debajo de las etapas.
+// Para quien ya tenía su proceso armado eso era media pantalla ocupada por
+// instrucciones de cómo armarlo, y encima empujaba el contenido real hacia
+// arriba, fuera de la vista.
+//
+// Se abre sola cuando el proceso está vacío, porque ahí la pantalla en blanco
+// es el problema, y se pliega en cuanto hay una etapa.
+function AddStagePanel({
+  detail,
+  pending,
+  plan,
+  onApplyTemplate,
+  onApplyRole,
+  onAddStage,
+}: {
+  detail: ProcessDetail;
+  pending: boolean;
+  plan: PlanLimits;
+  onApplyTemplate: (key: string) => void;
+  onApplyRole: (key: string) => void;
+  onAddStage: (i: { title: string; description: string; minutes: number }) => void;
+}) {
+  const vacio = detail.stages.length === 0;
+  const [abierto, setAbierto] = useState(vacio);
+  const [modo, setModo] = useState<"catalogo" | "ia" | "propia">("catalogo");
+  const [newStage, setNewStage] = useState("");
+  const [minutes, setMinutes] = useState(10);
+
+  if (!abierto) {
+    return (
+      <button
+        onClick={() => setAbierto(true)}
+        className="card press w-full p-4 flex items-center justify-center gap-2 text-sm font-medium text-primary border-dashed"
+      >
+        <Plus size={16} /> Agregar otra etapa
+      </button>
+    );
+  }
+
+  const OPCIONES = [
+    { key: "catalogo" as const, label: "Test ya armado" },
+    { key: "ia" as const, label: "Con el asistente" },
+    { key: "propia" as const, label: "Armarla yo" },
+  ];
+
+  return (
+    <div className="card p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h3 className="font-semibold text-primary-dark text-sm">
+            {vacio ? "Empezá por acá" : "Agregar una etapa"}
+          </h3>
+          <p className="text-xs text-slate-500 mt-1">
+            {vacio
+              ? "Un proceso necesita al menos una etapa con preguntas para poder publicarse."
+              : "Podés combinar todo lo que quieras en el mismo proceso."}
+          </p>
+        </div>
+        {!vacio && (
+          <button
+            onClick={() => setAbierto(false)}
+            className="text-slate-400 hover:text-slate-600 shrink-0"
+            aria-label="Cerrar"
+          >
+            <X size={18} />
+          </button>
+        )}
+      </div>
+
+      <div className="flex gap-1 mt-3 border-b border-slate-200">
+        {OPCIONES.map((o) => (
+          <button
+            key={o.key}
+            onClick={() => setModo(o.key)}
+            className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+              modo === o.key
+                ? "border-primary text-primary"
+                : "border-transparent text-slate-500"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-4">
+        {modo === "catalogo" && (
+          <>
+            {/* El catálogo va primero y es la opción por defecto: para la
+                mayoría de los puestos alcanza con un test listo, y redactar
+                preguntas desde cero es lo que hace que nadie termine de
+                armar el proceso. */}
+            <p className="text-xs text-slate-500 mb-3">
+              Cinco Grandes, estilo laboral, juicio situacional y razonamiento.
+              Se corrigen y se puntúan solos.
+            </p>
+            <TemplatePicker
+              pending={pending}
+              onPick={onApplyTemplate}
+              onPickRole={onApplyRole}
+            />
+          </>
+        )}
+
+        {modo === "ia" && (
+          <AiStageGenerator
+            processId={detail.process.id}
+            canUse={plan.ai}
+            planLabel={plan.label}
+            bare
+          />
+        )}
+
+        {modo === "propia" && (
+          <>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                className="input flex-1"
+                placeholder="Ej: Conocimientos del puesto"
+                value={newStage}
+                onChange={(e) => setNewStage(e.target.value)}
+              />
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  min={1}
+                  max={120}
+                  className="input w-24"
+                  value={minutes}
+                  onChange={(e) => setMinutes(Number(e.target.value))}
+                  aria-label="Minutos estimados"
+                />
+                <button
+                  onClick={() => {
+                    onAddStage({ title: newStage, description: "", minutes });
+                    setNewStage("");
+                  }}
+                  disabled={pending || !newStage.trim()}
+                  className="btn-primary press disabled:opacity-40"
+                >
+                  Agregar
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 mt-2">
+              Los minutos se le muestran al candidato antes de empezar: saber
+              cuánto le va a llevar es lo que evita que abandone a la mitad.
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
