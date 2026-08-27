@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Plus, Trash2, TrendingDown, TrendingUp } from "lucide-react";
 import type { Ciclo, Desempeno } from "@/lib/evaluar/desempeno-tipos";
 import { brechas, promedioDe } from "@/lib/evaluar/desempeno-tipos";
+import AvisarEmpleado from "./AvisarEmpleado";
 
 import {
   actualizarCiclo,
@@ -306,6 +307,22 @@ export default function CicloEditor({ detalle }: { detalle: CicloDetalle }) {
                 </span>
               ))}
             </div>
+
+            {/* Avisarle a la persona. Va por evaluacion y no por persona
+                porque la del jefe y la autoevaluacion se envian por separado;
+                lo que se comunica es la del jefe. */}
+            {lista
+              .filter((e) => e.tipo === "jefe" && e.status === "enviada")
+              .map((e) => (
+                <div key={e.id} className="mt-2">
+                  <AvisarEmpleado
+                    id={e.id}
+                    email={e.empleado_email}
+                    notificadoAt={e.notificado_at}
+                    acuseAt={e.acuse_at}
+                  />
+                </div>
+              ))}
 
             {lista.some((e) => !e.evaluador_id) && (
               <p className="text-[11px] text-amber-700 mt-2">

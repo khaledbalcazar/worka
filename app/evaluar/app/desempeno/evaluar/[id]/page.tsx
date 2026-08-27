@@ -5,6 +5,7 @@ import { getCurrentUser, getServerClient } from "@/lib/supabase/server";
 import { isLive } from "@/lib/data";
 import { competenciasDe, type Ciclo, type Desempeno } from "@/lib/evaluar/desempeno";
 import DesempenoForm from "@/components/evaluar/DesempenoForm";
+import AvisarEmpleado from "@/components/evaluar/AvisarEmpleado";
 
 export const metadata = { title: "Evaluar", robots: { index: false } };
 
@@ -106,6 +107,16 @@ export default async function EvaluarPage({
               ? ` el ${new Date(fila.sent_at).toLocaleDateString("es-PY")}`
               : ""}
             . {fila.tipo === "auto" ? "" : "La persona ya puede leerla."}
+            {fila.tipo !== "auto" && (
+              <span className="block mt-2">
+                <AvisarEmpleado
+                  id={fila.id}
+                  email={fila.empleado_email}
+                  notificadoAt={fila.notificado_at}
+                  acuseAt={fila.acuse_at}
+                />
+              </span>
+            )}
           </p>
         )}
 

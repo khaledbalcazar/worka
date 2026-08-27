@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { getMyEvaluarAccess } from "@/lib/evaluar";
 import { planOf } from "@/lib/evaluar-plans";
+import { emailEnabled, emailLayout, sendEmail } from "@/lib/email";
+import { SITE_URL } from "@/lib/supabase/config";
 
 // Acciones de evaluación de desempeño.
 //
@@ -167,6 +169,7 @@ export async function agregarEvaluado(
   const base = {
     ciclo_id: cicloId,
     empleado_id: empleadoId,
+    empleado_email: input.empleadoEmail?.trim().toLowerCase() ?? "",
     empleado_nombre: input.nombre.trim(),
     empleado_puesto: input.puesto?.trim() ?? "",
     empleado_area: input.area?.trim() ?? "",
@@ -246,17 +249,29 @@ export async function guardarDesempeno(
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Iniciá sesión." };
 
-  const { error } = await supabase
+  // Sin filtrar por evaluador_id: cuando la persona entro por email todavia
+  // lo tiene en nulo, y ese filtro hacia que el update tocara cero filas sin
+  // devolver error. La pantalla decia "Guardado" y no se guardaba nada.
+  // La politica de RLS ya cubre los dos casos, asi que alcanza con ella.
+  const { data, error } = await supabase
     .from("evaluar_desempeno")
     .update({ ...input, status: "en_curso" })
     .eq("id", id)
-    .eq("evaluador_id", user.id)
-    .neq("status", "enviada");
+    .neq("status", "enviada")
+    .select("id");
 
   if (error) {
     console.error("guardarDesempeno:", error);
     return { ok: false, error: "No pudimos guardar." };
   }
+  // Cero filas es lo que antes pasaba en silencio: o no te corresponde, o ya
+  // fue enviada. En los dos casos hay que decirlo, no fingir que se guardo.
+  if (!data || data.length === 0)
+    return {
+      ok: false,
+      error:
+        "No pudimos guardar: o esta evaluación ya fue enviada, o no sos vos quien tiene que cargarla.",
+    };
   return { ok: true };
 }
 
@@ -275,7 +290,6 @@ export async function enviarDesempeno(
     .from("evaluar_desempeno")
     .select("puntajes, status")
     .eq("id", id)
-    .eq("evaluador_id", user.id)
     .maybeSingle();
   if (!fila) return { ok: false, error: "No encontramos esa evaluación." };
   if ((fila as { status: string }).status === "enviada")
@@ -291,13 +305,15 @@ export async function enviarDesempeno(
       } por calificar.`,
     };
 
-  const { error } = await supabase
+  const { data: tocadas, error } = await supabase
     .from("evaluar_desempeno")
     .update({ status: "enviada", sent_at: new Date().toISOString() })
     .eq("id", id)
-    .eq("evaluador_id", user.id);
+    .select("id");
 
   if (error) return { ok: false, error: "No pudimos enviarla." };
+  if (!tocadas || tocadas.length === 0)
+    return { ok: false, error: "No sos vos quien tiene que enviar esta evaluación." };
   revalidatePath("/evaluar/app/desempeno");
   return { ok: true };
 }
@@ -327,5 +343,114 @@ export async function acusarDesempeno(
     return { ok: false, error: "No pudimos registrar tu acuse." };
   }
   revalidatePath("/evaluar/app/desempeno/mias");
+  return { ok: true };
+}
+
+// Avisarle a la persona que su evaluación está lista.
+//
+// Faltaba por completo: la evaluación se enviaba y quedaba esperando a que
+// alguien entrara por su cuenta a buscarla, cosa que no pasa. Una devolución
+// de desempeño se comunica, no se publica.
+//
+// Lo puede disparar el evaluador o quien administra el ciclo, que es como
+// funciona de verdad: a veces avisa el jefe y a veces RRHH.
+export async function avisarAlEmpleado(id: string): Promise<Result> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión." };
+
+  // Si la política deja leerla, quien pregunta es el evaluador, la empresa o
+  // el propio empleado. Los dos primeros pueden avisar.
+  const { data } = await supabase
+    .from("evaluar_desempeno")
+    .select(
+      "id, status, empleado_nombre, empleado_email, empleado_id, evaluador_id, evaluador_email, notificado_at, ciclo:evaluar_ciclos(title, company_id)"
+    )
+    .eq("id", id)
+    .maybeSingle();
+
+  if (!data) return { ok: false, error: "No encontramos esa evaluación." };
+
+  const fila = data as unknown as {
+    status: string;
+    empleado_nombre: string;
+    empleado_email: string;
+    evaluador_id: string | null;
+    evaluador_email: string;
+    notificado_at: string | null;
+    ciclo: { title: string; company_id: string } | null;
+  };
+
+  if (fila.status !== "enviada")
+    return {
+      ok: false,
+      error: "Primero enviá la evaluación. Recién ahí la persona puede leerla.",
+    };
+
+  const email = fila.empleado_email?.trim();
+  if (!email)
+    return {
+      ok: false,
+      error:
+        "Esta persona no tiene email cargado. Agregalo desde el ciclo y volvé a intentar.",
+    };
+
+  const puedeAvisar =
+    fila.evaluador_id === user.id ||
+    fila.evaluador_email?.toLowerCase() ===
+      (user.email ?? "").toLowerCase() ||
+    fila.ciclo?.company_id === user.id;
+  if (!puedeAvisar)
+    return { ok: false, error: "No podés avisar sobre esta evaluación." };
+
+  if (!emailEnabled())
+    return {
+      ok: false,
+      error:
+        "El envío de correos no está configurado. Pasale el enlace vos: evaluar.worka.click/app/desempeno/mias",
+    };
+
+  const base = SITE_URL.replace(/\/$/, "").replace("://", "://evaluar.");
+  const url = `${base}/app/desempeno/mias`;
+  const nombre = fila.empleado_nombre?.split(" ")[0] ?? "";
+
+  const enviado = await sendEmail({
+    to: email,
+    subject: `Tu evaluación de desempeño está lista${fila.ciclo?.title ? ` — ${fila.ciclo.title}` : ""}`,
+    html: emailLayout(`
+      <p>Hola${nombre ? ` ${nombre}` : ""},</p>
+      <p>Tu evaluación de desempeño${fila.ciclo?.title ? ` de <strong>${fila.ciclo.title}</strong>` : ""}
+      ya está disponible para que la leas.</p>
+      <p>Vas a ver cómo te calificaron en cada competencia, con la descripción
+      exacta que eligió quien te evaluó, y lo que se propone para el próximo
+      período.</p>
+      <p style="margin:24px 0">
+        <a href="${url}" style="background:#2563eb;color:#fff;padding:12px 20px;border-radius:12px;text-decoration:none;font-weight:600">
+          Ver mi evaluación
+        </a>
+      </p>
+      <p style="color:#6b7280;font-size:13px">Entrá con <strong>${email}</strong>.
+      Si todavía no tenés cuenta en Worka, creala con ese mismo correo y la
+      evaluación te va a aparecer.</p>
+      <p style="color:#6b7280;font-size:13px">Al final vas a poder dejar
+      constancia de que la leíste. Eso <strong>no significa que estés de
+      acuerdo</strong>: si algo no te parece, hay un espacio para escribirlo y
+      queda guardado junto a la evaluación.</p>
+    `),
+  });
+
+  if (!enviado)
+    return {
+      ok: false,
+      error: "No pudimos enviar el correo. Pasale el enlace vos por otro medio.",
+    };
+
+  await supabase
+    .from("evaluar_desempeno")
+    .update({ notificado_at: new Date().toISOString() })
+    .eq("id", id);
+
+  revalidatePath("/evaluar/app/desempeno");
   return { ok: true };
 }

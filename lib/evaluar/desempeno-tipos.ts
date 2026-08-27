@@ -24,6 +24,9 @@ export type Desempeno = {
   ciclo_id: string;
   empleado_id: string | null;
   empleado_nombre: string;
+  empleado_email: string;
+  /** Cuando se le aviso por correo que ya puede leerla. */
+  notificado_at: string | null;
   empleado_puesto: string;
   empleado_area: string;
   conduce: boolean;
