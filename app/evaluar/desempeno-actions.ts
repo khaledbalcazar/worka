@@ -5,7 +5,7 @@ import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { findUserIdByEmail, getMyEvaluarAccess } from "@/lib/evaluar";
 import { planOf } from "@/lib/evaluar-plans";
 import { emailEnabled, emailLayout, sendEmail } from "@/lib/email";
-import { SITE_URL } from "@/lib/supabase/config";
+import { evaluarUrl } from "@/lib/supabase/config";
 
 // Acciones de evaluación de desempeño.
 //
@@ -406,7 +406,7 @@ export async function avisarAlEmpleado(id: string): Promise<Result> {
         "El envío de correos no está configurado. Pasale el enlace vos: evaluar.worka.click/app/desempeno/mias",
     };
 
-  const base = SITE_URL.replace(/\/$/, "").replace("://", "://evaluar.");
+  const base = evaluarUrl();
   const url = `${base}/app/desempeno/mias`;
   const nombre = fila.empleado_nombre?.split(" ")[0] ?? "";
 

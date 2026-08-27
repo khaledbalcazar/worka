@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { emailEnabled, emailLayout, sendEmail } from "@/lib/email";
-import { SITE_URL } from "@/lib/supabase/config";
+import { evaluarUrl } from "@/lib/supabase/config";
 
 // Recordatorio a quien fue invitado y no arrancó.
 //
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
     } | null;
   }[];
 
-  const base = SITE_URL.replace(/\/$/, "").replace("://", "://evaluar.");
+  const base = evaluarUrl();
   const ahora = Date.now();
   let enviados = 0;
 

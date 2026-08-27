@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { emailEnabled, emailLayout, sendEmail } from "@/lib/email";
-import { SITE_URL } from "@/lib/supabase/config";
+import { evaluarUrl } from "@/lib/supabase/config";
 import { resolveAccess, type EvaluarAccount } from "@/lib/evaluar-access";
 
 // Resumen diario para la empresa + aviso de prueba por vencer.
@@ -30,7 +30,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, reason: "Falta RESEND_API_KEY" });
 
   const { data: cuentas } = await admin.from("evaluar_accounts").select("*");
-  const base = SITE_URL.replace(/\/$/, "").replace("://", "://evaluar.");
+  const base = evaluarUrl();
   const desde = new Date(Date.now() - 86_400_000).toISOString();
   let enviados = 0;
 

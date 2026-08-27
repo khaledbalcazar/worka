@@ -58,7 +58,7 @@ export default function ProcessEditor({
   plan: PlanLimits;
 }) {
   const router = useRouter();
-  const { process, stages, participants } = detail;
+  const { process, stages, participants, esDueno } = detail;
   const [tab, setTab] = useState<Tab>("etapas");
   const [vista, setVista] = useState<"lista" | "tablero">("lista");
   const [aviso, setAviso] = useState<string | null>(null);
@@ -151,7 +151,11 @@ export default function ProcessEditor({
             >
               {process.status}
             </span>
-            {process.status !== "activo" ? (
+            {!esDueno ? (
+              <span className="chip bg-slate-100 text-slate-600">
+                Te sumaron a este concurso
+              </span>
+            ) : process.status !== "activo" ? (
               <button
                 disabled={!canPublish || pending}
                 title={
@@ -208,7 +212,7 @@ export default function ProcessEditor({
           [
             ["etapas", `Etapas (${stages.length})`],
             ["candidatos", `Candidatos (${participants.length})`],
-            ["ajustes", "Ajustes"],
+            ...(esDueno ? ([["ajustes", "Ajustes"]] as [Tab, string][]) : []),
           ] as [Tab, string][]
         ).map(([key, label]) => (
           <button
@@ -316,7 +320,7 @@ export default function ProcessEditor({
         />
       )}
 
-      {tab === "ajustes" && (
+      {tab === "ajustes" && esDueno && (
         <div className="space-y-4">
           <ProcessOrg detail={detail} />
           <IdealProfile detail={detail} />

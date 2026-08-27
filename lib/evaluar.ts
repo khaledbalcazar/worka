@@ -150,6 +150,8 @@ export type ProcessRow = EvaluarProcess & {
   job: { id: string; title: string } | null;
   stage_count: number;
   participant_count: number;
+  /** false cuando me sumaron al concurso pero la cuenta es de otra empresa. */
+  esDueno: boolean;
 };
 
 export async function getMyProcesses(): Promise<ProcessRow[]> {
@@ -158,12 +160,14 @@ export async function getMyProcesses(): Promise<ProcessRow[]> {
   const user = await getCurrentUser();
   if (!user) return [];
 
+  // Sin filtrar por company_id: la politica de RLS ya deja ver los propios y
+  // los que me compartieron. Con el filtro puesto, a quien lo sumaban a un
+  // concurso le quedaba el panel vacio y el enlace del correo no abria nada.
   const { data } = await supabase
     .from("evaluar_processes")
     .select(
       "*, job:jobs(id, title), evaluar_stages(count), evaluar_participants(count)"
     )
-    .eq("company_id", user.id)
     .order("created_at", { ascending: false });
 
   return ((data ?? []) as unknown as (EvaluarProcess & {
@@ -174,6 +178,7 @@ export async function getMyProcesses(): Promise<ProcessRow[]> {
     ...p,
     stage_count: p.evaluar_stages?.[0]?.count ?? 0,
     participant_count: p.evaluar_participants?.[0]?.count ?? 0,
+    esDueno: p.company_id === user.id,
   }));
 }
 
@@ -185,6 +190,8 @@ export type ProcessMember = {
 
 export type ProcessDetail = {
   process: EvaluarProcess & { job: { id: string; title: string } | null };
+  /** false cuando entro alguien del equipo y no la empresa duena. */
+  esDueno: boolean;
   stages: (EvaluarStage & { questions: EvaluarQuestion[] })[];
   participants: EvaluarParticipant[];
   members: ProcessMember[];
@@ -198,11 +205,12 @@ export async function getProcessDetail(
   const user = await getCurrentUser();
   if (!user) return null;
 
+  // Igual que arriba: la politica decide. El dueno lo edita entero; a quien
+  // lo sumaron lo puede mirar, y la pantalla se adapta con esDueno.
   const { data: process } = await supabase
     .from("evaluar_processes")
     .select("*, job:jobs(id, title)")
     .eq("id", id)
-    .eq("company_id", user.id)
     .maybeSingle();
   if (!process) return null;
 
@@ -226,6 +234,8 @@ export async function getProcessDetail(
 
   return {
     process: process as ProcessDetail["process"],
+    esDueno:
+      (process as { company_id: string }).company_id === user.id,
     stages: ((stages ?? []) as unknown as (EvaluarStage & {
       evaluar_questions: EvaluarQuestion[];
     })[]).map((s) => ({

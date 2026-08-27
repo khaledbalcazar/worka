@@ -17,7 +17,7 @@ import {
   motivoEsCompartible,
 } from "@/lib/evaluar/motivos";
 import { emailEnabled, emailLayout, sendEmail } from "@/lib/email";
-import { SITE_URL } from "@/lib/supabase/config";
+import { evaluarUrl } from "@/lib/supabase/config";
 import {
   PLANS,
   planOf,
@@ -1096,7 +1096,7 @@ async function notifyTeamMember(
 ): Promise<boolean> {
   if (!emailEnabled()) return false;
 
-  const base = SITE_URL.replace(/\/$/, "").replace("://", "://evaluar.");
+  const base = evaluarUrl();
   const url = processId ? `${base}/app/procesos/${processId}` : `${base}/app`;
 
   // La unidad y el departamento van en el asunto: quien recibe tres de estos
@@ -1317,7 +1317,7 @@ async function notifyParticipants(
     companyName = (data as { trade_name?: string } | null)?.trade_name ?? companyName;
   }
 
-  const base = SITE_URL.replace(/\/$/, "").replace("://", "://evaluar.");
+  const base = evaluarUrl();
   let sent = 0;
   for (const p of people) {
     if (!p.email) continue;
@@ -1572,7 +1572,7 @@ async function notifyCompanyOfCompletion(token: string) {
     const to = auth?.user?.email;
     if (!to) return;
 
-    const base = SITE_URL.replace(/\/$/, "").replace("://", "://evaluar.");
+    const base = evaluarUrl();
     const pct =
       p.score !== null && p.max_score
         ? ` Puntaje: <strong>${Math.round((p.score / p.max_score) * 100)}%</strong>.`

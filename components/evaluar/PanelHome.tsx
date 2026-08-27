@@ -43,7 +43,9 @@ export default function PanelHome({
 
   const { processes, alerts, activity, stats } = panel;
   const plan = planOf(access);
-  const activos = processes.filter((p) => p.status === "activo").length;
+  const propios = processes.filter((p) => p.esDueno !== false);
+  const compartidos = processes.filter((p) => p.esDueno === false);
+  const activos = propios.filter((p) => p.status === "activo").length;
   // Nada que resolver: paga, al dia y con cupo de sobra.
   const cupoLleno =
     plan.activeProcesses !== null && activos >= plan.activeProcesses;
@@ -286,12 +288,12 @@ export default function PanelHome({
                 Tus procesos
               </p>
               <span className="text-[12.5px]" style={{ color: "rgba(233,233,237,.45)" }}>
-                {processes.length}
+                {propios.length}
               </span>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 stagger">
-              {processes.map((p) => (
+              {propios.map((p) => (
                 <ProcessCard
                   key={p.id}
                   p={p}
@@ -302,6 +304,37 @@ export default function PanelHome({
               ))}
             </div>
           </section>
+
+          {/* Concursos de otras empresas que me compartieron. Van aparte
+              porque no los administro: solo puedo mirarlos y opinar. */}
+          {compartidos.length > 0 && (
+            <section>
+              <p className="nk-mono mb-3" style={{ color: "rgba(233,233,237,.4)" }}>
+                Te sumaron a estos concursos
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {compartidos.map((p) => (
+                  <Link
+                    key={p.id}
+                    href={`/evaluar/app/procesos/${p.id}`}
+                    className="card press p-5"
+                  >
+                    <p className="font-semibold text-primary-dark">{p.title}</p>
+                    {(p.org_unit || p.department) && (
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {[p.org_unit, p.department].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
+                    <p className="text-xs text-slate-500 mt-2">
+                      {p.participant_count}{" "}
+                      {p.participant_count === 1 ? "candidato" : "candidatos"} ·{" "}
+                      {p.status}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Actividad reciente */}
           {activity.length > 0 && (
