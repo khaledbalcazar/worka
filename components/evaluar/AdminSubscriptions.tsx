@@ -76,6 +76,12 @@ export default function AdminSubscriptions({
         <div className="divide-y divide-gray-100 mt-3">
           {accounts.map((a) => {
             const estado = resolveAccess(a);
+            // Se resuelve una sola vez y con salida por defecto. Antes se
+            // buscaba dos veces en PLANS y la segunda no tenia resguardo: con
+            // un plan invalido en la base, leer .activeProcesses sobre
+            // undefined tiraba abajo toda la pantalla de suscripciones.
+            const planActual = PLANS[a.plan as PlanKey] ?? PLANS.esencial;
+            const planInvalido = !!a.plan && !PLANS[a.plan as PlanKey];
             return (
               <div
                 key={a.company_id}
@@ -103,7 +109,7 @@ export default function AdminSubscriptions({
                     <label className="text-xs text-gray-500">Plan</label>
                     <select
                       className="input py-1 text-xs w-auto"
-                      value={a.plan ?? "esencial"}
+                      value={planActual.key}
                       disabled={pending}
                       onChange={(e) =>
                         cambiarPlan(a.company_id, e.target.value as PlanKey)
@@ -116,12 +122,22 @@ export default function AdminSubscriptions({
                       ))}
                     </select>
                     <span className="text-[11px] text-gray-400">
-                      {(PLANS[(a.plan ?? "esencial") as PlanKey] ?? PLANS.esencial)
-                        .activeProcesses === null
+                      {planActual.activeProcesses === null
                         ? "procesos sin límite"
-                        : `hasta ${PLANS[(a.plan ?? "esencial") as PlanKey].activeProcesses} procesos`}
+                        : `hasta ${planActual.activeProcesses} procesos`}
                     </span>
                   </div>
+
+                  {/* Si lo guardado no es ninguno de los tres, la cuenta viene
+                      funcionando como esencial sin que nadie se entere. Se
+                      dice acá, que es donde se puede corregir. */}
+                  {planInvalido && (
+                    <p className="text-[11px] text-amber-700 mt-1">
+                      Guardado como «{a.plan}», que no es un plan válido: está
+                      funcionando como Esencial. Elegí uno de la lista para
+                      corregirlo.
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1.5 shrink-0">
