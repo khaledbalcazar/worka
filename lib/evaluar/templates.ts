@@ -10,6 +10,9 @@
 // usan el IPIP, un banco de ítems de dominio público creado justamente para
 // que existan alternativas abiertas y citables. El resto es material original.
 
+import { LIKERT_LABELS } from "./likert";
+import { INTEGRIDAD } from "./integridad";
+
 export type TemplateQuestion = {
   text: string;
   kind: "likert" | "unica";
@@ -57,13 +60,8 @@ export type TemplateDemo = {
   explain: string;
 };
 
-export const LIKERT_LABELS = [
-  "Muy en desacuerdo",
-  "En desacuerdo",
-  "Ni acuerdo ni desacuerdo",
-  "De acuerdo",
-  "Muy de acuerdo",
-];
+// Se reexporta para no romper los imports que ya la traen de aca.
+export { LIKERT_LABELS } from "./likert";
 
 // ── 1. Cinco Grandes (Big Five / OCEAN) ────────────────────────
 const bigFive: Template = {
@@ -467,7 +465,15 @@ const reasoning: Template = {
   ],
 };
 
-export const TEMPLATES: Template[] = [bigFive, workStyle, sjt, reasoning];
+// La integridad vive en su propio archivo: son 27 items con mucho contexto
+// escrito al lado, y mezclarlos aca haria ilegible el resto del catalogo.
+export const TEMPLATES: Template[] = [
+  bigFive,
+  workStyle,
+  sjt,
+  reasoning,
+  INTEGRIDAD,
+];
 
 export function getTemplate(key: string): Template | undefined {
   return TEMPLATES.find((t) => t.key === key);
