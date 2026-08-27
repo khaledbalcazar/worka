@@ -661,3 +661,60 @@ export async function getAiKeys(): Promise<AiKeyRow[]> {
     created_at: k.created_at,
   }));
 }
+
+// Busca el id de un usuario por su email, con la service role.
+//
+// Antes esto pasaba por fn_user_id_by_email, una función de la base con una
+// reja para que nadie la use como buscador de correos ajenos. La reja es
+// correcta, pero atarle las invitaciones fue un error: cada vez que la
+// condición no encaja —o que la migración que la corrige no se aplicó— la
+// pantalla dice "no encontramos una cuenta con ese email" para cuentas que
+// existen, y no hay forma de distinguir "no existe" de "no te lo puedo decir".
+//
+// Acá la reja la pone la acción que llama: todas verifican primero que quien
+// pregunta sea una empresa con acceso vigente a Evaluar. Con eso ya cumplido,
+// la consulta no necesita una segunda puerta que puede fallar sola.
+export async function findUserIdByEmail(
+  email: string
+): Promise<string | null> {
+  const limpio = email.trim().toLowerCase();
+  if (!limpio.includes("@")) return null;
+
+  // Primero la función de la base: es una consulta con índice y termina en
+  // milisegundos. Cuando su reja acepta —que es el caso normal— alcanza.
+  const supabase = await getServerClient();
+  if (supabase) {
+    const { data } = await supabase.rpc("fn_user_id_by_email", {
+      p_email: limpio,
+    });
+    if (data) return data as string;
+  }
+
+  // Si dijo que no, puede ser que la cuenta no exista o que la reja se haya
+  // negado, y desde acá no se distingue. Entonces se busca con la service
+  // role, que es lo que antes faltaba: la pantalla decía "no encontramos una
+  // cuenta con ese email" sobre cuentas que sí existían.
+  //
+  // Va segundo porque listUsers pagina de a 200 y es el mismo endpoint que
+  // falla cuando auth.users tiene tokens en NULL. Como respaldo sirve; como
+  // primera opción sería cambiar un problema por otro.
+  const admin = getAdminClient();
+  if (!admin) return null;
+
+  for (let page = 1; page <= 20; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({
+      page,
+      perPage: 200,
+    });
+    if (error) {
+      console.error("findUserIdByEmail (listUsers):", error);
+      return null;
+    }
+    const encontrado = data?.users?.find(
+      (u) => (u.email ?? "").toLowerCase() === limpio
+    );
+    if (encontrado) return encontrado.id;
+    if (!data?.users?.length || data.users.length < 200) break;
+  }
+  return null;
+}

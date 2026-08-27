@@ -8,6 +8,7 @@ import {
   Link2,
   ChevronDown,
   Clock,
+  FileText,
   ChevronUp,
   Columns3,
   List,
@@ -175,6 +176,14 @@ export default function ProcessEditor({
               >
                 Cerrar proceso
               </button>
+            )}
+            {process.status === "cerrado" && (
+              <a
+                href={`/evaluar/app/procesos/${process.id}/cierre`}
+                className="btn-primary press text-sm"
+              >
+                <FileText size={15} /> Acta de cierre
+              </a>
             )}
           </div>
         </div>

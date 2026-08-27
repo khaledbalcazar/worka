@@ -54,3 +54,24 @@ export function isPastDeadline(deadline: string | null | undefined): boolean {
   if (!deadline) return false;
   return new Date(deadline).getTime() < Date.now();
 }
+
+// Días transcurridos desde una fecha.
+//
+// Vive acá y no en la pantalla por el mismo motivo que isPastDeadline: leer
+// el reloj dentro del cuerpo de un componente da un resultado que cambia solo
+// entre renders, y React lo marca como impureza. En un archivo aparte es una
+// función común y corriente.
+export function diasDesde(fecha: string): number {
+  const inicio = new Date(fecha).getTime();
+  if (!Number.isFinite(inicio)) return 0;
+  return Math.max(1, Math.round((Date.now() - inicio) / 86_400_000));
+}
+
+/** La fecha de hoy ya escrita, para encabezados de documentos. */
+export function fechaLarga(): string {
+  return new Date().toLocaleDateString("es-PY", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}

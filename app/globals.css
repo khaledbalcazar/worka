@@ -447,3 +447,62 @@ html {
 .nk .border-gray-100,
 .nk .border-gray-200 { border-color: var(--nk-line); }
 .nk .divide-slate-100 > * + * { border-color: var(--nk-line); }
+
+/* ── Nocturne · lo que Worka Empleos pinta en claro ─────────────
+   Los avisos de Worka usan pares de Tailwind pensados para fondo blanco:
+   bg-emerald-50 con text-emerald-700, y asi con ambar, rojo y azul. Sobre el
+   oscuro se leen igual pero cortan la pantalla en dos. Se remapean al mismo
+   significado con el tono invertido: fondo tenue del color, texto claro. */
+.nk .bg-white { background: var(--nk-card); }
+
+.nk .bg-emerald-50 { background: rgba(16, 185, 129, .1); }
+.nk .border-emerald-200,
+.nk .border-emerald-300 { border-color: rgba(16, 185, 129, .28); }
+.nk .text-emerald-700,
+.nk .text-emerald-800,
+.nk .text-emerald-900 { color: #6ee7b7; }
+
+.nk .bg-amber-50 { background: rgba(245, 158, 11, .1); }
+.nk .border-amber-200,
+.nk .border-amber-300 { border-color: rgba(245, 158, 11, .3); }
+.nk .text-amber-700,
+.nk .text-amber-800,
+.nk .text-amber-900 { color: #fcd34d; }
+
+.nk .bg-red-50 { background: rgba(248, 113, 113, .1); }
+.nk .border-red-200 { border-color: rgba(248, 113, 113, .28); }
+.nk .text-danger { color: #fca5a5; }
+
+.nk .bg-blue-50 { background: rgba(96, 165, 250, .1); }
+.nk .border-blue-200 { border-color: rgba(96, 165, 250, .28); }
+.nk .text-blue-700 { color: #93c5fd; }
+
+/* El indigo del ajuste al puesto es el acento del sistema. */
+.nk .bg-indigo-50 { background: color-mix(in srgb, var(--color-accent) 14%, transparent); }
+.nk .text-indigo-700,
+.nk .text-indigo-900 { color: var(--nk-300); }
+.nk .bg-indigo-400 { background: var(--color-accent); }
+
+/* Autocompletado del navegador.
+   Chrome pinta el campo de blanco con su propio fondo y no respeta el
+   background del CSS: la unica forma de ganarle es una sombra interior del
+   tamano del campo. Sin esto, un email recordado aparece como un rectangulo
+   blanco en medio del panel oscuro. */
+.nk input:-webkit-autofill,
+.nk input:-webkit-autofill:hover,
+.nk input:-webkit-autofill:focus,
+.nk textarea:-webkit-autofill,
+.nk select:-webkit-autofill {
+  -webkit-text-fill-color: var(--color-text);
+  -webkit-box-shadow: 0 0 0 1000px var(--color-surface) inset;
+  box-shadow: 0 0 0 1000px var(--color-surface) inset;
+  caret-color: var(--color-text);
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* Las listas de la ficha del candidato y del ciclo. */
+.nk .divide-gray-100 > * + * { border-color: var(--nk-line); }
+.nk .bg-slate-200\/70 { background: var(--nk-line); }
+.nk .border-slate-100 { border-color: var(--nk-line); }
+.nk .text-gray-800,
+.nk .text-slate-900 { color: var(--color-text); }

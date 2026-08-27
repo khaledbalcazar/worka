@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
-import { TRIAL_DAYS, getMyEvaluarAccess } from "@/lib/evaluar";
+import {
+  TRIAL_DAYS,
+  findUserIdByEmail,
+  getMyEvaluarAccess,
+} from "@/lib/evaluar";
 import {
   LIKERT_LABELS,
   getRoleTemplate,
@@ -1037,11 +1041,11 @@ export async function addProcessMember(
   if (!proc) return { ok: false, error: "Ese proceso ya no existe." };
   const p = proc as { title: string; org_unit?: string; department?: string };
 
-  // El email vive en auth.users, no en profiles: lo resuelve una función con
-  // permisos elevados que solo responde a quien ya tiene procesos propios.
-  const { data: userId } = await supabase.rpc("fn_user_id_by_email", {
-    p_email: limpio,
-  });
+  // La reja ya la puso esta acción: mas arriba verifico que quien invita sea
+  // la empresa dueña con acceso vigente. Con eso cumplido la búsqueda se hace
+  // directo, sin depender de una función de la base que puede negarse sola y
+  // decir "no existe" sobre cuentas que si existen.
+  const userId = await findUserIdByEmail(limpio);
 
   if (userId === user.id)
     return { ok: false, error: "Ya sos el dueño de este proceso." };

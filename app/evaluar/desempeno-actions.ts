@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
-import { getMyEvaluarAccess } from "@/lib/evaluar";
+import { findUserIdByEmail, getMyEvaluarAccess } from "@/lib/evaluar";
 import { planOf } from "@/lib/evaluar-plans";
 import { emailEnabled, emailLayout, sendEmail } from "@/lib/email";
 import { SITE_URL } from "@/lib/supabase/config";
@@ -152,18 +152,13 @@ export async function agregarEvaluado(
   // un callejón sin salida: RRHH no podía cargar hasta que el jefe se
   // registrara, y el jefe no tenía motivo para registrarse hasta que lo
   // cargaran.
-  const { data: evaluadorId } = await supabase.rpc("fn_user_id_by_email", {
-    p_email: evalEmail,
-  });
+  const evaluadorId = await findUserIdByEmail(evalEmail);
 
   // A quién se evalúa puede no tenerla: se guarda igual y ve su evaluación
   // cuando se registre con ese email.
   let empleadoId: string | null = null;
   if (input.empleadoEmail?.trim()) {
-    const { data } = await supabase.rpc("fn_user_id_by_email", {
-      p_email: input.empleadoEmail.trim().toLowerCase(),
-    });
-    empleadoId = (data as string | null) ?? null;
+    empleadoId = await findUserIdByEmail(input.empleadoEmail);
   }
 
   const base = {
