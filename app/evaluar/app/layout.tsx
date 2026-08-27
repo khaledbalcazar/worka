@@ -26,8 +26,14 @@ export default function EvaluarAppLayout({
               Inicio
             </Link>
             <Link
+              href="/evaluar/app/desempeno"
+              className="text-sm text-slate-500 hover:text-primary-dark px-2"
+            >
+              Desempeño
+            </Link>
+            <Link
               href="/evaluar/precios"
-              className="btn-secondary press text-xs px-3"
+              className="btn-secondary press text-xs px-3 hidden sm:inline-flex"
             >
               Planes
             </Link>
