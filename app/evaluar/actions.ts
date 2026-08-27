@@ -1055,8 +1055,8 @@ export async function addProcessMember(
       ok: true,
       emailSent: invitado,
       emailReason: invitado
-        ? "Todavía no tiene cuenta en Worka: le mandamos una invitación para que se registre con ese email. Cuando lo haga, volvé a sumarlo."
-        : "Todavía no tiene cuenta en Worka y no pudimos enviarle el correo. Pedile que se registre con ese email.",
+        ? "No encontramos una cuenta de Worka con ese email, así que le mandamos una invitación para que se registre. Cuando lo haga, volvé a sumarlo."
+        : "No encontramos una cuenta de Worka con ese email y no pudimos enviarle la invitación. Pedile que se registre con ese mismo correo.",
     };
   }
 

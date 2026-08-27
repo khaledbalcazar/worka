@@ -149,7 +149,9 @@ export async function agregarEvaluado(
     return {
       ok: false,
       error:
-        "Quien evalúa todavía no tiene cuenta en Worka. Pedile que se registre con ese email.",
+        "No encontramos una cuenta de Worka con ese email. Tiene que ser el " +
+        "mismo con el que se registró, y quien evalúa necesita cuenta porque " +
+        "va a entrar a cargar la evaluación.",
     };
 
   // A quién se evalúa puede no tenerla: se guarda igual y ve su evaluación
