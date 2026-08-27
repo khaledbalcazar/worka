@@ -337,3 +337,39 @@ export const TEXTO_BANDA: Record<BandaRiesgo, string> = {
   medio: "Conviene repreguntar",
   atencion: "Merece una conversación",
 };
+
+/** Los factores de integridad que hay en un perfil, ya leídos. */
+export function leerIntegridad(
+  profile: Record<string, { raw: number; max: number }> | undefined
+): { validez: FactorIntegridad[]; riesgo: FactorIntegridad[] } | null {
+  if (!profile) return null;
+
+  const factores: FactorIntegridad[] = [];
+  for (const d of DIMENSIONES_INTEGRIDAD) {
+    const v = profile[d.key];
+    if (!v || v.max <= 0) continue;
+    const pct = Math.round((v.raw / v.max) * 100);
+    factores.push({
+      key: d.key,
+      label: d.label,
+      pct,
+      banda: bandaDe(pct),
+      validez: "validez" in d && d.validez === true,
+      lectura: pct >= 60 ? d.high : d.low,
+    });
+  }
+
+  // Si no rindió el instrumento, no hay nada que mostrar.
+  if (factores.length === 0) return null;
+
+  return {
+    validez: factores.filter((f) => f.validez),
+    // Del más bajo al más alto: lo que merece atención va primero.
+    riesgo: factores.filter((f) => !f.validez).sort((a, b) => a.pct - b.pct),
+  };
+}
+
+/** ¿Las escalas de validez invalidan la lectura del resto? */
+export function perfilConfiable(validez: FactorIntegridad[]): boolean {
+  return validez.every((f) => f.banda !== "atencion");
+}

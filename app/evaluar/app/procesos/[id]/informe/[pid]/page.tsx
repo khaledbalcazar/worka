@@ -8,6 +8,8 @@ import VideoPlayback from "@/components/evaluar/VideoPlayback";
 import CvLink from "@/components/evaluar/CvLink";
 import ProfileRadar from "@/components/evaluar/ProfileRadar";
 import PercentileBar from "@/components/evaluar/PercentileBar";
+import IntegrityReport from "@/components/evaluar/IntegrityReport";
+import { DIMENSIONES_INTEGRIDAD } from "@/lib/evaluar/integridad";
 
 export const metadata = {
   title: "Informe del candidato",
@@ -62,7 +64,15 @@ export default async function InformePage({
   }
 
   const report = await getCandidateReport(pid);
-  const dims = report?.dimensions ?? [];
+  // Los factores de integridad se leen en su propia seccion, con bandas y no
+  // con percentiles: mostrarlos tambien en el perfil general los volveria
+  // rasgos comparables como cualquier otro, que es justo lo que no son.
+  const clavesIntegridad = new Set<string>(
+    DIMENSIONES_INTEGRIDAD.map((d) => d.key)
+  );
+  const dims = (report?.dimensions ?? []).filter(
+    (d) => !clavesIntegridad.has(d.key)
+  );
   const alertas = (report?.quality ?? []).filter((q) => q.severity === "alerta");
 
   return (
@@ -210,6 +220,11 @@ export default async function InformePage({
             de respuesta apurada, plana ni contradictoria.
           </p>
         )}
+
+        {/* Integridad. Va antes del perfil general porque se lee distinto:
+            aca no hay rasgos mejores ni peores sino factores que piden o no
+            una repregunta en la entrevista. */}
+        <IntegrityReport profile={c.profile} />
 
         {/* Perfil por rasgo */}
         {dims.length > 0 && (
