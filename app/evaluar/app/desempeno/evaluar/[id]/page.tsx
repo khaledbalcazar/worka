@@ -8,6 +8,27 @@ import DesempenoForm from "@/components/evaluar/DesempenoForm";
 
 export const metadata = { title: "Evaluar", robots: { index: false } };
 
+function SinAcceso({ motivo }: { motivo: "fila" | "ciclo" }) {
+  return (
+    <div className="max-w-lg mx-auto px-4 py-16 text-center">
+      <h1 className="text-xl font-bold text-primary-dark">
+        No podemos abrir esta evaluación
+      </h1>
+      <p className="text-sm text-slate-600 mt-2 leading-relaxed">
+        {motivo === "fila"
+          ? "O el enlace no corresponde a ninguna evaluación, o no sos vos quien tiene que cargarla. Fijate que estés con la misma cuenta a la que se la asignaron."
+          : "La evaluación existe pero no podemos leer el ciclo al que pertenece. Avisale a quien administra el ciclo: es un permiso que le falta a tu cuenta."}
+      </p>
+      <Link
+        href="/evaluar/app/desempeno"
+        className="btn-secondary press inline-flex mt-5"
+      >
+        Ver mis evaluaciones
+      </Link>
+    </div>
+  );
+}
+
 // La pantalla del evaluador. No pasa por getCiclo porque quien entra acá suele
 // ser un jefe de área, que no es dueño de la cuenta: la política de RLS le
 // deja ver su propia fila y el ciclo al que pertenece, nada más.
@@ -32,10 +53,14 @@ export default async function EvaluarPage({
     .select("*, ciclo:evaluar_ciclos(*)")
     .eq("id", id)
     .maybeSingle();
-  if (!data) notFound();
+
+  // Un 404 pelado acá era el peor mensaje posible: no distingue entre "el
+  // enlace esta mal" y "esta evaluacion no es tuya", que se resuelven de
+  // formas muy distintas.
+  if (!data) return <SinAcceso motivo="fila" />;
 
   const fila = data as unknown as Desempeno & { ciclo: Ciclo | null };
-  if (!fila.ciclo) notFound();
+  if (!fila.ciclo) return <SinAcceso motivo="ciclo" />;
 
   const competencias = competenciasDe(fila.ciclo, fila);
   const enviada = fila.status === "enviada";
