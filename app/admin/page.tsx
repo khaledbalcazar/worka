@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import Logo from "@/components/Logo";
@@ -30,6 +31,10 @@ import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 
 export const metadata = { title: "Backoffice" };
 
+// El panel hace muchas consultas y listar usuarios sola tarda siete segundos.
+// Con el limite por defecto la funcion se cortaba antes de terminar.
+export const maxDuration = 60;
+
 // Cada panel del backoffice trae sus datos por su cuenta, y una sola consulta
 // rota tumbaba la pantalla entera: el Promise.all rechaza con la primera que
 // falle y la pagina devuelve 500. Paso justo con un 500 del endpoint de
@@ -61,6 +66,97 @@ export default async function AdminPage() {
     if (profile?.role !== "admin") redirect("/");
   }
 
+  return (
+    <div className="flex-1 bg-surface min-h-screen">
+      <AdminHeader />
+      {/* Cada bloque llega por su cuenta.
+          Antes la pagina esperaba a que terminaran las diecisiete consultas
+          para mandar el primer byte, y listar usuarios sola tarda siete
+          segundos: la funcion se pasaba del tiempo limite, Vercel la cortaba
+          y el navegador mostraba "no se pudo cargar" sin ningun error en los
+          logs, porque no fallaba — la mataban.
+          Ahora la cabecera sale al instante y lo lento se rellena despues. */}
+      <Suspense fallback={<Cargando texto="Cargando el panel…" />}>
+        <PanelPrincipal />
+      </Suspense>
+
+      {/* Suscripciones de Worka Evaluar. Va como seccion aparte porque el
+          cobro es manual: es la pantalla donde se activa a quien pago. */}
+      <div className="max-w-6xl mx-auto px-4 pb-10">
+        <Suspense fallback={<Cargando texto="Cargando suscripciones…" />}>
+          <PanelSuscripciones />
+        </Suspense>
+      </div>
+
+      {/* Claves del asistente de IA. Varias por proveedor: con una sola, el
+          tope por minuto de Groq lo deja caido justo cuando mas se usa. */}
+      <div className="max-w-6xl mx-auto px-4 pb-10">
+        <Suspense fallback={<Cargando texto="Cargando claves…" />}>
+          <PanelClaves />
+        </Suspense>
+      </div>
+
+      {/* Editor de los correos que manda la plataforma. */}
+      <div className="max-w-6xl mx-auto px-4 pb-10">
+        <Suspense fallback={<Cargando texto="Cargando plantillas…" />}>
+          <PanelCorreos />
+        </Suspense>
+      </div>
+    </div>
+  );
+}
+
+function Cargando({ texto }: { texto: string }) {
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-10">
+      <p className="text-sm text-gray-400 animate-pulse">{texto}</p>
+    </div>
+  );
+}
+
+function AdminHeader() {
+  return (
+    <header className="bg-primary-dark text-white px-4 lg:px-8 py-4 flex items-center justify-between">
+      <div className="flex items-center gap-3">
+        <Logo light href="/admin" />
+        <span className="chip bg-white/10 text-blue-200">Backoffice</span>
+      </div>
+      <div className="flex items-center gap-4">
+        <Link href="/admin/blog" className="text-sm text-blue-200 underline">
+          📝 Blog
+        </Link>
+        <Link href="/admin/externas" className="text-sm text-blue-200 underline">
+          🌐 Externas
+        </Link>
+        <Link href="/admin/academia" className="text-sm text-blue-200 underline">
+          🎓 Academia
+        </Link>
+        <Link href="/" className="text-sm text-blue-200 underline">
+          Salir
+        </Link>
+      </div>
+    </header>
+  );
+}
+
+// Los tres paneles de abajo traen solo lo suyo: antes una consulta lenta de
+// cualquiera de ellos retrasaba la pantalla entera.
+async function PanelSuscripciones() {
+  const accounts = await seguro("getEvaluarAccounts", () => getEvaluarAccounts(), []);
+  return <AdminSubscriptions accounts={accounts} />;
+}
+
+async function PanelClaves() {
+  const keys = await seguro("getAiKeys", () => getAiKeys(), []);
+  return <AdminAiKeys keys={keys} />;
+}
+
+async function PanelCorreos() {
+  const overrides = await seguro("getEmailTemplateOverrides", () => getEmailTemplateOverrides(), []);
+  return <EmailTemplates overrides={overrides} />;
+}
+
+async function PanelPrincipal() {
   const [
     moderationQueue,
     reports,
@@ -77,9 +173,6 @@ export default async function AdminPage() {
     detailedReports,
     allJobs,
     customBadges,
-    evaluarAccounts,
-    emailOverrides,
-    aiKeys,
   ] = await Promise.all([
     seguro("getModerationQueue", () => getModerationQueue(), []),
     seguro("getReports", () => getReports(), []),
@@ -112,9 +205,6 @@ export default async function AdminPage() {
     seguro("getDetailedReports", () => getDetailedReports(), []),
     seguro("getAllJobsForAdmin", () => getAllJobsForAdmin(), []),
     seguro("getCustomBadges", () => getCustomBadges(), []),
-    seguro("getEvaluarAccounts", () => getEvaluarAccounts(), []),
-    seguro("getEmailTemplateOverrides", () => getEmailTemplateOverrides(), []),
-    seguro("getAiKeys", () => getAiKeys(), []),
   ]);
 
   const identityQueue = await Promise.all(
@@ -125,67 +215,22 @@ export default async function AdminPage() {
   );
 
   return (
-    <div className="flex-1 bg-surface min-h-screen">
-      <header className="bg-primary-dark text-white px-4 lg:px-8 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Logo light href="/admin" />
-          <span className="chip bg-white/10 text-blue-200">Backoffice</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/admin/blog" className="text-sm text-blue-200 underline">
-            📝 Blog
-          </Link>
-          <Link
-            href="/admin/externas"
-            className="text-sm text-blue-200 underline"
-          >
-            🌐 Externas
-          </Link>
-          <Link
-            href="/admin/academia"
-            className="text-sm text-blue-200 underline"
-          >
-            🎓 Academia
-          </Link>
-          <Link href="/" className="text-sm text-blue-200 underline">
-            Salir
-          </Link>
-        </div>
-      </header>
-      <AdminPanel
-        moderationQueue={moderationQueue}
-        reports={reports}
-        pendingCompanies={pendingCompanies}
-        allCompanies={allCompanies}
-        activeJobsCount={activeJobsCount}
-        identityQueue={identityQueue}
-        references={references}
-        boosts={boosts}
-        settings={settings}
-        pendingIndustries={pendingIndustries}
-        adminUsers={adminUsers}
-        globalStats={globalStats}
-        detailedReports={detailedReports}
-        allJobs={allJobs}
-        customBadges={customBadges}
-      />
-
-      {/* Suscripciones de Worka Evaluar. Va como seccion aparte porque el
-          cobro es manual: es la pantalla donde se activa a quien pago. */}
-      <div className="max-w-6xl mx-auto px-4 pb-10">
-        <AdminSubscriptions accounts={evaluarAccounts} />
-      </div>
-
-      {/* Claves del asistente de IA. Varias por proveedor: con una sola, el
-          tope por minuto de Groq lo deja caido justo cuando mas se usa. */}
-      <div className="max-w-6xl mx-auto px-4 pb-10">
-        <AdminAiKeys keys={aiKeys} />
-      </div>
-
-      {/* Editor de los correos que manda la plataforma. */}
-      <div className="max-w-6xl mx-auto px-4 pb-10">
-        <EmailTemplates overrides={emailOverrides} />
-      </div>
-    </div>
+        <AdminPanel
+          moderationQueue={moderationQueue}
+          reports={reports}
+          pendingCompanies={pendingCompanies}
+          allCompanies={allCompanies}
+          activeJobsCount={activeJobsCount}
+          identityQueue={identityQueue}
+          references={references}
+          boosts={boosts}
+          settings={settings}
+          pendingIndustries={pendingIndustries}
+          adminUsers={adminUsers}
+          globalStats={globalStats}
+          detailedReports={detailedReports}
+          allJobs={allJobs}
+          customBadges={customBadges}
+        />
   );
 }
