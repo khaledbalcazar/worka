@@ -14,6 +14,16 @@ import { SITE_URL, evaluarUrl } from "@/lib/supabase/config";
 // Console y Google for Jobs leen para indexar la app. Se regenera cada hora.
 export const revalidate = 3600;
 
+// El sitemap se sirve cacheado en milisegundos, pero cada hora se regenera:
+// y esa generacion recorre vacantes, empresas, externas, notas y cursos —
+// mas de mil URLs. Sin limite declarado corre con el que trae por defecto, y
+// si se pasa, Vercel corta la funcion: quien pida el sitemap en ese momento
+// —incluido Googlebot— recibe un error y Search Console lo anota como "no se
+// ha podido obtener".
+//
+// Un minuto es de sobra y solo se usa en la regeneracion, no en cada visita.
+export const maxDuration = 60;
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = SITE_URL.replace(/\/$/, "");
   const now = new Date();
