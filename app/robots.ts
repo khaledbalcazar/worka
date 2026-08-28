@@ -26,6 +26,14 @@ export default function robots(): MetadataRoute.Robots {
           "/recuperar",
           "/auth/",
           "/ref/",
+          // Worka Evaluar. La portada y los precios se indexan; el panel de
+          // trabajo no tiene nada que hacer en un buscador.
+          "/evaluar/app",
+          // Y sobre todo esto: el enlace del candidato lleva su token en la
+          // URL. Si Google lo indexara, la evaluacion de una persona quedaria
+          // buscable por cualquiera. Las paginas ya salen con noindex, pero
+          // el robots es la primera barrera y no depende de que se renderice.
+          "/evaluar/e/",
         ],
       },
     ],

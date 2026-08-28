@@ -3,12 +3,24 @@ import MarketingShell from "@/components/evaluar/MarketingShell";
 import Faq from "@/components/evaluar/Faq";
 import { TRIAL_DAYS } from "@/lib/evaluar-config";
 import VentasCta from "@/components/evaluar/VentasCta";
+import {
+  evaluarMetadata,
+  jsonLdFaq,
+  jsonLdMigas,
+  jsonLdProducto,
+} from "@/lib/evaluar/seo";
+import { getSiteSettings } from "@/lib/data";
 
-export const metadata = {
-  title: "Worka Evaluar — Selección de personal sin fricción",
+// El título lleva las palabras con las que alguien busca esto en Paraguay:
+// "software de selección de personal" y "evaluación de candidatos". El nombre
+// del producto va al final — nadie lo busca todavía.
+export const metadata = evaluarMetadata({
+  title:
+    "Software de selección de personal y evaluación de candidatos | Worka Evaluar",
   description:
-    "Software de reclutamiento y evaluación de candidatos. Enlazá tu vacante de Worka y la gente empieza los tests desde el propio aviso. 15 días de prueba gratis.",
-};
+    "Tests psicométricos, tablero de decisión e informes por candidato para empresas de Paraguay. Enlazá tu vacante y la gente rinde desde el propio aviso, sin crear cuenta. 15 días gratis.",
+  path: "/",
+});
 
 const MUTED = "rgba(233,233,237,.6)";
 const FAINT = "rgba(233,233,237,.45)";
@@ -140,9 +152,29 @@ const CIFRAS = [
   { v: "24/7", l: "rinden cuando pueden" },
 ];
 
-export default function EvaluarLandingPage() {
+export default async function EvaluarLandingPage() {
+  // Los precios salen de site_settings, los mismos que muestra /precios: un
+  // JSON-LD con un precio distinto al de la página es motivo de sanción.
+  const settings = await getSiteSettings();
+
   return (
     <MarketingShell>
+      {/* Datos estructurados. Van en el HTML y no por script externo porque
+          Google los lee al renderizar, y un script diferido puede no estar
+          cuando pasa el rastreador. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([
+            jsonLdProducto({
+              esencial: settings.evaluar_precio_esencial ?? undefined,
+              profesional: settings.evaluar_precio_profesional ?? undefined,
+            }),
+            jsonLdFaq(),
+            jsonLdMigas([{ nombre: "Worka Evaluar", path: "/" }]),
+          ]),
+        }}
+      />
       {/* ── Portada ─────────────────────────────────────────── */}
       <section className="relative">
         <canvas

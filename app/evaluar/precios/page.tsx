@@ -3,12 +3,14 @@ import MarketingShell from "@/components/evaluar/MarketingShell";
 import { getSiteSettings } from "@/lib/data";
 import { TRIAL_DAYS } from "@/lib/evaluar-config";
 import VentasCta from "@/components/evaluar/VentasCta";
+import { evaluarMetadata, jsonLdMigas } from "@/lib/evaluar/seo";
 
-export const metadata = {
-  title: "Precios",
+export const metadata = evaluarMetadata({
+  title: "Precios y planes | Worka Evaluar",
   description:
-    "Planes de Worka Evaluar. Empezá con 15 días gratis, sin tarjeta y sin cobro automático.",
-};
+    "Cuánto cuesta Worka Evaluar en Paraguay: planes Esencial, Profesional y Corporativo, en guaraníes. 15 días gratis, sin tarjeta y sin cobro automático.",
+  path: "/precios",
+});
 
 function gs(value: string): string | null {
   const n = Number(value);
@@ -81,6 +83,17 @@ export default async function PreciosPage() {
 
   return (
     <MarketingShell>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(
+            jsonLdMigas([
+              { nombre: "Worka Evaluar", path: "/" },
+              { nombre: "Precios", path: "/precios" },
+            ])
+          ),
+        }}
+      />
       <div className="max-w-6xl mx-auto px-6 py-16 md:py-20">
         <header className="text-center max-w-2xl mx-auto">
           <span className="inline-flex items-center gap-2 text-xs font-medium text-[var(--nk-300)] border border-[rgba(145,132,217,.35)] rounded-full px-3 py-1.5">

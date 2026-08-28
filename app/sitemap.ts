@@ -7,7 +7,7 @@ import {
   getPublishedCourses,
 } from "@/lib/data";
 import { COUNTRIES } from "@/lib/countries";
-import { SITE_URL } from "@/lib/supabase/config";
+import { SITE_URL, evaluarUrl } from "@/lib/supabase/config";
 
 // Sitemap DINÁMICO: incluye automáticamente cada vacante activa y cada
 // empresa verificada, además de las páginas públicas. Es lo que Google Search
@@ -17,6 +17,29 @@ export const revalidate = 3600;
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = SITE_URL.replace(/\/$/, "");
   const now = new Date();
+
+  // Worka Evaluar es un producto aparte y vive en su propio subdominio. Las
+  // URLs van con evaluar.worka.click, que es lo que declara el canonical de
+  // cada pagina: listarlas como /evaluar contradiria esa senal y dejaria a
+  // Google eligiendo cual de las dos indexar.
+  //
+  // Para que entren hay que verificar evaluar.worka.click en Search Console
+  // ademas del dominio principal. Sin eso Google ignora las URLs de otro host
+  // dentro de este sitemap.
+  const evaluarRoutes: MetadataRoute.Sitemap = [
+    {
+      url: evaluarUrl(),
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
+    {
+      url: evaluarUrl("/precios"),
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
+  ];
 
   const staticRoutes: { path: string; priority: number }[] = [
     { path: "", priority: 1 },
@@ -83,5 +106,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Si Supabase no responde, al menos devolvemos las rutas estáticas.
   }
 
-  return entries;
+  return [...evaluarRoutes, ...entries];
 }
