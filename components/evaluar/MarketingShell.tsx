@@ -13,7 +13,7 @@ const NAV = [
   { href: "/evaluar#plataforma", label: "Plataforma" },
   { href: "/evaluar#ia", label: "Asistente IA" },
   { href: "/evaluar#talento", label: "Talento humano" },
-  { href: "/evaluar#como-funciona", label: "Cómo funciona" },
+  { href: "/evaluar/recursos", label: "Recursos" },
   { href: "/evaluar/precios", label: "Precios" },
 ];
 

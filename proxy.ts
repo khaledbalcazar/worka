@@ -29,7 +29,7 @@ const PROTECTED_PREFIXES = [
 // lista al revés, cualquier ruta compartida que nadie recordara agregar
 // terminaba reescrita a /evaluar/<algo> y devolvía 404. Fue exactamente lo que
 // pasó con /ingresar, que dejaba a la empresa sin poder entrar.
-const EVALUAR_PATHS = ["/app", "/e/", "/precios"];
+const EVALUAR_PATHS = ["/app", "/e/", "/precios", "/recursos"];
 
 function evaluarTarget(request: NextRequest): URL | null {
   const host = request.headers.get("host") ?? "";

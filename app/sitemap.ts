@@ -8,6 +8,7 @@ import {
 } from "@/lib/data";
 import { COUNTRIES } from "@/lib/countries";
 import { SITE_URL, evaluarUrl } from "@/lib/supabase/config";
+import { RECURSOS } from "@/lib/evaluar/recursos";
 
 // Sitemap DINÁMICO: incluye automáticamente cada vacante activa y cada
 // empresa verificada, además de las páginas públicas. Es lo que Google Search
@@ -49,6 +50,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.8,
     },
+    {
+      url: evaluarUrl("/recursos"),
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+    // Las notas de fondo. Son las que traen a quien todavia no sabe que
+    // existe el producto, asi que van con prioridad alta.
+    ...RECURSOS.map((r) => ({
+      url: evaluarUrl(`/recursos/${r.slug}`),
+      lastModified: new Date(r.fecha),
+      changeFrequency: "yearly" as const,
+      priority: 0.7,
+    })),
   ];
 
   const staticRoutes: { path: string; priority: number }[] = [
