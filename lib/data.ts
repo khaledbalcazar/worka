@@ -473,6 +473,11 @@ export interface CompanyThread {
   applicationId: string;
   jobTitle: string;
   candidateName: string;
+  // Para los dos botones del encabezado del hilo: ver el perfil y seguir por
+  // WhatsApp. Son opcionales porque una postulación de un candidato borrado
+  // sigue existiendo y su fila viene sin persona.
+  candidateId: string | null;
+  candidatePhone: string;
   messages: ChatMessage[];
 }
 
@@ -483,6 +488,8 @@ export async function getCompanyThreads(): Promise<CompanyThread[]> {
       applicationId: a.id,
       jobTitle: "Cajero/a para sucursal centro",
       candidateName: a.candidate_name,
+      candidateId: a.id,
+      candidatePhone: "595981234567",
       messages: mock.chatMessages.filter((m) => m.application_id === a.id),
     }));
   const user = await getCurrentUser();
@@ -490,7 +497,7 @@ export async function getCompanyThreads(): Promise<CompanyThread[]> {
   const { data } = await supabase
     .from("applications")
     .select(
-      "id, job:jobs!inner(title, company_id), candidate:candidates(full_name), messages(id, application_id, sender, content, created_at)"
+      "id, job:jobs!inner(title, company_id), candidate:candidates(id, full_name, phone_whatsapp), messages(id, application_id, sender, content, created_at)"
     )
     .eq("job.company_id", (await getCurrentCompany())?.id ?? user.id)
     .order("applied_at", { ascending: false })
@@ -499,6 +506,8 @@ export async function getCompanyThreads(): Promise<CompanyThread[]> {
     applicationId: row.id,
     jobTitle: row.job?.title ?? "Vacante",
     candidateName: row.candidate?.full_name ?? "Candidato",
+    candidateId: row.candidate?.id ?? null,
+    candidatePhone: (row.candidate?.phone_whatsapp ?? "").replace(/\D/g, ""),
     messages: (row.messages ?? []).sort(
       (a: ChatMessage, b: ChatMessage) =>
         new Date(a.created_at).getTime() - new Date(b.created_at).getTime()

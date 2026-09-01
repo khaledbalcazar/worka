@@ -274,6 +274,17 @@ html {
   scrollbar-width: thin;
 }
 
+/* Fila de atajos que se arrastra de costado. La barra se ve solo al pasar
+   por encima: es una tira de tres botones, y una barra permanente debajo
+   ocupa casi tanto como los botones mismos. */
+.scroll-hover {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.scroll-hover:hover {
+  scrollbar-color: #e2e8f0 transparent;
+}
+
 
 /* ── Impresión ─────────────────────────────────────────────────
    El informe del candidato se guarda como PDF desde el navegador, así que

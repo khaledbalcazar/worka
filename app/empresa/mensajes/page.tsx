@@ -13,6 +13,8 @@ export default async function CompanyMessagesPage() {
     jobTitle: t.jobTitle,
     companyName: t.candidateName, // el interlocutor de la empresa es el candidato
     messages: t.messages,
+    peerHref: t.candidateId ? `/p/${t.candidateId}` : null,
+    peerPhone: t.candidatePhone,
   }));
 
   // Conversaciones con actividad primero.
@@ -37,7 +39,5 @@ export default async function CompanyMessagesPage() {
     );
   }
 
-  return (
-    <ChatClient threads={[...withActivity, ...rest]} viewAs="company" />
-  );
+  return <ChatClient threads={[...withActivity, ...rest]} viewAs="company" />;
 }
