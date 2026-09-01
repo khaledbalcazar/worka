@@ -384,6 +384,29 @@ export async function getCurrentCompany(): Promise<Company | null> {
   return company ? mapCompany(company) : null;
 }
 
+// Rol de quien está mirando, dentro de la empresa que tiene abierta.
+// "dueno" no es un rol de la tabla: es quien tiene la cuenta y siempre puede
+// todo, así que se devuelve aparte en vez de inventarle una fila.
+export async function getMyCompanyRole(
+  companyId: string
+): Promise<"dueno" | import("./types").CompanyRole | null> {
+  const supabase = await getServerClient();
+  if (!supabase) return "dueno";
+  const user = await getCurrentUser();
+  if (!user) return null;
+  if (user.id === companyId) return "dueno";
+  const { data } = await supabase
+    .from("company_members")
+    .select("role")
+    .eq("company_id", companyId)
+    .eq("member_id", user.id)
+    .eq("status", "activa")
+    .maybeSingle();
+  if (!data) return null;
+  return ((data as { role?: string }).role ??
+    "reclutador") as import("./types").CompanyRole;
+}
+
 export async function getCompanyMembers(
   companyId: string
 ): Promise<import("./types").CompanyMember[]> {
@@ -394,7 +417,12 @@ export async function getCompanyMembers(
     .select("*")
     .eq("company_id", companyId)
     .order("created_at");
-  return (data ?? []) as import("./types").CompanyMember[];
+  // El rol se completa acá: las filas creadas antes de la migración 039 no
+  // tienen la columna, y sin esto la pantalla mostraria un rol vacio.
+  return ((data ?? []) as Record<string, unknown>[]).map((m) => ({
+    ...m,
+    role: (m.role as string) ?? "reclutador",
+  })) as import("./types").CompanyMember[];
 }
 
 export async function getApplicantsForJob(
@@ -551,6 +579,86 @@ export async function getCompanyActivity(
     at: row.applied_at,
     status: row.status as ApplicationStatus,
   }));
+}
+
+/* ── Métricas de la empresa ─────────────────────────────────────────────
+   Se trae medio año de postulaciones de una vez y los cortes por período
+   (4 semanas, 12 semanas, 6 meses) los hace el navegador sobre ese mismo
+   conjunto. Es una consulta en lugar de tres, y cambiar de período no
+   espera al servidor.
+
+   Lo que NO está acá es "contrataciones": una postulación puede quedar en
+   Pendiente, Revisado, Contactado o Rechazado, y ninguno de esos estados
+   significa que la persona entró a trabajar. Antes que inventar el número,
+   la métrica que se muestra es "contactados", que sí es un hecho registrado. */
+export interface CompanyMetrics {
+  // Una fila por postulación, con lo mínimo para agrupar del lado del cliente.
+  applications: { at: string; industry: string; status: ApplicationStatus }[];
+  interviews: number;
+  totalViews: number;
+  // El instante del corte viaja con los datos: el componente lo usa para
+  // recortar los períodos, y si lo leyera del reloj del navegador las semanas
+  // del borde podrían caer distinto de como salieron del servidor.
+  now: number;
+}
+
+export async function getCompanyMetrics(
+  companyId: string,
+  meses = 6
+): Promise<CompanyMetrics> {
+  const now = Date.now();
+  const desde = new Date(now - meses * 30 * 86400000).toISOString();
+  const supabase = await getServerClient();
+  const jobs = await getJobsByCompany(companyId);
+  const totalViews = jobs.reduce((s, j) => s + j.views_count, 0);
+
+  if (!supabase) {
+    // Modo demo: postulaciones repartidas sobre el período, para que el
+    // gráfico tenga forma sin pretender ser un dato real.
+    const apps = Array.from({ length: 64 }, (_, i) => ({
+      at: new Date(
+        Date.now() - Math.floor((i * meses * 30) / 64) * 86400000
+      ).toISOString(),
+      industry: jobs[i % Math.max(jobs.length, 1)]?.industry ?? "General",
+      status: (["Pendiente", "Revisado", "Contactado", "Rechazado"] as const)[
+        i % 4
+      ],
+    }));
+    return { applications: apps, interviews: 9, totalViews, now };
+  }
+
+  const jobIds = jobs.map((j) => j.id);
+  if (jobIds.length === 0)
+    return { applications: [], interviews: 0, totalViews, now };
+
+  const rubroDe = new Map(jobs.map((j) => [j.id, j.industry]));
+  const [{ data: apps }, { count: interviews }] = await Promise.all([
+    supabase
+      .from("applications")
+      .select("job_id, status, applied_at")
+      .in("job_id", jobIds)
+      .gte("applied_at", desde)
+      .order("applied_at", { ascending: true })
+      .limit(5000),
+    supabase
+      .from("interviews")
+      .select("id, application:applications!inner(job_id)", {
+        count: "exact",
+        head: true,
+      })
+      .in("application.job_id", jobIds),
+  ]);
+
+  return {
+    applications: ((apps ?? []) as any[]).map((r) => ({
+      at: r.applied_at,
+      industry: rubroDe.get(r.job_id) ?? "General",
+      status: r.status as ApplicationStatus,
+    })),
+    interviews: interviews ?? 0,
+    totalViews,
+    now,
+  };
 }
 
 export async function getCompanyStats(

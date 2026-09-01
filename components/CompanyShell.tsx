@@ -50,6 +50,25 @@ function IcoSearch() {
     </svg>
   );
 }
+function IcoChart() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden>
+      <rect x="1" y="8" width="3" height="6" rx="1" fill="currentColor" opacity=".5" />
+      <rect x="6" y="5" width="3" height="9" rx="1" fill="currentColor" opacity=".75" />
+      <rect x="11" y="2" width="3" height="12" rx="1" fill="currentColor" />
+    </svg>
+  );
+}
+function IcoTeam() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden>
+      <circle cx="5.5" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M1 13c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+      <circle cx="11" cy="4.5" r="2" stroke="currentColor" strokeWidth="1.4" opacity=".6" />
+      <path d="M14 12c0-2-1.5-3-3-3" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" opacity=".6" />
+    </svg>
+  );
+}
 function IcoBuilding() {
   return (
     <svg width="15" height="15" viewBox="0 0 15 15" fill="none" aria-hidden>
@@ -78,6 +97,7 @@ const GROUPS: { label?: string; items: Item[] }[] = [
         label: "Nueva vacante",
         icon: <IcoPlus />,
       },
+      { href: "/empresa/metricas", label: "Métricas", icon: <IcoChart /> },
     ],
   },
   {
@@ -85,6 +105,7 @@ const GROUPS: { label?: string; items: Item[] }[] = [
     items: [
       { href: "/empresa/mensajes", label: "Mensajes", icon: <IcoChat /> },
       { href: "/empresa/talento", label: "Buscar talento", icon: <IcoSearch /> },
+      { href: "/empresa/equipo", label: "Equipo", icon: <IcoTeam /> },
     ],
   },
   {

@@ -583,6 +583,7 @@ export const companyMembers = [
     email: "rrhh@superguarani.com.py",
     member_id: "u-rrhh",
     status: "activa" as const,
+    role: "administrador" as const,
     created_at: "2026-07-01T09:00:00Z",
   },
   {
@@ -591,6 +592,7 @@ export const companyMembers = [
     email: "seleccion@superguarani.com.py",
     member_id: null,
     status: "invitada" as const,
+    role: "reclutador" as const,
     created_at: "2026-07-15T10:00:00Z",
   },
 ];

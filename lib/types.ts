@@ -239,12 +239,40 @@ export interface Candidate {
 }
 
 // Miembro del equipo de reclutamiento de una empresa
+// Roles del equipo. No son solo una etiqueta: la migración 039 los hace valer
+// en las políticas de la base, así que un observador no puede escribir aunque
+// alguien llame a la API por fuera de la pantalla.
+export type CompanyRole = "administrador" | "reclutador" | "observador";
+
+export const COMPANY_ROLES: {
+  id: CompanyRole;
+  label: string;
+  desc: string;
+}[] = [
+  {
+    id: "administrador",
+    label: "Administrador",
+    desc: "Acceso total: vacantes, candidatos y gestión del equipo.",
+  },
+  {
+    id: "reclutador",
+    label: "Reclutador",
+    desc: "Publica vacantes y gestiona candidatos. No toca el equipo.",
+  },
+  {
+    id: "observador",
+    label: "Observador",
+    desc: "Solo mira vacantes y candidatos. No puede editar ni responder.",
+  },
+];
+
 export interface CompanyMember {
   id: string;
   company_id: string;
   email: string;
   member_id: string | null;
   status: "invitada" | "activa";
+  role: CompanyRole;
   created_at: string;
 }
 

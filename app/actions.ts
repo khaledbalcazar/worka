@@ -5,9 +5,11 @@ import { notify, notifyMany } from "@/lib/notify";
 import { redirect } from "next/navigation";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { slugify as toSlug } from "@/lib/slug";
+import { COMPANY_ROLES } from "@/lib/types";
 import type {
   ApplicationStatus,
   BadgeId,
+  CompanyRole,
   ContractType,
   JobStatus,
   Modality,
@@ -1313,28 +1315,74 @@ export async function resolveBoost(
 }
 
 // Configuración del sitio (CMS-lite del backoffice)
-// Invita a un reclutador al equipo de la empresa (por email).
-export async function inviteTeamMember(email: string): Promise<ActionResult> {
+// Invita a alguien al equipo de la empresa (por email y con un rol).
+//
+// El id de la empresa sale de getEffectiveCompanyId y no de user.id: un
+// administrador invitado también puede sumar gente, y su user.id no es el de
+// la empresa. Quién puede hacerlo de verdad lo decide RLS (migración 039);
+// esto solo evita apuntar a la empresa equivocada.
+export async function inviteTeamMember(
+  email: string,
+  role: CompanyRole = "reclutador"
+): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Iniciá sesión como empresa." };
+  const companyId = await getEffectiveCompanyId(supabase, user.id);
+  if (!companyId) return { ok: false, error: "No encontramos tu empresa." };
   const clean = email.trim().toLowerCase();
   if (!clean.includes("@"))
     return { ok: false, error: "Escribí un email válido." };
+  if (!COMPANY_ROLES.some((r) => r.id === role))
+    return { ok: false, error: "Ese rol no existe." };
 
   const { error } = await supabase
     .from("company_members")
-    .insert({ company_id: user.id, email: clean });
+    .insert({ company_id: companyId, email: clean, role });
   if (error) {
     if (error.code === "23505")
       return { ok: false, error: "Ese email ya está invitado." };
+    if (error.code === "42703")
+      return {
+        ok: false,
+        error: "Falta correr migration-039.sql en Supabase.",
+      };
     return {
       ok: false,
       error: "No pudimos invitar (¿corriste migration-005.sql?).",
     };
   }
+  revalidatePath("/empresa/equipo");
   revalidatePath("/empresa/perfil");
+  return { ok: true };
+}
+
+export async function setTeamMemberRole(
+  id: string,
+  role: CompanyRole
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sesión no válida." };
+  if (!COMPANY_ROLES.some((r) => r.id === role))
+    return { ok: false, error: "Ese rol no existe." };
+  const companyId = await getEffectiveCompanyId(supabase, user.id);
+  if (!companyId) return { ok: false, error: "No encontramos tu empresa." };
+
+  // Sin .select() no hay forma de distinguir "no tenía permiso" de "salió
+  // bien": RLS deja pasar el UPDATE y afecta cero filas, sin error.
+  const { data, error } = await supabase
+    .from("company_members")
+    .update({ role })
+    .eq("id", id)
+    .eq("company_id", companyId)
+    .select("id");
+  if (error) return { ok: false, error: "No pudimos cambiar el rol." };
+  if (!data || data.length === 0)
+    return { ok: false, error: "No tenés permiso para cambiar ese rol." };
+  revalidatePath("/empresa/equipo");
   return { ok: true };
 }
 
@@ -1343,12 +1391,18 @@ export async function removeTeamMember(id: string): Promise<ActionResult> {
   if (!supabase) return DEMO;
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Sesión no válida." };
-  const { error } = await supabase
+  const companyId = await getEffectiveCompanyId(supabase, user.id);
+  if (!companyId) return { ok: false, error: "No encontramos tu empresa." };
+  const { data, error } = await supabase
     .from("company_members")
     .delete()
     .eq("id", id)
-    .eq("company_id", user.id);
+    .eq("company_id", companyId)
+    .select("id");
   if (error) return { ok: false, error: "No pudimos quitar al miembro." };
+  if (!data || data.length === 0)
+    return { ok: false, error: "No tenés permiso para quitar a esa persona." };
+  revalidatePath("/empresa/equipo");
   revalidatePath("/empresa/perfil");
   return { ok: true };
 }

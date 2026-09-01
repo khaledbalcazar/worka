@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState, useTransition } from "react";
 import type {
   Company,
@@ -11,8 +12,6 @@ import { BADGE_CATALOG } from "@/lib/types";
 import { FastResponderBadge, VerifiedBadge } from "@/components/Badges";
 import {
   createCompanyPost,
-  inviteTeamMember,
-  removeTeamMember,
   updateCompanyProfile,
   uploadCompanyImage,
 } from "@/app/actions";
@@ -43,42 +42,7 @@ export default function CompanyProfileEditor({
   );
   const [posts, setPosts] = useState(initialPosts);
   const [newPost, setNewPost] = useState("");
-  const [members, setMembers] = useState(initialMembers);
-  const [inviteEmail, setInviteEmail] = useState("");
 
-  function invite() {
-    const email = inviteEmail.trim().toLowerCase();
-    if (!email) return;
-    startTransition(async () => {
-      const result = await inviteTeamMember(email);
-      if (!result.ok) {
-        flash(result.error ?? "No pudimos invitar.");
-        return;
-      }
-      setMembers((prev) => [
-        ...prev,
-        {
-          id: `local-${Date.now()}`,
-          company_id: company.id,
-          email,
-          member_id: null,
-          status: "invitada" as const,
-          created_at: new Date().toISOString(),
-        },
-      ]);
-      setInviteEmail("");
-      flash(
-        `📨 Invitación registrada. Cuando ${email} cree su cuenta (o ingrese) con ese email, accede automáticamente a este panel.`
-      );
-    });
-  }
-
-  function removeMember(id: string) {
-    setMembers((prev) => prev.filter((m) => m.id !== id));
-    startTransition(() => {
-      removeTeamMember(id);
-    });
-  }
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -358,64 +322,21 @@ export default function CompanyProfileEditor({
             </div>
           </section>
 
-          {/* Insignias */}
+          {/* Equipo e insignias */}
           <section className="card p-5">
-            <h2 className="font-semibold text-primary-dark mb-3">
+            {/* La gestión del equipo vivía acá adentro, escondida entre el
+                banner y las insignias. Ahora tiene su propia sección con
+                roles; esto queda solo como el cartel que lleva hasta ahí. */}
+            <h2 className="font-semibold text-primary-dark mb-1">
               👥 Equipo de reclutamiento
             </h2>
-            <p className="text-xs text-gray-400 -mt-2 mb-3">
-              Invitá a otras personas de tu empresa: acceden a este panel con
-              su propia cuenta (candidatos, kanban, mensajes).
+            <p className="text-xs text-gray-400 mb-4">
+              Invitá a otras personas de tu empresa y decidí qué puede hacer
+              cada una.
             </p>
-            <div className="flex gap-2 mb-3">
-              <input
-                className="input flex-1"
-                type="email"
-                placeholder="email@tuempresa.com"
-                value={inviteEmail}
-                onChange={(e) => setInviteEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && invite()}
-              />
-              <button
-                className="btn-primary shrink-0"
-                disabled={!inviteEmail.trim() || pending}
-                onClick={invite}
-              >
-                Invitar
-              </button>
-            </div>
-            <div className="space-y-2 mb-5">
-              {members.length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-2">
-                  Todavía no invitaste a nadie.
-                </p>
-              )}
-              {members.map((m) => (
-                <div
-                  key={m.id}
-                  className="flex items-center justify-between gap-2 bg-surface rounded-xl px-4 py-2.5"
-                >
-                  <p className="text-sm text-gray-700 truncate">{m.email}</p>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span
-                      className={`chip ${
-                        m.status === "activa"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-amber-50 text-amber-700"
-                      }`}
-                    >
-                      {m.status === "activa" ? "✓ activa" : "⏳ invitada"}
-                    </span>
-                    <button
-                      className="text-xs text-gray-400 hover:text-danger"
-                      onClick={() => removeMember(m.id)}
-                    >
-                      Quitar
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <Link href="/empresa/equipo" className="btn-secondary mb-6">
+              Ir a Equipo →
+            </Link>
 
             <h2 className="font-semibold text-primary-dark">🏅 Insignias</h2>
             <p className="text-xs text-gray-400 mt-0.5 mb-3">
