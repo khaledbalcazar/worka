@@ -13,6 +13,7 @@ import type {
   FreelancerPublic,
   QuoteRequest,
   Interview,
+  JobStatus,
   JobWithCompany,
   Notification,
   Report,
@@ -493,9 +494,63 @@ export async function getCandidateCvUrl(
 export interface CompanyStats {
   activeJobs: number;
   applicationsThisWeek: number;
+  // La semana anterior viaja al lado: sin ella, el "+12 vs. semana ant." del
+  // panel sería un número inventado.
+  applicationsPrevWeek: number;
   totalViews: number;
   avgResponseHours: number | null;
-  applicationsPerJob: { title: string; count: number }[];
+  // El estado acompaña a cada fila porque el gráfico pinta la barra según él:
+  // una búsqueda cerrada con muchas postulaciones no es un logro que la
+  // empresa tenga que seguir mirando en azul.
+  applicationsPerJob: {
+    jobId: string;
+    title: string;
+    count: number;
+    status: JobStatus;
+  }[];
+}
+
+// Actividad reciente del panel: las últimas postulaciones recibidas en
+// cualquiera de las vacantes de la empresa. Va como consulta aparte y no como
+// campo de getCompanyStats porque solo la usa el panel.
+export interface CompanyActivity {
+  id: string;
+  name: string;
+  jobTitle: string;
+  at: string;
+  status: ApplicationStatus;
+}
+
+export async function getCompanyActivity(
+  companyId: string,
+  limit = 6
+): Promise<CompanyActivity[]> {
+  const supabase = await getServerClient();
+  const jobs = await getJobsByCompany(companyId);
+  if (!supabase)
+    return mock.companyApplicants.slice(0, limit).map((a, i) => ({
+      id: a.id,
+      name: a.candidate_name,
+      jobTitle: jobs[i % Math.max(jobs.length, 1)]?.title ?? "una vacante",
+      at: new Date(Date.now() - (i + 1) * 3600000).toISOString(),
+      status: a.status,
+    }));
+  const jobIds = jobs.map((j) => j.id);
+  if (jobIds.length === 0) return [];
+  const titleOf = new Map(jobs.map((j) => [j.id, j.title]));
+  const { data } = await supabase
+    .from("applications")
+    .select("id, job_id, status, applied_at, candidate:candidates(full_name)")
+    .in("job_id", jobIds)
+    .order("applied_at", { ascending: false })
+    .limit(limit);
+  return (data ?? []).map((row: any) => ({
+    id: row.id,
+    name: row.candidate?.full_name ?? "Candidato",
+    jobTitle: titleOf.get(row.job_id) ?? "una vacante",
+    at: row.applied_at,
+    status: row.status as ApplicationStatus,
+  }));
 }
 
 export async function getCompanyStats(
@@ -509,11 +564,14 @@ export async function getCompanyStats(
     return {
       activeJobs,
       applicationsThisWeek: 23,
+      applicationsPrevWeek: 18,
       totalViews,
       avgResponseHours: 31,
       applicationsPerJob: jobs.slice(0, 5).map((j, i) => ({
+        jobId: j.id,
         title: j.title,
         count: [12, 8, 5, 3, 1][i] ?? 1,
+        status: j.status,
       })),
     };
 
@@ -522,17 +580,28 @@ export async function getCompanyStats(
     return {
       activeJobs,
       applicationsThisWeek: 0,
+      applicationsPrevWeek: 0,
       totalViews,
       avgResponseHours: null,
       applicationsPerJob: [],
     };
 
   const weekAgo = new Date(Date.now() - 7 * 86400000).toISOString();
-  const { count } = await supabase
-    .from("applications")
-    .select("id", { count: "exact", head: true })
-    .in("job_id", jobIds)
-    .gte("applied_at", weekAgo);
+  const twoWeeksAgo = new Date(Date.now() - 14 * 86400000).toISOString();
+  const [{ count }, { count: prevCount }] = await Promise.all([
+    supabase
+      .from("applications")
+      .select("id", { count: "exact", head: true })
+      .in("job_id", jobIds)
+      .gte("applied_at", weekAgo),
+    // Los siete días anteriores a esos siete, para poder comparar.
+    supabase
+      .from("applications")
+      .select("id", { count: "exact", head: true })
+      .in("job_id", jobIds)
+      .gte("applied_at", twoWeeksAgo)
+      .lt("applied_at", weekAgo),
+  ]);
 
   // Tiempo medio de respuesta: promedio de reviewed_at - applied_at.
   const { data: reviewed } = await supabase
@@ -563,13 +632,19 @@ export async function getCompanyStats(
     perJobCount.set(row.job_id, (perJobCount.get(row.job_id) ?? 0) + 1);
   }
   const applicationsPerJob = jobs
-    .map((j) => ({ title: j.title, count: perJobCount.get(j.id) ?? 0 }))
+    .map((j) => ({
+      jobId: j.id,
+      title: j.title,
+      count: perJobCount.get(j.id) ?? 0,
+      status: j.status,
+    }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 6);
 
   return {
     activeJobs,
     applicationsThisWeek: count ?? 0,
+    applicationsPrevWeek: prevCount ?? 0,
     totalViews,
     avgResponseHours,
     applicationsPerJob,

@@ -101,6 +101,18 @@ html {
 }
 }
 
+/* Números del panel de empresa.
+   Monoespaciada del sistema en vez de una webfont nueva: son unas dos docenas
+   de cifras en una sola pantalla, y cargar otra familia para eso le costaría
+   una descarga a todo el sitio. Lo que importa acá es "tnum": sin cifras de
+   ancho fijo, un contador que sube de 9 a 10 corre la columna entera. */
+.font-mono-data {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+}
+
 /* Animaciones sutiles */
 @keyframes fade-up {
   from {

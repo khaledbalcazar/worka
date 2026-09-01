@@ -18,6 +18,46 @@ export function formatDate(iso: string): string {
   });
 }
 
+// Días que faltan hasta una fecha. Positivo si falta, 0 o negativo si ya pasó.
+// Vive acá y no en el componente por el mismo motivo que timeAgo: leer el reloj
+// durante el render de un componente no está permitido.
+export function daysUntil(iso: string): number {
+  return Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
+}
+
+// Fecha (solo el día, formato ISO) de dentro de N días. La usa el botón
+// "Renovar" del panel para extender una vacante sin abrir un calendario.
+export function isoEnDias(n: number): string {
+  return new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
+}
+
+// Saludo y fecha del encabezado del panel de empresa.
+//
+// Se calcula en el servidor con la zona horaria de Asunción fija, no con la
+// del proceso. En Vercel el servidor corre en UTC: a las 22 h de Paraguay ya
+// es el día siguiente allá, y el panel saludaba "buenas noches" con la fecha
+// de mañana. Fijar la zona hace que el resultado sea el mismo lo corran donde
+// lo corran, que además es lo que evita que el texto cambie al hidratar.
+export function saludoEmpresa(): { saludo: string; fecha: string } {
+  const ahora = new Date();
+  const hora = Number(
+    ahora.toLocaleString("en-US", {
+      hour: "2-digit",
+      hour12: false,
+      timeZone: "America/Asuncion",
+    })
+  );
+  return {
+    saludo: hora < 12 ? "Buen día" : hora < 19 ? "Buenas tardes" : "Buenas noches",
+    fecha: ahora.toLocaleDateString("es-PY", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      timeZone: "America/Asuncion",
+    }),
+  };
+}
+
 export function whatsappShareUrl(jobTitle: string, jobId: string): string {
   const text = `Mirá esta vacante en Worka: ${jobTitle} — https://worka.com.py/empleo/${jobId}`;
   return `https://wa.me/?text=${encodeURIComponent(text)}`;

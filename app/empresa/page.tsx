@@ -2,6 +2,7 @@ import Link from "next/link";
 import EvaluarPromo from "@/components/evaluar/EvaluarPromo";
 import CompanyDashboard from "@/components/CompanyDashboard";
 import {
+  getCompanyActivity,
   getCompanyStats,
   getCurrentCompany,
   getJobsByCompany,
@@ -30,10 +31,11 @@ export default async function CompanyDashboardPage() {
     );
   }
 
-  const [jobs, settings, stats] = await Promise.all([
+  const [jobs, settings, stats, activity] = await Promise.all([
     getJobsByCompany(company.id),
     getSiteSettings(),
     getCompanyStats(company.id),
+    getCompanyActivity(company.id),
   ]);
   return (
     <div className="space-y-4">
@@ -45,6 +47,7 @@ export default async function CompanyDashboardPage() {
         jobs={jobs}
         paymentLink={settings.payment_link}
         stats={stats}
+        activity={activity}
       />
     </div>
   );
