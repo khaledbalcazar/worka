@@ -319,7 +319,7 @@ export default function CompanyMetricsView({ data }: { data: CompanyMetrics }) {
           <div className="space-y-3">
             {embudo.map((s, i) => {
               const anterior = i > 0 ? embudo[i - 1].value : 0;
-              const pct =
+              const paso =
                 i > 0 && anterior > 0
                   ? pct((s.value / anterior) * 100)
                   : null;
@@ -350,7 +350,7 @@ export default function CompanyMetricsView({ data }: { data: CompanyMetrics }) {
                         className="text-xs font-semibold"
                         style={{ color: i === 3 ? "#fff" : "#1d4ed8" }}
                       >
-                        {pct ? `${pct}%` : ""}
+                        {paso ? `${paso}%` : ""}
                       </span>
                     </div>
                   </div>
