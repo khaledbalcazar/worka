@@ -131,6 +131,9 @@ function AdminHeader() {
         <Link href="/admin/academia" className="text-sm text-blue-200 underline">
           🎓 Academia
         </Link>
+        <Link href="/admin/correo" className="text-sm text-blue-200 underline">
+          📧 Correo de vacantes
+        </Link>
         <Link href="/" className="text-sm text-blue-200 underline">
           Salir
         </Link>

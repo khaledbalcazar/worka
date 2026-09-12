@@ -16,6 +16,10 @@
     {
       "path": "/api/cron/evaluar-resumen",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/resumen-empleos",
+      "schedule": "0 13 * * *"
     }
   ]
 }

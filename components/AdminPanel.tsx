@@ -897,6 +897,10 @@ export default function AdminPanel({
               ["banner_link", "Link del banner (opcional, ej: /empleos)"],
               ["maintenance_mode", "⚠️ Modo mantenimiento: SOLO 'true' lo activa y tumba el sitio para todos menos vos. Para apagarlo dejá el campo VACÍO"],
               ["maintenance_text", "Texto de la pantalla de mantenimiento"],
+              [
+                "digest_enabled",
+                "📧 Correo de vacantes nuevas a los candidatos (uno por semana a cada uno). SOLO 'true' lo enciende; vacío lo apaga. No sale nunca con el mantenimiento encendido",
+              ],
               // SEO regional: "título | descripción". Vacío = texto automático.
               ["seo_ar", "🇦🇷 SEO Argentina (título | descripción)"],
               ["seo_mx", "🇲🇽 SEO México (título | descripción)"],

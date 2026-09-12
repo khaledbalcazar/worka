@@ -2479,6 +2479,34 @@ export async function updatePassword(
   return { ok: true };
 }
 
+// Deshace una baja desde la propia página de baja.
+//
+// Se autoriza con el mismo token firmado del correo y no con la sesión: quien
+// llega acá viene de un clic en el cliente de correo, casi nunca con la
+// sesión abierta, y pedirle que inicie sesión para arreglar un clic
+// equivocado es pedirle que no lo arregle.
+export async function reactivarCorreos(token: string): Promise<ActionResult> {
+  const { verificarBaja } = await import("@/lib/unsubscribe");
+  const userId = verificarBaja(token);
+  if (!userId) return { ok: false, error: "El enlace no es válido." };
+
+  const { getAdminClient } = await import("@/lib/supabase/admin");
+  const admin = getAdminClient();
+  if (!admin) return DEMO;
+
+  await Promise.all([
+    admin
+      .from("candidates")
+      .update({ email_notifications: true, alerts_enabled: true })
+      .eq("id", userId),
+    admin
+      .from("companies")
+      .update({ email_notifications: true })
+      .eq("id", userId),
+  ]);
+  return { ok: true };
+}
+
 export async function signOut(): Promise<void> {
   const supabase = await getServerClient();
   if (supabase) await supabase.auth.signOut();

@@ -15,6 +15,14 @@ export async function sendEmail(opts: {
   to: string;
   subject: string;
   html: string;
+  /* Versión en texto plano. Un correo que solo trae HTML puntúa peor en los
+     filtros de spam, y algunos clientes (relojes, lectores de pantalla en
+     modo texto) muestran el HTML crudo sin ella. */
+  text?: string;
+  /* Cabeceras extra. Las usa el correo de novedades para List-Unsubscribe:
+     desde 2024 Gmail y Yahoo se lo exigen a quien manda en volumen, y sin
+     eso el correo entero cae en spam. */
+  headers?: Record<string, string>;
 }): Promise<boolean> {
   const key = process.env.RESEND_API_KEY;
   if (!key) return false;
@@ -30,6 +38,8 @@ export async function sendEmail(opts: {
         to: opts.to,
         subject: opts.subject,
         html: opts.html,
+        ...(opts.text ? { text: opts.text } : {}),
+        ...(opts.headers ? { headers: opts.headers } : {}),
       }),
     });
     if (!res.ok) {
