@@ -119,7 +119,9 @@ export async function enviarDigestDePrueba(to: string): Promise<Result> {
     return { ok: false, error: "Falta RESEND_API_KEY en el entorno." };
 
   const { getAdminClient } = await import("@/lib/supabase/admin");
-  const { digestHtml, digestTexto } = await import("@/lib/email-digest");
+  const { digestAsunto, digestHtml, digestTexto } = await import(
+    "@/lib/email-digest"
+  );
   const { SITE_URL } = await import("@/lib/supabase/config");
   const { bajaToken } = await import("@/lib/unsubscribe");
 
@@ -179,7 +181,14 @@ export async function enviarDigestDePrueba(to: string): Promise<Result> {
 
   const ok = await sendEmail({
     to,
-    subject: `[PRUEBA] ${jobs.length} vacantes nuevas · empresas verificadas`,
+    // Mismo asunto que el real, con la marca adelante: la prueba sirve
+    // justo para ver cómo se lee en la bandeja, y un asunto distinto no
+    // dice nada de lo que va a llegarle a la gente.
+    subject: `[PRUEBA] ${digestAsunto({
+      primerPuesto: jobs[0].title,
+      ciudad: jobs[0].city || null,
+      total: jobs.length,
+    })}`,
     html: digestHtml({
       ...comun,
       preferenciasUrl: `${base}/alertas`,
@@ -199,4 +208,49 @@ export async function enviarDigestDePrueba(to: string): Promise<Result> {
         error:
           "Resend rechazó el envío. Revisá que el dominio de EMAIL_FROM esté verificado.",
       };
+}
+
+// Dispara la misma tanda que el cron, pero ahora.
+//
+// NO reenvía a quien ya recibió el correo esta semana: "enviar a todos"
+// significa "no esperes a las 10 de mañana", no "escribile de nuevo al que
+// ya leyó". Sin esa regla, dos clics seguidos serían dos correos el mismo
+// día para la misma persona, que es la forma más rápida de que la marquen
+// como spam.
+export async function enviarDigestATodos(): Promise<
+  Result & { detalle?: string }
+> {
+  const sesion = await requireAdmin();
+  if (!sesion) return { ok: false, error: "Solo el admin puede hacer esto." };
+
+  const { enviarDigest } = await import("@/lib/digest");
+  const r = await enviarDigest();
+
+  if (!r.ok) return { ok: false, error: r.motivo ?? "No se pudo enviar." };
+
+  const partes = [`📨 ${r.enviados} correo${r.enviados === 1 ? "" : "s"} enviado${r.enviados === 1 ? "" : "s"}`];
+  if (r.sinNovedades > 0)
+    partes.push(`${r.sinNovedades} sin vacantes que mostrarles (no se les mandó nada)`);
+  if (r.fallidos > 0) partes.push(`${r.fallidos} fallaron`);
+  if (r.pendientes > 0)
+    partes.push(
+      `quedan en cola para la próxima corrida — el cupo de hoy no daba para más`
+    );
+  partes.push(`quedan ${r.quedanHoy} envíos hoy y ${r.quedanMes} este mes`);
+
+  revalidatePath("/admin/correo");
+  return { ok: true, detalle: partes.join(" · ") };
+}
+
+// Cuánto queda del cupo del proveedor, para mostrarlo en el backoffice.
+export async function verCupoEmail(): Promise<{
+  hoy: number;
+  mes: number;
+  quedanHoy: number;
+  quedanMes: number;
+} | null> {
+  const sesion = await requireAdmin();
+  if (!sesion) return null;
+  const { cupoEmail } = await import("@/lib/email");
+  return cupoEmail();
 }

@@ -11,6 +11,63 @@ export function emailEnabled(): boolean {
   return !!process.env.RESEND_API_KEY;
 }
 
+/* ── Cupo del proveedor ───────────────────────────────────────────────────
+   El plan gratuito de Resend da 100 correos por día y 3.000 por mes, y ese
+   cupo lo comparte todo lo que manda Worka. Contar acá adentro —y no en cada
+   sitio que envía— es lo único que garantiza que no se escape ninguno: hay
+   trece lugares que llaman a sendEmail y el próximo que se agregue queda
+   contado sin que nadie se acuerde.
+
+   Los límites viven en variables de entorno para poder subirlos el día que
+   cambie el plan sin tocar código ni esperar un despliegue. */
+export const CUPO_DIA = Number(process.env.EMAIL_CAP_DIA ?? 100);
+export const CUPO_MES = Number(process.env.EMAIL_CAP_MES ?? 3000);
+
+async function contarEnvio(): Promise<void> {
+  try {
+    const { getAdminClient } = await import("./supabase/admin");
+    const admin = getAdminClient();
+    if (!admin) return;
+    await admin.rpc("fn_contar_email");
+  } catch (e) {
+    // Que falle el contador no puede impedir un correo: es un dato para
+    // decidir cuándo frenar, no parte del envío.
+    console.error("No pudimos contar el envio:", e);
+  }
+}
+
+export interface CupoEmail {
+  hoy: number;
+  mes: number;
+  quedanHoy: number;
+  quedanMes: number;
+}
+
+export async function cupoEmail(): Promise<CupoEmail> {
+  const vacio = { hoy: 0, mes: 0, quedanHoy: CUPO_DIA, quedanMes: CUPO_MES };
+  try {
+    const { getAdminClient } = await import("./supabase/admin");
+    const admin = getAdminClient();
+    if (!admin) return vacio;
+    const { data } = await admin.rpc("fn_cupo_email");
+    const fila = (Array.isArray(data) ? data[0] : data) as
+      | { hoy: number; mes: number }
+      | null
+      | undefined;
+    if (!fila) return vacio;
+    return {
+      hoy: fila.hoy ?? 0,
+      mes: fila.mes ?? 0,
+      quedanHoy: Math.max(CUPO_DIA - (fila.hoy ?? 0), 0),
+      quedanMes: Math.max(CUPO_MES - (fila.mes ?? 0), 0),
+    };
+  } catch {
+    // Sin la migración 041 la función no existe. Se asume cupo entero: es
+    // preferible mandar de más a que el correo deje de salir en silencio.
+    return vacio;
+  }
+}
+
 export async function sendEmail(opts: {
   to: string;
   subject: string;
@@ -47,8 +104,10 @@ export async function sendEmail(opts: {
       // silencio y no hay forma de saber por que no llego el correo.
       const detalle = await res.text().catch(() => "");
       console.error("Resend rechazo el envio:", res.status, detalle);
+      return false;
     }
-    return res.ok;
+    await contarEnvio();
+    return true;
   } catch (e) {
     console.error("Resend no respondio:", e);
     return false;

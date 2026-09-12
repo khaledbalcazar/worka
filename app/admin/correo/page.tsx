@@ -4,7 +4,8 @@ import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { digestHtml, type DigestJob } from "@/lib/email-digest";
 import { SITE_URL } from "@/lib/supabase/config";
 import { getAdminClient } from "@/lib/supabase/admin";
-import EnviarPrueba from "@/components/admin/EnviarPrueba";
+import EnviarDigest from "@/components/admin/EnviarDigest";
+import { cupoEmail } from "@/lib/email";
 
 export const metadata = {
   title: "Correo de vacantes",
@@ -34,6 +35,7 @@ export default async function AdminCorreoPage() {
 
   const base = SITE_URL.replace(/\/$/, "");
   const admin = getAdminClient();
+  const cupo = admin ? await cupoEmail() : null;
   let jobs: DigestJob[] = [];
 
   if (admin) {
@@ -127,7 +129,7 @@ export default async function AdminCorreoPage() {
         </div>
       )}
 
-      <EnviarPrueba />
+      <EnviarDigest cupo={cupo} />
 
       <div className="card overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">

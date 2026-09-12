@@ -151,6 +151,49 @@ function fila(j: DigestJob): string {
   </a>`;
 }
 
+/* Asunto.
+ *
+ * Arranca con el puesto de verdad y no con "Tenés vacantes nuevas". Lo que
+ * hace que alguien abra es reconocer algo suyo en la bandeja: "Cajero/a en
+ * Asunción" le habla a quien busca eso, y un genérico le habla a nadie. El
+ * llamado a la acción va al final, donde no le roba lugar a lo concreto.
+ *
+ * El largo importa: el celular corta el asunto alrededor de los 60
+ * caracteres, así que el título se recorta con lo que sobre después de
+ * armar el resto, y no al revés.
+ */
+export function digestAsunto(opts: {
+  primerPuesto: string;
+  ciudad: string | null;
+  total: number;
+}): string {
+  const LARGO = 62;
+  const CTA = " — postulate hoy";
+  const otras = opts.total > 1 ? ` y ${opts.total - 1} más` : "";
+  const donde = opts.ciudad ? ` en ${opts.ciudad}` : "";
+
+  /* Si no entra todo, se va soltando de atrás hacia adelante: primero la
+     ciudad, después el "y N más". El puesto y el llamado a la acción son lo
+     último que se recorta porque son las dos piezas que hacen que se abra. */
+  for (const cola of [
+    `${otras}${donde}${CTA}`,
+    `${otras}${CTA}`,
+    CTA,
+  ]) {
+    if (opts.primerPuesto.length + cola.length <= LARGO)
+      return `${opts.primerPuesto}${cola}`;
+  }
+
+  // Ni el título solo entra: se corta en el último espacio para no partir
+  // una palabra al medio ("Cajero/a para sucursal ce…" se lee peor que
+  // "Cajero/a para sucursal…").
+  const lugar = LARGO - CTA.length - 1;
+  const cortado = opts.primerPuesto.slice(0, lugar);
+  const espacio = cortado.lastIndexOf(" ");
+  const puesto = (espacio > 12 ? cortado.slice(0, espacio) : cortado).trimEnd();
+  return `${puesto}…${CTA}`;
+}
+
 export function digestHtml(opts: {
   nombre: string;
   jobs: DigestJob[];

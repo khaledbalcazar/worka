@@ -53,7 +53,29 @@ npm run dev
 6. **Storage para CVs (próximo paso)**: creá un bucket privado `cvs` y aplicá
    las políticas comentadas al final de `schema.sql`.
 
-7. Reiniciá el dev server. La app detecta las variables y pasa a modo live.
+7. **Correo (opcional)**: sin `RESEND_API_KEY` no sale ningún correo y los
+   avisos quedan solo dentro de la campanita. Con la clave puesta:
+
+   ```
+   RESEND_API_KEY=re_...
+   EMAIL_FROM=Worka <operaciones@worka.click>   # el dominio debe estar verificado en Resend
+   ```
+
+   El cupo del proveedor lo comparte **todo** lo que manda Worka (invitaciones
+   a entrevistas, avisos de postulación, Evaluar y el resumen semanal de
+   vacantes). Los valores por defecto son los del plan gratuito de Resend:
+
+   | Variable | Por defecto | Para qué |
+   |---|---|---|
+   | `EMAIL_CAP_DIA` | `100` | Tope diario del plan |
+   | `EMAIL_CAP_MES` | `3000` | Tope mensual del plan |
+   | `EMAIL_RESERVA` | `30` | Envíos del día que el resumen semanal NO toca, para que una invitación a entrevista nunca choque contra el cupo |
+   | `UNSUBSCRIBE_SECRET` | service role key | Firma los enlaces de baja. Conviene una propia: rotar la service key invalidaría los enlaces de correos ya enviados |
+
+   Al pasar a un plan pago alcanza con subir `EMAIL_CAP_DIA` y `EMAIL_CAP_MES`
+   en Vercel; no hay nada que cambiar en el código.
+
+8. Reiniciá el dev server. La app detecta las variables y pasa a modo live.
 
 ## Deploy en Vercel
 
