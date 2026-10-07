@@ -47,7 +47,12 @@ export default function HeroSearch({ cities = CITIES }: Props) {
 
   function toggleChip(label: string) {
     setChips((prev) =>
-      prev.includes(label) ? prev.filter((c) => c !== label) : [...prev, label]
+      prev.includes(label)
+        ? prev.filter((c) => c !== label)
+        : [...prev.filter((selected) =>
+            FILTER_CHIPS.find((c) => c.label === selected)?.param !==
+            FILTER_CHIPS.find((c) => c.label === label)?.param
+          ), label]
     );
   }
 
@@ -64,7 +69,9 @@ export default function HeroSearch({ cities = CITIES }: Props) {
   }
 
   return (
-    <div className="relative w-full">
+    <div data-search className="relative w-full" onBlur={(e) => {
+      if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false);
+    }}>
       <div className="flex flex-col sm:flex-row bg-white rounded-2xl border border-primary-dark/10 shadow-[0_12px_40px_rgba(27,37,89,0.10)] overflow-hidden">
         <div className="flex items-center gap-2.5 flex-1 px-4 py-3.5">
           <Search size={17} className="text-gray-400 shrink-0" />
@@ -75,8 +82,13 @@ export default function HeroSearch({ cities = CITIES }: Props) {
               setOpen(true);
             }}
             onFocus={() => setOpen(true)}
-            onBlur={() => setTimeout(() => setOpen(false), 120)}
-            onKeyDown={(e) => e.key === "Enter" && search()}
+            onBlur={(e) => {
+              if (!e.currentTarget.closest("[data-search]")?.contains(e.relatedTarget)) setOpen(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") search();
+              if (e.key === "Escape") setOpen(false);
+            }}
             placeholder="Cargo, empresa o rubro…"
             aria-label="Buscar empleo"
             className="w-full bg-transparent border-0 outline-none text-sm text-primary-dark placeholder:text-gray-400"
@@ -112,7 +124,8 @@ export default function HeroSearch({ cities = CITIES }: Props) {
           {matches.map((m) => (
             <button
               key={m}
-              onMouseDown={() => {
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
                 setQ(m);
                 setOpen(false);
               }}

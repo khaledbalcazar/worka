@@ -169,6 +169,7 @@ function Screen({
   }
 
   function handleEmail() {
+    if (pending) return;
     setError(null);
     startTransition(async () => {
       if (mode === "signup") {
@@ -296,7 +297,7 @@ function Screen({
                 </p>
               </div>
             ) : (
-              <>
+              <form onSubmit={(e) => { e.preventDefault(); handleEmail(); }} className="space-y-4" aria-busy={pending}>
                 {demoMode && (
                   <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2">
                     Modo demostración: Supabase no está configurado, así que el
@@ -305,7 +306,9 @@ function Screen({
                 )}
 
                 <button
+                  type="button"
                   className="btn-secondary press w-full"
+                  disabled={pending}
                   onClick={handleGoogle}
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -334,7 +337,12 @@ function Screen({
                   <span className="flex-1 h-px bg-gray-200" />
                 </div>
 
+                <label className="label" htmlFor="login-email">Email</label>
                 <input
+                  id="login-email"
+                  name="email"
+                  autoComplete="email"
+                  required={!demoMode}
                   className="input"
                   type="email"
                   placeholder={
@@ -343,23 +351,30 @@ function Screen({
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
+                <label className="label" htmlFor="login-password">Contraseña</label>
+                {esAlta && <p id="password-help" className="text-xs text-gray-500">Usá al menos 6 caracteres.</p>}
                 <input
+                  id="login-password"
+                  name="password"
+                  autoComplete={esAlta ? "new-password" : "current-password"}
+                  required={!demoMode}
+                  minLength={esAlta && !demoMode ? 6 : undefined}
+                  aria-describedby={esAlta ? "password-help" : undefined}
                   className="input"
                   type="password"
                   placeholder="Contraseña"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleEmail()}
                 />
 
                 {error && (
-                  <p className="text-sm text-danger text-center">{error}</p>
+                  <p role="alert" className="text-sm text-danger text-center">{error}</p>
                 )}
 
                 <button
                   className="btn-primary press w-full"
-                  disabled={pending || (!demoMode && (!email || !password))}
-                  onClick={handleEmail}
+                  type="submit"
+                  disabled={pending}
                 >
                   {pending
                     ? "Un momento…"
@@ -373,7 +388,7 @@ function Screen({
                     Olvidé mi contraseña
                   </Link>
                 </p>
-              </>
+              </form>
             )}
           </div>
 

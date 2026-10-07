@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
+import MobileSheet from "@/components/MobileSheet";
 import type { JobWithCompany } from "@/lib/types";
 import { whatsappShareUrl } from "@/lib/format";
 import { applyToJob } from "@/app/actions";
@@ -26,15 +27,7 @@ export default function ApplyPanel({
   // Solo en celular: la hoja con el detalle de la postulación.
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  // Con la hoja abierta el fondo no debe correrse al arrastrar.
-  useEffect(() => {
-    if (!sheetOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [sheetOpen]);
+
 
   // Mucha gente llega a la vacante desde Google, sin cuenta. Antes el botón
   // disparaba la postulación igual y devolvía un "Iniciá sesión" en letra
@@ -120,7 +113,7 @@ export default function ApplyPanel({
           <p className="text-[11px] text-gray-400 text-center">
             {job.company.fast_responder
               ? "⚡ Esta empresa suele responder en menos de 72 h."
-              : "Te avisamos por WhatsApp cuando revisen tu perfil."}
+              : "Seguí el estado de tu postulación en Worka."}
           </p>
         </>
       )}
@@ -138,6 +131,8 @@ export default function ApplyPanel({
                   <button
                     key={String(val)}
                     onClick={() => setAnswers((a) => ({ ...a, [q.id]: val }))}
+                    aria-pressed={answers[q.id] === val}
+                    disabled={pending}
                     className={`flex-1 min-h-11 rounded-xl border text-sm font-medium ${
                       answers[q.id] === val
                         ? "bg-primary text-white border-primary"
@@ -176,8 +171,8 @@ export default function ApplyPanel({
               de {job.company.trade_name}.
             </li>
             <li className="flex items-start gap-2">
-              <span className="text-success">✓</span> Te avisamos por WhatsApp
-              cuando lo revisen.
+              <span className="text-success">✓</span> Seguí el estado en la sección
+              Postulaciones.
             </li>
             <li className="flex items-start gap-2">
               <span className="text-primary">→</span> Mientras tanto, seguí
@@ -191,7 +186,7 @@ export default function ApplyPanel({
       )}
 
       {error && (
-        <p className="text-sm text-danger text-center">
+        <p role="alert" className="text-sm text-danger text-center">
           {error}{" "}
           {/* Todo error que se pueda resolver necesita su salida a mano. */}
           {error.includes("Completá tu perfil") ? (
@@ -223,24 +218,11 @@ export default function ApplyPanel({
           persona decide postularse mientras lee, así que el botón viaja con
           ella y el detalle se abre en una hoja, sin perder el lugar de lectura. */}
       <div className="lg:hidden">
-        {sheetOpen && (
-          <div
-            className="fixed inset-0 z-50 bg-black/40"
-            onClick={() => setSheetOpen(false)}
-            aria-hidden
-          />
-        )}
-        <div
-          role="dialog"
-          aria-label="Postularme"
-          aria-hidden={!sheetOpen}
-          className={`fixed inset-x-0 bottom-0 z-50 bg-white rounded-t-3xl shadow-2xl transition-transform duration-200 ease-out max-h-[85vh] overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] ${
-            sheetOpen ? "translate-y-0" : "translate-y-full pointer-events-none"
-          }`}
-        >
+        <MobileSheet open={sheetOpen} onClose={() => setSheetOpen(false)} label="Postularme" className="overflow-y-auto p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+          <button type="button" onClick={() => setSheetOpen(false)} className="btn-secondary ml-auto mb-3">Cerrar</button>
           <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-4" />
           {panel}
-        </div>
+        </MobileSheet>
 
         {/* Va justo encima de la barra de navegación, no encima de ella. */}
         <div className="fixed inset-x-0 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] z-40 bg-white/95 backdrop-blur border-t border-gray-200 px-4 py-3">

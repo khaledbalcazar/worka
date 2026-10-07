@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
+import MobileSheet from "@/components/MobileSheet";
 import { usePathname } from "next/navigation";
 import {
   Bell,
@@ -129,15 +130,7 @@ export default function BottomNav({ loggedIn = true }: { loggedIn?: boolean }) {
   const moreOpen = openedAt === pathname;
   const setMoreOpen = (open: boolean) => setOpenedAt(open ? pathname : null);
 
-  // Con la hoja abierta el fondo no debe correrse al arrastrar.
-  useEffect(() => {
-    if (!moreOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [moreOpen]);
+
 
   const inMore = GROUPS.some((g) =>
     g.items.some((i) => pathname.startsWith(i.href))
@@ -145,23 +138,7 @@ export default function BottomNav({ loggedIn = true }: { loggedIn?: boolean }) {
 
   return (
     <>
-      {moreOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/40 lg:hidden"
-          onClick={() => setMoreOpen(false)}
-          aria-hidden
-        />
-      )}
-
-      {/* Hoja "Más": se desliza desde abajo y deja lugar para el pulgar. */}
-      <div
-        role="dialog"
-        aria-label="Más secciones"
-        aria-hidden={!moreOpen}
-        className={`fixed inset-x-0 bottom-0 z-50 lg:hidden bg-white rounded-t-3xl shadow-2xl transition-transform duration-200 ease-out max-h-[85vh] flex flex-col ${
-          moreOpen ? "translate-y-0" : "translate-y-full pointer-events-none"
-        }`}
-      >
+      <MobileSheet open={moreOpen} onClose={() => setMoreOpen(false)} label="Más secciones" className="overflow-y-auto">
         <div className="flex items-center justify-between px-5 pt-4 pb-2 shrink-0">
           <h2 className="font-bold text-primary-dark">Todo Worka</h2>
           <button
@@ -184,6 +161,7 @@ export default function BottomNav({ loggedIn = true }: { loggedIn?: boolean }) {
                   <Link
                     key={href}
                     href={href}
+                    onClick={() => setMoreOpen(false)}
                     className="flex items-center gap-3 px-2 py-2.5 rounded-2xl active:bg-surface"
                   >
                     <span className="w-10 h-10 shrink-0 rounded-2xl bg-surface flex items-center justify-center text-primary">
@@ -208,6 +186,7 @@ export default function BottomNav({ loggedIn = true }: { loggedIn?: boolean }) {
               <>
                 <Link
                   href="/perfil#configuracion"
+                  onClick={() => setMoreOpen(false)}
                   className="flex items-center gap-3 px-2 py-2.5 rounded-2xl active:bg-surface"
                 >
                   <span className="w-10 h-10 shrink-0 rounded-2xl bg-surface flex items-center justify-center text-gray-500">
@@ -243,7 +222,7 @@ export default function BottomNav({ loggedIn = true }: { loggedIn?: boolean }) {
             )}
           </section>
         </div>
-      </div>
+      </MobileSheet>
 
       <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-gray-200 lg:hidden print:hidden pb-[env(safe-area-inset-bottom)]">
         <div className="flex">
