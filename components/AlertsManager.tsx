@@ -15,18 +15,22 @@ const MODALITIES = ["Presencial", "Híbrido", "Remoto"];
 export default function AlertsManager({
   alerts: initial,
   country,
+  cities = CITIES,
+  initialSearch,
 }: {
   alerts: JobAlert[];
   country: string;
+  cities?: string[];
+  initialSearch?: { keyword: string; city: string; industry: string; modality: string };
 }) {
   const [alerts, setAlerts] = useState(initial);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState({
-    keyword: "",
-    industry: "",
-    city: "",
-    modality: "",
+    keyword: initialSearch?.keyword ?? "",
+    industry: initialSearch?.industry ?? "",
+    city: initialSearch?.city ?? "",
+    modality: initialSearch?.modality ?? "",
     email_enabled: true,
     inapp_enabled: true,
   });
@@ -69,8 +73,10 @@ export default function AlertsManager({
       {/* Crear alerta */}
       <div className="card p-5 space-y-3">
         <h2 className="font-semibold text-primary-dark">Nueva alerta</h2>
+        {initialSearch && Object.values(initialSearch).some(Boolean) && <p className="text-sm text-primary">Trajimos los criterios de tu búsqueda. Revisalos antes de crear la alerta.</p>}
         <input
           className="input"
+          aria-label="Palabra clave"
           placeholder="Palabra clave (ej: cajero, chofer, diseñador)"
           value={draft.keyword}
           onChange={(e) => setDraft({ ...draft, keyword: e.target.value })}
@@ -78,26 +84,29 @@ export default function AlertsManager({
         <div className="grid gap-3 sm:grid-cols-3">
           <select
             className="input"
+            aria-label="Rubro de la alerta"
             value={draft.industry}
             onChange={(e) => setDraft({ ...draft, industry: e.target.value })}
           >
             <option value="">Todos los rubros</option>
-            {INDUSTRIES.map((i) => (
+            {[...new Set([...INDUSTRIES, ...(draft.industry ? [draft.industry] : [])])].map((i) => (
               <option key={i}>{i}</option>
             ))}
           </select>
           <select
             className="input"
+            aria-label="Ciudad de la alerta"
             value={draft.city}
             onChange={(e) => setDraft({ ...draft, city: e.target.value })}
           >
             <option value="">Todas las ciudades</option>
-            {CITIES.map((c) => (
+            {[...new Set([...cities, ...(draft.city ? [draft.city] : [])])].map((c) => (
               <option key={c}>{c}</option>
             ))}
           </select>
           <select
             className="input"
+            aria-label="Modalidad de la alerta"
             value={draft.modality}
             onChange={(e) => setDraft({ ...draft, modality: e.target.value })}
           >

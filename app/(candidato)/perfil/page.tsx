@@ -1,6 +1,5 @@
 import Link from "next/link";
 import ProfileClient from "@/components/ProfileClient";
-import ProfileStrength from "@/components/ProfileStrength";
 import {
   getCurrentCandidate,
   getMyReferences,
@@ -35,10 +34,6 @@ export default async function ProfilePage() {
   ]);
   return (
     <div className="space-y-4">
-      <ProfileStrength
-        candidate={candidate}
-        referencesCount={references.length}
-      />
       <ProfileClient
         candidate={candidate}
         references={references}

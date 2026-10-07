@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import MobileSheet from "@/components/MobileSheet";
+import { matchesJob, matchesExternalJob } from "@/lib/job-search";
 import JobCard from "@/components/JobCard";
 import ExternalJobCard from "@/components/ExternalJobCard";
 import RecentJobs from "@/components/RecentJobs";
@@ -19,12 +22,6 @@ export default function JobFeed({
   matchScores = {},
   industries = INDUSTRIES,
   cities = CITIES,
-  initialQuery = "",
-  initialCity = "",
-  initialIndustry = "",
-  initialModality = "",
-  initialContract = "",
-  initialFirstJob = false,
   externalJobs = [],
 }: {
   jobs: JobWithCompany[];
@@ -34,108 +31,98 @@ export default function JobFeed({
   matchScores?: Record<string, number>;
   industries?: string[];
   cities?: string[];
-  initialQuery?: string;
-  initialCity?: string;
-  initialIndustry?: string;
-  initialModality?: string;
-  initialContract?: string;
-  initialFirstJob?: boolean;
   externalJobs?: ExternalJob[];
 }) {
-  const [query, setQuery] = useState(initialQuery);
-  const [city, setCity] = useState(initialCity);
-  const [industry, setIndustry] = useState(initialIndustry);
-  const [modality, setModality] = useState(initialModality);
-  const [contract, setContract] = useState(initialContract);
-  const [firstJobOnly, setFirstJobOnly] = useState(initialFirstJob);
-  const [onlyVerified, setOnlyVerified] = useState(false);
-  const [withSalary, setWithSalary] = useState(false);
+  const params = useSearchParams();
+  const query = params.get("q") ?? "";
+  const city = params.get("ciudad") ?? "";
+  const industry = params.get("rubro") ?? "";
+  const modality = params.get("modalidad") ?? "";
+  const contract = params.get("contrato") ?? "";
+  const firstJobOnly = params.get("primerEmpleo") === "1";
+  const onlyVerified = params.get("verificadas") === "1";
+  const withSalary = params.get("salario") === "1";
+  const hideApplied = params.get("sinPostuladas") === "1";
+  const sort = ["recientes", "urgentes"].includes(params.get("orden") ?? "") ? params.get("orden")! : "recomendadas";
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [shareStatus, setShareStatus] = useState("");
 
-  // Con la hoja abierta el fondo no debe correrse al arrastrar.
-  useEffect(() => {
-    if (!sheetOpen) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previous;
-    };
-  }, [sheetOpen]);
+  function updateFilter(key: string, value: string | boolean) {
+    const next = new URLSearchParams(window.location.search);
+    if (value) next.set(key, value === true ? "1" : String(value));
+    else next.delete(key);
+    window.history.replaceState(null, "", `${window.location.pathname}${next.size ? `?${next}` : ""}`);
+    setShareStatus("");
+  }
+  const setQuery = (value: string) => updateFilter("q", value);
+  const setCity = (value: string) => updateFilter("ciudad", value);
+  const setIndustry = (value: string) => updateFilter("rubro", value);
+  const setModality = (value: string) => updateFilter("modalidad", value);
+  const setContract = (value: string) => updateFilter("contrato", value);
+  const setFirstJobOnly = (value: boolean) => updateFilter("primerEmpleo", value);
+  const setOnlyVerified = (value: boolean) => updateFilter("verificadas", value);
+  const setWithSalary = (value: boolean) => updateFilter("salario", value);
+  const setHideApplied = (value: boolean) => updateFilter("sinPostuladas", value);
+
+  async function shareSearch() {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setShareStatus("Enlace copiado. Podés compartir esta búsqueda.");
+    } catch {
+      setShareStatus("No pudimos copiar. Podés compartir la dirección de esta página.");
+    }
+  }
 
   const applied = useMemo(() => new Set(appliedJobIds), [appliedJobIds]);
   const savedSet = useMemo(() => new Set(savedJobIds), [savedJobIds]);
 
-  const filtered = useMemo(() => {
-    return jobs.filter((job) => {
-      if (firstJobOnly && job.requires_experience) return false;
-      if (onlyVerified && !job.company.is_verified) return false;
-      if (withSalary && !job.salary_range) return false;
-      if (city && job.company.location_city !== city) return false;
-      if (industry && job.industry !== industry) return false;
-      if (modality && job.modality !== modality) return false;
-      if (contract && job.contract_type !== contract) return false;
-      if (
-        query &&
-        !`${job.title} ${job.company.trade_name} ${job.industry}`
-          .toLowerCase()
-          .includes(query.toLowerCase())
-      )
-        return false;
-      return true;
-    });
-  }, [jobs, query, city, industry, modality, contract, firstJobOnly, onlyVerified, withSalary]);
-
-  // Las externas solo respetan los filtros que realmente tienen datos.
-  // Si el usuario pide "solo verificadas", desaparecen (no lo están).
-  const filteredExternal = useMemo(() => {
-    if (onlyVerified) return [];
-    return externalJobs.filter((job) => {
-      if (city && job.city !== city) return false;
-      if (industry && job.industry !== industry) return false;
-      if (withSalary && !job.salary_range) return false;
-      if (
-        query &&
-        !`${job.title} ${job.company_name} ${job.industry ?? ""}`
-          .toLowerCase()
-          .includes(query.toLowerCase())
-      )
-        return false;
-      return true;
-    });
-  }, [externalJobs, query, city, industry, onlyVerified, withSalary]);
+  const filters = { query, city, industry, modality, contract, firstJobOnly, onlyVerified, withSalary, hideApplied };
+  const filtered = jobs.filter((job) => matchesJob(job, filters, applied));
+  const filteredExternal = externalJobs.filter((job) => matchesExternalJob(job, filters));
+  const total = filtered.length + filteredExternal.length;
+  const ordered = [...filtered].sort((a, b) =>
+    (sort === "urgentes" ? Number(b.urgent) - Number(a.urgent) : 0) ||
+    Date.parse(b.created_at) - Date.parse(a.created_at)
+  );
+  const orderedExternal = [...filteredExternal].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+  const alertParams = new URLSearchParams();
+  if (query.trim()) alertParams.set("q", query.trim());
+  if (city) alertParams.set("ciudad", city);
+  if (industry) alertParams.set("rubro", industry);
+  if (modality) alertParams.set("modalidad", modality);
+  const alertHref = `/alertas${alertParams.size ? `?${alertParams}` : ""}`;
 
   const hasActiveFilter =
-    query || city || industry || modality || contract || firstJobOnly || onlyVerified || withSalary;
+    query || city || industry || modality || contract || firstJobOnly || onlyVerified || withSalary || hideApplied;
   // "Para vos" solo se muestra sin filtros activos (es el punto de partida).
-  const recommendedSet = new Set(hasActiveFilter ? [] : recommendedJobIds);
+  const recommendedSet = new Set(hasActiveFilter || sort !== "recomendadas" ? [] : recommendedJobIds);
   const recommended = recommendedJobIds
     .map((id) => filtered.find((j) => j.id === id))
     .filter((j): j is JobWithCompany => !!j && recommendedSet.has(j.id));
   const featured = filtered.filter(
-    (j) => j.featured && !recommendedSet.has(j.id)
+    (j) => sort === "recomendadas" && j.featured && !recommendedSet.has(j.id)
   );
-  const rest = filtered.filter(
-    (j) => !j.featured && !recommendedSet.has(j.id)
+  const rest = (sort === "recomendadas" ? filtered : ordered).filter(
+    (j) => (sort !== "recomendadas" || !j.featured) && !recommendedSet.has(j.id)
   );
   const activeFilters =
     [city, industry, modality, contract].filter(Boolean).length +
     Number(firstJobOnly) +
     Number(onlyVerified) +
-    Number(withSalary);
+    Number(withSalary) + Number(hideApplied);
 
   function clearAll() {
-    setCity("");
-    setIndustry("");
-    setModality("");
-    setContract("");
-    setFirstJobOnly(false);
-    setOnlyVerified(false);
-    setWithSalary(false);
+    const next = new URLSearchParams(window.location.search);
+    for (const key of ["q", "ciudad", "rubro", "modalidad", "contrato", "primerEmpleo", "verificadas", "salario", "sinPostuladas"]) next.delete(key);
+    window.history.replaceState(null, "", `${window.location.pathname}${next.size ? `?${next}` : ""}`);
+    setShareStatus("");
   }
 
   // Cada filtro activo se muestra arriba y se quita tocándolo: así se ve de un
   // vistazo por qué aparecen pocas vacantes, sin tener que abrir la hoja.
   const activeChips: { label: string; clear: () => void }[] = [
+    query ? { label: `“${query}”`, clear: () => setQuery("") } : null,
+    hideApplied ? { label: "Sin postuladas", clear: () => setHideApplied(false) } : null,
     city ? { label: city, clear: () => setCity("") } : null,
     industry ? { label: industry, clear: () => setIndustry("") } : null,
     modality ? { label: modality, clear: () => setModality("") } : null,
@@ -157,6 +144,7 @@ export default function JobFeed({
         <label className="label">Ciudad</label>
         <select
           className="input"
+          aria-label="Ciudad"
           value={city}
           onChange={(e) => setCity(e.target.value)}
         >
@@ -170,6 +158,7 @@ export default function JobFeed({
         <label className="label">Rubro</label>
         <select
           className="input"
+          aria-label="Rubro"
           value={industry}
           onChange={(e) => setIndustry(e.target.value)}
         >
@@ -185,6 +174,7 @@ export default function JobFeed({
           {MODALITIES.map((m) => (
             <button
               key={m}
+              aria-pressed={modality === m}
               onClick={() => setModality(modality === m ? "" : m)}
               className={`chip min-h-9 px-3 border ${
                 modality === m
@@ -200,9 +190,10 @@ export default function JobFeed({
       <div>
         <label className="label">Tipo de contrato</label>
         <div className="flex flex-wrap gap-1.5">
-          {["Tiempo completo", "Medio tiempo", "Por turnos"].map((c) => (
+          {["Tiempo completo", "Medio tiempo", "Por turnos", "Pasantía", "Freelance"].map((c) => (
             <button
               key={c}
+              aria-pressed={contract === c}
               onClick={() => setContract(contract === c ? "" : c)}
               className={`chip min-h-9 px-3 border ${
                 contract === c
@@ -217,6 +208,7 @@ export default function JobFeed({
       </div>
       <div className="space-y-2 pt-1">
         {[
+          { checked: hideApplied, set: setHideApplied, label: "Ocultar mis postulaciones", hint: "Solo vacantes de Worka" },
           {
             checked: firstJobOnly,
             set: setFirstJobOnly,
@@ -305,6 +297,15 @@ export default function JobFeed({
       </aside>
 
       <div className="space-y-4">
+        <div className="card p-5">
+          <h1 className="text-xl lg:text-2xl font-bold text-primary-dark">Encontrá tu próximo empleo</h1>
+          <p className="text-sm text-gray-500 mt-1">Buscá a tu ritmo: filtrá, guardá vacantes y recibí avisos de nuevas oportunidades.</p>
+          <div className="flex flex-wrap gap-3 mt-3 text-sm font-medium text-primary">
+            <Link href="/guardados">Mis guardadas</Link>
+            <Link href="/postulaciones">Mis postulaciones</Link>
+            <Link href="/alertas">Mis alertas</Link>
+          </div>
+        </div>
         {/* Buscador fijo + acceso a filtros. Antes los dos selectores y la
             fila de chips ocupaban un tercio de la pantalla antes de la primera
             vacante; ahora todo eso vive en una hoja y arriba solo quedan los
@@ -313,6 +314,7 @@ export default function JobFeed({
           <div className="flex gap-2">
             <input
               type="search"
+              aria-label="Buscar empleos"
               className="input bg-white flex-1"
               placeholder="Buscar puesto, empresa o rubro…"
               value={query}
@@ -321,6 +323,7 @@ export default function JobFeed({
             <button
               onClick={() => setSheetOpen(true)}
               aria-label="Filtros"
+              aria-expanded={sheetOpen}
               className="btn-secondary press shrink-0 relative px-4"
             >
               <SlidersHorizontal size={18} />
@@ -332,11 +335,12 @@ export default function JobFeed({
             </button>
           </div>
 
-          {activeFilters > 0 && (
+          {activeChips.length > 0 && (
             <div className="flex gap-1.5 overflow-x-auto scroll-thin pb-0.5">
               {activeChips.map((c) => (
                 <button
                   key={c.label}
+                  aria-label={`Quitar filtro ${c.label}`}
                   onClick={c.clear}
                   className="chip min-h-8 px-3 shrink-0 bg-primary text-white press animate-pop"
                 >
@@ -356,6 +360,7 @@ export default function JobFeed({
         {/* Buscador de escritorio (en celular vive en la barra fija de arriba) */}
         <input
           type="search"
+              aria-label="Buscar empleos"
           className="input bg-white hidden lg:block"
           placeholder="Buscar puesto, empresa o rubro…"
           value={query}
@@ -364,22 +369,38 @@ export default function JobFeed({
 
         <RecentJobs />
 
-        <p className="text-sm text-gray-500">
-          {filtered.length === 1
-            ? "1 vacante encontrada"
-            : `${filtered.length} vacantes encontradas`}
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p role="status" className="text-sm text-gray-600">
+            {total} {total === 1 ? "vacante encontrada" : "vacantes encontradas"}
+            <span className="block text-xs text-gray-500">{filtered.length} en Worka · {filteredExternal.length} de otras fuentes</span>
+          </p>
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            Ordenar
+            <select aria-label="Ordenar vacantes" className="input w-auto" value={sort} onChange={(e) => updateFilter("orden", e.target.value === "recomendadas" ? "" : e.target.value)}>
+              <option value="recomendadas">Para vos y destacadas</option>
+              <option value="recientes">Más recientes</option>
+              <option value="urgentes">Urgentes primero</option>
+            </select>
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link href={alertHref} className="btn-secondary">Crear alerta de búsqueda</Link>
+          <button className="btn-secondary" onClick={shareSearch}>Copiar búsqueda</button>
+        </div>
+        {(contract || firstJobOnly || onlyVerified || withSalary || hideApplied) && (
+          <p className="text-xs text-gray-500">La alerta usará el puesto, ciudad, rubro y modalidad. Los demás filtros se conservan en el enlace de búsqueda.</p>
+        )}
+        {shareStatus && <p role="status" className="text-sm text-primary">{shareStatus}</p>}
 
-        {filtered.length === 0 && (
+        {total === 0 && (
           <div className="card p-8 text-center">
-            <p className="text-3xl mb-2">🔍</p>
-            <p className="font-semibold text-primary-dark">
-              No encontramos vacantes con esos filtros
-            </p>
-            <p className="text-sm text-gray-500 mt-1">
-              Probá quitar algún filtro o activá las alertas por WhatsApp en tu
-              perfil para avisarte cuando haya algo nuevo.
-            </p>
+            <p className="text-3xl mb-2" aria-hidden>🔍</p>
+            <h2 className="font-semibold text-primary-dark">No encontramos vacantes con esta búsqueda</h2>
+            <p className="text-sm text-gray-500 mt-1">Probá otro puesto o ampliá la ciudad. También podés crear una alerta para recibir novedades.</p>
+            <div className="flex flex-wrap justify-center gap-2 mt-4">
+              <button className="btn-primary" onClick={clearAll}>Ver todas las vacantes</button>
+              <Link href={alertHref} className="btn-secondary">Avisarme de nuevas vacantes</Link>
+            </div>
           </div>
         )}
 
@@ -460,7 +481,7 @@ export default function JobFeed({
               </p>
             </div>
             <div className="grid gap-3 xl:grid-cols-2 stagger">
-              {filteredExternal.map((job) => (
+              {orderedExternal.map((job) => (
                 <ExternalJobCard key={job.id} job={job} />
               ))}
             </div>
@@ -470,21 +491,7 @@ export default function JobFeed({
 
       {/* Hoja de filtros (solo celular). El escritorio los tiene siempre a la
           vista en la barra lateral. */}
-      {sheetOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-black/40 lg:hidden"
-          onClick={() => setSheetOpen(false)}
-          aria-hidden
-        />
-      )}
-      <div
-        role="dialog"
-        aria-label="Filtros"
-        aria-hidden={!sheetOpen}
-        className={`fixed inset-x-0 bottom-0 z-50 lg:hidden bg-white rounded-t-3xl shadow-2xl transition-transform duration-200 ease-out max-h-[88vh] flex flex-col ${
-          sheetOpen ? "translate-y-0" : "translate-y-full pointer-events-none"
-        }`}
-      >
+      <MobileSheet open={sheetOpen} onClose={() => setSheetOpen(false)} label="Filtros" className="overflow-y-auto">
         <div className="flex items-center justify-between px-5 pt-4 pb-2 shrink-0 border-b border-gray-100">
           <h2 className="font-bold text-primary-dark">Filtros</h2>
           <button
@@ -516,7 +523,7 @@ export default function JobFeed({
               : "vacantes"}
           </button>
         </div>
-      </div>
+      </MobileSheet>
     </div>
   );
 }

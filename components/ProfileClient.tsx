@@ -2,6 +2,10 @@
 
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import ProfileStrength from "@/components/ProfileStrength";
+import MobileSheet from "@/components/MobileSheet";
+import { countryByCode } from "@/lib/countries";
+import { SITE_URL } from "@/lib/supabase/config";
 import type { Candidate, IdentityStatus, WorkReference } from "@/lib/types";
 import {
   addWorkReference,
@@ -15,10 +19,16 @@ import {
   updateCandidateProfile,
   uploadAvatar,
   uploadCv,
+  type ActionResult,
 } from "@/app/actions";
 import { compressImage } from "@/lib/compress-image";
 import { toPyWhatsapp } from "@/lib/format";
-import { CITIES, INDUSTRIES } from "@/lib/mock-data";
+import { INDUSTRIES } from "@/lib/mock-data";
+
+async function saveProfileAction(action: () => Promise<ActionResult>): Promise<ActionResult> {
+  try { return await action(); }
+  catch { return { ok: false, error: "No pudimos conectar. Tus cambios siguen disponibles para reintentar." }; }
+}
 
 function refWhatsAppUrl(ref: WorkReference, candidateName: string): string {
   // Formato internacional paraguayo: 0992… / 992… → 595992…
@@ -28,25 +38,8 @@ function refWhatsAppUrl(ref: WorkReference, candidateName: string): string {
   return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
 }
 
-// Medidor de perfil: cada dato completado mejora la visibilidad del candidato.
-function profileCompleteness(c: Candidate, hasCv: boolean) {
-  const checks: { label: string; done: boolean }[] = [
-    { label: "Nombre completo", done: !!c.full_name },
-    { label: "WhatsApp", done: !!c.phone_whatsapp },
-    { label: "Ciudad", done: !!c.location_city },
-    { label: "Rubros de interés", done: c.preferences_industry.length > 0 },
-    { label: "Foto de perfil", done: !!c.avatar_url },
-    { label: "Bio (sobre mí)", done: !!c.bio },
-    { label: "CV cargado", done: hasCv },
-  ];
-  const pct = Math.round(
-    (checks.filter((x) => x.done).length / checks.length) * 100
-  );
-  return { checks, pct };
-}
-
 export default function ProfileClient({
-  candidate,
+  candidate: initialCandidate,
   references: initialReferences = [],
   settings = {},
 }: {
@@ -54,6 +47,10 @@ export default function ProfileClient({
   references?: WorkReference[];
   settings?: Record<string, string>;
 }) {
+  const [candidate, setCandidate] = useState(initialCandidate);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [savedBio, setSavedBio] = useState(initialCandidate.bio ?? "");
+  const profileCities = [...new Set([...countryByCode(candidate.country ?? "py").cities, candidate.location_city])];
   const [configModal, setConfigModal] = useState<
     null | "editar" | "notificaciones" | "privacidad" | "ayuda"
   >(null);
@@ -103,10 +100,14 @@ export default function ProfileClient({
   function handleCvFile(file: File | undefined) {
     if (!file) return;
     setCvError(null);
+    if (file.type !== "application/pdf" || file.size > 5 * 1024 * 1024) {
+      setCvError("Elegí un PDF de hasta 5 MB. Tu CV anterior se conserva.");
+      return;
+    }
     const fd = new FormData();
     fd.append("cv", file);
     startTransition(async () => {
-      const result = await uploadCv(fd);
+      const result = await saveProfileAction(() => uploadCv(fd));
       if (result.ok) setHasCv(true);
       else setCvError(result.error ?? "No pudimos subir el CV.");
     });
@@ -114,45 +115,65 @@ export default function ProfileClient({
 
   function handleAvatar(file: File | undefined) {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => setAvatarUrl(reader.result as string);
-    reader.readAsDataURL(file);
+    setProfileError(null);
     startTransition(async () => {
-      const compressed = await compressImage(file, { maxSize: 512 });
-      const fd = new FormData();
-      fd.append("image", compressed);
-      const result = await uploadAvatar(fd);
-      if (result.ok && result.url) setAvatarUrl(result.url);
+      try {
+        const compressed = await compressImage(file, { maxSize: 512 });
+        const fd = new FormData();
+        fd.append("image", compressed);
+        const result = await uploadAvatar(fd);
+        if (!result.ok) { setProfileError(result.error ?? "No pudimos guardar la foto."); return; }
+        if (result.url) setAvatarUrl(result.url);
+        else if (result.demo) {
+          const reader = new FileReader();
+          reader.onload = () => setAvatarUrl(reader.result as string);
+          reader.readAsDataURL(file);
+        }
+      } catch { setProfileError("No pudimos procesar la imagen. Probá con otra foto."); }
     });
   }
 
   function saveBio() {
+    const draft = bio.trim();
+    setProfileError(null);
     startTransition(async () => {
-      await updateCandidateProfile({ bio });
-      setBioSaved(true);
-      setTimeout(() => setBioSaved(false), 2500);
+      try {
+        const result = await updateCandidateProfile({ bio: draft });
+        if (!result.ok) { setProfileError(result.error ?? "No pudimos guardar tu presentación."); return; }
+        setSavedBio(draft);
+        setCandidate((current) => ({ ...current, bio: draft }));
+        setBioSaved(true);
+      } catch { setProfileError("No pudimos guardar. Conservamos tu texto para que reintentes."); }
     });
   }
 
   function viewCv() {
+    const tab = window.open("about:blank", "_blank");
+    if (tab) tab.opener = null;
     startTransition(async () => {
       const result = await getMyCvUrl();
-      if (result.ok && result.url) window.open(result.url, "_blank");
-      else setCvError(result.error ?? "No pudimos abrir el CV.");
+      if (result.ok && result.url && tab) tab.location.href = result.url;
+      else {
+        tab?.close();
+        setCvError(result.error ?? "Permití abrir ventanas emergentes para ver el CV.");
+      }
     });
   }
 
   function removeCv() {
     startTransition(async () => {
-      await deleteCv();
-      setHasCv(false);
+      const result = await saveProfileAction(() => deleteCv());
+      if (result.ok) setHasCv(false);
+      else setCvError(result.error ?? "No pudimos eliminar tu CV.");
     });
   }
 
   function removeReference(id: string) {
-    setReferences((prev) => prev.filter((r) => r.id !== id));
-    startTransition(() => {
-      deleteWorkReference(id);
+    setProfileError(null);
+    startTransition(async () => {
+      const result = await saveProfileAction(() => deleteWorkReference(id));
+      if (result.ok) setReferences((prev) => prev.filter((r) => r.id !== id));
+      else setProfileError(result.error ?? "No pudimos eliminar la referencia.");
     });
   }
 
@@ -181,21 +202,25 @@ export default function ProfileClient({
     value: boolean,
     set: (v: boolean) => void
   ) {
-    set(value);
-    startTransition(() => {
-      updateCandidatePrefs({ [key]: value });
+    setProfileError(null);
+    startTransition(async () => {
+      const result = await saveProfileAction(() => updateCandidatePrefs({ [key]: value }));
+      if (result.ok) set(value);
+      else setProfileError(result.error ?? "No pudimos guardar la preferencia.");
     });
   }
 
   function submitReference() {
     if (!refDraft.referrer_name || !refDraft.referrer_phone) return;
     const draft = { ...refDraft };
-    setRefFormOpen(false);
-    setRefDraft({ referrer_name: "", referrer_phone: "", relationship: "" });
+    setProfileError(null);
     startTransition(async () => {
-      const result = await addWorkReference(draft);
+      const result = await saveProfileAction(() => addWorkReference(draft));
+      if (!result.ok) { setProfileError(result.error ?? "No pudimos crear la referencia."); return; }
+      setRefFormOpen(false);
+      setRefDraft({ referrer_name: "", referrer_phone: "", relationship: "" });
       const local: WorkReference = {
-        id: `local-${Date.now()}`,
+        id: result.id ?? `local-${Date.now()}`,
         candidate_id: candidate.id,
         ...draft,
         status: "generada",
@@ -203,26 +228,28 @@ export default function ProfileClient({
         created_at: new Date().toISOString(),
       };
       setReferences((prev) => [local, ...prev]);
-      // Abre WhatsApp con el link único listo para enviar
-      if (result.token) {
-        window.open(refWhatsAppUrl(local, candidate.full_name), "_blank");
-      }
+      // El enlace de envío queda visible en la referencia creada.
     });
   }
 
-  const { checks, pct } = profileCompleteness(candidate, hasCv);
 
-  function toggleFirstJob(value: boolean) {
-    setFirstJobMode(value);
-    startTransition(() => {
-      updateCandidatePrefs({ first_job_mode: value });
+  function savePreference(key: "first_job_mode" | "alerts_enabled" | "email_notifications", value: boolean, set: (value: boolean) => void) {
+    setProfileError(null);
+    startTransition(async () => {
+      const result = await saveProfileAction(() => updateCandidatePrefs({ [key]: value }));
+      if (result.ok) set(value);
+      else setProfileError(result.error ?? "No pudimos guardar la preferencia.");
     });
   }
+  const toggleFirstJob = (value: boolean) => savePreference("first_job_mode", value, setFirstJobMode);
+  const toggleAlerts = (value: boolean) => savePreference("alerts_enabled", value, setAlertsEnabled);
 
-  function toggleAlerts(value: boolean) {
-    setAlertsEnabled(value);
-    startTransition(() => {
-      updateCandidatePrefs({ alerts_enabled: value });
+  function saveSearchPreference(key: "preferences_modality" | "open_to_other_cities", value: string | boolean) {
+    setProfileError(null);
+    startTransition(async () => {
+      const result = await saveProfileAction(() => updateCandidatePrefs({ [key]: value }));
+      if (result.ok) setCandidate((current) => ({ ...current, [key]: value }));
+      else setProfileError(result.error ?? "No pudimos guardar tus preferencias de búsqueda.");
     });
   }
 
@@ -232,15 +259,25 @@ export default function ProfileClient({
         Mi perfil
       </h1>
 
+      <p className="text-sm text-gray-500">Tu presentación, CV y preferencias en un solo lugar. Elegí qué compartís con las empresas.</p>
+      <nav aria-label="Secciones de mi perfil" className="flex flex-wrap gap-2">
+        {[["datos", "Datos"], ["curriculum", "Mi CV"], ["preferencias", "Preferencias"], ["referencias", "Referencias"], ["configuracion", "Configuración"]].map(([id, label]) => (
+          <a key={id} href={`#${id}`} className="btn-secondary text-sm">{label}</a>
+        ))}
+      </nav>
+      <ProfileStrength candidate={{ ...candidate, avatar_url: avatarUrl, cv_url: hasCv ? "loaded" : null }} referencesCount={references.filter((ref) => ref.status === "confirmada").length} />
+      {profileError && <p role="alert" className="card p-4 text-sm text-danger">{profileError}</p>}
       <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-6 lg:items-start space-y-4 lg:space-y-0">
         {/* Columna principal */}
         <div className="space-y-4">
-          <div className="card p-5 sm:p-6">
+          <div id="datos" className="card p-5 sm:p-6 scroll-mt-24">
             <div className="flex items-center gap-4">
               <button
                 className="relative w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center text-xl font-bold shrink-0 overflow-hidden group"
                 onClick={() => avatarInput.current?.click()}
                 title="Cambiar foto de perfil"
+                aria-label="Cambiar foto de perfil"
+                disabled={pending}
               >
                 {avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -285,56 +322,39 @@ export default function ProfileClient({
               </div>
             </div>
 
+            <button className="btn-secondary mt-4" onClick={() => { setEditSaved(false); setConfigModal("editar"); }}>Editar mis datos</button>
             {/* Bio corta, visible para empresas y en tu perfil público */}
-            <div className="mt-4">
-              <label className="label">Sobre mí (bio)</label>
+            <div id="presentacion" className="mt-4 scroll-mt-24">
+              <label htmlFor="profile-bio" className="label">Sobre mí</label>
               <textarea
-                className="input min-h-16 text-sm"
+                id="profile-bio"
+                aria-describedby="bio-help"
+                className="input min-h-28 text-sm"
                 maxLength={280}
                 placeholder="Contá en pocas líneas quién sos y qué buscás. Lo ven las empresas."
                 value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                onBlur={saveBio}
+                onChange={(e) => { setBio(e.target.value); setBioSaved(false); }}
               />
-              <p className="text-xs text-gray-400 mt-0.5">
-                {bioSaved ? "✓ Guardado" : `${bio.length}/280 · se guarda al salir del campo`}
+              <p id="bio-help" role="status" className="text-xs text-gray-500 mt-1">
+                {bioSaved && bio.trim() === savedBio ? "✓ Presentación guardada" : `${bio.length}/280 caracteres${bio.trim() !== savedBio ? " · Cambios sin guardar" : ""}`}
               </p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <button disabled={pending || bio.trim() === savedBio} onClick={saveBio} className="btn-primary">{pending ? "Guardando…" : "Guardar presentación"}</button>
+                {bio.trim() !== savedBio && <button className="btn-secondary" disabled={pending} onClick={() => { setBio(savedBio); setBioSaved(false); }}>Descartar cambios</button>}
+              </div>
             </div>
 
-            <div className="mt-5">
-              <div className="flex justify-between text-sm mb-1">
-                <span className="font-medium text-gray-700">
-                  Tu perfil está al {pct}%
-                </span>
-                {pct < 100 && (
-                  <span className="text-gray-400 text-xs">
-                    Completalo y aparecé primero
-                  </span>
-                )}
-              </div>
-              <div className="h-2.5 bg-surface rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-success rounded-full transition-all"
-                  style={{ width: `${pct}%` }}
-                />
-              </div>
-              <ul className="mt-3 grid sm:grid-cols-2 gap-x-4 gap-y-1">
-                {checks.map((c) => (
-                  <li
-                    key={c.label}
-                    className={`text-sm flex items-center gap-2 ${
-                      c.done ? "text-gray-500" : "text-gray-700 font-medium"
-                    }`}
-                  >
-                    <span>{c.done ? "✅" : "⬜"}</span> {c.label}
-                  </li>
-                ))}
-              </ul>
-            </div>
           </div>
 
-          <div className="card p-5 space-y-3">
+          <div id="curriculum" className="card p-5 space-y-3 scroll-mt-24">
             <h2 className="font-semibold text-primary-dark">Mi CV</h2>
+                <input
+                  ref={cvInput}
+                  type="file"
+                  accept="application/pdf"
+                  className="hidden"
+                  onChange={(e) => { handleCvFile(e.target.files?.[0]); e.target.value = ""; }}
+                />
             {hasCv ? (
               <div className="flex items-center justify-between gap-3 bg-surface rounded-xl px-4 py-3">
                 <p className="text-sm text-gray-700 font-medium">
@@ -353,7 +373,8 @@ export default function ProfileClient({
                   </Link>
                   <button
                     className="text-sm text-gray-500 font-medium"
-                    onClick={() => setHasCv(false)}
+                    disabled={pending}
+                    onClick={() => cvInput.current?.click()}
                   >
                     Reemplazar
                   </button>
@@ -365,7 +386,7 @@ export default function ProfileClient({
                     Eliminar
                   </button>
                 </div>
-                {cvError && <p className="text-xs text-danger">{cvError}</p>}
+                {cvError && <p role="alert" className="text-xs text-danger">{cvError}</p>}
               </div>
             ) : (
               <>
@@ -376,13 +397,6 @@ export default function ProfileClient({
                   </span>{" "}
                   usando los datos de tu perfil.
                 </p>
-                <input
-                  ref={cvInput}
-                  type="file"
-                  accept="application/pdf"
-                  className="hidden"
-                  onChange={(e) => handleCvFile(e.target.files?.[0])}
-                />
                 <div className="flex gap-2">
                   <button
                     className="btn-secondary flex-1"
@@ -395,13 +409,29 @@ export default function ProfileClient({
                     ✨ Generar mi CV
                   </Link>
                 </div>
-                {cvError && <p className="text-xs text-danger">{cvError}</p>}
+                {cvError && <p role="alert" className="text-xs text-danger">{cvError}</p>}
               </>
             )}
           </div>
 
-          <div className="card p-5 space-y-4">
+          <div id="preferencias" className="card p-5 space-y-4 scroll-mt-24">
             <h2 className="font-semibold text-primary-dark">Preferencias</h2>
+            <p className="text-sm text-gray-500">Ayudanos a recomendarte oportunidades que se ajusten a lo que buscás.</p>
+            <div>
+              <label className="label" htmlFor="preferred-modality">Modalidad que preferís</label>
+              <select id="preferred-modality" className="input" disabled={pending}
+                value={["Presencial", "Híbrido", "Remoto"].includes(candidate.preferences_modality) ? candidate.preferences_modality : "Cualquiera"}
+                onChange={(e) => saveSearchPreference("preferences_modality", e.target.value)}>
+                {["Cualquiera", "Presencial", "Híbrido", "Remoto"].map((value) => <option key={value}>{value}</option>)}
+              </select>
+            </div>
+            <label className="flex items-center justify-between gap-3 cursor-pointer">
+              <span><span className="block text-sm font-medium text-gray-700">Puedo trabajar en otras ciudades</span><span className="block text-xs text-gray-500">Amplía las recomendaciones fuera de tu ciudad.</span></span>
+              <input type="checkbox" className="w-5 h-5 accent-primary" checked={candidate.open_to_other_cities} disabled={pending}
+                onChange={(e) => saveSearchPreference("open_to_other_cities", e.target.checked)} />
+            </label>
+            {profileError && <p role="alert" className="text-sm text-danger">{profileError}</p>}
+
 
             <label className="flex items-center justify-between gap-3 cursor-pointer">
               <div>
@@ -409,11 +439,12 @@ export default function ProfileClient({
                   ✨ Modo primer empleo
                 </p>
                 <p className="text-xs text-gray-500">
-                  Solo vacantes que no piden experiencia.
+                  Priorizá oportunidades que no piden experiencia.
                 </p>
               </div>
               <input
                 type="checkbox"
+                disabled={pending}
                 checked={firstJobMode}
                 onChange={(e) => toggleFirstJob(e.target.checked)}
                 className="w-5 h-5 accent-primary"
@@ -432,10 +463,10 @@ export default function ProfileClient({
               </div>
               <input
                 type="checkbox"
+                disabled={pending}
                 checked={emailsEnabled}
                 onChange={(e) => {
-                  setEmailsEnabled(e.target.checked);
-                  updateCandidatePrefs({ email_notifications: e.target.checked });
+                  savePreference("email_notifications", e.target.checked, setEmailsEnabled);
                 }}
                 className="w-5 h-5 accent-primary"
               />
@@ -444,16 +475,17 @@ export default function ProfileClient({
             <label className="flex items-center justify-between gap-3 cursor-pointer">
               <div>
                 <p className="text-sm font-medium text-gray-700">
-                  💬 Alertas por WhatsApp
+                  🔔 Novedades de empleo
                 </p>
                 <p className="text-xs text-gray-500">
-                  Te avisamos cuando haya vacantes de{" "}
+                  Recibí novedades por email y en Worka para vacantes de{" "}
                   {candidate.preferences_industry.join(" y ") || "tus rubros"} en{" "}
                   {candidate.location_city}.
                 </p>
               </div>
               <input
                 type="checkbox"
+                disabled={pending}
                 checked={alertsEnabled}
                 onChange={(e) => toggleAlerts(e.target.checked)}
                 className="w-5 h-5 accent-primary"
@@ -472,6 +504,7 @@ export default function ProfileClient({
               </div>
               <input
                 type="checkbox"
+                disabled={pending}
                 checked={visibleToCompanies}
                 onChange={(e) =>
                   togglePref(
@@ -496,6 +529,7 @@ export default function ProfileClient({
               </div>
               <input
                 type="checkbox"
+                disabled={pending}
                 checked={publicProfile}
                 onChange={(e) =>
                   togglePref("public_profile", e.target.checked, setPublicProfile)
@@ -512,7 +546,7 @@ export default function ProfileClient({
                   Ver mi perfil público
                 </Link>
                 <a
-                  href={`https://wa.me/?text=${encodeURIComponent(`Mirá mi perfil laboral en Worka: worka.com.py/p/${candidate.id}`)}`}
+                  href={`https://wa.me/?text=${encodeURIComponent(`Mirá mi perfil laboral en Worka: ${SITE_URL}/p/${candidate.id}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn-primary flex-1 text-xs"
@@ -546,7 +580,7 @@ export default function ProfileClient({
           </div>
 
           {/* Referencias laborales */}
-          <div className="card p-5 space-y-3">
+          <div id="referencias" className="card p-5 space-y-3 scroll-mt-24">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-primary-dark">
                 🤝 Referencias laborales
@@ -559,13 +593,14 @@ export default function ProfileClient({
               </button>
             </div>
             <p className="text-xs text-gray-400 -mt-1">
-              Un ex-jefe o encargado confirma por WhatsApp que trabajaste con
-              él. Las referencias confirmadas aparecen en tu perfil público.
+              Creá un enlace y compartilo con un ex-jefe o encargado para que
+              confirme que trabajaste con él. Las referencias confirmadas aparecen en tu perfil público.
             </p>
             {refFormOpen && (
               <div className="space-y-2 bg-surface rounded-xl p-3">
                 <input
                   className="input text-sm"
+                  aria-label="Nombre de la referencia"
                   placeholder="Nombre de la persona (ej: Rosa Duarte)"
                   value={refDraft.referrer_name}
                   onChange={(e) =>
@@ -574,6 +609,8 @@ export default function ProfileClient({
                 />
                 <input
                   className="input text-sm"
+                  aria-label="WhatsApp de la referencia"
+                  type="tel"
                   placeholder="Su WhatsApp (ej: 0985 777 888)"
                   value={refDraft.referrer_phone}
                   onChange={(e) =>
@@ -585,6 +622,7 @@ export default function ProfileClient({
                 />
                 <input
                   className="input text-sm"
+                  aria-label="Relación laboral"
                   placeholder="Relación (ej: Fue mi encargada en…)"
                   value={refDraft.relationship}
                   onChange={(e) =>
@@ -593,10 +631,10 @@ export default function ProfileClient({
                 />
                 <button
                   className="btn-primary w-full text-sm"
-                  disabled={!refDraft.referrer_name || !refDraft.referrer_phone}
+                  disabled={pending || !refDraft.referrer_name.trim() || !refDraft.referrer_phone.trim()}
                   onClick={submitReference}
                 >
-                  Enviar solicitud por WhatsApp
+                  Crear enlace de referencia
                 </button>
               </div>
             )}
@@ -787,31 +825,26 @@ export default function ProfileClient({
               💡 Consejo de Worka
             </p>
             <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-              Los perfiles con CV cargado reciben el doble de contactos. Si no
-              tenés uno, generalo gratis desde &ldquo;Mi CV&rdquo;.
+              Un CV actualizado ayuda a mostrar tu experiencia. Si no tenés uno,
+              generalo gratis desde &ldquo;Mi CV&rdquo;.
             </p>
           </div>
         </div>
       </div>
 
-      {/* Modales de configuración */}
-      {configModal && (
-        <div
-          className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4"
-          onClick={() => setConfigModal(null)}
-        >
-          <div
-            className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-5 animate-fade-up max-h-[85vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
+      {/* Configuración accesible en móvil y escritorio. */}
+      <MobileSheet desktop open={configModal !== null} onClose={() => setConfigModal(null)} label="Configuración del perfil" className="p-5 overflow-y-auto">
+        <button className="btn-secondary ml-auto mb-3" onClick={() => setConfigModal(null)}>Cerrar configuración</button>
+        {profileError && <p role="alert" className="text-sm text-danger mb-3">{profileError}</p>}
             {configModal === "editar" && (
               <div className="space-y-3">
                 <h4 className="font-semibold text-primary-dark">
                   ✏️ Editar mis datos
                 </h4>
                 <div>
-                  <label className="label">Nombre completo</label>
+                  <label htmlFor="edit-name" className="label">Nombre completo</label>
                   <input
+                    id="edit-name"
                     className="input"
                     value={editDraft.full_name}
                     onChange={(e) =>
@@ -820,8 +853,9 @@ export default function ProfileClient({
                   />
                 </div>
                 <div>
-                  <label className="label">WhatsApp</label>
+                  <label htmlFor="edit-phone" className="label">WhatsApp</label>
                   <input
+                    id="edit-phone"
                     className="input"
                     value={editDraft.phone_whatsapp}
                     onChange={(e) =>
@@ -833,8 +867,9 @@ export default function ProfileClient({
                   />
                 </div>
                 <div>
-                  <label className="label">Ciudad</label>
+                  <label htmlFor="edit-city" className="label">Ciudad</label>
                   <select
+                    id="edit-city"
                     className="input"
                     value={editDraft.location_city}
                     onChange={(e) =>
@@ -844,7 +879,7 @@ export default function ProfileClient({
                       }))
                     }
                   >
-                    {CITIES.map((c) => (
+                    {profileCities.map((c) => (
                       <option key={c}>{c}</option>
                     ))}
                   </select>
@@ -857,6 +892,7 @@ export default function ProfileClient({
                       return (
                         <button
                           key={ind}
+                          aria-pressed={on}
                           onClick={() =>
                             setEditDraft((d) => ({
                               ...d,
@@ -879,8 +915,9 @@ export default function ProfileClient({
                     })}
                   </div>
                 </div>
+                {profileError && <p role="alert" className="text-sm text-danger">{profileError}</p>}
                 {editSaved && (
-                  <p className="text-sm text-emerald-700 bg-emerald-50 rounded-xl px-3 py-2">
+                  <p role="status" className="text-sm text-emerald-700 bg-emerald-50 rounded-xl px-3 py-2">
                     ✅ Datos guardados.
                   </p>
                 )}
@@ -896,8 +933,15 @@ export default function ProfileClient({
                     disabled={pending}
                     onClick={() =>
                       startTransition(async () => {
-                        const result = await updateCandidateProfile(editDraft);
-                        if (result.ok) setEditSaved(true);
+                        setProfileError(null);
+                        setEditSaved(false);
+                        if (!editDraft.full_name.trim() || !editDraft.location_city || !editDraft.phone_whatsapp.trim()) {
+                          setProfileError("Completá tu nombre, ciudad y teléfono antes de guardar.");
+                          return;
+                        }
+                        const result = await saveProfileAction(() => updateCandidateProfile({ ...editDraft, full_name: editDraft.full_name.trim(), phone_whatsapp: editDraft.phone_whatsapp.trim() }));
+                        if (result.ok) { setCandidate((current) => ({ ...current, ...editDraft })); setEditSaved(true); }
+                        else setProfileError(result.error ?? "No pudimos guardar tus datos.");
                       })
                     }
                   >
@@ -915,7 +959,7 @@ export default function ProfileClient({
                 <label className="flex items-center justify-between gap-3 cursor-pointer">
                   <div>
                     <p className="text-sm font-medium text-gray-700">
-                      💬 Alertas por WhatsApp
+                      🔔 Novedades de empleo
                     </p>
                     <p className="text-xs text-gray-500">
                       Vacantes nuevas de tus rubros y avisos de perfil visto.
@@ -923,6 +967,7 @@ export default function ProfileClient({
                   </div>
                   <input
                     type="checkbox"
+                disabled={pending}
                     checked={alertsEnabled}
                     onChange={(e) => toggleAlerts(e.target.checked)}
                     className="w-5 h-5 accent-primary"
@@ -954,6 +999,7 @@ export default function ProfileClient({
                   </div>
                   <input
                     type="checkbox"
+                disabled={pending}
                     checked={visibleToCompanies}
                     onChange={(e) =>
                       togglePref(
@@ -973,6 +1019,7 @@ export default function ProfileClient({
                   </div>
                   <input
                     type="checkbox"
+                disabled={pending}
                     checked={publicProfile}
                     onChange={(e) =>
                       togglePref(
@@ -1046,14 +1093,10 @@ export default function ProfileClient({
                 </button>
               </div>
             )}
-          </div>
-        </div>
-      )}
+      </MobileSheet>
 
       {/* Confirmación de borrado de cuenta */}
-      {deleteOpen && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm p-5 animate-fade-up">
+      <MobileSheet desktop open={deleteOpen} onClose={() => setDeleteOpen(false)} label="Eliminar mi cuenta" className="p-5">
             <h4 className="font-semibold text-primary-dark">
               ¿Eliminar tu cuenta?
             </h4>
@@ -1081,9 +1124,7 @@ export default function ProfileClient({
                 {pending ? "Eliminando…" : "Sí, eliminar todo"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </MobileSheet>
     </div>
   );
 }

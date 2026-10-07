@@ -6,7 +6,13 @@ import { getActiveCountry } from "@/lib/country-context";
 
 export const metadata = { title: "Alertas de empleo" };
 
-export default async function AlertsPage() {
+export default async function AlertsPage({ searchParams }: {
+  searchParams: Promise<{ q?: string; ciudad?: string; rubro?: string; modalidad?: string }>;
+}) {
+  const params = await searchParams;
+  const next = new URLSearchParams();
+  for (const key of ["q", "ciudad", "rubro", "modalidad"] as const) if (params[key]) next.set(key, params[key]);
+  const returnTo = `/alertas${next.size ? `?${next}` : ""}`;
   const live = isLive();
   const user = live ? await getCurrentUser() : null;
   if (live && !user) {
@@ -16,7 +22,7 @@ export default async function AlertsPage() {
         <p className="font-semibold text-primary-dark">
           Iniciá sesión para crear alertas
         </p>
-        <Link href="/ingresar" className="btn-primary mt-4">
+        <Link href={`/ingresar?next=${encodeURIComponent(returnTo)}`} className="btn-primary mt-4">
           Ingresar
         </Link>
       </div>
@@ -26,5 +32,6 @@ export default async function AlertsPage() {
     getMyAlerts(),
     getActiveCountry(),
   ]);
-  return <AlertsManager alerts={alerts} country={country.code} />;
+  return <AlertsManager alerts={alerts} country={country.code} cities={country.cities}
+    initialSearch={{ keyword: params.q ?? "", city: params.ciudad ?? "", industry: params.rubro ?? "", modality: params.modalidad ?? "" }} />;
 }

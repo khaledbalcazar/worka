@@ -43,6 +43,7 @@ export type ActionResult = {
   error?: string;
   demo?: boolean;
   token?: string;
+  id?: string;
 };
 
 const DEMO: ActionResult = { ok: true, demo: true };
@@ -428,11 +429,11 @@ export async function addWorkReference(input: {
   const { data, error } = await supabase
     .from("work_references")
     .insert({ candidate_id: user.id, ...input, status: "generada" })
-    .select("token")
+    .select("id,token")
     .single();
   if (error) return { ok: false, error: "No pudimos agregar la referencia." };
   revalidatePath("/perfil");
-  return { ok: true, token: data.token as string };
+  return { ok: true, token: data.token as string, id: data.id as string };
 }
 
 // Confirmación pública de referencia vía link único (RPC security definer)

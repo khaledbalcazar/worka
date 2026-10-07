@@ -26,43 +26,43 @@ export default function ProfileStrength({
     {
       done: !!candidate.full_name && !!candidate.location_city,
       label: "Datos básicos",
-      why: "Nombre y ciudad: sin esto no podés postularte.",
-      href: "/perfil",
+      why: "Ayudá a las empresas a identificarte y ubicarte.",
+      href: "/perfil#datos",
       weight: 20,
     },
     {
       done: !!candidate.cv_url,
       label: "Subir tu CV",
-      why: "Muchas empresas descartan sin CV. Si no tenés, te lo generamos gratis.",
-      href: candidate.cv_url ? "/perfil" : "/cv",
+      why: "Reuní tu experiencia en un documento. También podés generarlo gratis.",
+      href: "/perfil#curriculum",
       weight: 25,
     },
     {
       done: !!candidate.avatar_url,
       label: "Foto de perfil",
-      why: "Un perfil con foto recibe bastante más atención.",
-      href: "/perfil",
+      why: "La foto es opcional: elegí cómo querés presentarte.",
+      href: "/perfil#datos",
       weight: 15,
     },
     {
       done: !!candidate.bio && candidate.bio.trim().length >= 40,
       label: "Contar tu experiencia",
       why: "Unas líneas sobre lo que sabés hacer te diferencian del resto.",
-      href: "/perfil",
+      href: "/perfil#presentacion",
       weight: 15,
     },
     {
       done: candidate.preferences_industry.length > 0,
       label: "Elegir tus rubros",
       why: "Con esto armamos tus recomendaciones y tus alertas.",
-      href: "/test-perfil",
+      href: "/perfil#preferencias",
       weight: 15,
     },
     {
       done: referencesCount > 0,
-      label: "Sumar una referencia",
+      label: "Confirmar una referencia",
       why: "Alguien que responda por vos genera confianza inmediata.",
-      href: "/perfil",
+      href: "/perfil#referencias",
       weight: 10,
     },
   ];
@@ -84,7 +84,7 @@ export default function ProfileStrength({
       <div className="flex items-end justify-between gap-3">
         <div>
           <h2 className="font-semibold text-primary-dark">
-            Fuerza de tu perfil
+            Tu perfil, paso a paso
           </h2>
           <p className="text-xs text-gray-500 mt-0.5">
             {complete
@@ -101,7 +101,7 @@ export default function ProfileStrength({
         </div>
       </div>
 
-      <div className="h-2 rounded-full bg-gray-100 overflow-hidden mt-3">
+      <div role="progressbar" aria-label="Completitud del perfil" aria-valuenow={score} aria-valuemin={0} aria-valuemax={100} className="h-2 rounded-full bg-gray-100 overflow-hidden mt-3">
         <div
           className={`h-full rounded-full ${tone.bar} animate-fill`}
           style={{ width: `${score}%` }}
