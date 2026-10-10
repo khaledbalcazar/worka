@@ -15,13 +15,20 @@ import JobViewTracker from "@/components/JobViewTracker";
 import LinkedJobPanel from "@/components/evaluar/LinkedJobPanel";
 import { getProcessForJob, getMyParticipation } from "@/lib/evaluar";
 import { countryByCode } from "@/lib/countries";
+import { FastResponderBadge, UrgentBadge, VerifiedBadge } from "@/components/Badges";
 import {
-  FastResponderBadge,
-  FirstJobBadge,
-  ModalityChip,
-  UrgentBadge,
-  VerifiedBadge,
-} from "@/components/Badges";
+  ArrowLeft,
+  ArrowUpRight,
+  BadgeCheck,
+  BriefcaseBusiness,
+  Bus,
+  Clock,
+  GraduationCap,
+  MapPin,
+  Navigation,
+  Users,
+  Wallet,
+} from "lucide-react";
 
 // Metadata por vacante: título, descripción y la imagen para redes (og:image),
 // clave para el preview al compartir por WhatsApp/Facebook y para el SEO.
@@ -101,18 +108,17 @@ export default async function JobDetailPage({
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=transit`;
   const moovitUrl = `https://moovitapp.com/tripplan?dest_name=${destination}`;
 
-  const facts = [
-    job.salary_range && { icon: "💰", label: "Salario", value: job.salary_range },
-    job.contract_type && { icon: "📄", label: "Contrato", value: job.contract_type },
-    job.schedule && { icon: "🕒", label: "Horario", value: job.schedule },
+  const insights = [
+    { Icon: BriefcaseBusiness, text: [job.modality, job.contract_type].filter(Boolean).join(" · ") },
+    { Icon: Wallet, text: job.salary_range || "Salario no informado", strong: !!job.salary_range },
+    { Icon: GraduationCap, text: job.requires_experience ? "Pide experiencia previa" : "No pide experiencia previa" },
+    job.schedule && { Icon: Clock, text: job.schedule },
     {
-      icon: "👥",
-      label: "Puestos",
-      value:
-        job.vacancies_count === 1 ? "1 vacante" : `${job.vacancies_count} vacantes`,
+      Icon: Users,
+      text: job.vacancies_count === 1 ? "1 puesto disponible" : `${job.vacancies_count} puestos disponibles`,
     },
-    { icon: "🏷️", label: "Rubro", value: job.industry },
-  ].filter(Boolean) as { icon: string; label: string; value: string }[];
+  ].filter(Boolean) as { Icon: typeof Clock; text: string; strong?: boolean }[];
+
 
   // JSON-LD para Google for Jobs: hace que la vacante aparezca en el buscador.
   const employmentTypeMap: Record<string, string> = {
@@ -193,150 +199,106 @@ export default async function JobDetailPage({
         title={job.title}
         company={job.company.trade_name}
       />
-      <Link href="/empleos" className="text-sm text-primary font-medium">
-        ← Volver al feed
+      <Link href="/empleos" className="inline-flex items-center gap-1 text-sm text-primary font-semibold min-h-10">
+        <ArrowLeft size={16} /> Volver a la búsqueda
       </Link>
 
-      <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-6 lg:items-start space-y-4 lg:space-y-0">
-        <div className="space-y-4">
-          {/* Encabezado */}
-          <div className="card p-5 sm:p-6">
-            <div className="flex items-start gap-4">
-              <EntityAvatar
-                url={job.company.logo_url}
-                name={job.company.trade_name}
-                className="w-14 h-14 rounded-2xl text-lg"
-              />
-              <div className="min-w-0">
-                <h1 className="text-xl sm:text-2xl font-bold text-primary-dark leading-snug">
-                  {job.title}
-                </h1>
-                <Link
-                  href={`/empresas/${job.company.id}`}
-                  className="text-sm text-primary mt-0.5 inline-block hover:underline"
-                >
-                  {job.company.trade_name} · {job.company.location_city} →
-                </Link>
-              </div>
-            </div>
-
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-6 lg:items-start space-y-4 lg:space-y-0">
+        <article className="li-detail-card li-detail-page">
+          <header className="li-detail-top">
+            <Link href={`/empresas/${job.company.id}`} className="li-detail-company">
+              <EntityAvatar url={job.company.logo_url} name={job.company.trade_name} className="li-logo is-small" />
+              {job.company.trade_name}
+              {job.company.is_verified && <BadgeCheck size={15} aria-label="Empresa verificada" />}
+            </Link>
+            <h1 className="li-detail-title">{job.title}</h1>
+            <p className="li-detail-meta">
+              <span>{job.company.location_city}</span>
+              <span>Publicada {timeAgo(job.created_at)}</span>
+              <span>{job.views_count} vistas</span>
+            </p>
+            <ul className="li-detail-insights">
+              {insights.map(({ Icon, text, strong }) => (
+                <li key={text}><Icon size={18} /><span className={strong ? "is-strong" : ""}>{text}</span></li>
+              ))}
+            </ul>
             <div className="flex flex-wrap gap-1.5 mt-4">
-              <ModalityChip modality={job.modality} />
-              {!job.requires_experience && <FirstJobBadge />}
               {job.urgent && <UrgentBadge />}
               {job.company.is_verified && <VerifiedBadge />}
               {job.company.fast_responder && <FastResponderBadge />}
             </div>
+          </header>
 
-            {/* Datos clave */}
-            {/* En celular va como lista: en dos columnas, un horario largo
-                estiraba toda la fila y dejaba un hueco muerto al lado. */}
-            <div className="mt-4 divide-y divide-gray-100 sm:divide-y-0 sm:grid sm:grid-cols-3 sm:gap-2.5">
-              {facts.map((f) => (
-                <div
-                  key={f.label}
-                  className="flex items-baseline justify-between gap-3 py-2.5 sm:block sm:bg-surface sm:rounded-xl sm:px-3"
-                >
-                  <p className="text-[11px] text-gray-400 uppercase tracking-wide shrink-0">
-                    {f.icon} {f.label}
-                  </p>
-                  <p className="text-sm font-medium text-gray-700 text-right sm:text-left sm:mt-0.5">
-                    {f.value}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            <p className="text-xs text-gray-400 mt-4">
-              Publicada {timeAgo(job.created_at)} · Postulate antes del{" "}
-              {formatDate(job.expires_at)} · {job.views_count} personas vieron
-              esta vacante
-            </p>
-          </div>
-
-          <JobMatchCard
-            candidate={candidate ? { ...candidate, skills: candidate.skills ?? [], experience_count: experienceCount } : null}
-            job={job}
-          />
-
-          {/* Cómo llegar */}
-          {(job.address || job.nearby_transit) && job.modality !== "Remoto" && (
-            <div className="card p-5">
-              <h2 className="font-semibold text-primary-dark mb-3">
-                📍 Cómo llegar
-              </h2>
-              {job.address && (
-                <p className="text-sm text-gray-700">{job.address}</p>
-              )}
-              {job.nearby_transit && (
-                <div className="bg-blue-50 rounded-xl p-3 text-sm text-primary-dark mt-2">
-                  🚌 <span className="font-semibold">Colectivos:</span>{" "}
-                  {job.nearby_transit}
-                </div>
-              )}
-              <div className="flex gap-2 mt-3">
-                <a
-                  href={mapsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-secondary flex-1 text-sm"
-                >
-                  🗺️ Google Maps
-                </a>
-                <a
-                  href={moovitUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-secondary flex-1 text-sm"
-                >
-                  🚏 Moovit
-                </a>
-              </div>
-              <p className="text-[11px] text-gray-400 mt-2">
-                Se abre con tu ubicación actual como punto de partida.
-              </p>
-            </div>
-          )}
-
-          {/* Descripción */}
-          <div className="card p-5">
-            <h2 className="font-semibold text-primary-dark mb-2">
-              Sobre el puesto
-            </h2>
-            <p className="text-sm text-gray-600 whitespace-pre-line leading-relaxed">
-              {job.description}
-            </p>
-          </div>
-
-          {job.requirements.length > 0 && (
-            <div className="card p-5">
-              <h2 className="job-block-title">Requisitos</h2>
-              <ul className="space-y-2">
-                {job.requirements.map((r) => (
-                  <li key={r} className="text-sm text-gray-700 flex items-start gap-2">
-                    <span className="text-primary mt-0.5">•</span> {r}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {job.benefits.length > 0 && (
-            <div className="card p-5">
-              <JobBenefits benefits={job.benefits} />
-            </div>
-          )}
-
-          <div className="card p-5">
-            <SelectionProcess
-              company={job.company}
-              questions={job.filter_questions}
-              hasEvaluation={!!evaluation}
+          <div className="li-detail-section">
+            <JobMatchCard
+              candidate={candidate ? { ...candidate, skills: candidate.skills ?? [], experience_count: experienceCount } : null}
+              job={job}
             />
           </div>
 
-          <SafetyNotice jobId={job.id} />
-        </div>
+          <section className="li-detail-section">
+            <h2 className="job-block-title">Acerca del empleo</h2>
+            <p className="li-detail-text">{job.description}</p>
+            {job.requirements.length > 0 && (
+              <>
+                <h3 className="li-detail-subtitle">Lo que buscan</h3>
+                <ul className="li-detail-list">
+                  {job.requirements.map((r) => <li key={r}>{r}</li>)}
+                </ul>
+              </>
+            )}
+          </section>
+
+          {(job.address || job.nearby_transit) && job.modality !== "Remoto" && (
+            <section className="li-detail-section">
+              <h2 className="job-block-title">Cómo llegar</h2>
+              {job.address && <p className="li-detail-address !mt-0"><MapPin size={15} /> {job.address}</p>}
+              {job.nearby_transit && (
+                <p className="li-detail-address"><Bus size={15} /> Colectivos: {job.nearby_transit}</p>
+              )}
+              <div className="flex flex-wrap gap-2 mt-4">
+                <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="btn-secondary">
+                  <Navigation size={15} /> Google Maps
+                </a>
+                <a href={moovitUrl} target="_blank" rel="noopener noreferrer" className="btn-secondary">
+                  <Bus size={15} /> Moovit
+                </a>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">Se abre con tu ubicación actual como punto de partida.</p>
+            </section>
+          )}
+
+          {job.benefits.length > 0 && (
+            <div className="li-detail-section"><JobBenefits benefits={job.benefits} /></div>
+          )}
+
+          <div className="li-detail-section">
+            <SelectionProcess company={job.company} questions={job.filter_questions} hasEvaluation={!!evaluation} />
+          </div>
+
+          <section className="li-detail-section">
+            <h2 className="job-block-title">Acerca de la empresa</h2>
+            <div className="li-detail-about">
+              <EntityAvatar url={job.company.logo_url} name={job.company.trade_name} className="li-logo" />
+              <div className="min-w-0">
+                <p className="font-semibold flex items-center gap-1">
+                  {job.company.trade_name}
+                  {job.company.is_verified && <BadgeCheck size={15} className="text-primary" />}
+                </p>
+                <p className="text-xs text-gray-500">{job.industry} · {job.company.location_city}</p>
+              </div>
+            </div>
+            {job.company.description && <p className="li-detail-text line-clamp-4 mt-3">{job.company.description}</p>}
+            <Link href={`/empresas/${job.company.id}`} className="profile-text-action mt-1">
+              Ver empresa y opiniones <ArrowUpRight size={14} />
+            </Link>
+          </section>
+
+          <div className="li-detail-section">
+            <SafetyNotice jobId={job.id} />
+            <p className="text-xs text-gray-500 mt-3">Postulate antes del {formatDate(job.expires_at)}.</p>
+          </div>
+        </article>
 
         {/* Panel de postulación: fijo a la derecha en escritorio */}
         <div className="lg:sticky lg:top-20 space-y-4">

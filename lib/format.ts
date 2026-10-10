@@ -84,3 +84,8 @@ export function formatPyPhone(phone: string): string {
   const m = local.match(/^(\d{4})(\d{3})(\d{3})$/);
   return m ? `${m[1]} ${m[2]} ${m[3]}` : local;
 }
+
+// ¿Se publicó hace menos de `days` días? Para resaltar lo nuevo en listas.
+export function isRecent(iso: string, days = 3): boolean {
+  return Date.now() - new Date(iso).getTime() < days * 86400000;
+}

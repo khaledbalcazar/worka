@@ -11,9 +11,6 @@ import {
   FileText,
   TrendingUp,
   MessageCircle,
-  Briefcase,
-  Building2,
-  Users,
   Quote,
   ShoppingBag,
   UtensilsCrossed,
@@ -27,10 +24,11 @@ import {
 import Logo from "@/components/Logo";
 import { COUNTRIES } from "@/lib/countries";
 import { getActiveCountry } from "@/lib/country-context";
-import { getCountryJobsCount, getSiteSettings } from "@/lib/data";
+import { getActiveJobs, getCountryJobsCount, getSiteSettings } from "@/lib/data";
+import { timeAgo } from "@/lib/format";
+import EntityAvatar from "@/components/EntityAvatar";
 import HomeNav from "@/components/home/HomeNav";
 import HeroSearch from "@/components/home/HeroSearch";
-import ActivityFeed, { type ActivityItem } from "@/components/home/ActivityFeed";
 import FaqAccordion from "@/components/home/FaqAccordion";
 
 export const revalidate = 300;
@@ -189,22 +187,6 @@ function buildFaqs(c: Country) {
   ];
 }
 
-// El feed EN VIVO usa las ciudades reales del país.
-function buildActivity(c: Country): ActivityItem[] {
-  const [a, b, d] = [c.cities[0], c.cities[1] ?? c.cities[0], c.cities[2] ?? c.cities[0]];
-  return [
-    { kind: "registro", text: `Rocío se registró desde ${b}` },
-    { kind: "vista", text: "Un supermercado revisó 3 perfiles" },
-    { kind: "vacante", text: `Nueva vacante: Cajero/a en ${a}` },
-    { kind: "verificado", text: `Una empresa de ${d} verificó su ${c.taxIdLabel}` },
-    { kind: "mensaje", text: "José recibió un mensaje por WhatsApp" },
-    { kind: "destacado", text: "12 vacantes de primer empleo publicadas hoy" },
-    { kind: "vacante", text: `Nueva vacante: Repartidor/a en ${d}` },
-    { kind: "vista", text: "Una clínica está mirando tu rubro" },
-    { kind: "registro", text: `Diego se registró desde ${a}` },
-  ];
-}
-
 /* ── Utilidades ── */
 
 // Secciones editables desde /admin: una línea por ítem, campos separados por "|".
@@ -253,46 +235,40 @@ const FOOTER_COLUMNS: { title: string; links: [string, string][] }[] = [
   },
 ];
 
-function SectionHead({
-  eyebrow,
-  eyebrowClass = "text-primary",
-  title,
-  sub,
-  center,
-}: {
-  eyebrow: string;
-  eyebrowClass?: string;
-  title: React.ReactNode;
-  sub?: string;
-  center?: boolean;
-}) {
-  return (
-    <div className={`mb-6 sm:mb-8 ${center ? "text-center max-w-xl mx-auto" : "max-w-2xl"}`}>
-      <p className={`text-[11px] font-semibold tracking-[0.12em] uppercase mb-2 ${eyebrowClass}`}>
-        {eyebrow}
-      </p>
-      <h2 className="font-semibold text-[26px] leading-[34px] lg:text-[36px] lg:leading-[44px] tracking-[-0.015em] text-ink">
-        {title}
-      </h2>
-      {sub && (
-        <p className="text-[15px] leading-relaxed text-muted mt-2">{sub}</p>
-      )}
-    </div>
-  );
-}
+// Búsquedas que más se repiten en Worka: cada una abre el buscador con ese
+// cargo ya escrito.
+const POPULAR_SEARCHES = [
+  "Cajero/a",
+  "Vendedor/a",
+  "Atención al cliente",
+  "Repartidor/a",
+  "Administrativo/a",
+  "Recepcionista",
+  "Mozo/a",
+  "Chofer",
+  "Operario/a",
+  "Guardia de seguridad",
+  "Cocinero/a",
+  "Auxiliar de limpieza",
+];
 
 export default async function LandingPage() {
-  const [settings, country] = await Promise.all([
+  const [settings, country, allJobs] = await Promise.all([
     getSiteSettings(),
     getActiveCountry(),
+    getActiveJobs().catch(() => []),
   ]);
   // Total del país: vacantes de Worka + externas de ese país.
   const jobsCount = await getCountryJobsCount(country.code);
+  const recentJobs = allJobs
+    .filter((j) => (j.company.country ?? "py") === country.code)
+    .slice(0, 9);
 
   // Los textos del admin (pensados para Paraguay) solo aplican cuando el
   // país activo es Paraguay; los demás países usan el contenido generado
   // en su propio contexto (moneda, RUC/CUIT, voseo o tuteo, ciudades).
   const isPy = country.code === "py";
+  const vos = usesVoseo(country);
 
   const customDiffs = parseLines(settings.landing_differentiators, (p) =>
     p.length >= 3
@@ -305,8 +281,7 @@ export default async function LandingPage() {
   const customSteps = parseLines(settings.landing_steps, (p) =>
     p.length >= 2 ? { title: p[0], text: p[1] } : null
   );
-  const steps =
-    isPy && customSteps.length > 0 ? customSteps : buildSteps(country);
+  const steps = isPy && customSteps.length > 0 ? customSteps : buildSteps(country);
 
   const customFaqs = parseLines(settings.landing_faqs, (p) =>
     p.length >= 2 ? { q: p[0], a: p.slice(1).join(" | ") } : null
@@ -329,299 +304,197 @@ export default async function LandingPage() {
     p[0] ? p[0] : null
   );
   const companyFeatures =
-    isPy && customFeatures.length > 0
-      ? customFeatures
-      : buildCompanyFeatures(country);
-
-  const customActivity = parseLines(settings.landing_activity, (p) =>
-    p.length >= 2 ? ({ kind: p[0], text: p[1] } as ActivityItem) : null
-  );
-  const activity =
-    isPy && customActivity.length > 0 ? customActivity : buildActivity(country);
+    isPy && customFeatures.length > 0 ? customFeatures : buildCompanyFeatures(country);
 
   // Historias: se cargan desde el admin (nombre | rol | testimonio | foto).
   const testimonials = parseLines(settings.landing_testimonials, (p) =>
-    p.length >= 3
-      ? { name: p[0], role: p[1], quote: p[2], photo: p[3] || "" }
-      : null
+    p.length >= 3 ? { name: p[0], role: p[1], quote: p[2], photo: p[3] || "" } : null
   );
 
-  // Estadísticas: la de vacantes sale de la base; el resto se edita en el admin.
-  const customStats = parseLines(settings.landing_stats, (p) =>
-    p.length >= 2 ? { value: p[0], label: p[1] } : null
-  );
-  const stats =
-    customStats.length > 0
-      ? customStats
-      : [
-          { value: `${jobsCount}`, label: "vacantes activas" },
-          { value: `${country.taxIdLabel} ✓`, label: "empresas verificadas" },
-          { value: "100%", label: "gratis, sin comisiones" },
-        ];
-  const statIcons = [Briefcase, Building2, Bus, Users];
+  const chip =
+    "inline-flex items-center gap-1.5 min-h-10 px-4 rounded-full border border-[#8c8c8c] bg-white text-[15px] font-semibold text-[#404040] hover:bg-[#f3f2f0] hover:shadow-[inset_0_0_0_1px_#404040] transition-colors";
 
   return (
-    <main className="flex-1 bg-canvas min-h-screen text-ink">
+    <main className="flex-1 bg-white min-h-screen text-ink">
       <HomeNav />
 
-      {/* ── HERO ── */}
-      <section className="bg-white border-b border-line">
-        <div className={`${WRAP} grid lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)] gap-10 lg:gap-14 items-center pt-8 pb-8 sm:pt-12 lg:pt-16 lg:pb-12`}>
+      {/* ── HERO: titular, búsqueda y empleos reales a la derecha ── */}
+      <section className="bg-white">
+        <div className={`${WRAP} grid lg:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)] gap-10 lg:gap-16 items-center pt-8 pb-10 sm:pt-14 lg:pt-16 lg:pb-16`}>
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 rounded-full bg-primary/[0.08] px-3 py-1.5 mb-4 sm:mb-5">
-              <span className="text-[12px] font-medium text-brand">
-                {country.code === "py" && settings.hero_badge
-                  ? settings.hero_badge
-                  : `${country.flag} Hecho en ${country.name} · 100% gratis para candidatos`}
-              </span>
-            </div>
-
-            <h1 className="font-bold text-[32px] leading-[40px] sm:text-[42px] sm:leading-[50px] lg:text-[48px] lg:leading-[56px] tracking-[-0.02em] text-ink mb-3 sm:mb-4">
-              Tu próximo trabajo
-              <br />
-              <span className="text-primary">está en Worka.</span>
+            <h1 className="font-light text-[34px] leading-[42px] sm:text-[48px] sm:leading-[58px] lg:text-[56px] lg:leading-[66px] tracking-[-0.02em] text-[#8f3b1f] mb-4">
+              {vos ? "Encontrá" : "Encuentra"} tu próximo empleo en {country.name}
             </h1>
-
-            <p className="text-[15px] sm:text-lg leading-relaxed text-[#4a4a4a] max-w-xl mb-6">
+            <p className="text-[16px] sm:text-lg leading-relaxed text-[#404040] max-w-xl mb-6">
               {country.code === "py" && settings.hero_subtitle
                 ? settings.hero_subtitle
-                : `Encontrá tu próximo trabajo en ${country.name}. Sin estafas, sin comisiones, con las mejores empresas.`}
+                : `Vacantes de empresas verificadas, con salario, cómo llegar y postulación con 1 clic. Sin estafas y sin comisiones.`}
             </p>
 
             <HeroSearch cities={country.cities} />
 
-            <div className="flex items-center gap-3 mt-6">
-              <div className="flex items-center" aria-hidden>
-                {["A", "R", "J", "M"].map((ini, i) => (
-                  <div
-                    key={ini}
-                    className="w-8 h-8 rounded-full border-2 border-white bg-[#dfeaf3] text-brand flex items-center justify-center text-xs font-semibold"
-                    style={{ marginLeft: i === 0 ? 0 : -10 }}
-                  >
-                    {ini}
-                  </div>
-                ))}
-              </div>
-              <span className="text-[13px] text-muted leading-snug">
-                {usesVoseo(country) ? "Sumate" : "Súmate"} a los{" "}
-                {country.demonym} que ya buscan trabajo en Worka.
-              </span>
-            </div>
+            <p className="text-[15px] text-[#404040] mt-6">
+              {jobsCount > 0 && (
+                <>
+                  <strong className="font-semibold">{jobsCount} vacantes activas</strong> ·{" "}
+                </>
+              )}
+              ¿Primera vez en Worka?{" "}
+              <Link href="/registro" className="font-semibold text-primary hover:underline">
+                {vos ? "Creá tu perfil gratis" : "Crea tu perfil gratis"}
+              </Link>
+            </p>
           </div>
 
-          {/* Panel de confianza (escritorio y tablet). */}
-          <div className="hidden md:block min-w-0">
-            {settings.hero_image_url && (
+          {/* Vista previa con vacantes reales (o la foto cargada en el admin).
+              En celular no se muestra: la sección de empleos recientes queda
+              enseguida debajo y repetiría las mismas tres. */}
+          <div className="min-w-0 hidden lg:block">
+            {settings.hero_image_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={settings.hero_image_url}
                 alt="Personas buscando empleo en Worka"
-                className="w-full aspect-[16/9] object-cover rounded-[10px] border border-line mb-4"
+                className="w-full aspect-[4/3] object-cover rounded-lg"
               />
-            )}
-            <div className="bg-white rounded-[10px] border border-line shadow-[0_8px_24px_rgba(0,0,0,0.08)] p-5">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <p className="inline-flex items-center gap-2 text-[11px] font-semibold tracking-[0.08em] uppercase text-success-ink">
-                  <span className="w-2 h-2 rounded-full bg-success-ink" />
-                  Verificación activa
-                </p>
-                <span className="text-[12px] text-muted">
-                  {country.code === "py" ? "DNIT conectado" : `${country.taxIdLabel} validado`}
-                </span>
+            ) : (
+              <div className="rounded-lg border border-line bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.08)] overflow-hidden">
+                <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-line">
+                  <p className="text-sm font-semibold">Recién publicadas en {country.name}</p>
+                  <Link href="/empleos" className="text-sm font-semibold text-primary hover:underline">
+                    Ver todas
+                  </Link>
+                </div>
+                {recentJobs.length > 0 ? (
+                  <ul>
+                    {recentJobs.slice(0, 3).map((job) => (
+                      <JobRow key={job.id} job={job} />
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="px-4 py-8 text-sm text-muted text-center">
+                    Muy pronto vas a ver acá las primeras vacantes de {country.name}.
+                  </p>
+                )}
+                <div className="flex items-center gap-2 px-4 py-3 bg-[#f8f8f7] text-[13px] text-muted">
+                  <BadgeCheck size={16} className="text-success-ink shrink-0" />
+                  {country.code === "py"
+                    ? "Empresas con RUC contrastado ante la DNIT."
+                    : `Empresas con ${country.taxIdLabel} contrastado.`}
+                </div>
               </div>
-              <ul className="flex flex-col gap-2.5">
-                <li className="flex items-center gap-3 rounded-lg bg-[#f8f6f3] p-3">
-                  <span className="w-10 h-10 rounded-full bg-[#e6f3e9] text-success-ink grid place-items-center shrink-0">
-                    <BadgeCheck size={20} />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-[15px]">Empresa verificada</p>
-                    <p className="text-[13px] text-muted">
-                      {country.code === "py"
-                        ? "RUC contrastado ✓ DNIT"
-                        : `${country.taxIdLabel} contrastado ✓`}
-                    </p>
-                  </div>
-                </li>
-                <li className="flex items-center gap-3 rounded-lg bg-[#f8f6f3] p-3">
-                  <span className="w-10 h-10 rounded-full bg-primary/10 text-primary grid place-items-center shrink-0">
-                    <MessageCircle size={19} />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-[15px]">¡Te vieron el perfil!</p>
-                    <p className="text-[13px] text-muted">Seguí tu postulación en Worka</p>
-                  </div>
-                  <span className="text-[12px] font-medium text-primary">Ahora</span>
-                </li>
-              </ul>
-              <p className="mt-4 pt-3 border-t border-line text-[13px] text-muted text-center">
-                Sin intermediarios ni cobros ocultos.
-              </p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ── BÚSQUEDAS POPULARES ── */}
+      <section className="bg-canvas">
+        <div className={`${WRAP} ${SECTION} grid gap-6 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-14`}>
+          <div>
+            <h2 className="font-light text-[28px] leading-[36px] sm:text-[36px] sm:leading-[44px] tracking-[-0.015em] text-ink">
+              {vos ? "Buscá el empleo adecuado para vos" : "Busca el empleo adecuado para ti"}
+            </h2>
+            <p className="text-[15px] text-muted mt-2">
+              Las búsquedas que más se hacen en Worka, a un toque.
+            </p>
+          </div>
+          <div>
+            <p className="text-[13px] font-semibold text-muted mb-3">BÚSQUEDAS POPULARES</p>
+            <div className="flex flex-wrap gap-2">
+              {POPULAR_SEARCHES.map((q) => (
+                <Link key={q} href={`/empleos?q=${encodeURIComponent(q)}`} className={chip}>
+                  {q}
+                </Link>
+              ))}
+              <Link href="/empleos?primerEmpleo=1" className={chip}>Sin experiencia</Link>
+              <Link href="/empleos?modalidad=Remoto" className={chip}>Remoto</Link>
+            </div>
+            <p className="text-[13px] font-semibold text-muted mt-6 mb-3">POR RUBRO</p>
+            <div className="flex flex-wrap gap-2">
+              {categories.map((c) => {
+                const Icon = ICON_MAP[c.icon] ?? ShoppingBag;
+                return (
+                  <Link key={c.name} href={`/empleos?rubro=${encodeURIComponent(c.rubro)}`} className={chip}>
+                    <Icon size={16} style={{ color: c.color }} />
+                    {c.name}
+                  </Link>
+                );
+              })}
             </div>
           </div>
         </div>
-
-        {/* Franja de estadísticas */}
-        <div className={`${WRAP} pb-8 lg:pb-12`}>
-          <dl className="grid grid-cols-3 gap-2 sm:gap-4">
-            {stats.map((s, i) => {
-              const Icon = statIcons[i % statIcons.length];
-              return (
-                <div
-                  key={s.label}
-                  className="rounded-[10px] border border-line bg-[#faf9f7] px-3 py-3 sm:px-5 sm:py-4 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 min-w-0"
-                >
-                  <Icon size={20} className="text-primary shrink-0 hidden sm:block" />
-                  <div className="min-w-0">
-                    <dd className="font-bold text-lg sm:text-2xl leading-tight tracking-tight text-ink">
-                      {s.value}
-                    </dd>
-                    <dt className="text-[11px] sm:text-[13px] text-muted leading-snug mt-0.5">
-                      {s.label}
-                    </dt>
-                  </div>
-                </div>
-              );
-            })}
-          </dl>
-        </div>
       </section>
 
-      {/* ── NOVEDADES ── */}
-      <section id="novedades" className={SECTION}>
-        <div className={`${WRAP} grid lg:grid-cols-2 gap-8 lg:gap-14 items-center`}>
-          <div>
-            <SectionHead
-              eyebrow="En vivo"
-              title="Worka está vivo las 24 horas."
-              sub="Empresas revisando perfiles, gente consiguiendo trabajo y vacantes nuevas cada minuto."
-            />
-            <Link href="/registro" className="btn-primary hidden lg:inline-flex">
-              Unirme ahora <ArrowRight size={16} />
+      {/* ── EMPLEOS RECIENTES ── */}
+      {recentJobs.length > 0 && (
+        <section className={`bg-white border-b border-line ${recentJobs.length <= 3 && !settings.hero_image_url ? "lg:hidden" : ""}`}>
+          <div className={`${WRAP} ${SECTION}`}>
+            <div className="flex items-end justify-between gap-4 mb-5">
+              <div>
+                <h2 className="font-light text-[28px] leading-[36px] sm:text-[36px] sm:leading-[44px] tracking-[-0.015em]">
+                  Empleos recientes
+                </h2>
+                <p className="text-[15px] text-muted mt-1">Publicados por empresas en Worka.</p>
+              </div>
+              <Link href="/empleos" className="hidden sm:inline-flex items-center gap-1 text-[15px] font-semibold text-primary hover:underline whitespace-nowrap">
+                Ver los {jobsCount} empleos <ChevronRight size={16} />
+              </Link>
+            </div>
+            <ul className="grid md:grid-cols-2 border-t border-line md:border-t-0 md:gap-x-8">
+              {/* En escritorio las tres primeras ya están arriba, junto al buscador. */}
+              {recentJobs.map((job, i) => (
+                <JobRow key={job.id} job={job} bordered className={i < 3 ? (settings.hero_image_url ? "" : "lg:hidden") : i >= 6 ? "hidden lg:flex" : ""} />
+              ))}
+            </ul>
+            <Link href="/empleos" className="btn-secondary w-full sm:hidden mt-5">
+              Ver los {jobsCount} empleos
             </Link>
           </div>
-          <ActivityFeed pool={activity} />
-        </div>
-      </section>
-
-      {/* ── RUBROS ── */}
-      <section id="rubros" className={`${SECTION} bg-white border-y border-line`}>
-        <div className={WRAP}>
-          <div className="flex items-end justify-between gap-4">
-            <SectionHead
-              eyebrow="Explorá por rubro"
-              title="¿En qué querés trabajar?"
-              sub="Elegí tu rubro y encontrá vacantes cerca tuyo, con salario y cómo llegar."
-            />
-            <Link
-              href="/empleos"
-              className="hidden sm:inline-flex items-center gap-1 text-sm font-semibold text-primary mb-8 whitespace-nowrap hover:underline"
-            >
-              Ver todas las vacantes <ChevronRight size={16} />
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-            {categories.map((c) => {
-              const Icon = ICON_MAP[c.icon] ?? ShoppingBag;
-              return (
-                <Link
-                  key={c.name}
-                  href={`/empleos?rubro=${encodeURIComponent(c.rubro)}`}
-                  className="group flex flex-col gap-3 bg-white border border-line rounded-[10px] p-3.5 sm:p-5 transition-[box-shadow,transform] hover:-translate-y-px hover:shadow-[0_0_0_1px_rgba(0,0,0,0.12),0_4px_12px_rgba(0,0,0,0.08)] active:scale-[0.98]"
-                >
-                  <span
-                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg flex items-center justify-center shrink-0"
-                    style={{ background: `${c.color}14` }}
-                  >
-                    <Icon size={20} style={{ color: c.color }} />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block font-semibold text-[14px] sm:text-[15px] leading-snug text-ink group-hover:text-primary">
-                      {c.name}
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-[12px] text-primary mt-1">
-                      Ver vacantes <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
-                    </span>
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-          <Link
-            href="/empleos"
-            className="sm:hidden btn-secondary w-full mt-4"
-          >
-            Ver todas las vacantes
-          </Link>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ── CÓMO FUNCIONA ── */}
-      <section id="como-funciona" className={SECTION}>
-        <div className={WRAP}>
-          <SectionHead
-            eyebrow="Para candidatos"
-            title="Conseguí trabajo, sin vueltas."
-            sub="Tres pasos. Nada de formularios eternos ni CVs enviados al vacío."
-          />
-          <ol className="grid gap-3 sm:gap-4 md:grid-cols-3">
+      <section id="como-funciona" className="bg-white">
+        <div className={`${WRAP} ${SECTION}`}>
+          <h2 className="font-light text-[28px] leading-[36px] sm:text-[36px] sm:leading-[44px] tracking-[-0.015em] mb-6 sm:mb-8">
+            {vos ? "Conseguí" : "Consigue"} trabajo en tres pasos
+          </h2>
+          <ol className="grid gap-6 md:grid-cols-3">
             {steps.map((s, i) => (
-              <li
-                key={s.title}
-                className="flex md:flex-col gap-4 bg-white rounded-[10px] border border-line p-4 sm:p-6"
-              >
-                <span className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center font-semibold text-sm shrink-0">
+              <li key={s.title} className="flex gap-4">
+                <span className="w-10 h-10 rounded-full border-2 border-primary text-primary flex items-center justify-center font-semibold shrink-0">
                   {i + 1}
                 </span>
                 <div className="min-w-0">
-                  <h3 className="font-semibold text-base text-ink mb-1.5">
-                    {s.title}
-                  </h3>
-                  <p className="text-sm text-[#4a4a4a] leading-relaxed">
-                    {s.text}
-                  </p>
+                  <h3 className="font-semibold text-[17px] mb-1">{s.title}</h3>
+                  <p className="text-[15px] text-[#404040] leading-relaxed">{s.text}</p>
                 </div>
               </li>
             ))}
           </ol>
-          <div className="mt-6 sm:mt-8">
-            <Link href="/onboarding" className="btn-primary w-full sm:w-auto">
-              Crear mi perfil gratis <ArrowRight size={16} />
-            </Link>
-          </div>
+          <Link href="/onboarding" className="btn-primary mt-8 w-full sm:w-auto">
+            Crear mi perfil gratis <ArrowRight size={16} />
+          </Link>
         </div>
       </section>
 
       {/* ── DIFERENCIADORES ── */}
-      <section className={`${SECTION} bg-white border-y border-line`}>
-        <div className={WRAP}>
-          <SectionHead
-            center
-            eyebrow="Lo que nos hace distintos"
-            title="Solo en Worka."
-            sub={`Cada detalle está pensado para cómo se busca trabajo en ${country.name}.`}
-          />
-          <div className="grid gap-x-6 gap-y-1 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="bg-canvas">
+        <div className={`${WRAP} ${SECTION}`}>
+          <h2 className="font-light text-[28px] leading-[36px] sm:text-[36px] sm:leading-[44px] tracking-[-0.015em] mb-2">
+            Pensado para buscar trabajo en {country.name}
+          </h2>
+          <p className="text-[15px] text-muted mb-6 sm:mb-8">Lo que vas a encontrar en cada vacante de Worka.</p>
+          <div className="grid gap-px bg-line border border-line rounded-lg overflow-hidden sm:grid-cols-2 lg:grid-cols-4">
             {differentiators.map((d) => {
               const Icon = ICON_MAP[d.icon] ?? Star;
               return (
-                <div
-                  key={d.title}
-                  className="flex sm:flex-col gap-3.5 py-3.5 border-b border-line last:border-b-0 sm:border sm:rounded-[10px] sm:bg-[#faf9f7] sm:p-5 sm:last:border-b"
-                >
-                  <span
-                    className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-                    style={{ background: `${d.color}14` }}
-                  >
-                    <Icon size={19} style={{ color: d.color }} />
-                  </span>
+                <div key={d.title} className="flex sm:flex-col gap-3.5 bg-white p-5">
+                  <Icon size={24} style={{ color: d.color }} className="shrink-0" />
                   <div className="min-w-0">
-                    <h3 className="font-semibold text-[15px] text-ink mb-1">
-                      {d.title}
-                    </h3>
-                    <p className="text-[13px] text-muted leading-relaxed">
-                      {d.text}
-                    </p>
+                    <h3 className="font-semibold text-[15px] mb-1">{d.title}</h3>
+                    <p className="text-[13px] text-muted leading-relaxed">{d.text}</p>
                   </div>
                 </div>
               );
@@ -631,111 +504,48 @@ export default async function LandingPage() {
       </section>
 
       {/* ── PARA EMPRESAS ── */}
-      <section id="empresas" className={SECTION}>
-        <div className={`${WRAP} grid gap-8 lg:gap-14 items-center lg:grid-cols-2`}>
+      <section id="empresas" className="bg-white border-y border-line">
+        <div className={`${WRAP} ${SECTION} grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-14 items-center`}>
           <div>
-            <SectionHead
-              eyebrow="Para empresas"
-              eyebrowClass="text-clay"
-              title={<>Talento local, verificado y sin pagar un {country.currencyName}.</>}
-              sub="Desde la pyme del barrio hasta la cadena nacional. Publicá en minutos y contactá al candidato ideal por WhatsApp."
-            />
-            <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-3 mb-7">
-              {companyFeatures.map((f) => (
-                <li key={f} className="flex items-start gap-2.5 text-sm text-ink">
-                  <CheckCircle size={17} className="text-success-ink shrink-0 mt-0.5" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <div className="flex flex-col sm:flex-row gap-2.5">
+            <h2 className="font-light text-[28px] leading-[36px] sm:text-[36px] sm:leading-[44px] tracking-[-0.015em] text-[#8f3b1f]">
+              {vos ? "Publicá" : "Publica"} una vacante y {vos ? "encontrá" : "encuentra"} talento verificado
+            </h2>
+            <p className="text-[15px] text-muted mt-2">
+              Gratis, sin pagar un {country.currencyName}. Desde la pyme del barrio hasta la cadena nacional.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2.5 mt-6">
               <Link href="/empresa/registro" className="btn-primary">
-                Registrar mi empresa <ArrowRight size={15} />
+                Publicar una vacante gratis
               </Link>
               <Link href="/para-empresas" className="btn-secondary">
-                Conocé Worka para empresas
+                Conocer Worka para empresas
               </Link>
             </div>
           </div>
-
-          {/* Panel simulado */}
-          <div className="hidden md:block rounded-[10px] overflow-hidden bg-white border border-line shadow-[0_8px_24px_rgba(0,0,0,0.08)]" aria-hidden>
-            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-line">
-              <div className="min-w-0">
-                <p className="text-[11px] font-semibold text-muted tracking-[0.08em] uppercase mb-1">
-                  Vacante activa
-                </p>
-                <p className="font-semibold text-[15px] text-ink">
-                  Cajero/a — Sucursal Centro
-                </p>
-              </div>
-              <span className="text-[11px] font-semibold bg-[#e6f3e9] text-success-ink px-2.5 py-1 rounded-full shrink-0">
-                Activa
-              </span>
-            </div>
-            <div className="p-4 sm:p-5">
-              <div className="grid grid-cols-3 gap-2 mb-5">
-                {[
-                  { v: "342", l: "Vistas" },
-                  { v: "23", l: "Postulantes" },
-                  { v: "5", l: "Contactados" },
-                ].map((s) => (
-                  <div key={s.l} className="bg-[#f8f6f3] rounded-lg py-3 px-2 text-center">
-                    <p className="font-bold text-xl text-ink">{s.v}</p>
-                    <p className="text-[11px] text-muted mt-0.5">{s.l}</p>
-                  </div>
-                ))}
-              </div>
-              <p className="text-[11px] font-semibold text-muted tracking-[0.08em] uppercase mb-2">
-                Candidatos destacados
-              </p>
-              <div className="flex flex-col gap-2">
-                {[
-                  { name: "Carlos Benítez", score: "2/2 requisitos" },
-                  { name: "Lucía Martínez", score: "1/2 requisitos" },
-                  { name: "Miguel Rodríguez", score: "2/2 requisitos" },
-                ].map((c) => (
-                  <div key={c.name} className="flex items-center justify-between gap-2 border border-line rounded-lg px-3 py-2.5">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-full bg-[#dfeaf3] text-brand flex items-center justify-center font-semibold text-xs shrink-0">
-                        {c.name[0]}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-semibold text-[13px] text-ink truncate">{c.name}</p>
-                        <p className="text-[11px] text-muted">{c.score}</p>
-                      </div>
-                    </div>
-                    <span className="w-8 h-8 rounded-full bg-[#e6f3e9] text-success-ink grid place-items-center shrink-0">
-                      <MessageCircle size={15} />
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-3">
+            {companyFeatures.map((f) => (
+              <li key={f} className="flex items-start gap-2.5 text-[15px] text-[#404040]">
+                <CheckCircle size={18} className="text-success-ink shrink-0 mt-0.5" />
+                {f}
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 
       {/* ── HISTORIAS Y CONFIANZA ── */}
-      <section className={`${SECTION} bg-white border-y border-line`}>
-        <div className={`${WRAP} grid gap-6 ${testimonials.length > 0 ? "lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]" : ""}`}>
+      <section className="bg-white">
+        <div className={`${WRAP} ${SECTION} grid gap-6 ${testimonials.length > 0 ? "lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]" : ""}`}>
           {testimonials.length > 0 && (
             <div id="historias">
-              <SectionHead
-                eyebrow="Historias reales"
-                title="Ya encontraron trabajo."
-                sub={`${country.demonym[0].toUpperCase()}${country.demonym.slice(1)} que consiguieron empleo en Worka.`}
-              />
+              <h2 className="font-light text-[28px] leading-[36px] sm:text-[36px] sm:leading-[44px] tracking-[-0.015em] mb-5">
+                Ya encontraron trabajo
+              </h2>
               <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 pb-1 [scrollbar-width:none] sm:grid sm:grid-cols-2 sm:overflow-visible sm:mx-0 sm:px-0">
                 {testimonials.map((t) => (
-                  <figure
-                    key={t.name}
-                    className="snap-start shrink-0 w-[85%] sm:w-auto bg-[#faf9f7] border border-line rounded-[10px] p-5 flex flex-col gap-4"
-                  >
+                  <figure key={t.name} className="snap-start shrink-0 w-[85%] sm:w-auto border border-line rounded-lg p-5 flex flex-col gap-4">
                     <Quote size={22} className="text-primary/40" />
-                    <blockquote className="text-[15px] text-ink leading-relaxed flex-1">
-                      “{t.quote}”
-                    </blockquote>
+                    <blockquote className="text-[15px] leading-relaxed flex-1">“{t.quote}”</blockquote>
                     <figcaption className="flex items-center gap-3 pt-3 border-t border-line">
                       {t.photo ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -746,7 +556,7 @@ export default async function LandingPage() {
                         </div>
                       )}
                       <div>
-                        <p className="font-semibold text-sm text-ink">{t.name}</p>
+                        <p className="font-semibold text-sm">{t.name}</p>
                         <p className="text-[12px] text-muted">{t.role}</p>
                       </div>
                     </figcaption>
@@ -755,22 +565,16 @@ export default async function LandingPage() {
               </div>
             </div>
           )}
-
-          <div className={`rounded-[10px] border border-[#f0d5c9] bg-[#fff6f1] p-5 sm:p-7 flex gap-4 ${testimonials.length > 0 ? "flex-col self-end" : "flex-col sm:flex-row sm:items-center max-w-4xl mx-auto w-full"}`}>
+          <div className={`rounded-lg border border-[#f0d5c9] bg-[#fff6f1] p-5 sm:p-7 flex gap-4 ${testimonials.length > 0 ? "flex-col self-end" : "flex-col sm:flex-row sm:items-center"}`}>
             <span className="w-12 h-12 rounded-full bg-white text-clay grid place-items-center shrink-0 border border-[#f0d5c9]">
               <Shield size={22} />
             </span>
             <div className="min-w-0">
-              <h3 className="font-semibold text-xl text-ink mb-1.5">
-                El portal donde no te estafan.
-              </h3>
+              <h3 className="font-semibold text-xl mb-1.5">El portal donde no te estafan.</h3>
               <p className="text-sm text-[#4a4a4a] leading-relaxed">
-                Bloqueamos automáticamente ofertas que piden dinero, verificamos
-                el {country.taxIdLabel} y la comunidad puede denunciar vacantes
-                sospechosas.{" "}
-                <strong className="font-semibold text-clay">
-                  Nunca pagues para conseguir un trabajo.
-                </strong>
+                Bloqueamos automáticamente ofertas que piden dinero, verificamos el {country.taxIdLabel} y
+                la comunidad puede denunciar vacantes sospechosas.{" "}
+                <strong className="font-semibold text-clay">Nunca pagues para conseguir un trabajo.</strong>
               </p>
             </div>
           </div>
@@ -778,42 +582,28 @@ export default async function LandingPage() {
       </section>
 
       {/* ── FAQ ── */}
-      <section id="faq" className={SECTION}>
-        <div className="max-w-3xl mx-auto px-4 sm:px-6">
-          <SectionHead center eyebrow="Soporte y transparencia" title="Preguntas frecuentes" />
+      <section id="faq" className="bg-canvas">
+        <div className={`max-w-3xl mx-auto px-4 sm:px-6 ${SECTION}`}>
+          <h2 className="font-light text-[28px] leading-[36px] sm:text-[36px] sm:leading-[44px] tracking-[-0.015em] mb-6 text-center">
+            Preguntas frecuentes
+          </h2>
           <FaqAccordion faqs={faqs} />
         </div>
       </section>
 
       {/* ── CTA FINAL ── */}
-      <section className="pb-12 lg:pb-16">
-        <div className={WRAP}>
-          <div className="rounded-[10px] bg-primary text-white text-center px-5 py-10 sm:px-10 sm:py-14 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.14),transparent_60%)]">
-            <p className="text-[11px] font-semibold tracking-[0.12em] uppercase text-white/75 mb-3">
-              Tu próximo paso
-            </p>
-            <h2 className="font-bold text-[26px] leading-[34px] sm:text-[36px] sm:leading-[44px] tracking-[-0.015em] mb-3">
-              Las mejores oportunidades te están esperando.
-            </h2>
-            <p className="text-[15px] text-white/80 mb-7 max-w-md mx-auto">
-              {usesVoseo(country)
-                ? "Registrate gratis. En 2 minutos ya podés postularte a ofertas comprobadas."
-                : "Regístrate gratis. En 2 minutos ya puedes postularte a ofertas comprobadas."}
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2.5 justify-center">
-              <Link
-                href="/empleos"
-                className="inline-flex items-center justify-center gap-2 bg-white text-primary font-semibold text-[15px] px-7 min-h-12 rounded-full hover:bg-white/90 transition-colors"
-              >
-                Buscar empleo <ArrowRight size={16} />
-              </Link>
-              <Link
-                href="/empresa/registro"
-                className="inline-flex items-center justify-center gap-2 text-white font-semibold text-[15px] px-7 min-h-12 rounded-full border border-white/50 hover:bg-white/10 transition-colors"
-              >
-                Publicar una vacante
-              </Link>
-            </div>
+      <section className="bg-white">
+        <div className={`${WRAP} ${SECTION} text-center`}>
+          <h2 className="font-light text-[28px] leading-[36px] sm:text-[40px] sm:leading-[50px] tracking-[-0.015em] text-[#8f3b1f] max-w-2xl mx-auto">
+            Tu próximo trabajo te está esperando en Worka
+          </h2>
+          <div className="flex flex-col sm:flex-row gap-2.5 justify-center mt-7">
+            <Link href="/empleos" className="btn-primary !min-h-12 !px-7 !text-[15px]">
+              Buscar empleos <ArrowRight size={16} />
+            </Link>
+            <Link href="/registro" className="btn-secondary !min-h-12 !px-7 !text-[15px]">
+              Crear mi perfil gratis
+            </Link>
           </div>
         </div>
       </section>
@@ -824,8 +614,7 @@ export default async function LandingPage() {
           <div className="col-span-2 lg:col-span-1">
             <Logo />
             <p className="text-[13px] text-muted leading-relaxed mt-3 max-w-[260px]">
-              Infraestructura de empleo y contratación verificada para{" "}
-              {country.name} y América Latina.
+              Infraestructura de empleo y contratación verificada para {country.name} y América Latina.
             </p>
           </div>
           {FOOTER_COLUMNS.map((col) => (
@@ -865,5 +654,44 @@ export default async function LandingPage() {
         </div>
       </footer>
     </main>
+  );
+}
+
+// Fila de vacante en la portada: mismo formato que la búsqueda de empleos.
+function JobRow({
+  job,
+  bordered = false,
+  className = "",
+}: {
+  job: Awaited<ReturnType<typeof getActiveJobs>>[number];
+  bordered?: boolean;
+  className?: string;
+}) {
+  return (
+    <li className={`relative flex gap-3 px-4 py-3.5 hover:bg-[#f8f8f7] ${bordered ? "border-b border-line px-0 hover:bg-transparent" : "border-b border-line last:border-b-0"} ${className}`}>
+      <EntityAvatar
+        url={job.company.logo_url}
+        name={job.company.trade_name}
+        className="w-12 h-12 rounded text-sm bg-[#f3f2ef] text-[#4c6580] border border-[#ebebeb]"
+      />
+      <div className="min-w-0 flex-1">
+        <h3 className="text-[16px] font-semibold leading-snug text-primary">
+          <Link href={`/empleo/${job.id}`} className="hover:underline after:absolute after:inset-0">
+            {job.title}
+          </Link>
+        </h3>
+        <p className="flex items-center gap-1 text-[14px] text-ink">
+          {job.company.trade_name}
+          {job.company.is_verified && <BadgeCheck size={14} className="text-primary shrink-0" aria-label="Empresa verificada" />}
+        </p>
+        <p className="text-[14px] text-muted">
+          {job.company.location_city} ({job.modality})
+        </p>
+        <p className="flex flex-wrap gap-x-3 text-[12px] text-muted mt-1">
+          {job.salary_range && <span className="font-semibold text-success-ink">{job.salary_range}</span>}
+          <span>{timeAgo(job.created_at)}</span>
+        </p>
+      </div>
+    </li>
   );
 }

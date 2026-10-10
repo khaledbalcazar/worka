@@ -1,15 +1,15 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { useState } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Search, MapPin, SlidersHorizontal, X, Bell, GraduationCap, Wallet, BadgeCheck, List, Map as MapIcon } from "lucide-react";
+import { Search, MapPin, SlidersHorizontal, X, Bell, GraduationCap, Wallet, BadgeCheck, List, Map as MapIcon, ChevronDown } from "lucide-react";
 import type { ExternalJob, JobWithCompany } from "@/lib/types";
 import { CITIES, INDUSTRIES } from "@/lib/mock-data";
 import { matchesJob, matchesExternalJob } from "@/lib/job-search";
 import MobileSheet from "@/components/MobileSheet";
-import ExternalJobCard from "@/components/ExternalJobCard";
+import ExternalJobRow from "@/components/jobs/ExternalJobRow";
 import JobResultCard from "@/components/jobs/JobResultCard";
 import JobPreview from "@/components/jobs/JobPreview";
 import type { MatchCandidate } from "@/lib/job-match";
@@ -20,9 +20,9 @@ const JobMap = dynamic(() => import("@/components/jobs/JobMap"), {
   loading: () => <div className="job-map-loading">Cargando mapa…</div>,
 });
 
-export default function JobFeed({ jobs, appliedJobIds, savedJobIds = [], evaluationJobIds = [], industries = INDUSTRIES, cities = CITIES, externalJobs = [], loggedIn = true, matchProfile = null }: {
+export default function JobFeed({ jobs, appliedJobIds, savedJobIds = [], evaluationJobIds = [], industries = INDUSTRIES, cities = CITIES, externalJobs = [], loggedIn = true, matchProfile = null, regionName = "tu país" }: {
   jobs: JobWithCompany[]; appliedJobIds: string[]; savedJobIds?: string[]; evaluationJobIds?: string[];
-  industries?: string[]; cities?: string[]; externalJobs?: ExternalJob[]; loggedIn?: boolean; matchProfile?: MatchCandidate | null;
+  industries?: string[]; cities?: string[]; externalJobs?: ExternalJob[]; loggedIn?: boolean; matchProfile?: MatchCandidate | null; regionName?: string;
 }) {
   const params = useSearchParams();
   const [filterOpen, setFilterOpen] = useState(false);
@@ -30,7 +30,6 @@ export default function JobFeed({ jobs, appliedJobIds, savedJobIds = [], evaluat
   const [savedChanges, setSavedChanges] = useState<Record<string, boolean>>({});
   const [newApplications, setNewApplications] = useState<string[]>([]);
   const [limit, setLimit] = useState(12);
-  const [alertDismissed, setAlertDismissed] = useState(false);
   const query = params.get("q") ?? "";
   const city = params.get("ciudad") ?? "";
   const industry = params.get("rubro") ?? "";
@@ -73,47 +72,86 @@ export default function JobFeed({ jobs, appliedJobIds, savedJobIds = [], evaluat
     onApplied: () => setNewApplications((current) => [...current, job.id]),
   });
 
-  return <div className="job-search-page">
+  const heading = `${query.trim() ? `Empleos de “${query.trim()}”` : industry ? `Empleos de ${industry}` : "Empleos"} en ${city || regionName}`;
+  const resultsHead = <div className="li-results-head">
+    <div className="min-w-0">
+      <h2>{heading}</h2>
+      <p role="status">{total} {total === 1 ? "resultado" : "resultados"}{external.length > 0 && ` · ${filtered.length} en Worka`}</p>
+    </div>
+    <div className="li-results-actions">
+      <div className="li-view-toggle" role="group" aria-label="Ver resultados como">
+        <button aria-pressed={view === "lista"} onClick={() => update("vista", "")}><List size={15} /> Lista</button>
+        <button aria-pressed={view === "mapa"} onClick={() => update("vista", "mapa")}><MapIcon size={15} /> Mapa</button>
+      </div>
+      {view === "lista" && <label className="li-sort"><span className="sr-only">Ordenar vacantes</span><select value={sort} onChange={(e) => update("orden", e.target.value)}><option value="recientes">Más recientes</option><option value="urgentes">Urgentes primero</option></select></label>}
+    </div>
+  </div>;
+
+  return <div className="li-jobs">
     <h1 className="sr-only">Buscar empleos</h1>
-    <div className="job-search-bar">
-      <label className="job-search-input"><Search size={19} /><span className="sr-only">Buscar cargo, empresa o rubro</span><input type="search" value={query} onChange={(e) => update("q", e.target.value)} placeholder="Buscar cargo, empresa o rubro…" /></label>
-      <label className="job-city-input"><MapPin size={18} /><span className="sr-only">Ciudad</span><select value={city} onChange={(e) => update("ciudad", e.target.value)}><option value="">Todas las ciudades</option>{[...new Set([...cities, ...(city ? [city] : [])])].map((item) => <option key={item}>{item}</option>)}</select></label>
-      <button className="job-filter-button" onClick={() => setFilterOpen(true)} aria-expanded={filterOpen} aria-label={`Filtros${activeCount ? `, ${activeCount} activos` : ""}`}><SlidersHorizontal size={19} /><span>Filtros</span>{activeCount > 0 && <b>{activeCount}</b>}</button>
-    </div>
-    <div className="job-filter-ribbon" aria-label="Filtros rápidos">
-      <button className="filter-pill" aria-pressed={firstJobOnly} onClick={() => update("primerEmpleo", !firstJobOnly)}><GraduationCap size={15} /> Primer empleo</button>
-      <button className="filter-pill" aria-pressed={withSalary} onClick={() => update("salario", !withSalary)}><Wallet size={14} /> Con salario</button>
-      <button className="filter-pill" aria-pressed={onlyVerified} onClick={() => update("verificadas", !onlyVerified)}><BadgeCheck size={15} /> Verificadas</button>
-      {modality && <button className="filter-pill" aria-label={`Quitar modalidad ${modality}`} aria-pressed="true" onClick={() => update("modalidad", "")}>{modality}<X size={13} /></button>}
-      {contract && <button className="filter-pill" aria-label={`Quitar contrato ${contract}`} aria-pressed="true" onClick={() => update("contrato", "")}>{contract}<X size={13} /></button>}
-      {industry && <button className="filter-pill" aria-label={`Quitar rubro ${industry}`} aria-pressed="true" onClick={() => update("rubro", "")}>{industry}<X size={13} /></button>}
-      {hideApplied && <button className="filter-pill" aria-pressed="true" onClick={() => update("sinPostuladas", false)}>Sin postuladas<X size={13} /></button>}
-      {(activeCount > 0 || query) && <button className="filter-clear" onClick={reset}>Limpiar</button>}
-      <Link href={alertSupported ? alertHref : "/alertas"} className="job-alert-link"><Bell size={15} /> Mis alertas</Link>
-    </div>
-    <div className="job-results-toolbar"><p role="status"><span className="job-active-dot" /><strong>{total} {total === 1 ? "vacante" : "vacantes"}</strong><span className="job-results-hint"> encontradas</span></p><div className="job-toolbar-actions"><div className="job-view-toggle" role="group" aria-label="Ver resultados como"><button aria-pressed={view === "lista"} onClick={() => update("vista", "")}><List size={15} /> Lista</button><button aria-pressed={view === "mapa"} onClick={() => update("vista", "mapa")}><MapIcon size={15} /> Mapa</button></div>{view === "lista" && <label><span className="hidden sm:inline">Ordenar por:</span><select aria-label="Ordenar vacantes" value={sort} onChange={(e) => update("orden", e.target.value)}><option value="recientes">Más recientes</option><option value="urgentes">Urgentes primero</option></select></label>}</div></div>
-    {total === 0 ? <div className="job-empty"><Search size={32} /><h2>No hay resultados con estos filtros</h2><p>Probá otro cargo o ampliá la ciudad para ver más oportunidades.</p><button className="btn-primary" onClick={reset}>Ver todas las vacantes</button></div> :
-      view === "mapa" ? <JobMap jobs={filtered} homeCity={matchProfile?.location_city ?? null} country={jobs[0]?.company.country ?? "py"} /> :
-      <div className={`job-search-grid ${!selected ? "external-only" : ""}`}>
-        <div className="job-results-list" aria-label="Resultados de empleo">
-          {shownJobs.map((job, index) => <Fragment key={job.id}><JobResultCard {...sharedJobProps(job)} selected={selected?.id === job.id} onSelect={() => setSelectedId(job.id)} />{index === 1 && (!alertDismissed && alertSupported && <aside className="job-alert-banner">
-      <span className="job-alert-icon"><Bell size={20} /></span><div><h2>Que el próximo empleo te encuentre</h2><p>Recibí nuevas oportunidades por email y en Worka.</p><Link href={alertHref}>Crear una alerta <span aria-hidden>→</span></Link></div><button className="job-alert-dismiss" aria-label="Ocultar sugerencia de alertas" onClick={() => setAlertDismissed(true)}><X size={16} /></button>
-    </aside>)}</Fragment>)}
-          {shownExternal.length > 0 && <><div className="job-external-heading"><h2>De otros portales</h2><p>La postulación y el seguimiento se realizan fuera de Worka.</p></div>{shownExternal.map((job) => <ExternalJobCard key={job.id} job={job} />)}</>}
-          {limit < total && <button className="btn-secondary w-full" onClick={() => setLimit((current) => current + 12)}>Ver más empleos ({total - limit})</button>}
+    <div className="li-searchband">
+      <div className="li-searchband-inner">
+        <div className="li-search">
+          <label className="li-field"><Search size={18} /><span className="sr-only">Cargo, empresa o rubro</span><input type="search" enterKeyHint="search" value={query} onChange={(e) => update("q", e.target.value)} placeholder="Cargo, empresa o rubro" /></label>
+          <label className="li-field"><MapPin size={18} /><span className="sr-only">Ciudad</span><select value={city} onChange={(e) => update("ciudad", e.target.value)}><option value="">Todas las ciudades</option>{[...new Set([...cities, ...(city ? [city] : [])])].map((item) => <option key={item}>{item}</option>)}</select></label>
         </div>
-        {selected && <div className="hidden lg:block min-w-0"><JobPreview key={selected.id} {...sharedJobProps(selected)} /></div>}
+        <div className="li-pills" aria-label="Filtros">
+          <PillSelect label="Ciudad" value={city} options={cities} onChange={(v) => update("ciudad", v)} className="is-mobile" />
+          <PillSelect label="Modalidad" value={modality} options={["Presencial", "Híbrido", "Remoto"]} onChange={(v) => update("modalidad", v)} />
+          <PillSelect label="Jornada" value={contract} options={["Tiempo completo", "Medio tiempo", "Por turnos", "Pasantía", "Freelance"]} onChange={(v) => update("contrato", v)} />
+          <PillSelect label="Rubro" value={industry} options={industries} onChange={(v) => update("rubro", v)} />
+          <button className="li-pill" aria-pressed={firstJobOnly} onClick={() => update("primerEmpleo", !firstJobOnly)}><GraduationCap size={15} /> Sin experiencia</button>
+          <button className="li-pill" aria-pressed={withSalary} onClick={() => update("salario", !withSalary)}><Wallet size={14} /> Con salario</button>
+          <button className="li-pill" aria-pressed={onlyVerified} onClick={() => update("verificadas", !onlyVerified)}><BadgeCheck size={15} /> Verificadas</button>
+          <span className="li-pills-divider" aria-hidden />
+          <button className="li-pill is-plain" onClick={() => setFilterOpen(true)} aria-expanded={filterOpen}><SlidersHorizontal size={15} /> Todos los filtros{activeCount > 0 && <b>{activeCount}</b>}</button>
+          {(activeCount > 0 || query) && <button className="li-pill is-link" onClick={reset}>Restablecer</button>}
+        </div>
+      </div>
+    </div>
+
+    {total === 0 ? <>{resultsHead}<div className="job-empty"><Search size={32} /><h2>No hay resultados con estos filtros</h2><p>Probá otro cargo o ampliá la ciudad para ver más oportunidades.</p><div className="flex flex-wrap gap-2 justify-center"><button className="btn-primary" onClick={reset}>Ver todas las vacantes</button>{alertSupported && <Link href={alertHref} className="btn-secondary"><Bell size={15} /> Avisarme cuando haya</Link>}</div></div></> :
+      view === "mapa" ? <>{resultsHead}<JobMap jobs={filtered} homeCity={matchProfile?.location_city ?? null} country={jobs[0]?.company.country ?? "py"} /></> :
+      <div className={`li-split ${!selected ? "is-single" : ""}`}>
+        <section className="li-list" aria-label="Resultados de empleo">
+          {resultsHead}
+          {alertSupported && <Link href={alertHref} className="li-alert-row"><Bell size={16} /><span><strong>Crear alerta para esta búsqueda</strong><small>Te avisamos cuando aparezcan vacantes nuevas.</small></span></Link>}
+          <ul className="li-items">
+            {shownJobs.map((job) => <JobResultCard key={job.id} {...sharedJobProps(job)} selected={selected?.id === job.id} onSelect={() => setSelectedId(job.id)} />)}
+            {shownExternal.length > 0 && <li className="li-divider"><strong>De otros portales</strong><span>La postulación y el seguimiento se hacen fuera de Worka.</span></li>}
+            {shownExternal.map((job) => <ExternalJobRow key={job.id} job={job} />)}
+          </ul>
+          {limit < total && <div className="li-more"><button className="btn-secondary w-full" onClick={() => setLimit((current) => current + 12)}>Ver más empleos ({total - limit})</button></div>}
+        </section>
+        {selected && <div className="li-detail"><JobPreview key={selected.id} {...sharedJobProps(selected)} /></div>}
       </div>}
+
     <MobileSheet desktop open={filterOpen} onClose={() => setFilterOpen(false)} label="Filtros de empleo" className="p-5 overflow-y-auto">
-      <div className="flex justify-between items-center mb-5"><h2 className="text-lg font-semibold">Filtrar empleos</h2><button className="job-save" aria-label="Cerrar filtros" onClick={() => setFilterOpen(false)}><X size={20} /></button></div>
+      <div className="flex justify-between items-center mb-5"><h2 className="text-lg font-semibold">Todos los filtros</h2><button className="job-save" aria-label="Cerrar filtros" onClick={() => setFilterOpen(false)}><X size={20} /></button></div>
       <div className="space-y-4">
         <label className="block"><span className="label">Ciudad</span><select className="input" value={city} onChange={(e) => update("ciudad", e.target.value)}><option value="">Todas las ciudades</option>{cities.map((item) => <option key={item}>{item}</option>)}</select></label>
         <label className="block"><span className="label">Rubro</span><select className="input" value={industry} onChange={(e) => update("rubro", e.target.value)}><option value="">Todos los rubros</option>{industries.map((item) => <option key={item}>{item}</option>)}</select></label>
         <label className="block"><span className="label">Modalidad</span><select className="input" value={modality} onChange={(e) => update("modalidad", e.target.value)}><option value="">Cualquier modalidad</option>{["Presencial", "Híbrido", "Remoto"].map((item) => <option key={item}>{item}</option>)}</select></label>
         <label className="block"><span className="label">Jornada laboral</span><select className="input" value={contract} onChange={(e) => update("contrato", e.target.value)}><option value="">Cualquier jornada</option>{["Tiempo completo", "Medio tiempo", "Por turnos", "Pasantía", "Freelance"].map((item) => <option key={item}>{item}</option>)}</select></label>
+        <label className="block"><span className="label">Ordenar por</span><select className="input" value={sort} onChange={(e) => update("orden", e.target.value)}><option value="recientes">Más recientes</option><option value="urgentes">Urgentes primero</option></select></label>
         {[{ key: "primerEmpleo", value: firstJobOnly, label: "Sin experiencia previa" }, { key: "salario", value: withSalary, label: "Con salario visible" }, { key: "verificadas", value: onlyVerified, label: "Solo empresas verificadas" }, ...(loggedIn ? [{ key: "sinPostuladas", value: hideApplied, label: "Ocultar mis postulaciones" }] : [])].map((filter) => <label key={filter.key} className="filter-check"><input type="checkbox" checked={filter.value} onChange={(e) => update(filter.key, e.target.checked)} />{filter.label}</label>)}
       </div>
-      <div className="flex gap-2 mt-6"><button className="btn-secondary" onClick={reset}>Limpiar</button><button className="btn-primary flex-1" onClick={() => setFilterOpen(false)}>Ver {total} {total === 1 ? "vacante" : "vacantes"}</button></div>
+      <div className="flex gap-2 mt-6"><button className="btn-secondary" onClick={reset}>Restablecer</button><button className="btn-primary flex-1" onClick={() => setFilterOpen(false)}>Ver {total} {total === 1 ? "resultado" : "resultados"}</button></div>
     </MobileSheet>
   </div>;
+}
+
+// Filtro desplegable con forma de píldora. Es un <select> nativo: en el
+// celular abre el selector del sistema y nunca queda cortado por la fila que
+// se desliza de costado.
+function PillSelect({ label, value, options, onChange, className = "" }: { label: string; value: string; options: string[]; onChange: (value: string) => void; className?: string }) {
+  return <label className={`li-pill li-pill-select ${className}`} data-active={value ? "true" : undefined}>
+    <span className="sr-only">{label}</span>
+    <span aria-hidden>{value || label}</span>
+    <ChevronDown size={14} aria-hidden />
+    <select value={value} onChange={(e) => onChange(e.target.value)}>
+      <option value="">{label === "Rubro" ? `${label}: todos` : `${label}: todas`}</option>
+      {options.map((o) => <option key={o}>{o}</option>)}
+    </select>
+  </label>;
 }

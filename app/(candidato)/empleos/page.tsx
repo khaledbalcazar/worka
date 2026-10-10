@@ -60,6 +60,7 @@ export default async function JobFeedPage() {
       industries={industries}
       cities={cities}
       externalJobs={externalJobs}
+      regionName={country.name}
       matchProfile={candidate ? {
         location_city: candidate.location_city,
         open_to_other_cities: candidate.open_to_other_cities,
