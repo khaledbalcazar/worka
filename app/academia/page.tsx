@@ -10,7 +10,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { getPublishedCourses } from "@/lib/data";
-import SiteHeader from "@/components/SiteHeader";
+import HomeNav from "@/components/home/HomeNav";
 
 export const metadata: Metadata = {
   title: "Academia Worka — Cursos gratis para conseguir empleo",
@@ -34,18 +34,10 @@ export default async function AcademiaPage() {
 
   return (
     <main className="flex-1 bg-surface min-h-screen flex flex-col">
-      <SiteHeader active="/academia" />
+      <HomeNav />
 
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#EEF1FC] to-surface">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-1/4 -right-[10%] w-[500px] h-[500px] rounded-full"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(37,99,235,0.10) 0%, transparent 70%)",
-          }}
-        />
+      <section className="relative overflow-hidden bg-white border-b border-line">
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 py-14 text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/[0.06] px-3.5 py-1.5 mb-5">
             <GraduationCap size={15} className="text-primary" />
@@ -53,10 +45,8 @@ export default async function AcademiaPage() {
               Academia Worka · 100% gratis
             </span>
           </div>
-          <h1 className="text-3xl sm:text-5xl font-extrabold text-primary-dark leading-[1.08] tracking-tight">
-            Aprendé gratis y
-            <br />
-            <span className="text-primary">conseguí mejor trabajo</span>
+          <h1 className="font-light text-[34px] leading-[42px] sm:text-[52px] sm:leading-[62px] tracking-[-0.02em] text-[#8f3b1f]">
+            Aprendé gratis y conseguí mejor trabajo
           </h1>
           <p className="text-gray-500 mt-4 max-w-xl mx-auto text-[1.05rem]">
             Cursos cortos y prácticos para prepararte: entrevistas, habilidades

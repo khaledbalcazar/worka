@@ -30,6 +30,7 @@ const MORE: [string, string][] = [
   ["Panorama del mercado", "/panorama"],
   ["Academia", "/academia"],
   ["Blog", "/blog"],
+  ["Sueldos por rubro", "/salarios"],
 ];
 
 export default function HomeNav() {

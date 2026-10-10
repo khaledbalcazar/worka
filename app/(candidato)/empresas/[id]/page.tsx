@@ -48,7 +48,7 @@ export default async function CompanyPublicPage({
       {/* Encabezado con banner */}
       <div className="card overflow-hidden">
         <div
-          className="h-28 sm:h-36 bg-gradient-to-r from-primary-dark to-primary"
+          className="h-28 sm:h-36 bg-[linear-gradient(135deg,#a0b4b7_0%,#c9d6d4_55%,#e9e5df_100%)]"
           style={
             company.banner_url
               ? {

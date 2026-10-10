@@ -1,32 +1,43 @@
 "use client";
 import Link from "next/link";
-import { BadgeCheck, Bus, MapPin, Check, Zap } from "lucide-react";
+import { BadgeCheck, Check, Zap } from "lucide-react";
 import type { JobWithCompany } from "@/lib/types";
-import { timeAgo } from "@/lib/format";
+import { isRecent, timeAgo } from "@/lib/format";
 import EntityAvatar from "@/components/EntityAvatar";
-import { jobMatch, type MatchCandidate } from "@/lib/job-match";
-import JobApplicationButton from "./JobApplicationButton";
 import SaveJobButton from "./SaveJobButton";
+import { jobMatch, type MatchCandidate } from "@/lib/job-match";
 
-export default function JobResultCard({ job, selected, saved, applied, loggedIn, requiresEvaluation, matchProfile = null, onSelect, onSaved, onApplied }: {
-  job: JobWithCompany; matchProfile?: MatchCandidate | null; selected: boolean; saved: boolean; applied: boolean; loggedIn: boolean; requiresEvaluation: boolean;
-  onSelect: () => void; onSaved: (value: boolean) => void; onApplied: () => void;
+// Fila de resultado al estilo de una bolsa de empleo profesional: logo,
+// título, empresa, lugar y una línea de datos. Toda la fila es clickeable:
+// en escritorio abre el detalle al costado; en celular, la página del aviso.
+export default function JobResultCard({ job, selected, saved, loggedIn, applied, requiresEvaluation, matchProfile = null, linkOnly = false, onSelect, onSaved }: {
+  job: JobWithCompany; selected: boolean; saved: boolean; applied: boolean; loggedIn: boolean; requiresEvaluation: boolean;
+  matchProfile?: MatchCandidate | null; linkOnly?: boolean; onSelect: () => void; onSaved: (value: boolean) => void; onApplied?: () => void;
 }) {
   const match = matchProfile ? jobMatch(matchProfile, job) : null;
-  return <article className={`job-result ${selected ? "is-selected" : ""}`}>
-    <div className="job-result-heading">
-      <EntityAvatar url={job.company.logo_url} name={job.company.trade_name} className="job-company-logo" />
-      <div className="min-w-0 flex-1">
-        <p className="job-company-name">{job.company.trade_name}{job.company.is_verified && <BadgeCheck size={14} className="text-primary shrink-0" aria-label="Empresa verificada" />}</p>
-        <h2><Link className="lg:hidden" href={`/empleo/${job.id}`}>{job.title}</Link><button className="hidden lg:block text-left" onClick={onSelect} aria-pressed={selected}>{job.title}</button></h2>
-        <p className="job-location"><MapPin size={12} />{job.company.location_city} · {job.modality}</p>
-      </div>
-      <SaveJobButton jobId={job.id} saved={saved} loggedIn={loggedIn} onChange={onSaved} />
+  const quickApply = !requiresEvaluation && job.filter_questions.length === 0;
+  return <li className={`li-item ${selected ? "is-selected" : ""}`}>
+    <EntityAvatar url={job.company.logo_url} name={job.company.trade_name} className="li-logo" />
+    <div className="li-item-body">
+      <h3 className="li-item-title">
+        <Link className={linkOnly ? "" : "lg:hidden"} href={`/empleo/${job.id}`}>{job.title}</Link>
+        {!linkOnly && <button className="hidden lg:inline text-left" onClick={onSelect} aria-current={selected ? "true" : undefined}>{job.title}</button>}
+      </h3>
+      <p className="li-item-company">{job.company.trade_name}{job.company.is_verified && <BadgeCheck size={14} aria-label="Empresa verificada" />}</p>
+      <p className="li-item-location">{job.company.location_city} ({job.modality})</p>
+      {job.salary_range && <p className="li-item-salary">{job.salary_range}</p>}
+      {(applied || (match && match.percent >= 80) || job.urgent || !job.requires_experience) && <p className="li-item-tags">
+        {applied && <span className="is-applied"><Check size={12} /> Postulado</span>}
+        {!applied && match && match.percent >= 80 && <span className="is-match">{match.percent}% compatible</span>}
+        {job.urgent && <span className="is-urgent">Contratación inmediata</span>}
+        {!job.requires_experience && <span>Sin experiencia</span>}
+      </p>}
+      <p className="li-item-foot">
+        <span className={isRecent(job.created_at) ? "is-new" : ""}>{timeAgo(job.created_at)}</span>
+        {job.vacancies_count > 1 && <span>{job.vacancies_count} puestos</span>}
+        {quickApply && !applied && <span className="is-quick"><Zap size={12} /> Postulación con 1 clic</span>}
+      </p>
     </div>
-    <div className="job-salary-row"><div><span>Salario ofrecido</span><p>{job.salary_range || "No informado"}</p></div>{job.urgent && <span className="job-urgent"><Zap size={12} /> Contratación inmediata</span>}</div>
-    <div className="job-facts">{match && match.percent >= 80 && <span className="job-match-chip">{match.percent}% compatible</span>}{!job.requires_experience && <span className="job-first"><Check size={12} /> Sin experiencia</span>}{job.contract_type && <span>{job.contract_type}</span>}</div>
-    {job.nearby_transit && <p className="job-transit"><Bus size={13} /><span>{job.nearby_transit}</span></p>}
-    <div className="job-mobile-actions lg:hidden"><JobApplicationButton requiresEvaluation={requiresEvaluation} job={job} applied={applied} loggedIn={loggedIn} onApplied={onApplied} /><Link href={`/empleo/${job.id}`} className="btn-secondary">Detalles</Link></div>
-    <div className="job-result-footer">{applied ? <span className="text-emerald-700 flex items-center gap-1"><Check size={12} /> Ya te postulaste</span> : <span>{job.vacancies_count > 1 ? `${job.vacancies_count} puestos disponibles` : ""}</span>}<span>Publicado {timeAgo(job.created_at)}</span></div>
-  </article>;
+    <SaveJobButton jobId={job.id} saved={saved} loggedIn={loggedIn} onChange={onSaved} />
+  </li>;
 }

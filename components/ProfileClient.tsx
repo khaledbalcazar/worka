@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { ArrowUpRight, BadgeCheck, Bell, BriefcaseBusiness, Camera, Check, ChevronDown, Eye, FileText, Lightbulb, LogOut, MapPin, Pencil, Phone, Plus, Settings, ShieldCheck, Upload, X } from "lucide-react";
+import { ArrowUpRight, BadgeCheck, Bell, BriefcaseBusiness, Camera, Copy, Link2, Share2, Check, ChevronDown, Eye, FileText, LogOut, MapPin, Pencil, Phone, Plus, Settings, ShieldCheck, Upload, X } from "lucide-react";
 import MobileSheet from "@/components/MobileSheet";
 import { countryByCode } from "@/lib/countries";
+import { SITE_URL } from "@/lib/supabase/config";
 import type { CareerData, Candidate, IdentityStatus, WorkReference } from "@/lib/types";
 import ProfileCareer from "@/components/profile/ProfileCareer";
 import {
@@ -95,6 +96,11 @@ export default function ProfileClient({
     candidate.visible_to_companies
   );
   const [publicProfile, setPublicProfile] = useState(candidate.public_profile);
+  const [urlCopied, setUrlCopied] = useState(false);
+  const publicUrl = `${SITE_URL.replace(/\/$/, "")}/p/${candidate.id}`;
+  function copyPublicUrl() {
+    navigator.clipboard?.writeText(publicUrl).then(() => { setUrlCopied(true); setTimeout(() => setUrlCopied(false), 2500); }).catch(() => {});
+  }
   const [identityStatus, setIdentityStatus] = useState<IdentityStatus>(
     candidate.identity_status
   );
@@ -289,29 +295,29 @@ export default function ProfileClient({
   return (
     <div className="profile-page">
       <nav className="profile-section-nav" aria-label="Secciones de mi perfil">
-        <span className="profile-nav-label"><span className="job-active-dot" /> Mi perfil</span>
         {[["datos", "Resumen"], ["presentacion", "Sobre mí"], ["experiencia", "Experiencia"], ["estudios", "Estudios"], ["habilidades", "Habilidades"], ["cursos", "Cursos"], ["curriculum", "Mi CV"], ["preferencias", "Preferencias"], ["referencias", "Referencias"]].map(([id, label]) => <a key={id} href={`#${id}`}>{label}</a>)}
       </nav>
       {profileError && <p role="alert" className="profile-error">{profileError}</p>}
       <div className="profile-layout">
         <div className="profile-main-column">
           <section id="datos" className="profile-hero card">
-            <div className="profile-cover" aria-hidden="true"><span>Tu próximo paso empieza acá.</span><BriefcaseBusiness size={42} strokeWidth={1} /></div>
+            <div className="profile-cover" aria-hidden="true" />
             <div className="profile-hero-content">
               <div className="profile-avatar-line">
-                <button className="profile-avatar" onClick={() => avatarInput.current?.click()} disabled={pending} aria-label="Cambiar foto de perfil">
+                <button className={`profile-avatar ${visibleToCompanies ? "is-open" : ""}`} onClick={() => avatarInput.current?.click()} disabled={pending} aria-label="Cambiar foto de perfil">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   {avatarUrl ? <img src={avatarUrl} alt="" /> : <span>{candidate.full_name.split(" ").filter(Boolean).slice(0, 2).map((name) => name[0]).join("")}</span>}
                   <span className="profile-avatar-camera"><Camera size={13} /></span>
+                  {visibleToCompanies && <span className="profile-avatar-badge" aria-hidden>#BuscandoEmpleo</span>}
                 </button>
-                {identityStatus === "verified" && <span className="profile-verified"><BadgeCheck size={14} /> Identidad verificada</span>}
               </div>
               <input ref={avatarInput} type="file" accept="image/*" className="hidden" onChange={(e) => handleAvatar(e.target.files?.[0])} />
-              <h1>{candidate.full_name}</h1>
+              <h1>{candidate.full_name}{identityStatus === "verified" && <BadgeCheck size={20} className="text-primary shrink-0" aria-label="Identidad verificada" />}</h1>
               <p className="profile-headline">{candidate.preferences_industry.length ? `En búsqueda de oportunidades en ${candidate.preferences_industry.join(", ")}.` : "Completá tus intereses para orientar tu búsqueda laboral."}</p>
               <p className="profile-contact"><MapPin size={14} /> {candidate.location_city} · {countryByCode(candidate.country ?? "py").name}</p>
               <p className="profile-contact"><Phone size={14} /> {candidate.phone_whatsapp}{candidate.phone_verified && <Check size={13} className="text-emerald-700" />}</p>
               <div className="profile-primary-actions"><button className="btn-primary" onClick={() => { setEditSaved(false); setConfigModal("editar"); }}><Pencil size={14} /> Editar perfil</button>{publicProfile && <Link href={`/p/${candidate.id}`} className="btn-secondary"><Eye size={15} /> Ver perfil público</Link>}</div>
+              {visibleToCompanies && <a href="#preferencias" className="profile-open-box"><strong>Buscando empleo</strong><span>{[candidate.preferences_industry.slice(0, 3).join(", "), ["Presencial", "Híbrido", "Remoto"].includes(candidate.preferences_modality) ? candidate.preferences_modality : "Cualquier modalidad", candidate.first_job_mode ? "Primer empleo" : ""].filter(Boolean).join(" · ")}</span><small>Ver preferencias</small></a>}
               <div className="profile-completion"><div><strong>{completedCount === 4 ? "Tu perfil está listo" : <a href={nextStep.href}>{nextStep.label} →</a>}</strong><p>{completedCount} de 4 secciones básicas completas</p></div><div role="progressbar" aria-label="Secciones básicas completas" aria-valuemin={0} aria-valuemax={4} aria-valuenow={completedCount} className="profile-progress-track"><span style={{ width: `${completedCount * 25}%` }} /></div></div>
             </div>
           </section>
@@ -353,6 +359,7 @@ export default function ProfileClient({
         </div>
 
         <aside className="profile-sidebar">
+          <section className="card profile-section profile-visibility"><h2><Link2 size={18} /> Perfil público y URL</h2>{publicProfile ? <><p className="profile-url">{publicUrl}</p><div className="flex flex-wrap gap-3"><button className="profile-text-action" onClick={copyPublicUrl}><Copy size={14} /> {urlCopied ? "¡Enlace copiado!" : "Copiar enlace"}</button><a className="profile-text-action" href={`https://wa.me/?text=${encodeURIComponent(`Mirá mi perfil laboral en Worka: ${publicUrl}`)}`} target="_blank" rel="noopener noreferrer"><Share2 size={14} /> Compartir</a></div></> : <p className="profile-section-description">Tu perfil público está apagado. Activalo en Avisos y privacidad para compartirlo por enlace.</p>}<div className="profile-visibility-status mt-3"><span className={`job-active-dot ${visibleToCompanies ? "" : "is-private"}`} /><span>{visibleToCompanies ? "Visible en la búsqueda de talento" : "Oculto en la búsqueda de talento"}</span></div><p className="text-xs text-gray-500 mt-2">Al postularte, esa empresa recibe tu perfil aunque no estés visible en las búsquedas.</p></section>
           {(() => {
             const checks = [
               { done: identityStatus === "verified", label: "Cédula verificada", hint: identityStatus === "pending" ? "Documentos en revisión" : "Validada por el equipo de Worka", href: "#configuracion" },
@@ -367,7 +374,6 @@ export default function ProfileClient({
               <ul className="profile-seal-list">{checks.map((c) => <li key={c.label} className={c.done ? "is-done" : ""}>{c.done ? <Check size={16} /> : <span className="profile-seal-pending" />}<div><strong>{c.label}</strong>{c.done ? <small>{c.hint}</small> : <a href={c.href} onClick={() => { const el = document.getElementById(c.href.slice(1)); if (el instanceof HTMLDetailsElement) el.open = true; }}>Completar</a>}</div></li>)}</ul>
             </section>;
           })()}
-          <section className="card profile-section profile-visibility"><h2><ShieldCheck size={18} /> Tu perfil en Worka</h2><p className="profile-section-description">Decidís cómo te encuentran y qué compartís con las empresas.</p><div className="profile-visibility-status"><span className={`job-active-dot ${visibleToCompanies ? "" : "is-private"}`} /><span>{visibleToCompanies ? "Visible en la búsqueda de talento" : "Oculto en la búsqueda de talento"}</span></div><p className="text-xs text-gray-500 mt-3">Al postularte, esa empresa recibe tu perfil aunque no estés visible en las búsquedas.</p></section>
           <details className="card profile-section profile-settings" id="privacidad"><summary><span><Bell size={17} /> Avisos y privacidad</span><ChevronDown size={16} /></summary><div className="profile-settings-body">
             <label className="profile-toggle"><span><strong>Visible para empresas</strong><small>Permite encontrarte sin una postulación.</small></span><input type="checkbox" checked={visibleToCompanies} disabled={pending} onChange={(e) => togglePref("visible_to_companies", e.target.checked, setVisibleToCompanies)} /></label>
             <label className="profile-toggle"><span><strong>Perfil público</strong><small>Una página que podés compartir por enlace.</small></span><input type="checkbox" checked={publicProfile} disabled={pending} onChange={(e) => togglePref("public_profile", e.target.checked, setPublicProfile)} /></label>
@@ -375,7 +381,6 @@ export default function ProfileClient({
             <label className="profile-toggle"><span><strong>Novedades de empleo</strong><small>Vacantes por email según tus intereses.</small></span><input type="checkbox" checked={alertsEnabled} disabled={pending} onChange={(e) => toggleAlerts(e.target.checked)} /></label>
             <Link href="/alertas" className="profile-text-action">Administrar mis alertas <ArrowUpRight size={14} /></Link>
           </div></details>
-          <section className="card profile-section profile-tip"><h2><Lightbulb size={18} /> Un perfil que te represente</h2><p>Contá tu experiencia con ejemplos concretos y mantené actualizado tu CV. Tu foto y tus referencias son opcionales.</p></section>
           <details className="card profile-section profile-settings" id="configuracion"><summary><span><Settings size={17} /> Ajustes de cuenta</span><ChevronDown size={16} /></summary><div className="profile-settings-body"><button className="profile-setting-link" onClick={() => setConfigModal("ayuda")}>Ayuda y contacto <ArrowUpRight size={15} /></button><Link href="/recuperar" className="profile-setting-link">Cambiar contraseña <ArrowUpRight size={15} /></Link>
             <details className="profile-identity"><summary>Verificación de identidad <ChevronDown size={14} /></summary><p className="text-xs text-gray-500 my-3">Es opcional. Los documentos solo los revisa el equipo de Worka.</p>
               {identityStatus === "verified" ? <p className="text-sm text-emerald-700">Identidad verificada</p> : identityStatus === "pending" ? <p className="text-sm text-primary">Documentos en revisión.</p> : <div className="space-y-3">{([ ["front", "Frente del documento"], ["back", "Dorso del documento"], ["selfie", "Selfie con el documento"] ] as const).map(([key, label]) => <label key={key} className="block"><span className="text-xs font-medium">{label}</span><input type="file" accept="image/*" className="block w-full text-xs mt-1" onChange={(e) => setIdFiles((current) => ({ ...current, [key]: e.target.files?.[0] ?? null }))} /></label>)}{idError && <p role="alert" className="text-xs text-danger">{idError}</p>}<button className="btn-secondary w-full" disabled={pending || !idFiles.front || !idFiles.back || !idFiles.selfie} onClick={submitIdentity}>{pending ? "Enviando…" : "Enviar a revisión"}</button></div>}

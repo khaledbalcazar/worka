@@ -3,16 +3,8 @@
 import { Suspense, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  BarChart3,
-  Briefcase,
-  Building2,
-  Check,
-  ClipboardCheck,
-  Sparkles,
-  User,
-} from "lucide-react";
-import Logo from "@/components/Logo";
+import { ClipboardCheck, Mail } from "lucide-react";
+import AuthShell from "@/components/auth/AuthShell";
 import { getBrowserClient } from "@/lib/supabase/client";
 import { signInWithEmail, signUpWithEmail } from "@/app/actions";
 
@@ -49,42 +41,31 @@ type Copy = {
   altaTexto: string;
   cruceHref: string;
   cruceTexto: string;
-  puntos: { Icon: typeof User; t: string }[];
 };
 
 const COPY: Record<string, Copy> = {
   persona: {
-    titulo: "Entrá a tu cuenta",
-    tituloAlta: "Creá tu cuenta gratis",
+    titulo: "Iniciar sesión",
+    tituloAlta: "Unite a Worka",
     bajada: "Postulate con un clic y seguí cada proceso sin quedar a ciegas.",
     destino: "/empleos",
     altaHref: "/ingresar?modo=registro",
     altaTexto: "Registrate gratis",
     cruceHref: "/ingresar/empresa",
-    cruceTexto: "Soy una empresa",
-    puntos: [
-      { Icon: Briefcase, t: "Miles de vacantes, sin comisiones ni costos" },
-      { Icon: Sparkles, t: "Tu CV gratis y alertas cuando sale algo tuyo" },
-      { Icon: Check, t: "Siempre sabés en qué etapa está tu postulación" },
-    ],
+    cruceTexto: "¿Buscás talento? Ingresá como empresa",
   },
   empresa: {
-    titulo: "Entrá a tu cuenta de empresa",
+    titulo: "Iniciar sesión como empresa",
     tituloAlta: "Registrá tu empresa",
     bajada: "Publicá vacantes gratis y encontrá candidatos verificados.",
     destino: "/empresa",
     altaHref: "/empresa/registro",
     altaTexto: "Registrar mi empresa",
     cruceHref: "/ingresar",
-    cruceTexto: "Busco trabajo",
-    puntos: [
-      { Icon: Building2, t: "Publicar vacantes es gratis, sin límite" },
-      { Icon: User, t: "Candidatos con perfil y CV, no solo un correo" },
-      { Icon: BarChart3, t: "Métricas reales de cada vacante" },
-    ],
+    cruceTexto: "¿Buscás trabajo? Ingresá como persona",
   },
   evaluar: {
-    titulo: "Entrá a Worka Evaluar",
+    titulo: "Iniciar sesión en Evaluar",
     tituloAlta: "Creá tu cuenta de empresa",
     bajada:
       "Tu cuenta de empresa de Worka es la misma que usás acá: no hace falta crear otra.",
@@ -93,11 +74,6 @@ const COPY: Record<string, Copy> = {
     altaTexto: "Registrar mi empresa",
     cruceHref: "/evaluar",
     cruceTexto: "Ver qué es Worka Evaluar",
-    puntos: [
-      { Icon: ClipboardCheck, t: "Tests listos: personalidad, razonamiento y SJT" },
-      { Icon: Sparkles, t: "La evaluación empieza en tu propia vacante" },
-      { Icon: BarChart3, t: "Tablero para comparar finalistas y decidir" },
-    ],
   },
 };
 
@@ -136,6 +112,7 @@ function Screen({
     searchParams.get("modo") === "registro" ? "signup" : "login"
   );
   const [signupSent, setSignupSent] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(
     searchParams.get("error")
       ? `No pudimos completar el ingreso: ${searchParams.get("error")}`
@@ -190,240 +167,155 @@ function Screen({
 
   const esAlta = mode === "signup" && permiteAlta;
 
+  const field =
+    "w-full h-[52px] rounded-[4px] border border-[#8c8c8c] bg-white px-3.5 text-base text-ink outline-none focus:border-primary focus:shadow-[0_0_0_1px_#0a66c2]";
+
   return (
-    <main className="flex-1 lg:grid lg:grid-cols-2 min-h-screen">
-      {/* Columna de argumentos: en escritorio acompaña, en celular no se
-          muestra para no empujar el formulario abajo del pliegue. */}
-      <aside
-        className={`hidden lg:flex flex-col justify-center px-12 ${
-          product === "evaluar"
-            ? "bg-primary-dark text-white"
-            : audience === "empresa"
-              ? "bg-primary-dark text-white"
-              : "bg-surface"
-        }`}
-      >
-        <Logo />
-        <h2
-          className={`text-3xl font-extrabold mt-6 leading-tight ${
-            audience === "persona" && product !== "evaluar"
-              ? "text-primary-dark"
-              : ""
-          }`}
-        >
-          {product === "evaluar"
-            ? "Seleccioná mejor, sin que el candidato abandone."
-            : audience === "empresa"
-              ? "Encontrá a la persona indicada."
-              : "Tu próximo paso empieza acá."}
-        </h2>
-        <ul className="mt-7 space-y-3">
-          {copy.puntos.map(({ Icon, t }) => (
-            <li key={t} className="flex items-start gap-3">
-              <span
-                className={`w-8 h-8 shrink-0 rounded-xl grid place-items-center ${
-                  audience === "persona" && product !== "evaluar"
-                    ? "bg-white text-primary"
-                    : "bg-white/10"
-                }`}
+    <AuthShell
+      below={
+        !signupSent && (
+          <>
+            {!permiteAlta && (
+              <p>
+                ¿Tu empresa todavía no está en Worka?{" "}
+                <Link href={copy.altaHref} className="text-primary font-semibold hover:underline">
+                  {copy.altaTexto}
+                </Link>
+              </p>
+            )}
+            <p className="text-muted">
+              <Link href={copy.cruceHref} className="hover:underline">
+                {copy.cruceTexto}
+              </Link>
+            </p>
+          </>
+        )
+      }
+    >
+      {signupSent ? (
+        <div className="text-center py-6 animate-pop" role="status">
+          <span className="confirmation-icon mx-auto"><Mail size={26} /></span>
+          <h1 className="text-2xl font-semibold mt-4">Revisá tu email</h1>
+          <p className="text-[15px] text-muted mt-2">
+            Te enviamos un enlace de confirmación a <strong className="text-ink">{email}</strong>. Al abrirlo,
+            entrás directo a completar tu perfil.
+          </p>
+        </div>
+      ) : (
+        <form onSubmit={(e) => { e.preventDefault(); handleEmail(); }} aria-busy={pending}>
+          {product === "evaluar" && (
+            <p className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary bg-primary/[0.08] rounded-full px-2.5 py-1 mb-3">
+              <ClipboardCheck size={13} /> Worka Evaluar
+            </p>
+          )}
+          <h1 className="text-[32px] leading-tight font-semibold tracking-[-0.01em]">
+            {esAlta ? copy.tituloAlta : copy.titulo}
+          </h1>
+          {permiteAlta ? (
+            <p className="text-[15px] mt-2">
+              {mode === "login" ? "¿Nuevo en Worka? " : "¿Ya tenés cuenta? "}
+              <button
+                type="button"
+                className="text-primary font-semibold hover:underline"
+                onClick={() => {
+                  setMode(mode === "login" ? "signup" : "login");
+                  setError(null);
+                }}
               >
-                <Icon size={16} />
-              </span>
-              <span
-                className={`text-sm ${
-                  audience === "persona" && product !== "evaluar"
-                    ? "text-gray-600"
-                    : "text-white/80"
-                }`}
-              >
-                {t}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </aside>
-
-      {/* Formulario */}
-      <div className="flex flex-col items-center justify-center px-4 py-10">
-        <div className="w-full max-w-sm">
-          <div className="text-center lg:hidden">
-            <Logo />
-          </div>
-
-          <div className="text-center mt-3">
-            <span
-              className={`chip ${
-                audience === "empresa" || product === "evaluar"
-                  ? "bg-blue-50 text-primary"
-                  : "bg-surface text-gray-600"
-              }`}
-            >
-              {product === "evaluar" ? (
-                <>
-                  <ClipboardCheck size={12} /> Worka Evaluar
-                </>
-              ) : audience === "empresa" ? (
-                <>
-                  <Building2 size={12} /> Empresas
-                </>
-              ) : (
-                <>
-                  <User size={12} /> Personas
-                </>
-              )}
-            </span>
-            <h1 className="text-xl font-bold text-primary-dark mt-3">
-              {esAlta ? copy.tituloAlta : copy.titulo}
-            </h1>
-            <p className="text-sm text-gray-500 mt-1">{copy.bajada}</p>
-          </div>
+                {mode === "login" ? "Unite ahora" : "Iniciá sesión"}
+              </button>
+            </p>
+          ) : (
+            <p className="text-[15px] text-muted mt-2">{copy.bajada}</p>
+          )}
 
           {rawNext?.startsWith("/empleo") && (
-            <p className="text-xs text-primary-dark bg-blue-50 rounded-xl px-3 py-2 text-center mt-4">
-              📌 Guardamos la vacante: apenas termines, volvés directo a ella.
+            <p className="text-[13px] bg-[#edf3f8] rounded-md px-3 py-2 mt-4">
+              Guardamos la vacante: apenas termines, volvés directo a ella.
+            </p>
+          )}
+          {demoMode && (
+            <p className="text-xs text-amber-800 bg-amber-50 rounded-md px-3 py-2 mt-4">
+              Modo demostración: Supabase no está configurado, así que el ingreso te lleva directo a la app con datos de ejemplo.
             </p>
           )}
 
-          <div className="card p-6 mt-4 space-y-4">
-            {signupSent ? (
-              <div className="text-center py-4 animate-pop">
-                <p className="text-4xl mb-2">📨</p>
-                <p className="font-semibold text-primary-dark">
-                  ¡Revisá tu email!
-                </p>
-                <p className="text-sm text-gray-500 mt-1">
-                  Te enviamos un link de confirmación. Al hacer clic, entrás
-                  directo a completar tu perfil.
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={(e) => { e.preventDefault(); handleEmail(); }} className="space-y-4" aria-busy={pending}>
-                {demoMode && (
-                  <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2">
-                    Modo demostración: Supabase no está configurado, así que el
-                    ingreso te lleva directo a la app con datos de ejemplo.
-                  </p>
-                )}
+          <button
+            type="button"
+            className="mt-6 w-full min-h-12 rounded-full border border-[#8c8c8c] bg-white flex items-center justify-center gap-2.5 text-base font-semibold text-[#404040] hover:bg-[#f3f2f0] hover:shadow-[inset_0_0_0_1px_#404040] disabled:opacity-50"
+            disabled={pending}
+            onClick={handleGoogle}
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" aria-hidden>
+              <path fill="#4285F4" d="M22.6 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h5.9a5 5 0 0 1-2.2 3.3v2.8h3.6c2.1-1.9 3.3-4.8 3.3-8.3z" />
+              <path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.6-2.8c-1 .7-2.3 1.1-3.7 1.1-2.9 0-5.3-1.9-6.2-4.6H2.1v2.9A11 11 0 0 0 12 23z" />
+              <path fill="#FBBC05" d="M5.8 14a6.6 6.6 0 0 1 0-4.2V6.9H2.1a11 11 0 0 0 0 10l3.7-2.9z" />
+              <path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.2-3.2A11 11 0 0 0 2.1 6.9L5.8 9.8c.9-2.7 3.3-4.4 6.2-4.4z" />
+            </svg>
+            Continuar con Google
+          </button>
+          <p className="text-xs text-muted mt-4 leading-relaxed">
+            Al continuar, aceptás los{" "}
+            <Link href="/terminos" className="text-primary font-semibold hover:underline">Términos</Link> y la{" "}
+            <Link href="/privacidad" className="text-primary font-semibold hover:underline">Política de privacidad</Link> de Worka.
+          </p>
 
-                <button
-                  type="button"
-                  className="btn-secondary press w-full"
-                  disabled={pending}
-                  onClick={handleGoogle}
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24">
-                    <path
-                      fill="#4285F4"
-                      d="M22.6 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h5.9a5 5 0 0 1-2.2 3.3v2.8h3.6c2.1-1.9 3.3-4.8 3.3-8.3z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 23c3 0 5.5-1 7.3-2.7l-3.6-2.8c-1 .7-2.3 1.1-3.7 1.1-2.9 0-5.3-1.9-6.2-4.6H2.1v2.9A11 11 0 0 0 12 23z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.8 14a6.6 6.6 0 0 1 0-4.2V6.9H2.1a11 11 0 0 0 0 10l3.7-2.9z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.2-3.2A11 11 0 0 0 2.1 6.9L5.8 9.8c.9-2.7 3.3-4.4 6.2-4.4z"
-                    />
-                  </svg>
-                  Continuar con Google
-                </button>
-
-                <div className="flex items-center gap-3 text-xs text-gray-400">
-                  <span className="flex-1 h-px bg-gray-200" /> o con email{" "}
-                  <span className="flex-1 h-px bg-gray-200" />
-                </div>
-
-                <label className="label" htmlFor="login-email">Email</label>
-                <input
-                  id="login-email"
-                  name="email"
-                  autoComplete="email"
-                  required={!demoMode}
-                  className="input"
-                  type="email"
-                  placeholder={
-                    audience === "empresa" ? "rrhh@tuempresa.com.py" : "tu@email.com"
-                  }
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                <label className="label" htmlFor="login-password">Contraseña</label>
-                {esAlta && <p id="password-help" className="text-xs text-gray-500">Usá al menos 6 caracteres.</p>}
-                <input
-                  id="login-password"
-                  name="password"
-                  autoComplete={esAlta ? "new-password" : "current-password"}
-                  required={!demoMode}
-                  minLength={esAlta && !demoMode ? 6 : undefined}
-                  aria-describedby={esAlta ? "password-help" : undefined}
-                  className="input"
-                  type="password"
-                  placeholder="Contraseña"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-
-                {error && (
-                  <p role="alert" className="text-sm text-danger text-center">{error}</p>
-                )}
-
-                <button
-                  className="btn-primary press w-full"
-                  type="submit"
-                  disabled={pending}
-                >
-                  {pending
-                    ? "Un momento…"
-                    : esAlta
-                      ? "Crear mi cuenta"
-                      : "Entrar"}
-                </button>
-
-                <p className="text-center text-sm">
-                  <Link href="/recuperar" className="text-gray-500 underline">
-                    Olvidé mi contraseña
-                  </Link>
-                </p>
-              </form>
-            )}
+          <div className="flex items-center gap-3 text-sm text-muted my-5">
+            <span className="flex-1 h-px bg-line" /> o <span className="flex-1 h-px bg-line" />
           </div>
 
-          {!signupSent && (
-            <div className="text-center text-sm text-gray-500 mt-4 space-y-1.5">
-              {permiteAlta ? (
-                <p>
-                  {mode === "login" ? "¿No tenés cuenta? " : "¿Ya tenés cuenta? "}
-                  <button
-                    className="text-primary font-medium"
-                    onClick={() => {
-                      setMode(mode === "login" ? "signup" : "login");
-                      setError(null);
-                    }}
-                  >
-                    {mode === "login" ? "Registrate gratis" : "Entrá"}
-                  </button>
-                </p>
-              ) : (
-                <p>
-                  ¿Tu empresa todavía no está en Worka?{" "}
-                  <Link href={copy.altaHref} className="text-primary font-medium">
-                    {copy.altaTexto}
-                  </Link>
-                </p>
-              )}
-              <p>
-                <Link href={copy.cruceHref} className="text-gray-500 underline">
-                  {copy.cruceTexto}
-                </Link>
-              </p>
-            </div>
+          <label className="block text-[15px] mb-1.5" htmlFor="login-email">Email</label>
+          <input
+            id="login-email"
+            name="email"
+            autoComplete="email"
+            required={!demoMode}
+            className={field}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <label className="block text-[15px] mt-4 mb-1.5" htmlFor="login-password">Contraseña</label>
+          <div className="relative">
+            <input
+              id="login-password"
+              name="password"
+              autoComplete={esAlta ? "new-password" : "current-password"}
+              required={!demoMode}
+              minLength={esAlta && !demoMode ? 6 : undefined}
+              aria-describedby={esAlta ? "password-help" : undefined}
+              className={`${field} pr-24`}
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button
+              type="button"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 min-h-10 px-3 rounded-full text-[15px] font-semibold text-primary hover:bg-primary/[0.08]"
+              aria-pressed={showPassword}
+              aria-controls="login-password"
+              onClick={() => setShowPassword((v) => !v)}
+            >
+              {showPassword ? "ocultar" : "mostrar"}
+            </button>
+          </div>
+          {esAlta && <p id="password-help" className="text-xs text-muted mt-1.5">Usá al menos 6 caracteres.</p>}
+
+          {!esAlta && (
+            <Link href="/recuperar" className="inline-block mt-4 text-[15px] font-semibold text-primary hover:underline">
+              ¿Olvidaste tu contraseña?
+            </Link>
           )}
-        </div>
-      </div>
-    </main>
+
+          {error && (
+            <p role="alert" className="text-sm text-danger mt-4">{error}</p>
+          )}
+
+          <button className="btn-primary press w-full !min-h-[52px] !text-base mt-6" type="submit" disabled={pending}>
+            {pending ? "Un momento…" : esAlta ? "Aceptar y unirme" : "Iniciar sesión"}
+          </button>
+        </form>
+      )}
+    </AuthShell>
   );
 }

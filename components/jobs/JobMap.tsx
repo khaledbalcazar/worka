@@ -176,7 +176,7 @@ export default function JobMap({
               {selected.jobs.map((job) => (
                 <li key={job.id}>
                   <Link href={`/empleo/${job.id}`}>
-                    <EntityAvatar url={job.company.logo_url} name={job.company.trade_name} className="job-company-logo" />
+                    <EntityAvatar url={job.company.logo_url} name={job.company.trade_name} className="li-logo" />
                     <span className="min-w-0 flex-1">
                       <strong>{job.title}</strong>
                       <small>{job.company.trade_name} · {job.modality}</small>

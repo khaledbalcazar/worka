@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Bookmark } from "lucide-react";
-import JobCard from "@/components/JobCard";
+import MyJobsShell from "@/components/MyJobsShell";
+import SavedJobsList from "@/components/jobs/SavedJobsList";
 import { getMyAppliedJobIds, getMySavedJobs } from "@/lib/data";
 
 export const metadata = {
@@ -18,47 +19,25 @@ export default async function SavedJobsPage() {
   ]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-baseline justify-between gap-3">
-        <h1 className="text-lg lg:text-2xl font-bold text-primary-dark">
-          Guardadas
-        </h1>
-        {savedJobs.length > 0 && (
-          <span className="text-sm text-gray-400">
-            {savedJobs.length}{" "}
-            {savedJobs.length === 1 ? "vacante" : "vacantes"}
-          </span>
-        )}
-      </div>
-
-      {savedJobs.length === 0 ? (
-        <div className="card p-10 text-center animate-rise">
-          <div className="w-14 h-14 rounded-2xl bg-surface flex items-center justify-center mx-auto mb-3 text-primary">
-            <Bookmark size={24} />
+    <MyJobsShell active="guardados">
+      <section className="myjobs-card">
+        <header className="myjobs-card-head">
+          <h1>Empleos guardados</h1>
+          {savedJobs.length > 0 && (
+            <p>{savedJobs.length} {savedJobs.length === 1 ? "vacante" : "vacantes"} · La empresa no se entera de que guardaste su aviso.</p>
+          )}
+        </header>
+        {savedJobs.length === 0 ? (
+          <div className="myjobs-empty">
+            <Bookmark size={28} />
+            <h2>Todavía no guardaste ninguna vacante</h2>
+            <p>Tocá el marcador de cualquier vacante para dejarla acá y decidir con calma.</p>
+            <Link href="/empleos" className="btn-primary">Buscar empleos</Link>
           </div>
-          <p className="font-semibold text-primary-dark">
-            Todavía no guardaste ninguna vacante
-          </p>
-          <p className="text-sm text-gray-500 mt-1 max-w-xs mx-auto">
-            Tocá la estrella de cualquier vacante para dejarla acá y decidir con
-            calma. No se avisa a la empresa.
-          </p>
-          <Link href="/empleos" className="btn-primary press mt-5">
-            Buscar empleos
-          </Link>
-        </div>
-      ) : (
-        <div className="grid gap-3 lg:grid-cols-2 stagger">
-          {savedJobs.map((job) => (
-            <JobCard
-              key={job.id}
-              job={job}
-              alreadyApplied={appliedIds.has(job.id)}
-              initiallySaved
-            />
-          ))}
-        </div>
-      )}
-    </div>
+        ) : (
+          <SavedJobsList jobs={savedJobs} appliedIds={[...appliedIds]} />
+        )}
+      </section>
+    </MyJobsShell>
   );
 }

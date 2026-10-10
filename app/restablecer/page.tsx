@@ -2,8 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import Logo from "@/components/Logo";
+import { Check } from "lucide-react";
+import AuthShell from "@/components/auth/AuthShell";
 import { updatePassword } from "@/app/actions";
+
+const field =
+  "w-full h-[52px] rounded-[4px] border border-[#8c8c8c] bg-white px-3.5 text-base text-ink outline-none focus:border-primary focus:shadow-[0_0_0_1px_#0a66c2]";
 
 // Nueva contraseña: se llega desde el link de recuperación por email
 // (el callback de auth ya creó la sesión temporal).
@@ -11,6 +15,7 @@ export default function ResetPasswordPage() {
   const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [show, setShow] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -35,55 +40,32 @@ export default function ResetPasswordPage() {
   }
 
   return (
-    <main className="flex-1 flex flex-col items-center justify-center px-4 py-10">
-      <div className="card w-full max-w-sm p-6 space-y-4 text-center">
-        <Logo />
-        {done ? (
-          <div className="py-4 animate-pop">
-            <p className="text-4xl mb-2">✅</p>
-            <p className="font-semibold text-primary-dark">
-              ¡Contraseña actualizada!
-            </p>
-            <p className="text-sm text-gray-500 mt-1">
-              Ya podés ingresar con tu contraseña nueva.
-            </p>
-          </div>
-        ) : (
-          <>
-            <div>
-              <h1 className="font-bold text-primary-dark text-lg">
-                Creá tu nueva contraseña
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Mínimo 8 caracteres.
-              </p>
-            </div>
-            <input
-              className="input"
-              type="password"
-              placeholder="Nueva contraseña"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <input
-              className="input"
-              type="password"
-              placeholder="Repetila para confirmar"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && submit()}
-            />
-            {error && <p className="text-sm text-danger">{error}</p>}
-            <button
-              className="btn-primary w-full"
-              disabled={!password || !confirm || pending}
-              onClick={submit}
-            >
-              {pending ? "Guardando…" : "Guardar contraseña"}
+    <AuthShell>
+      {done ? (
+        <div className="text-center py-6 animate-pop" role="status">
+          <span className="confirmation-icon mx-auto"><Check size={26} /></span>
+          <h1 className="text-2xl font-semibold mt-4">Contraseña actualizada</h1>
+          <p className="text-[15px] text-muted mt-2">Ya podés iniciar sesión con tu contraseña nueva.</p>
+        </div>
+      ) : (
+        <form onSubmit={(e) => { e.preventDefault(); submit(); }}>
+          <h1 className="text-[32px] leading-tight font-semibold tracking-[-0.01em]">Creá tu nueva contraseña</h1>
+          <p className="text-[15px] text-muted mt-2">Usá al menos 8 caracteres.</p>
+          <label className="block text-[15px] mt-6 mb-1.5" htmlFor="new-password">Nueva contraseña</label>
+          <div className="relative">
+            <input id="new-password" className={`${field} pr-24`} type={show ? "text" : "password"} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <button type="button" className="absolute right-1.5 top-1/2 -translate-y-1/2 min-h-10 px-3 rounded-full text-[15px] font-semibold text-primary hover:bg-primary/[0.08]" aria-pressed={show} onClick={() => setShow((v) => !v)}>
+              {show ? "ocultar" : "mostrar"}
             </button>
-          </>
-        )}
-      </div>
-    </main>
+          </div>
+          <label className="block text-[15px] mt-4 mb-1.5" htmlFor="confirm-password">Repetila para confirmar</label>
+          <input id="confirm-password" className={field} type={show ? "text" : "password"} autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
+          {error && <p role="alert" className="text-sm text-danger mt-3">{error}</p>}
+          <button className="btn-primary w-full !min-h-[52px] !text-base mt-6" disabled={!password || !confirm || pending}>
+            {pending ? "Guardando…" : "Guardar contraseña"}
+          </button>
+        </form>
+      )}
+    </AuthShell>
   );
 }

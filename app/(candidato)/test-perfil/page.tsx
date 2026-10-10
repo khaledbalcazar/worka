@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Check } from "lucide-react";
 import { INDUSTRIES } from "@/lib/mock-data";
 import { updateCandidatePrefs } from "@/app/actions";
 
@@ -48,7 +49,7 @@ export default function ProfileTestPage() {
               className={`card w-full p-4 text-left border-2 ${
                 modality === o.value && modality !== null
                   ? "border-primary bg-blue-50"
-                  : "border-transparent hover:border-gray-200"
+                  : "border-[#d6d4d1] hover:border-gray-400"
               }`}
               onClick={() => {
                 setModality(o.value);
@@ -75,7 +76,7 @@ export default function ProfileTestPage() {
               className={`card p-5 text-center border-2 ${
                 firstJob === o.v
                   ? "border-primary bg-blue-50"
-                  : "border-transparent hover:border-gray-200"
+                  : "border-[#d6d4d1] hover:border-gray-400"
               }`}
               onClick={() => {
                 setFirstJob(o.v);
@@ -101,7 +102,7 @@ export default function ProfileTestPage() {
               className={`card p-5 text-center border-2 ${
                 otherCities === o.v
                   ? "border-primary bg-blue-50"
-                  : "border-transparent hover:border-gray-200"
+                  : "border-[#d6d4d1] hover:border-gray-400"
               }`}
               onClick={() => {
                 setOtherCities(o.v);
@@ -147,7 +148,7 @@ export default function ProfileTestPage() {
             disabled={pending}
             onClick={finish}
           >
-            {pending ? "Guardando…" : "Ver mis empleos recomendados 🎯"}
+            {pending ? "Guardando…" : "Ver mis empleos recomendados"}
           </button>
         </div>
       ),
@@ -156,9 +157,9 @@ export default function ProfileTestPage() {
 
   if (done) {
     return (
-      <div className="max-w-md mx-auto text-center py-12 space-y-3 animate-pop">
-        <p className="text-5xl">🎯</p>
-        <h1 className="text-xl font-bold text-primary-dark">
+      <div className="max-w-lg mx-auto card text-center px-6 py-10 space-y-3 animate-pop">
+        <span className="confirmation-icon"><Check size={26} /></span>
+        <h1 className="page-title">
           ¡Listo! Tu feed ahora es para vos
         </h1>
         <p className="text-sm text-gray-500">
@@ -176,15 +177,13 @@ export default function ProfileTestPage() {
   }
 
   return (
-    <div className="max-w-md mx-auto space-y-4">
+    <div className="max-w-lg mx-auto card p-5 sm:p-8 space-y-4">
       <div>
-        <Link href="/empleos" className="text-sm text-primary font-medium">
-          ← Volver al feed
+        <Link href="/empleos" className="text-sm text-primary font-semibold">
+          ← Volver a la búsqueda
         </Link>
         <div className="flex items-center justify-between mt-2">
-          <h1 className="text-xl font-bold text-primary-dark">
-            🎯 Test de perfil
-          </h1>
+          <h1 className="page-title">Test de perfil</h1>
           <span className="text-xs text-gray-400">
             {step + 1} de {steps.length}
           </span>
@@ -202,7 +201,7 @@ export default function ProfileTestPage() {
 
       {step > 0 && (
         <button
-          className="text-sm text-gray-400"
+          className="text-sm font-semibold text-gray-500 min-h-10"
           onClick={() => setStep((s) => s - 1)}
         >
           ← Anterior

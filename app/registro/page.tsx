@@ -1,5 +1,6 @@
 import Link from "next/link";
-import Logo from "@/components/Logo";
+import { Building2, ChevronRight, UserRound } from "lucide-react";
+import AuthShell from "@/components/auth/AuthShell";
 
 // Varias pantallas mandan acá con ?next= (por ejemplo una vacante externa,
 // donde la persona llega desde Google y todavía no tiene cuenta). Antes ese
@@ -23,46 +24,46 @@ export default async function RegisterPage({
     : "/onboarding";
   const loginHref = `/ingresar${safeNext ? `?next=${encodeURIComponent(safeNext)}` : ""}`;
 
+  const option =
+    "group flex items-center gap-4 rounded-lg border border-[#8c8c8c] p-4 hover:bg-[#f3f2f0] hover:shadow-[inset_0_0_0_1px_#404040]";
   return (
-    <main className="flex-1 flex flex-col items-center justify-center px-4 py-10">
-      <div className="w-full max-w-sm space-y-4">
-        <div className="text-center">
-          <Logo />
-          <h1 className="text-lg font-bold text-primary-dark mt-2">
-            Crear cuenta gratis
-          </h1>
-          <p className="text-sm text-gray-500">¿Qué estás buscando?</p>
-        </div>
+    <AuthShell
+      below={
+        <p>
+          ¿Ya tenés cuenta?{" "}
+          <Link href={loginHref} className="text-primary font-semibold hover:underline">
+            Iniciá sesión
+          </Link>
+        </p>
+      }
+    >
+      <h1 className="text-[32px] leading-tight font-semibold tracking-[-0.01em]">Unite a Worka</h1>
+      <p className="text-[15px] text-muted mt-2">Es gratis. ¿Qué estás buscando?</p>
+      <div className="space-y-3 mt-6">
         {/* Antes esto iba directo a /onboarding: se completaban los 4 pasos
             (CV incluido) sin cuenta, para chocar al final con "Iniciá sesión
             primero" y perder todo. Ahora la cuenta se crea antes del alta. */}
-        <Link
-          href={`/ingresar?modo=registro&next=${encodeURIComponent(candidateNext)}`}
-          className="card block p-5 hover:border-primary border-2 border-transparent"
-        >
-          <p className="text-2xl mb-1">👤</p>
-          <p className="font-semibold text-primary-dark">Busco trabajo</p>
-          <p className="text-sm text-gray-500">
-            Creá tu perfil en 2 minutos y postulate con 1 clic.
-          </p>
+        <Link href={`/ingresar?modo=registro&next=${encodeURIComponent(candidateNext)}`} className={option}>
+          <span className="w-12 h-12 rounded-full bg-primary/10 text-primary grid place-items-center shrink-0">
+            <UserRound size={22} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold text-[17px]">Busco trabajo</span>
+            <span className="block text-sm text-muted">Creá tu perfil en 2 minutos y postulate con 1 clic.</span>
+          </span>
+          <ChevronRight size={20} className="text-muted shrink-0" />
         </Link>
-        <Link
-          href="/empresa/registro"
-          className="card block p-5 hover:border-primary border-2 border-transparent"
-        >
-          <p className="text-2xl mb-1">🏢</p>
-          <p className="font-semibold text-primary-dark">Busco talento</p>
-          <p className="text-sm text-gray-500">
-            Publicá vacantes gratis y encontrá candidatos verificados.
-          </p>
+        <Link href="/empresa/registro" className={option}>
+          <span className="w-12 h-12 rounded-full bg-[#e9f4ec] text-success-ink grid place-items-center shrink-0">
+            <Building2 size={22} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-semibold text-[17px]">Busco talento</span>
+            <span className="block text-sm text-muted">Publicá vacantes gratis y encontrá candidatos verificados.</span>
+          </span>
+          <ChevronRight size={20} className="text-muted shrink-0" />
         </Link>
-        <p className="text-center text-sm text-gray-500">
-          ¿Ya tenés cuenta?{" "}
-          <Link href={loginHref} className="text-primary font-medium">
-            Ingresá
-          </Link>
-        </p>
       </div>
-    </main>
+    </AuthShell>
   );
 }

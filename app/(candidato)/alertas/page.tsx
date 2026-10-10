@@ -1,5 +1,6 @@
 import Link from "next/link";
 import AlertsManager from "@/components/AlertsManager";
+import MyJobsShell from "@/components/MyJobsShell";
 import { getMyAlerts, isLive } from "@/lib/data";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getActiveCountry } from "@/lib/country-context";
@@ -17,21 +18,21 @@ export default async function AlertsPage({ searchParams }: {
   const user = live ? await getCurrentUser() : null;
   if (live && !user) {
     return (
-      <div className="card p-8 text-center">
-        <p className="text-3xl mb-2">🔔</p>
-        <p className="font-semibold text-primary-dark">
-          Iniciá sesión para crear alertas
-        </p>
-        <Link href={`/ingresar?next=${encodeURIComponent(returnTo)}`} className="btn-primary mt-4">
-          Ingresar
-        </Link>
-      </div>
+      <MyJobsShell active="alertas">
+        <section className="myjobs-card">
+          <div className="myjobs-empty">
+            <h1>Iniciá sesión para crear alertas</h1>
+            <p>Te avisamos cuando aparezcan vacantes que coincidan con tu búsqueda.</p>
+            <Link href={`/ingresar?next=${encodeURIComponent(returnTo)}`} className="btn-primary">Iniciar sesión</Link>
+          </div>
+        </section>
+      </MyJobsShell>
     );
   }
   const [alerts, country] = await Promise.all([
     getMyAlerts(),
     getActiveCountry(),
   ]);
-  return <AlertsManager alerts={alerts} country={country.code} cities={country.cities}
-    initialSearch={{ keyword: params.q ?? "", city: params.ciudad ?? "", industry: params.rubro ?? "", modality: params.modalidad ?? "" }} />;
+  return <MyJobsShell active="alertas"><AlertsManager alerts={alerts} country={country.code} cities={country.cities}
+    initialSearch={{ keyword: params.q ?? "", city: params.ciudad ?? "", industry: params.rubro ?? "", modality: params.modalidad ?? "" }} /></MyJobsShell>;
 }

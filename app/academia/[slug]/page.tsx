@@ -5,7 +5,7 @@ import { Lock, GraduationCap, ArrowRight } from "lucide-react";
 import { getCourse, getMyCompletions } from "@/lib/data";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { SITE_URL } from "@/lib/supabase/config";
-import SiteHeader from "@/components/SiteHeader";
+import HomeNav from "@/components/home/HomeNav";
 import CourseViewer from "@/components/CourseViewer";
 
 const BASE = SITE_URL.replace(/\/$/, "");
@@ -49,7 +49,7 @@ export default async function CoursePage({
   if (!user) {
     return (
       <main className="flex-1 bg-surface min-h-screen flex flex-col">
-        <SiteHeader active="/academia" />
+        <HomeNav />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -109,7 +109,7 @@ export default async function CoursePage({
 
   return (
     <main className="flex-1 bg-surface min-h-screen flex flex-col">
-      <SiteHeader active="/academia" />
+      <HomeNav />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

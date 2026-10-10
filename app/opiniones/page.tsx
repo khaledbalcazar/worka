@@ -49,16 +49,15 @@ export default async function OpinionesPage() {
       <HomeNav />
 
       {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary-dark to-primary" />
-        <div className="relative max-w-5xl mx-auto px-4 py-12 lg:py-16 text-white">
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-white/15">
+      <section className="bg-white border-b border-line">
+        <div className="max-w-5xl mx-auto px-4 py-10 lg:py-14">
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-primary/[0.08] text-brand">
             <ShieldCheck className="w-3.5 h-3.5" /> Opiniones reales · {country.name}
           </span>
-          <h1 className="text-3xl lg:text-5xl font-bold mt-3 max-w-2xl leading-tight">
+          <h1 className="font-light text-[34px] leading-[42px] lg:text-[52px] lg:leading-[62px] tracking-[-0.02em] text-[#8f3b1f] mt-3 max-w-3xl">
             Enterate cómo es trabajar ahí antes de postularte
           </h1>
-          <p className="text-white/85 mt-3 max-w-xl">
+          <p className="text-[#404040] text-[16px] sm:text-lg mt-3 max-w-xl">
             Opiniones honestas sobre empresas y empleadores. Buscá cualquiera —
             esté o no registrada en Worka— y compartí tu propia experiencia.
           </p>
@@ -68,7 +67,7 @@ export default async function OpinionesPage() {
           </div>
 
           {totalReviews > 0 && (
-            <p className="text-white/70 text-sm mt-3">
+            <p className="text-muted text-sm mt-3">
               {totalReviews} opinión{totalReviews === 1 ? "" : "es"} sobre{" "}
               {employers.length} empresa{employers.length === 1 ? "" : "s"} y sumando.
             </p>
@@ -159,7 +158,7 @@ export default async function OpinionesPage() {
         </section>
 
         {/* Nota para empresas */}
-        <section className="rounded-3xl p-8 text-center text-white bg-gradient-to-br from-primary to-primary-dark">
+        <section className="rounded-lg p-8 text-center text-white bg-primary">
           <h2 className="text-xl lg:text-2xl font-bold">
             ¿Sos una empresa? Mostrá tu mejor cara
           </h2>
