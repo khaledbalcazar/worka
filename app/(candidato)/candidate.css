@@ -455,3 +455,4 @@
 @media (min-width:640px) { .ext-apply { padding:22px; } }
 .li-detail-section > .ext-apply { border:0; padding:0; border-radius:0; }
 .li-item-foot .is-external { white-space:nowrap; }
+.app-job-state { display:inline-block; margin-top:4px; padding:1px 8px; border-radius:4px; background:#f3f2ef; color:#555; font-size:12px; }

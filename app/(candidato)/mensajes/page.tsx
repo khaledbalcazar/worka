@@ -11,8 +11,10 @@ export default async function MessagesPage() {
   const threads: ChatThread[] = await Promise.all(
     apps.map(async (app) => ({
       applicationId: app.id,
-      jobTitle: app.job.title,
-      companyName: app.job.company.trade_name,
+      // summary existe aunque la vacante ya no esté activa: el hilo con la
+      // empresa sigue disponible.
+      jobTitle: app.summary.title,
+      companyName: app.summary.company_name,
       messages: await getMessagesByApplication(app.id),
     }))
   );

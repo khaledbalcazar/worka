@@ -985,10 +985,3 @@ export function getActiveJobs(): JobWithCompany[] {
 export function getJobById(id: string): JobWithCompany | undefined {
   return getJobsWithCompany().find((j) => j.id === id);
 }
-
-export function getApplicationsWithJob() {
-  return applications.map((app) => ({
-    ...app,
-    job: getJobById(app.job_id)!,
-  }));
-}

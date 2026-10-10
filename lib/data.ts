@@ -29,27 +29,7 @@ export function isLive(): boolean {
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-function mapJob(row: any): JobWithCompany {
-  return {
-    ...row,
-    filter_questions: (row.filter_questions ?? [])
-      .sort((a: any, b: any) => a.position - b.position)
-      .map((q: any) => ({
-        id: q.id,
-        question: q.question,
-        knockout: q.knockout ?? false,
-      })),
-    company: mapCompany(row.company),
-  };
-}
-
-function mapCompany(row: any): Company {
-  return {
-    ...row,
-    fast_responder: row.fast_responder ?? false,
-    badges: row.badges ?? [],
-  };
-}
+import { mapCompany, mapJob } from "./job-mapper";
 
 const JOB_SELECT =
   "*, company:companies(*), filter_questions:job_questions(*)";
@@ -137,23 +117,82 @@ export async function getCurrentCandidate(): Promise<Candidate | null> {
   return data as Candidate | null;
 }
 
-export type ApplicationWithJob = Application & { job: JobWithCompany };
+export type ApplicationWithJob = import("./applications").ApplicationView;
 
+// Columnas de applications que ve el candidato. Explícitas a propósito:
+// internal_note es la nota privada del reclutador y no tiene por qué viajar
+// en las consultas del lado candidato.
+const MY_APPLICATION_COLUMNS =
+  "id, job_id, candidate_id, status, rejection_reason, applied_at, reviewed_at";
+
+// Diagnóstico seguro: solo identificadores y códigos, nunca nombres,
+// contactos ni contenido. Queda en los logs de Vercel con un prefijo fijo.
+function logApplicationDiagnostics(
+  event: string,
+  detail: Record<string, string | number | null>
+) {
+  console.error(`[worka:applications] ${event} ${JSON.stringify(detail)}`);
+}
+
+// Mis postulaciones y Mensajes. Cada postulación se resuelve por separado:
+// una vacante pausada, cerrada o en moderación (invisible para el candidato
+// por RLS) ya no tira abajo la página entera. Ver lib/applications.ts.
 export async function getMyApplications(): Promise<ApplicationWithJob[]> {
+  const { buildApplicationViews } = await import("./applications");
   const supabase = await getServerClient();
-  if (!supabase) return mock.getApplicationsWithJob() as ApplicationWithJob[];
+  if (!supabase) {
+    // Demo: se imita la RLS de producción (solo las vacantes Activas vienen
+    // embebidas) para que el caso de una vacante cerrada se vea igual acá.
+    const rows = mock.applications.map((app) => {
+      const job = mock.getJobById(app.job_id);
+      return { ...app, job: job && job.status === "Activo" ? (job as unknown as Record<string, unknown>) : null };
+    });
+    const summaries = mock.applications
+      .map((app) => mock.getJobById(app.job_id))
+      .filter((job): job is NonNullable<typeof job> => !!job)
+      .map((job) => ({
+        job_id: job.id,
+        title: job.title,
+        status: job.status,
+        company_id: job.company.id,
+        company_name: job.company.trade_name,
+        company_logo_url: job.company.logo_url,
+        company_city: job.company.location_city,
+      }));
+    return buildApplicationViews(rows, summaries, mapJob).views;
+  }
   const user = await getCurrentUser();
   if (!user) return [];
-  const { data } = await supabase
+
+  const { data, error } = await supabase
     .from("applications")
-    .select(`*, job:jobs(${JOB_SELECT})`)
+    .select(`${MY_APPLICATION_COLUMNS}, job:jobs(${JOB_SELECT})`)
     .eq("candidate_id", user.id)
     .order("applied_at", { ascending: false });
-  return (data ?? []).map((row: any) => ({
-    ...row,
-    answers: [],
-    job: mapJob(row.job),
-  }));
+  if (error) {
+    // Antes un error acá devolvía una lista vacía y la persona creía que no
+    // tenía postulaciones. Se registra y se deja ver la pantalla de error.
+    logApplicationDiagnostics("query_failed", { code: error.code ?? null, message: error.message });
+    throw new Error("No pudimos cargar tus postulaciones.");
+  }
+  const rows = (data ?? []) as unknown as import("./applications").ApplicationRow[];
+
+  // Resumen de las vacantes que RLS no deja ver completas (no activas).
+  let summaries: import("./applications").SummaryRow[] = [];
+  if (rows.some((r) => !r.job)) {
+    const { data: s, error: rpcError } = await supabase.rpc("fn_my_applied_job_summaries");
+    if (rpcError) {
+      logApplicationDiagnostics("summaries_failed", { code: rpcError.code ?? null, message: rpcError.message });
+    } else {
+      summaries = (s ?? []) as import("./applications").SummaryRow[];
+    }
+  }
+
+  const { views, issues } = buildApplicationViews(rows, summaries, mapJob);
+  for (const issue of issues) {
+    logApplicationDiagnostics(issue.reason, { applicationId: issue.applicationId, jobId: issue.jobId });
+  }
+  return views;
 }
 
 export async function getMyAppliedJobIds(): Promise<Set<string>> {
