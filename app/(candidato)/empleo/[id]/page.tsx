@@ -6,6 +6,7 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { SITE_URL } from "@/lib/supabase/config";
 import { formatDate, timeAgo } from "@/lib/format";
 import ApplyPanel from "@/components/ApplyPanel";
+import ReportJobButton from "@/components/jobs/ReportJobButton";
 import EntityAvatar from "@/components/EntityAvatar";
 import JobViewTracker from "@/components/JobViewTracker";
 import LinkedJobPanel from "@/components/evaluar/LinkedJobPanel";
@@ -335,10 +336,10 @@ export default async function JobDetailPage({
             </div>
           )}
 
-          <p className="text-center text-xs text-gray-400 px-4 pb-2">
-            ¿Esta oferta te parece sospechosa? Denunciala desde el menú ⋮ del
-            feed. Nunca pagues para conseguir un trabajo.
-          </p>
+          <div className="text-center text-xs text-gray-500 px-4 pb-2 space-y-2">
+            <p>Nunca pagues para conseguir un trabajo.</p>
+            <ReportJobButton jobId={job.id} />
+          </div>
         </div>
 
         {/* Panel de postulación: fijo a la derecha en escritorio */}

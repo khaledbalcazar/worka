@@ -576,6 +576,18 @@ export async function getBoardData(processId: string): Promise<BoardData | null>
 
 // ¿Esta vacante tiene evaluación? Lo consulta la página pública de la vacante
 // para ofrecer "empezar la evaluación" ahí mismo.
+// Only job IDs reach the feed; evaluation answers and ideal profiles stay server-side.
+export async function getJobsWithEvaluation(jobIds: string[]): Promise<string[]> {
+  if (!jobIds.length) return [];
+  const supabase = getAdminClient() ?? (await getServerClient());
+  if (!supabase) return [];
+  const { data, error } = await supabase.from("evaluar_processes")
+    .select("job_id").in("job_id", jobIds).eq("status", "activo");
+  // If we cannot check, use the full application page instead of a shortcut.
+  if (error) return jobIds;
+  return [...new Set((data ?? []).map((row) => row.job_id as string))];
+}
+
 export async function getProcessForJob(
   jobId: string
 ): Promise<{ id: string; title: string; stage_count: number } | null> {

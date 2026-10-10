@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { Bell } from "lucide-react";
 import type { Notification } from "@/lib/types";
 import { markNotificationsRead } from "@/app/actions";
 import { timeAgo } from "@/lib/format";
@@ -73,7 +74,7 @@ export default function NotificationBell({
             : "text-gray-500 hover:bg-surface"
         }`}
       >
-        🔔
+        <Bell size={20} strokeWidth={1.7} />
         {unread > 0 && (
           <span className="absolute top-1 right-1 min-w-4 h-4 px-0.5 rounded-full bg-danger text-white text-[10px] font-bold flex items-center justify-center">
             {unread}

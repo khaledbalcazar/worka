@@ -94,10 +94,14 @@ export default function JobCard({
           <button
             aria-label={saved ? "Quitar de guardadas" : "Guardar vacante"}
             title={saved ? "Quitar de guardadas" : "Guardar para después"}
+            disabled={pending}
             onClick={() => {
               const next = !saved;
-              setSaved(next);
-              toggleSaveJob(job.id, next);
+              startTransition(async () => {
+                const result = await toggleSaveJob(job.id, next);
+                if (result.ok) setSaved(next);
+                else setError(result.error ?? "No pudimos actualizar tus guardados.");
+              });
             }}
             className={`w-11 h-11 -mt-2 flex items-center justify-center rounded-full hover:bg-surface text-lg ${
               saved ? "text-amber-500" : "text-gray-300"
@@ -209,8 +213,8 @@ export default function JobCard({
                   ¡Postulación enviada!
                 </p>
                 <p className="text-sm text-gray-500 mt-2 max-w-xs mx-auto">
-                  {job.company.trade_name} ya tiene tu perfil. Te avisamos por
-                  WhatsApp apenas lo revisen.
+                  {job.company.trade_name} ya tiene tu perfil. Seguí el estado
+                  desde Mis postulaciones.
                 </p>
                 <div className="flex gap-2 mt-5">
                   <button

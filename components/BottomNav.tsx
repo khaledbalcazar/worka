@@ -32,9 +32,9 @@ import { signOut } from "@/app/actions";
 // oculta, así que sin esta hoja secciones enteras (alertas, CV, salarios,
 // panorama, reseñas, academia…) quedaban sin ninguna forma de llegar.
 const MAIN = [
-  { href: "/empleos", label: "Empleos", Icon: Search },
-  { href: "/postulaciones", label: "Postulaciones", Icon: ClipboardList },
-  { href: "/mensajes", label: "Mensajes", Icon: MessageCircle },
+  { href: "/empleos", label: "Buscar", Icon: Search },
+  { href: "/guardados", label: "Guardados", Icon: Bookmark },
+  { href: "/alertas", label: "Alertas", Icon: Bell },
   { href: "/perfil", label: "Mi perfil", Icon: User },
 ];
 
@@ -45,6 +45,8 @@ const GROUPS: {
   {
     title: "Mi búsqueda",
     items: [
+      { href: "/postulaciones", label: "Mis postulaciones", hint: "Seguí tus procesos", Icon: ClipboardList },
+      { href: "/mensajes", label: "Mensajes", hint: "Conversaciones con empresas", Icon: MessageCircle },
       {
         href: "/alertas",
         label: "Alertas de empleo",
@@ -234,7 +236,7 @@ export default function BottomNav({ loggedIn = true }: { loggedIn?: boolean }) {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={`flex-1 flex flex-col items-center justify-center gap-1 pt-2 pb-1.5 min-h-14 text-[11px] font-medium ${
-                  active ? "text-primary" : "text-gray-400"
+                  active ? "text-primary" : "text-gray-600"
                 }`}
               >
                 <Icon size={21} strokeWidth={active ? 2.4 : 1.9} />
@@ -247,7 +249,7 @@ export default function BottomNav({ loggedIn = true }: { loggedIn?: boolean }) {
             aria-expanded={moreOpen}
             aria-label="Más secciones"
             className={`flex-1 flex flex-col items-center justify-center gap-1 pt-2 pb-1.5 min-h-14 text-[11px] font-medium ${
-              moreOpen || inMore ? "text-primary" : "text-gray-400"
+              moreOpen || inMore ? "text-primary" : "text-gray-600"
             }`}
           >
             <Menu size={21} strokeWidth={moreOpen || inMore ? 2.4 : 1.9} />

@@ -1,3 +1,4 @@
+import { getJobsWithEvaluation } from "@/lib/evaluar";
 import JobFeed from "@/components/JobFeed";
 import {
   getActiveJobs,
@@ -6,42 +7,18 @@ import {
   getMyAppliedJobIds,
   getMySavedJobIds,
   getSiteSettings,
+  isLive,
 } from "@/lib/data";
 import { INDUSTRIES } from "@/lib/mock-data";
 import { countryByCode } from "@/lib/countries";
 import { getActiveCountry } from "@/lib/country-context";
-import type { Candidate, JobWithCompany } from "@/lib/types";
+import { getCurrentUser } from "@/lib/supabase/server";
 
 export const metadata = {
   title: "Buscar empleos",
   description:
     "Explorá miles de vacantes de empleo actualizadas cada día: ventas, gastronomía, logística, administración y más. Postulate gratis y encontrá trabajo cerca tuyo con Worka.",
 };
-
-// Puntaje de afinidad (alimentado por el test de perfil):
-// rubro > ciudad/movilidad > primer empleo > modalidad preferida.
-const MAX_MATCH_SCORE = 9;
-
-function matchScore(job: JobWithCompany, candidate: Candidate): number {
-  let score = 0;
-  if (candidate.preferences_industry.includes(job.industry)) score += 3;
-  if (
-    job.company.location_city === candidate.location_city ||
-    job.modality === "Remoto" ||
-    candidate.open_to_other_cities
-  )
-    score += 2;
-  if (candidate.first_job_mode && !job.requires_experience) score += 2;
-  const prefModality = candidate.preferences_modality;
-  if (
-    !prefModality ||
-    prefModality === "Cualquiera" ||
-    prefModality === "Full-time" || // valor histórico previo al test
-    prefModality === job.modality
-  )
-    score += 2;
-  return score;
-}
 
 export default async function JobFeedPage() {
   const [allJobs, candidate, appliedIds, savedIds, settings, active] =
@@ -61,7 +38,7 @@ export default async function JobFeedPage() {
 
   // Solo vacantes de ese país (las de empresas de ese país + externas).
   const jobs = allJobs.filter((j) => (j.company.country ?? "py") === country.code);
-  const externalJobs = await getExternalJobs(country.code);
+  const [externalJobs, evaluationJobIds] = await Promise.all([getExternalJobs(country.code), getJobsWithEvaluation(jobs.map((job) => job.id))]);
 
   // Listas del sitio: ciudades del país + las que el admin agregó.
   const extra = (value: string | undefined) =>
@@ -69,27 +46,15 @@ export default async function JobFeedPage() {
   const industries = [...new Set([...INDUSTRIES, ...extra(settings.custom_industries)])];
   const cities = [...new Set([...country.cities, ...extra(settings.custom_cities)])];
 
-  const scored = candidate
-    ? jobs
-        .filter((j) => !appliedIds.has(j.id))
-        .map((j) => ({ id: j.id, score: matchScore(j, candidate) }))
-        .filter((x) => x.score >= 4)
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 4)
-    : [];
-  const recommendedIds = scored.map((x) => x.id);
-  // Porcentaje de match visible en cada tarjeta recomendada
-  const matchScores = Object.fromEntries(
-    scored.map((x) => [x.id, Math.round((x.score / MAX_MATCH_SCORE) * 100)])
-  );
+  const loggedIn = isLive() ? !!(await getCurrentUser()) : true;
 
   return (
     <JobFeed
       jobs={jobs}
+      evaluationJobIds={evaluationJobIds}
       appliedJobIds={[...appliedIds]}
       savedJobIds={[...savedIds]}
-      recommendedJobIds={recommendedIds}
-      matchScores={matchScores}
+      loggedIn={loggedIn}
       industries={industries}
       cities={cities}
       externalJobs={externalJobs}

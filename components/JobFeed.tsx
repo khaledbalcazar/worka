@@ -1,39 +1,28 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { SlidersHorizontal, X } from "lucide-react";
-import Link from "next/link";
+import { Fragment, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import MobileSheet from "@/components/MobileSheet";
-import { matchesJob, matchesExternalJob } from "@/lib/job-search";
-import JobCard from "@/components/JobCard";
-import ExternalJobCard from "@/components/ExternalJobCard";
-import RecentJobs from "@/components/RecentJobs";
+import Link from "next/link";
+import { Search, MapPin, SlidersHorizontal, X, Bell, GraduationCap, Wallet, BadgeCheck } from "lucide-react";
+import type { ExternalJob, JobWithCompany } from "@/lib/types";
 import { CITIES, INDUSTRIES } from "@/lib/mock-data";
-import type { ExternalJob, JobWithCompany, Modality } from "@/lib/types";
+import { matchesJob, matchesExternalJob } from "@/lib/job-search";
+import MobileSheet from "@/components/MobileSheet";
+import ExternalJobCard from "@/components/ExternalJobCard";
+import JobResultCard from "@/components/jobs/JobResultCard";
+import JobPreview from "@/components/jobs/JobPreview";
 
-const MODALITIES: Modality[] = ["Presencial", "Híbrido", "Remoto"];
-
-export default function JobFeed({
-  jobs,
-  appliedJobIds,
-  savedJobIds = [],
-  recommendedJobIds = [],
-  matchScores = {},
-  industries = INDUSTRIES,
-  cities = CITIES,
-  externalJobs = [],
-}: {
-  jobs: JobWithCompany[];
-  appliedJobIds: string[];
-  savedJobIds?: string[];
-  recommendedJobIds?: string[];
-  matchScores?: Record<string, number>;
-  industries?: string[];
-  cities?: string[];
-  externalJobs?: ExternalJob[];
+export default function JobFeed({ jobs, appliedJobIds, savedJobIds = [], evaluationJobIds = [], industries = INDUSTRIES, cities = CITIES, externalJobs = [], loggedIn = true }: {
+  jobs: JobWithCompany[]; appliedJobIds: string[]; savedJobIds?: string[]; evaluationJobIds?: string[];
+  industries?: string[]; cities?: string[]; externalJobs?: ExternalJob[]; loggedIn?: boolean;
 }) {
   const params = useSearchParams();
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [savedChanges, setSavedChanges] = useState<Record<string, boolean>>({});
+  const [newApplications, setNewApplications] = useState<string[]>([]);
+  const [limit, setLimit] = useState(12);
+  const [alertDismissed, setAlertDismissed] = useState(false);
   const query = params.get("q") ?? "";
   const city = params.get("ciudad") ?? "";
   const industry = params.get("rubro") ?? "";
@@ -43,487 +32,77 @@ export default function JobFeed({
   const onlyVerified = params.get("verificadas") === "1";
   const withSalary = params.get("salario") === "1";
   const hideApplied = params.get("sinPostuladas") === "1";
-  const sort = ["recientes", "urgentes"].includes(params.get("orden") ?? "") ? params.get("orden")! : "recomendadas";
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [shareStatus, setShareStatus] = useState("");
-
-  function updateFilter(key: string, value: string | boolean) {
-    const next = new URLSearchParams(window.location.search);
-    if (value) next.set(key, value === true ? "1" : String(value));
-    else next.delete(key);
-    window.history.replaceState(null, "", `${window.location.pathname}${next.size ? `?${next}` : ""}`);
-    setShareStatus("");
-  }
-  const setQuery = (value: string) => updateFilter("q", value);
-  const setCity = (value: string) => updateFilter("ciudad", value);
-  const setIndustry = (value: string) => updateFilter("rubro", value);
-  const setModality = (value: string) => updateFilter("modalidad", value);
-  const setContract = (value: string) => updateFilter("contrato", value);
-  const setFirstJobOnly = (value: boolean) => updateFilter("primerEmpleo", value);
-  const setOnlyVerified = (value: boolean) => updateFilter("verificadas", value);
-  const setWithSalary = (value: boolean) => updateFilter("salario", value);
-  const setHideApplied = (value: boolean) => updateFilter("sinPostuladas", value);
-
-  async function shareSearch() {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      setShareStatus("Enlace copiado. Podés compartir esta búsqueda.");
-    } catch {
-      setShareStatus("No pudimos copiar. Podés compartir la dirección de esta página.");
-    }
-  }
-
-  const applied = useMemo(() => new Set(appliedJobIds), [appliedJobIds]);
-  const savedSet = useMemo(() => new Set(savedJobIds), [savedJobIds]);
-
+  const sort = params.get("orden") === "urgentes" ? "urgentes" : "recientes";
+  const applied = new Set([...appliedJobIds, ...newApplications]);
+  const isSaved = (id: string) => savedChanges[id] ?? savedJobIds.includes(id);
   const filters = { query, city, industry, modality, contract, firstJobOnly, onlyVerified, withSalary, hideApplied };
-  const filtered = jobs.filter((job) => matchesJob(job, filters, applied));
-  const filteredExternal = externalJobs.filter((job) => matchesExternalJob(job, filters));
-  const total = filtered.length + filteredExternal.length;
-  const ordered = [...filtered].sort((a, b) =>
-    (sort === "urgentes" ? Number(b.urgent) - Number(a.urgent) : 0) ||
-    Date.parse(b.created_at) - Date.parse(a.created_at)
-  );
-  const orderedExternal = [...filteredExternal].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+  const filtered = jobs.filter((job) => matchesJob(job, filters, applied)).sort((a, b) =>
+    (sort === "urgentes" ? Number(b.urgent) - Number(a.urgent) : 0) || Date.parse(b.created_at) - Date.parse(a.created_at));
+  const external = externalJobs.filter((job) => matchesExternalJob(job, filters)).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
+  const total = filtered.length + external.length;
+  const shownJobs = filtered.slice(0, limit);
+  const shownExternal = external.slice(0, Math.max(0, limit - shownJobs.length));
+  const selected = filtered.find((job) => job.id === selectedId) ?? filtered[0];
+  const filterKeys = ["ciudad", "rubro", "modalidad", "contrato", "primerEmpleo", "verificadas", "salario", "sinPostuladas"];
+  const activeCount = filterKeys.filter((key) => params.get(key)).length;
+  const alertSupported = !contract && !firstJobOnly && !onlyVerified && !withSalary && !hideApplied;
   const alertParams = new URLSearchParams();
-  if (query.trim()) alertParams.set("q", query.trim());
-  if (city) alertParams.set("ciudad", city);
-  if (industry) alertParams.set("rubro", industry);
-  if (modality) alertParams.set("modalidad", modality);
+  for (const key of ["q", "ciudad", "rubro", "modalidad"]) if (params.get(key)?.trim()) alertParams.set(key, params.get(key)!.trim());
   const alertHref = `/alertas${alertParams.size ? `?${alertParams}` : ""}`;
 
-  const hasActiveFilter =
-    query || city || industry || modality || contract || firstJobOnly || onlyVerified || withSalary || hideApplied;
-  // "Para vos" solo se muestra sin filtros activos (es el punto de partida).
-  const recommendedSet = new Set(hasActiveFilter || sort !== "recomendadas" ? [] : recommendedJobIds);
-  const recommended = recommendedJobIds
-    .map((id) => filtered.find((j) => j.id === id))
-    .filter((j): j is JobWithCompany => !!j && recommendedSet.has(j.id));
-  const featured = filtered.filter(
-    (j) => sort === "recomendadas" && j.featured && !recommendedSet.has(j.id)
-  );
-  const rest = (sort === "recomendadas" ? filtered : ordered).filter(
-    (j) => (sort !== "recomendadas" || !j.featured) && !recommendedSet.has(j.id)
-  );
-  const activeFilters =
-    [city, industry, modality, contract].filter(Boolean).length +
-    Number(firstJobOnly) +
-    Number(onlyVerified) +
-    Number(withSalary) + Number(hideApplied);
-
-  function clearAll() {
+  function update(key: string, value: string | boolean) {
     const next = new URLSearchParams(window.location.search);
-    for (const key of ["q", "ciudad", "rubro", "modalidad", "contrato", "primerEmpleo", "verificadas", "salario", "sinPostuladas"]) next.delete(key);
-    window.history.replaceState(null, "", `${window.location.pathname}${next.size ? `?${next}` : ""}`);
-    setShareStatus("");
+    if (value) next.set(key, value === true ? "1" : value); else next.delete(key);
+    window.history.replaceState(null, "", `/empleos${next.size ? `?${next}` : ""}`);
+    setLimit(12);
   }
+  function reset() { window.history.replaceState(null, "", "/empleos"); setLimit(12); }
+  const sharedJobProps = (job: JobWithCompany) => ({
+    job, loggedIn, requiresEvaluation: evaluationJobIds.includes(job.id), saved: isSaved(job.id), applied: applied.has(job.id),
+    onSaved: (value: boolean) => setSavedChanges((current) => ({ ...current, [job.id]: value })),
+    onApplied: () => setNewApplications((current) => [...current, job.id]),
+  });
 
-  // Cada filtro activo se muestra arriba y se quita tocándolo: así se ve de un
-  // vistazo por qué aparecen pocas vacantes, sin tener que abrir la hoja.
-  const activeChips: { label: string; clear: () => void }[] = [
-    query ? { label: `“${query}”`, clear: () => setQuery("") } : null,
-    hideApplied ? { label: "Sin postuladas", clear: () => setHideApplied(false) } : null,
-    city ? { label: city, clear: () => setCity("") } : null,
-    industry ? { label: industry, clear: () => setIndustry("") } : null,
-    modality ? { label: modality, clear: () => setModality("") } : null,
-    contract ? { label: contract, clear: () => setContract("") } : null,
-    firstJobOnly
-      ? { label: "Primer empleo", clear: () => setFirstJobOnly(false) }
-      : null,
-    onlyVerified
-      ? { label: "Verificadas", clear: () => setOnlyVerified(false) }
-      : null,
-    withSalary
-      ? { label: "Con salario", clear: () => setWithSalary(false) }
-      : null,
-  ].filter((c): c is { label: string; clear: () => void } => c !== null);
-
-  const filterControls = (
-    <>
-      <div>
-        <label className="label">Ciudad</label>
-        <select
-          className="input"
-          aria-label="Ciudad"
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-        >
-          <option value="">Toda ciudad</option>
-          {cities.map((c) => (
-            <option key={c}>{c}</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="label">Rubro</label>
-        <select
-          className="input"
-          aria-label="Rubro"
-          value={industry}
-          onChange={(e) => setIndustry(e.target.value)}
-        >
-          <option value="">Todo rubro</option>
-          {industries.map((i) => (
-            <option key={i}>{i}</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="label">Modalidad</label>
-        <div className="flex flex-wrap gap-1.5">
-          {MODALITIES.map((m) => (
-            <button
-              key={m}
-              aria-pressed={modality === m}
-              onClick={() => setModality(modality === m ? "" : m)}
-              className={`chip min-h-9 px-3 border ${
-                modality === m
-                  ? "bg-primary text-white border-primary"
-                  : "bg-white text-gray-600 border-gray-200"
-              }`}
-            >
-              {m}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div>
-        <label className="label">Tipo de contrato</label>
-        <div className="flex flex-wrap gap-1.5">
-          {["Tiempo completo", "Medio tiempo", "Por turnos", "Pasantía", "Freelance"].map((c) => (
-            <button
-              key={c}
-              aria-pressed={contract === c}
-              onClick={() => setContract(contract === c ? "" : c)}
-              className={`chip min-h-9 px-3 border ${
-                contract === c
-                  ? "bg-primary text-white border-primary"
-                  : "bg-white text-gray-600 border-gray-200"
-              }`}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="space-y-2 pt-1">
-        {[
-          { checked: hideApplied, set: setHideApplied, label: "Ocultar mis postulaciones", hint: "Solo vacantes de Worka" },
-          {
-            checked: firstJobOnly,
-            set: setFirstJobOnly,
-            label: "✨ Modo primer empleo",
-            hint: "Sin requisito de experiencia",
-          },
-          {
-            checked: onlyVerified,
-            set: setOnlyVerified,
-            label: "✓ Solo empresas verificadas",
-            hint: null,
-          },
-          {
-            checked: withSalary,
-            set: setWithSalary,
-            label: "💰 Con salario visible",
-            hint: null,
-          },
-        ].map((f) => (
-          <label
-            key={f.label}
-            className="flex items-center gap-2.5 cursor-pointer text-sm text-gray-700"
-          >
-            <input
-              type="checkbox"
-              checked={f.checked}
-              onChange={(e) => f.set(e.target.checked)}
-              className="w-5 h-5 accent-primary"
-            />
-            <span>
-              {f.label}
-              {f.hint && (
-                <span className="block text-xs text-gray-400">{f.hint}</span>
-              )}
-            </span>
-          </label>
-        ))}
-      </div>
-    </>
-  );
-
-  return (
-    <div className="lg:grid lg:grid-cols-[280px_minmax(0,1fr)] lg:gap-6 lg:items-start">
-      {/* Filtros: sidebar fija en escritorio */}
-      <aside className="hidden lg:block space-y-4 sticky top-20">
-        <div className="card p-5 space-y-4">
-          <h2 className="font-semibold text-primary-dark text-sm flex items-center justify-between">
-            Filtros
-            {activeFilters > 0 && (
-              <button
-                className="text-xs text-primary font-medium"
-                onClick={clearAll}
-              >
-                Limpiar ({activeFilters})
-              </button>
-            )}
-          </h2>
-          {filterControls}
-        </div>
-        <div className="card p-4 space-y-1">
-          <Link
-            href="/test-perfil"
-            className="block px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-surface"
-          >
-            🎯 Test de perfil: afiná tu match
-          </Link>
-          <Link
-            href="/salarios"
-            className="block px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-surface"
-          >
-            💰 ¿Cuánto se paga en tu rubro?
-          </Link>
-          <Link
-            href="/juegos"
-            className="block px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-surface"
-          >
-            🎮 Worka Play: juegos y tips
-          </Link>
-          <Link
-            href="/cv"
-            className="block px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-surface"
-          >
-            📄 Generar mi CV gratis
-          </Link>
-        </div>
-      </aside>
-
-      <div className="space-y-4">
-        <div className="card p-5">
-          <h1 className="text-xl lg:text-2xl font-bold text-primary-dark">Encontrá tu próximo empleo</h1>
-          <p className="text-sm text-gray-500 mt-1">Buscá a tu ritmo: filtrá, guardá vacantes y recibí avisos de nuevas oportunidades.</p>
-          <div className="flex flex-wrap gap-3 mt-3 text-sm font-medium text-primary">
-            <Link href="/guardados">Mis guardadas</Link>
-            <Link href="/postulaciones">Mis postulaciones</Link>
-            <Link href="/alertas">Mis alertas</Link>
-          </div>
-        </div>
-        {/* Buscador fijo + acceso a filtros. Antes los dos selectores y la
-            fila de chips ocupaban un tercio de la pantalla antes de la primera
-            vacante; ahora todo eso vive en una hoja y arriba solo quedan los
-            filtros realmente activos. */}
-        <div className="lg:hidden sticky top-[60px] z-20 -mx-4 px-4 py-2 bg-surface/95 backdrop-blur space-y-2">
-          <div className="flex gap-2">
-            <input
-              type="search"
-              aria-label="Buscar empleos"
-              className="input bg-white flex-1"
-              placeholder="Buscar puesto, empresa o rubro…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <button
-              onClick={() => setSheetOpen(true)}
-              aria-label="Filtros"
-              aria-expanded={sheetOpen}
-              className="btn-secondary press shrink-0 relative px-4"
-            >
-              <SlidersHorizontal size={18} />
-              {activeFilters > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full bg-primary text-white text-[11px] font-bold flex items-center justify-center animate-pop">
-                  {activeFilters}
-                </span>
-              )}
-            </button>
-          </div>
-
-          {activeChips.length > 0 && (
-            <div className="flex gap-1.5 overflow-x-auto scroll-thin pb-0.5">
-              {activeChips.map((c) => (
-                <button
-                  key={c.label}
-                  aria-label={`Quitar filtro ${c.label}`}
-                  onClick={c.clear}
-                  className="chip min-h-8 px-3 shrink-0 bg-primary text-white press animate-pop"
-                >
-                  {c.label} <X size={12} />
-                </button>
-              ))}
-              <button
-                onClick={clearAll}
-                className="chip min-h-8 px-3 shrink-0 bg-white text-gray-500 border border-gray-200 press"
-              >
-                Limpiar
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Buscador de escritorio (en celular vive en la barra fija de arriba) */}
-        <input
-          type="search"
-              aria-label="Buscar empleos"
-          className="input bg-white hidden lg:block"
-          placeholder="Buscar puesto, empresa o rubro…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
-
-        <RecentJobs />
-
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p role="status" className="text-sm text-gray-600">
-            {total} {total === 1 ? "vacante encontrada" : "vacantes encontradas"}
-            <span className="block text-xs text-gray-500">{filtered.length} en Worka · {filteredExternal.length} de otras fuentes</span>
-          </p>
-          <label className="flex items-center gap-2 text-sm text-gray-600">
-            Ordenar
-            <select aria-label="Ordenar vacantes" className="input w-auto" value={sort} onChange={(e) => updateFilter("orden", e.target.value === "recomendadas" ? "" : e.target.value)}>
-              <option value="recomendadas">Para vos y destacadas</option>
-              <option value="recientes">Más recientes</option>
-              <option value="urgentes">Urgentes primero</option>
-            </select>
-          </label>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href={alertHref} className="btn-secondary">Crear alerta de búsqueda</Link>
-          <button className="btn-secondary" onClick={shareSearch}>Copiar búsqueda</button>
-        </div>
-        {(contract || firstJobOnly || onlyVerified || withSalary || hideApplied) && (
-          <p className="text-xs text-gray-500">La alerta usará el puesto, ciudad, rubro y modalidad. Los demás filtros se conservan en el enlace de búsqueda.</p>
-        )}
-        {shareStatus && <p role="status" className="text-sm text-primary">{shareStatus}</p>}
-
-        {total === 0 && (
-          <div className="card p-8 text-center">
-            <p className="text-3xl mb-2" aria-hidden>🔍</p>
-            <h2 className="font-semibold text-primary-dark">No encontramos vacantes con esta búsqueda</h2>
-            <p className="text-sm text-gray-500 mt-1">Probá otro puesto o ampliá la ciudad. También podés crear una alerta para recibir novedades.</p>
-            <div className="flex flex-wrap justify-center gap-2 mt-4">
-              <button className="btn-primary" onClick={clearAll}>Ver todas las vacantes</button>
-              <Link href={alertHref} className="btn-secondary">Avisarme de nuevas vacantes</Link>
-            </div>
-          </div>
-        )}
-
-        {recommended.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-purple-600 uppercase tracking-wide">
-              ✨ Para vos
-            </h2>
-            <p className="text-xs text-gray-400 -mt-2">
-              Según tus rubros, tu ciudad y tu perfil.{" "}
-              <Link href="/test-perfil" className="text-primary font-medium">
-                Afinalo con el test 🎯
-              </Link>
-            </p>
-            <div className="grid gap-3 xl:grid-cols-2 stagger">
-              {recommended.map((job) => (
-                <JobCard
-                  key={job.id}
-                  job={job}
-                  alreadyApplied={applied.has(job.id)}
-                  initiallySaved={savedSet.has(job.id)}
-                  matchPercent={matchScores[job.id]}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {featured.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-              ⭐ Destacadas
-            </h2>
-            <div className="grid gap-3 xl:grid-cols-2 stagger">
-              {featured.map((job) => (
-                <JobCard
-                  key={job.id}
-                  job={job}
-                  alreadyApplied={applied.has(job.id)}
-                  initiallySaved={savedSet.has(job.id)}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {rest.length > 0 && (
-          <section className="space-y-3">
-            {featured.length > 0 && (
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                Recientes
-              </h2>
-            )}
-            <div className="grid gap-3 xl:grid-cols-2 stagger">
-              {rest.map((job) => (
-                <JobCard
-                  key={job.id}
-                  job={job}
-                  alreadyApplied={applied.has(job.id)}
-                  initiallySaved={savedSet.has(job.id)}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Vacantes de otras fuentes. Van al final y separadas a propósito:
-            las de Worka (empresas verificadas) tienen prioridad. */}
-        {filteredExternal.length > 0 && (
-          <section className="space-y-3 pt-2">
-            <div>
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-                Otras vacantes de la zona
-              </h2>
-              <p className="text-xs text-gray-400 mt-1">
-                Avisos de otras fuentes. Estas empresas no están verificadas por
-                Worka.
-              </p>
-            </div>
-            <div className="grid gap-3 xl:grid-cols-2 stagger">
-              {orderedExternal.map((job) => (
-                <ExternalJobCard key={job.id} job={job} />
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
-
-      {/* Hoja de filtros (solo celular). El escritorio los tiene siempre a la
-          vista en la barra lateral. */}
-      <MobileSheet open={sheetOpen} onClose={() => setSheetOpen(false)} label="Filtros" className="overflow-y-auto">
-        <div className="flex items-center justify-between px-5 pt-4 pb-2 shrink-0 border-b border-gray-100">
-          <h2 className="font-bold text-primary-dark">Filtros</h2>
-          <button
-            onClick={() => setSheetOpen(false)}
-            aria-label="Cerrar"
-            className="w-10 h-10 flex items-center justify-center rounded-full text-gray-400 press"
-          >
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="overflow-y-auto px-5 py-4 space-y-4">{filterControls}</div>
-
-        <div className="shrink-0 border-t border-gray-100 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] flex gap-2">
-          <button
-            onClick={clearAll}
-            disabled={activeFilters === 0}
-            className="btn-secondary press flex-1 disabled:opacity-40"
-          >
-            Limpiar
-          </button>
-          <button
-            onClick={() => setSheetOpen(false)}
-            className="btn-primary press flex-[2]"
-          >
-            Ver {filtered.length + filteredExternal.length}{" "}
-            {filtered.length + filteredExternal.length === 1
-              ? "vacante"
-              : "vacantes"}
-          </button>
-        </div>
-      </MobileSheet>
+  return <div className="job-search-page">
+    <h1 className="sr-only">Buscar empleos</h1>
+    <div className="job-search-bar">
+      <label className="job-search-input"><Search size={19} /><span className="sr-only">Buscar cargo, empresa o rubro</span><input type="search" value={query} onChange={(e) => update("q", e.target.value)} placeholder="Buscar cargo, empresa o rubro…" /></label>
+      <label className="job-city-input"><MapPin size={18} /><span className="sr-only">Ciudad</span><select value={city} onChange={(e) => update("ciudad", e.target.value)}><option value="">Todas las ciudades</option>{[...new Set([...cities, ...(city ? [city] : [])])].map((item) => <option key={item}>{item}</option>)}</select></label>
+      <button className="job-filter-button" onClick={() => setFilterOpen(true)} aria-expanded={filterOpen} aria-label={`Filtros${activeCount ? `, ${activeCount} activos` : ""}`}><SlidersHorizontal size={19} /><span>Filtros</span>{activeCount > 0 && <b>{activeCount}</b>}</button>
     </div>
-  );
+    <div className="job-filter-ribbon" aria-label="Filtros rápidos">
+      <button className="filter-pill" aria-pressed={firstJobOnly} onClick={() => update("primerEmpleo", !firstJobOnly)}><GraduationCap size={15} /> Primer empleo</button>
+      <button className="filter-pill" aria-pressed={withSalary} onClick={() => update("salario", !withSalary)}><Wallet size={14} /> Con salario</button>
+      <button className="filter-pill" aria-pressed={onlyVerified} onClick={() => update("verificadas", !onlyVerified)}><BadgeCheck size={15} /> Verificadas</button>
+      {modality && <button className="filter-pill" aria-label={`Quitar modalidad ${modality}`} aria-pressed="true" onClick={() => update("modalidad", "")}>{modality}<X size={13} /></button>}
+      {contract && <button className="filter-pill" aria-label={`Quitar contrato ${contract}`} aria-pressed="true" onClick={() => update("contrato", "")}>{contract}<X size={13} /></button>}
+      {industry && <button className="filter-pill" aria-label={`Quitar rubro ${industry}`} aria-pressed="true" onClick={() => update("rubro", "")}>{industry}<X size={13} /></button>}
+      {hideApplied && <button className="filter-pill" aria-pressed="true" onClick={() => update("sinPostuladas", false)}>Sin postuladas<X size={13} /></button>}
+      {(activeCount > 0 || query) && <button className="filter-clear" onClick={reset}>Limpiar</button>}
+      <Link href={alertSupported ? alertHref : "/alertas"} className="job-alert-link"><Bell size={15} /> Mis alertas</Link>
+    </div>
+    <div className="job-results-toolbar"><p role="status"><span className="job-active-dot" /><strong>{total} {total === 1 ? "vacante" : "vacantes"}</strong><span className="job-results-hint"> encontradas</span></p><label><span className="hidden sm:inline">Ordenar por:</span><select aria-label="Ordenar vacantes" value={sort} onChange={(e) => update("orden", e.target.value)}><option value="recientes">Más recientes</option><option value="urgentes">Urgentes primero</option></select></label></div>
+    {total === 0 ? <div className="job-empty"><Search size={32} /><h2>No hay resultados con estos filtros</h2><p>Probá otro cargo o ampliá la ciudad para ver más oportunidades.</p><button className="btn-primary" onClick={reset}>Ver todas las vacantes</button></div> :
+      <div className={`job-search-grid ${!selected ? "external-only" : ""}`}>
+        <div className="job-results-list" aria-label="Resultados de empleo">
+          {shownJobs.map((job, index) => <Fragment key={job.id}><JobResultCard {...sharedJobProps(job)} selected={selected?.id === job.id} onSelect={() => setSelectedId(job.id)} />{index === 1 && (!alertDismissed && alertSupported && <aside className="job-alert-banner">
+      <span className="job-alert-icon"><Bell size={20} /></span><div><h2>Que el próximo empleo te encuentre</h2><p>Recibí nuevas oportunidades por email y en Worka.</p><Link href={alertHref}>Crear una alerta <span aria-hidden>→</span></Link></div><button className="job-alert-dismiss" aria-label="Ocultar sugerencia de alertas" onClick={() => setAlertDismissed(true)}><X size={16} /></button>
+    </aside>)}</Fragment>)}
+          {shownExternal.length > 0 && <><div className="job-external-heading"><h2>De otros portales</h2><p>La postulación y el seguimiento se realizan fuera de Worka.</p></div>{shownExternal.map((job) => <ExternalJobCard key={job.id} job={job} />)}</>}
+          {limit < total && <button className="btn-secondary w-full" onClick={() => setLimit((current) => current + 12)}>Ver más empleos ({total - limit})</button>}
+        </div>
+        {selected && <div className="hidden lg:block min-w-0"><JobPreview key={selected.id} {...sharedJobProps(selected)} /></div>}
+      </div>}
+    <MobileSheet desktop open={filterOpen} onClose={() => setFilterOpen(false)} label="Filtros de empleo" className="p-5 overflow-y-auto">
+      <div className="flex justify-between items-center mb-5"><h2 className="text-lg font-semibold">Filtrar empleos</h2><button className="job-save" aria-label="Cerrar filtros" onClick={() => setFilterOpen(false)}><X size={20} /></button></div>
+      <div className="space-y-4">
+        <label className="block"><span className="label">Ciudad</span><select className="input" value={city} onChange={(e) => update("ciudad", e.target.value)}><option value="">Todas las ciudades</option>{cities.map((item) => <option key={item}>{item}</option>)}</select></label>
+        <label className="block"><span className="label">Rubro</span><select className="input" value={industry} onChange={(e) => update("rubro", e.target.value)}><option value="">Todos los rubros</option>{industries.map((item) => <option key={item}>{item}</option>)}</select></label>
+        <label className="block"><span className="label">Modalidad</span><select className="input" value={modality} onChange={(e) => update("modalidad", e.target.value)}><option value="">Cualquier modalidad</option>{["Presencial", "Híbrido", "Remoto"].map((item) => <option key={item}>{item}</option>)}</select></label>
+        <label className="block"><span className="label">Jornada laboral</span><select className="input" value={contract} onChange={(e) => update("contrato", e.target.value)}><option value="">Cualquier jornada</option>{["Tiempo completo", "Medio tiempo", "Por turnos", "Pasantía", "Freelance"].map((item) => <option key={item}>{item}</option>)}</select></label>
+        {[{ key: "primerEmpleo", value: firstJobOnly, label: "Sin experiencia previa" }, { key: "salario", value: withSalary, label: "Con salario visible" }, { key: "verificadas", value: onlyVerified, label: "Solo empresas verificadas" }, ...(loggedIn ? [{ key: "sinPostuladas", value: hideApplied, label: "Ocultar mis postulaciones" }] : [])].map((filter) => <label key={filter.key} className="filter-check"><input type="checkbox" checked={filter.value} onChange={(e) => update(filter.key, e.target.checked)} />{filter.label}</label>)}
+      </div>
+      <div className="flex gap-2 mt-6"><button className="btn-secondary" onClick={reset}>Limpiar</button><button className="btn-primary flex-1" onClick={() => setFilterOpen(false)}>Ver {total} {total === 1 ? "vacante" : "vacantes"}</button></div>
+    </MobileSheet>
+  </div>;
 }

@@ -299,13 +299,14 @@ export async function toggleSaveJob(
       .upsert({ candidate_id: user.id, job_id: jobId });
     if (error) return { ok: false, error: "No pudimos guardar la vacante." };
   } else {
-    await supabase
+    const { error } = await supabase
       .from("saved_jobs")
       .delete()
       .eq("candidate_id", user.id)
       .eq("job_id", jobId);
+    if (error) return { ok: false, error: "No pudimos quitar la vacante de guardados." };
   }
-  revalidatePath("/postulaciones");
+  revalidatePath("/guardados");
   return { ok: true };
 }
 

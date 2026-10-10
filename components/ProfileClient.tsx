@@ -2,10 +2,9 @@
 
 import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import ProfileStrength from "@/components/ProfileStrength";
+import { ArrowUpRight, BadgeCheck, Bell, BriefcaseBusiness, Camera, Check, ChevronDown, Eye, FileText, Lightbulb, LogOut, MapPin, Pencil, Phone, Plus, Settings, ShieldCheck, Upload, X } from "lucide-react";
 import MobileSheet from "@/components/MobileSheet";
 import { countryByCode } from "@/lib/countries";
-import { SITE_URL } from "@/lib/supabase/config";
 import type { Candidate, IdentityStatus, WorkReference } from "@/lib/types";
 import {
   addWorkReference,
@@ -52,7 +51,7 @@ export default function ProfileClient({
   const [savedBio, setSavedBio] = useState(initialCandidate.bio ?? "");
   const profileCities = [...new Set([...countryByCode(candidate.country ?? "py").cities, candidate.location_city])];
   const [configModal, setConfigModal] = useState<
-    null | "editar" | "notificaciones" | "privacidad" | "ayuda"
+    null | "editar" | "ayuda"
   >(null);
   const [editDraft, setEditDraft] = useState({
     full_name: candidate.full_name,
@@ -93,6 +92,7 @@ export default function ProfileClient({
   const [avatarUrl, setAvatarUrl] = useState(candidate.avatar_url);
   const [bio, setBio] = useState(candidate.bio ?? "");
   const [bioSaved, setBioSaved] = useState(false);
+  const [bioEditor, setBioEditor] = useState(false);
   const cvInput = useRef<HTMLInputElement>(null);
   const avatarInput = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
@@ -143,6 +143,7 @@ export default function ProfileClient({
         setSavedBio(draft);
         setCandidate((current) => ({ ...current, bio: draft }));
         setBioSaved(true);
+        setBioEditor(false);
       } catch { setProfileError("No pudimos guardar. Conservamos tu texto para que reintentes."); }
     });
   }
@@ -253,591 +254,100 @@ export default function ProfileClient({
     });
   }
 
+  const completed = [!!candidate.full_name && !!candidate.location_city, !!savedBio.trim(), hasCv, candidate.preferences_industry.length > 0];
+  const completedCount = completed.filter(Boolean).length;
+  const nextStep = !completed[0] ? { label: "Completá tus datos", href: "#datos" }
+    : !completed[1] ? { label: "Contá un poco sobre vos", href: "#presentacion" }
+    : !completed[2] ? { label: "Sumá tu currículum", href: "#curriculum" }
+    : { label: "Elegí tus rubros", href: "#preferencias" };
+
   return (
-    <div className="space-y-4">
-      <h1 className="text-lg lg:text-2xl font-bold text-primary-dark">
-        Mi perfil
-      </h1>
-
-      <p className="text-sm text-gray-500">Tu presentación, CV y preferencias en un solo lugar. Elegí qué compartís con las empresas.</p>
-      <nav aria-label="Secciones de mi perfil" className="flex flex-wrap gap-2">
-        {[["datos", "Datos"], ["curriculum", "Mi CV"], ["preferencias", "Preferencias"], ["referencias", "Referencias"], ["configuracion", "Configuración"]].map(([id, label]) => (
-          <a key={id} href={`#${id}`} className="btn-secondary text-sm">{label}</a>
-        ))}
+    <div className="profile-page">
+      <nav className="profile-section-nav" aria-label="Secciones de mi perfil">
+        <span className="profile-nav-label"><span className="job-active-dot" /> Mi perfil</span>
+        {[["datos", "Resumen"], ["presentacion", "Sobre mí"], ["curriculum", "Mi CV"], ["preferencias", "Preferencias"], ["referencias", "Referencias"]].map(([id, label]) => <a key={id} href={`#${id}`}>{label}</a>)}
       </nav>
-      <ProfileStrength candidate={{ ...candidate, avatar_url: avatarUrl, cv_url: hasCv ? "loaded" : null }} referencesCount={references.filter((ref) => ref.status === "confirmada").length} />
-      {profileError && <p role="alert" className="card p-4 text-sm text-danger">{profileError}</p>}
-      <div className="lg:grid lg:grid-cols-[1fr_360px] lg:gap-6 lg:items-start space-y-4 lg:space-y-0">
-        {/* Columna principal */}
-        <div className="space-y-4">
-          <div id="datos" className="card p-5 sm:p-6 scroll-mt-24">
-            <div className="flex items-center gap-4">
-              <button
-                className="relative w-16 h-16 rounded-full bg-primary text-white flex items-center justify-center text-xl font-bold shrink-0 overflow-hidden group"
-                onClick={() => avatarInput.current?.click()}
-                title="Cambiar foto de perfil"
-                aria-label="Cambiar foto de perfil"
-                disabled={pending}
-              >
-                {avatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={avatarUrl}
-                    alt="Foto de perfil"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  candidate.full_name
-                    .split(" ")
-                    .slice(0, 2)
-                    .map((n) => n[0])
-                    .join("")
-                )}
-                <span className="absolute inset-0 bg-black/0 group-hover:bg-black/40 flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-all">
-                  📷
-                </span>
-              </button>
-              <input
-                ref={avatarInput}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => handleAvatar(e.target.files?.[0])}
-              />
-              <div className="min-w-0">
-                <h2 className="font-bold text-primary-dark text-lg">
-                  {candidate.full_name}
-                </h2>
-                <p className="text-sm text-gray-500">
-                  📍 {candidate.location_city} · 💬 {candidate.phone_whatsapp}{" "}
-                  {candidate.phone_verified && (
-                    <span className="chip bg-emerald-50 text-emerald-700 align-middle">
-                      ✓ verificado
-                    </span>
-                  )}
-                </p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Buscando: {candidate.preferences_industry.join(", ") || "—"}
-                </p>
-              </div>
-            </div>
-
-            <button className="btn-secondary mt-4" onClick={() => { setEditSaved(false); setConfigModal("editar"); }}>Editar mis datos</button>
-            {/* Bio corta, visible para empresas y en tu perfil público */}
-            <div id="presentacion" className="mt-4 scroll-mt-24">
-              <label htmlFor="profile-bio" className="label">Sobre mí</label>
-              <textarea
-                id="profile-bio"
-                aria-describedby="bio-help"
-                className="input min-h-28 text-sm"
-                maxLength={280}
-                placeholder="Contá en pocas líneas quién sos y qué buscás. Lo ven las empresas."
-                value={bio}
-                onChange={(e) => { setBio(e.target.value); setBioSaved(false); }}
-              />
-              <p id="bio-help" role="status" className="text-xs text-gray-500 mt-1">
-                {bioSaved && bio.trim() === savedBio ? "✓ Presentación guardada" : `${bio.length}/280 caracteres${bio.trim() !== savedBio ? " · Cambios sin guardar" : ""}`}
-              </p>
-              <div className="flex flex-wrap gap-2 mt-3">
-                <button disabled={pending || bio.trim() === savedBio} onClick={saveBio} className="btn-primary">{pending ? "Guardando…" : "Guardar presentación"}</button>
-                {bio.trim() !== savedBio && <button className="btn-secondary" disabled={pending} onClick={() => { setBio(savedBio); setBioSaved(false); }}>Descartar cambios</button>}
-              </div>
-            </div>
-
-          </div>
-
-          <div id="curriculum" className="card p-5 space-y-3 scroll-mt-24">
-            <h2 className="font-semibold text-primary-dark">Mi CV</h2>
-                <input
-                  ref={cvInput}
-                  type="file"
-                  accept="application/pdf"
-                  className="hidden"
-                  onChange={(e) => { handleCvFile(e.target.files?.[0]); e.target.value = ""; }}
-                />
-            {hasCv ? (
-              <div className="flex items-center justify-between gap-3 bg-surface rounded-xl px-4 py-3">
-                <p className="text-sm text-gray-700 font-medium">
-                  📄 CV cargado
-                </p>
-                <div className="flex flex-wrap gap-3">
-                  <button
-                    className="text-sm text-primary font-medium disabled:opacity-50"
-                    disabled={pending}
-                    onClick={viewCv}
-                  >
-                    Ver PDF
-                  </button>
-                  <Link href="/cv" className="text-sm text-primary font-medium">
-                    Generar con Worka
-                  </Link>
-                  <button
-                    className="text-sm text-gray-500 font-medium"
-                    disabled={pending}
-                    onClick={() => cvInput.current?.click()}
-                  >
-                    Reemplazar
-                  </button>
-                  <button
-                    className="text-sm text-danger font-medium disabled:opacity-50"
-                    disabled={pending}
-                    onClick={removeCv}
-                  >
-                    Eliminar
-                  </button>
-                </div>
-                {cvError && <p role="alert" className="text-xs text-danger">{cvError}</p>}
-              </div>
-            ) : (
-              <>
-                <p className="text-sm text-gray-500">
-                  Todavía no cargaste tu CV. Podés subir un PDF (máx. 5 MB) o{" "}
-                  <span className="font-medium text-primary-dark">
-                    generar uno gratis con Worka
-                  </span>{" "}
-                  usando los datos de tu perfil.
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    className="btn-secondary flex-1"
-                    disabled={pending}
-                    onClick={() => cvInput.current?.click()}
-                  >
-                    {pending ? "Subiendo…" : "📤 Subir PDF"}
-                  </button>
-                  <Link href="/cv" className="btn-primary flex-1">
-                    ✨ Generar mi CV
-                  </Link>
-                </div>
-                {cvError && <p role="alert" className="text-xs text-danger">{cvError}</p>}
-              </>
-            )}
-          </div>
-
-          <div id="preferencias" className="card p-5 space-y-4 scroll-mt-24">
-            <h2 className="font-semibold text-primary-dark">Preferencias</h2>
-            <p className="text-sm text-gray-500">Ayudanos a recomendarte oportunidades que se ajusten a lo que buscás.</p>
-            <div>
-              <label className="label" htmlFor="preferred-modality">Modalidad que preferís</label>
-              <select id="preferred-modality" className="input" disabled={pending}
-                value={["Presencial", "Híbrido", "Remoto"].includes(candidate.preferences_modality) ? candidate.preferences_modality : "Cualquiera"}
-                onChange={(e) => saveSearchPreference("preferences_modality", e.target.value)}>
-                {["Cualquiera", "Presencial", "Híbrido", "Remoto"].map((value) => <option key={value}>{value}</option>)}
-              </select>
-            </div>
-            <label className="flex items-center justify-between gap-3 cursor-pointer">
-              <span><span className="block text-sm font-medium text-gray-700">Puedo trabajar en otras ciudades</span><span className="block text-xs text-gray-500">Amplía las recomendaciones fuera de tu ciudad.</span></span>
-              <input type="checkbox" className="w-5 h-5 accent-primary" checked={candidate.open_to_other_cities} disabled={pending}
-                onChange={(e) => saveSearchPreference("open_to_other_cities", e.target.checked)} />
-            </label>
-            {profileError && <p role="alert" className="text-sm text-danger">{profileError}</p>}
-
-
-            <label className="flex items-center justify-between gap-3 cursor-pointer">
-              <div>
-                <p className="text-sm font-medium text-gray-700">
-                  ✨ Modo primer empleo
-                </p>
-                <p className="text-xs text-gray-500">
-                  Priorizá oportunidades que no piden experiencia.
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                disabled={pending}
-                checked={firstJobMode}
-                onChange={(e) => toggleFirstJob(e.target.checked)}
-                className="w-5 h-5 accent-primary"
-              />
-            </label>
-
-            <label className="flex items-center justify-between gap-3 cursor-pointer">
-              <div>
-                <p className="text-sm font-medium text-gray-700">
-                  📧 Avisos por email
-                </p>
-                <p className="text-xs text-gray-500">
-                  Cuando tu postulación avanza, te contactan o te proponen una
-                  entrevista. La campanita sigue funcionando igual.
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                disabled={pending}
-                checked={emailsEnabled}
-                onChange={(e) => {
-                  savePreference("email_notifications", e.target.checked, setEmailsEnabled);
-                }}
-                className="w-5 h-5 accent-primary"
-              />
-            </label>
-
-            <label className="flex items-center justify-between gap-3 cursor-pointer">
-              <div>
-                <p className="text-sm font-medium text-gray-700">
-                  🔔 Novedades de empleo
-                </p>
-                <p className="text-xs text-gray-500">
-                  Recibí novedades por email y en Worka para vacantes de{" "}
-                  {candidate.preferences_industry.join(" y ") || "tus rubros"} en{" "}
-                  {candidate.location_city}.
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                disabled={pending}
-                checked={alertsEnabled}
-                onChange={(e) => toggleAlerts(e.target.checked)}
-                className="w-5 h-5 accent-primary"
-              />
-            </label>
-
-            <label className="flex items-center justify-between gap-3 cursor-pointer">
-              <div>
-                <p className="text-sm font-medium text-gray-700">
-                  🔎 Visible para empresas
-                </p>
-                <p className="text-xs text-gray-500">
-                  Las empresas pueden encontrarte en la búsqueda de talento y
-                  contactarte aunque no te hayas postulado.
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                disabled={pending}
-                checked={visibleToCompanies}
-                onChange={(e) =>
-                  togglePref(
-                    "visible_to_companies",
-                    e.target.checked,
-                    setVisibleToCompanies
-                  )
-                }
-                className="w-5 h-5 accent-primary"
-              />
-            </label>
-
-            <label className="flex items-center justify-between gap-3 cursor-pointer">
-              <div>
-                <p className="text-sm font-medium text-gray-700">
-                  🔗 Perfil público
-                </p>
-                <p className="text-xs text-gray-500">
-                  Tu página compartible para mandar por WhatsApp a cualquier
-                  empleador.
-                </p>
-              </div>
-              <input
-                type="checkbox"
-                disabled={pending}
-                checked={publicProfile}
-                onChange={(e) =>
-                  togglePref("public_profile", e.target.checked, setPublicProfile)
-                }
-                className="w-5 h-5 accent-primary"
-              />
-            </label>
-            {publicProfile && (
-              <div className="flex gap-2">
-                <Link
-                  href={`/p/${candidate.id}`}
-                  className="btn-secondary flex-1 text-xs"
-                >
-                  Ver mi perfil público
-                </Link>
-                <a
-                  href={`https://wa.me/?text=${encodeURIComponent(`Mirá mi perfil laboral en Worka: ${SITE_URL}/p/${candidate.id}`)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-primary flex-1 text-xs"
-                >
-                  💬 Compartir
-                </a>
-              </div>
-            )}
-
-            <div>
-              <p className="text-sm font-medium text-gray-700 mb-1.5">
-                Rubros de interés
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {candidate.preferences_industry.map((ind) => (
-                  <span key={ind} className="chip bg-blue-50 text-primary">
-                    {ind}
-                  </span>
-                ))}
-                <button
-                  className="chip bg-surface text-gray-500 hover:text-primary"
-                  onClick={() => {
-                    setEditSaved(false);
-                    setConfigModal("editar");
-                  }}
-                >
-                  ✏️ Editar rubros
+      {profileError && <p role="alert" className="profile-error">{profileError}</p>}
+      <div className="profile-layout">
+        <div className="profile-main-column">
+          <section id="datos" className="profile-hero card">
+            <div className="profile-cover" aria-hidden="true"><span>Tu próximo paso empieza acá.</span><BriefcaseBusiness size={42} strokeWidth={1} /></div>
+            <div className="profile-hero-content">
+              <div className="profile-avatar-line">
+                <button className="profile-avatar" onClick={() => avatarInput.current?.click()} disabled={pending} aria-label="Cambiar foto de perfil">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {avatarUrl ? <img src={avatarUrl} alt="" /> : <span>{candidate.full_name.split(" ").filter(Boolean).slice(0, 2).map((name) => name[0]).join("")}</span>}
+                  <span className="profile-avatar-camera"><Camera size={13} /></span>
                 </button>
+                {identityStatus === "verified" && <span className="profile-verified"><BadgeCheck size={14} /> Identidad verificada</span>}
               </div>
+              <input ref={avatarInput} type="file" accept="image/*" className="hidden" onChange={(e) => handleAvatar(e.target.files?.[0])} />
+              <h1>{candidate.full_name}</h1>
+              <p className="profile-headline">{candidate.preferences_industry.length ? `En búsqueda de oportunidades en ${candidate.preferences_industry.join(", ")}.` : "Completá tus intereses para orientar tu búsqueda laboral."}</p>
+              <p className="profile-contact"><MapPin size={14} /> {candidate.location_city} · {countryByCode(candidate.country ?? "py").name}</p>
+              <p className="profile-contact"><Phone size={14} /> {candidate.phone_whatsapp}{candidate.phone_verified && <Check size={13} className="text-emerald-700" />}</p>
+              <div className="profile-primary-actions"><button className="btn-primary" onClick={() => { setEditSaved(false); setConfigModal("editar"); }}><Pencil size={14} /> Editar perfil</button>{publicProfile && <Link href={`/p/${candidate.id}`} className="btn-secondary"><Eye size={15} /> Ver perfil público</Link>}</div>
+              <div className="profile-completion"><div><strong>{completedCount === 4 ? "Tu perfil está listo" : <a href={nextStep.href}>{nextStep.label} →</a>}</strong><p>{completedCount} de 4 secciones básicas completas</p></div><div role="progressbar" aria-label="Secciones básicas completas" aria-valuemin={0} aria-valuemax={4} aria-valuenow={completedCount} className="profile-progress-track"><span style={{ width: `${completedCount * 25}%` }} /></div></div>
             </div>
-          </div>
+          </section>
 
-          {/* Referencias laborales */}
-          <div id="referencias" className="card p-5 space-y-3 scroll-mt-24">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold text-primary-dark">
-                🤝 Referencias laborales
-              </h2>
-              <button
-                className="text-sm text-primary font-medium"
-                onClick={() => setRefFormOpen((v) => !v)}
-              >
-                {refFormOpen ? "Cancelar" : "+ Agregar"}
-              </button>
+          <section id="presentacion" className="card profile-section">
+            <div className="profile-section-title"><h2>Sobre mí</h2><button className="job-save" aria-label="Editar presentación" onClick={() => setBioEditor(true)}><Pencil size={17} /></button></div>
+            {bioEditor ? <div className="space-y-3"><label htmlFor="profile-bio" className="sr-only">Sobre mí</label><textarea id="profile-bio" aria-describedby="bio-help" className="input min-h-32" maxLength={280} value={bio} placeholder="Contá qué sabés hacer y qué oportunidad estás buscando." onChange={(e) => { setBio(e.target.value); setBioSaved(false); }} /><p id="bio-help" className="text-xs text-gray-500">{bio.length}/280 caracteres · Guardá para actualizar tu perfil.</p><div className="flex gap-2"><button className="btn-primary" disabled={pending || bio.trim() === savedBio} onClick={saveBio}>{pending ? "Guardando…" : "Guardar"}</button><button className="btn-secondary" onClick={() => { setBio(savedBio); setBioEditor(false); }}>Cancelar</button></div></div> : <><p className="profile-bio">{savedBio || "Tu experiencia también cuenta si es tu primer empleo. Contá qué aprendiste, qué te gusta hacer y qué estás buscando."}</p>{!savedBio && <button className="profile-text-action" onClick={() => setBioEditor(true)}>Agregar una presentación</button>}</>}
+            {bioSaved && <p role="status" className="text-xs text-emerald-700 mt-3">Presentación guardada.</p>}
+          </section>
+
+          <section id="curriculum" className="card profile-section">
+            <div className="profile-section-title"><h2><FileText size={18} /> Mi currículum</h2>{hasCv && <span className="profile-status">PDF cargado</span>}</div>
+            <input ref={cvInput} type="file" accept="application/pdf" className="hidden" onChange={(e) => { handleCvFile(e.target.files?.[0]); e.target.value = ""; }} />
+            {hasCv ? <div className="profile-cv-file"><span className="profile-pdf-icon"><FileText size={22} /></span><div><strong>Mi currículum.pdf</strong><p>Disponible para tus postulaciones</p></div><button className="profile-text-action" disabled={pending} onClick={viewCv}>Ver PDF</button></div> : <p className="profile-section-description">Sumá tu experiencia en un PDF para compartirlo con las empresas.</p>}
+            <div className="profile-cv-actions"><button className="btn-secondary" disabled={pending} onClick={() => cvInput.current?.click()}><Upload size={15} />{hasCv ? "Reemplazar PDF" : "Subir PDF"}</button><Link href="/cv" className="profile-text-action">Crear CV con Worka <ArrowUpRight size={14} /></Link>{hasCv && <button className="profile-text-action text-danger" disabled={pending} onClick={() => { if (window.confirm("¿Eliminar el CV de tu perfil? Podés cargar otro después.")) removeCv(); }}>Eliminar</button>}</div>
+            <p className="text-xs text-gray-500 mt-3">Formato PDF · Hasta 5 MB</p>
+            {cvError && <p role="alert" className="text-sm text-danger mt-2">{cvError}</p>}
+          </section>
+
+          <section id="preferencias" className="card profile-section">
+            <div className="profile-section-title"><h2><BriefcaseBusiness size={18} /> Preferencias laborales</h2></div>
+            <fieldset><legend className="profile-field-label">Modalidad de trabajo</legend><div className="profile-modality-options">{["Presencial", "Híbrido", "Remoto", "Cualquiera"].map((value) => <button key={value} disabled={pending} aria-pressed={(candidate.preferences_modality === value) || (value === "Cualquiera" && !["Presencial", "Híbrido", "Remoto"].includes(candidate.preferences_modality))} onClick={() => saveSearchPreference("preferences_modality", value)}>{value === "Cualquiera" ? "Cualquiera" : value}</button>)}</div></fieldset>
+            <div className="mt-5"><p className="profile-field-label">Rubros de interés</p><div className="profile-industry-list">{candidate.preferences_industry.map((industry) => <span key={industry}>{industry}</span>)}<button onClick={() => { setEditSaved(false); setConfigModal("editar"); }}><Plus size={13} /> Editar rubros</button></div></div>
+            <div className="profile-toggle-list">
+              <label className="profile-toggle"><span><strong>Puedo trabajar en otras ciudades</strong><small>Amplía las oportunidades fuera de {candidate.location_city}.</small></span><input type="checkbox" checked={candidate.open_to_other_cities} disabled={pending} onChange={(e) => saveSearchPreference("open_to_other_cities", e.target.checked)} /></label>
+              <label className="profile-toggle"><span><strong>Estoy buscando mi primer empleo</strong><small>Orienta las novedades de empleo según tus intereses.</small></span><input type="checkbox" checked={firstJobMode} disabled={pending} onChange={(e) => toggleFirstJob(e.target.checked)} /></label>
             </div>
-            <p className="text-xs text-gray-400 -mt-1">
-              Creá un enlace y compartilo con un ex-jefe o encargado para que
-              confirme que trabajaste con él. Las referencias confirmadas aparecen en tu perfil público.
-            </p>
-            {refFormOpen && (
-              <div className="space-y-2 bg-surface rounded-xl p-3">
-                <input
-                  className="input text-sm"
-                  aria-label="Nombre de la referencia"
-                  placeholder="Nombre de la persona (ej: Rosa Duarte)"
-                  value={refDraft.referrer_name}
-                  onChange={(e) =>
-                    setRefDraft((d) => ({ ...d, referrer_name: e.target.value }))
-                  }
-                />
-                <input
-                  className="input text-sm"
-                  aria-label="WhatsApp de la referencia"
-                  type="tel"
-                  placeholder="Su WhatsApp (ej: 0985 777 888)"
-                  value={refDraft.referrer_phone}
-                  onChange={(e) =>
-                    setRefDraft((d) => ({
-                      ...d,
-                      referrer_phone: e.target.value,
-                    }))
-                  }
-                />
-                <input
-                  className="input text-sm"
-                  aria-label="Relación laboral"
-                  placeholder="Relación (ej: Fue mi encargada en…)"
-                  value={refDraft.relationship}
-                  onChange={(e) =>
-                    setRefDraft((d) => ({ ...d, relationship: e.target.value }))
-                  }
-                />
-                <button
-                  className="btn-primary w-full text-sm"
-                  disabled={pending || !refDraft.referrer_name.trim() || !refDraft.referrer_phone.trim()}
-                  onClick={submitReference}
-                >
-                  Crear enlace de referencia
-                </button>
-              </div>
-            )}
-            {references.length === 0 && !refFormOpen && (
-              <p className="text-sm text-gray-400 text-center py-2">
-                Todavía no agregaste referencias.
-              </p>
-            )}
-            {references.map((r) => (
-              <div
-                key={r.id}
-                className="flex items-start justify-between gap-2 bg-surface rounded-xl px-4 py-3"
-              >
-                <div>
-                  <p className="text-sm font-medium text-gray-700">
-                    {r.referrer_name}
-                  </p>
-                  <p className="text-xs text-gray-500">{r.relationship}</p>
-                </div>
-                <div className="flex flex-col items-end gap-1.5 shrink-0">
-                  <span
-                    className={`chip ${
-                      r.status === "confirmada"
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-blue-50 text-primary"
-                    }`}
-                  >
-                    {r.status === "confirmada"
-                      ? "✓ confirmada"
-                      : "📨 solicitud generada"}
-                  </span>
-                  {r.status !== "confirmada" && r.token && (
-                    <a
-                      href={refWhatsAppUrl(r, candidate.full_name)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-primary font-medium"
-                    >
-                      📤 Enviar link por WhatsApp
-                    </a>
-                  )}
-                  <button
-                    className="text-xs text-gray-400 hover:text-danger"
-                    onClick={() => removeReference(r.id)}
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+          </section>
+
+          <section id="referencias" className="card profile-section">
+            <div className="profile-section-title"><h2><BadgeCheck size={18} /> Referencias laborales</h2><button className="job-save" aria-label={refFormOpen ? "Cancelar referencia" : "Agregar referencia"} onClick={() => setRefFormOpen(!refFormOpen)}>{refFormOpen ? <X size={18} /> : <Plus size={18} />}</button></div>
+            <p className="profile-section-description">Compartí un enlace con alguien que pueda confirmar tu experiencia. Es opcional.</p>
+            {refFormOpen && <div className="profile-reference-form"><label><span className="label">Nombre de la persona</span><input className="input" value={refDraft.referrer_name} onChange={(e) => setRefDraft((current) => ({ ...current, referrer_name: e.target.value }))} /></label><label><span className="label">WhatsApp con código de país</span><input type="tel" className="input" placeholder="+595…" value={refDraft.referrer_phone} onChange={(e) => setRefDraft((current) => ({ ...current, referrer_phone: e.target.value }))} /></label><label><span className="label">Relación laboral</span><input className="input" placeholder="Ej.: Fue mi encargada" value={refDraft.relationship} onChange={(e) => setRefDraft((current) => ({ ...current, relationship: e.target.value }))} /></label><button className="btn-primary" disabled={pending || !refDraft.referrer_name.trim() || !refDraft.referrer_phone.trim()} onClick={submitReference}>{pending ? "Creando…" : "Crear enlace de referencia"}</button></div>}
+            {references.map((ref) => <div className="profile-reference" key={ref.id}><span className="profile-reference-avatar">{ref.referrer_name.split(" ").slice(0, 2).map((part) => part[0]).join("")}</span><div><strong>{ref.referrer_name}</strong><span className={ref.status === "confirmada" ? "reference-confirmed" : "reference-pending"}>{ref.status === "confirmada" ? "Confirmada" : "Por confirmar"}</span><p>{ref.relationship}</p><div className="flex flex-wrap gap-3 mt-1">{ref.status !== "confirmada" && ref.token && <a href={refWhatsAppUrl(ref, candidate.full_name)} target="_blank" rel="noopener noreferrer" className="profile-text-action">Enviar enlace por WhatsApp</a>}<button className="profile-text-action text-gray-500" disabled={pending} onClick={() => removeReference(ref.id)}>Eliminar</button></div></div></div>)}
+            {references.length === 0 && !refFormOpen && <button className="profile-text-action mt-3" onClick={() => setRefFormOpen(true)}><Plus size={14} /> Agregar una referencia</button>}
+          </section>
         </div>
 
-        {/* Columna lateral: configuración */}
-        <div className="space-y-4">
-          {/* Identidad verificada */}
-          <div className="card p-5">
-            <h2 className="font-semibold text-primary-dark">
-              🪪 Identidad verificada
-            </h2>
-            {identityStatus === "verified" ? (
-              <p className="text-sm text-emerald-700 bg-emerald-50 rounded-xl px-3 py-2.5 mt-2">
-                ✓ Tu identidad está verificada. El sello aparece en tu perfil y
-                tus postulaciones.
-              </p>
-            ) : identityStatus === "pending" ? (
-              <div className="text-center py-4 animate-pop">
-                <div className="w-10 h-10 mx-auto border-4 border-amber-400 border-t-transparent rounded-full animate-spin" />
-                <p className="text-sm font-semibold text-amber-700 mt-3">
-                  Tu solicitud está en revisión
-                </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  Nuestro equipo revisa tus fotos y te avisamos en menos de
-                  48 h. Tus documentos no se comparten con nadie.
-                </p>
-              </div>
-            ) : (
-              <>
-                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                  Subí 3 fotos: <strong>frente</strong> y{" "}
-                  <strong>dorso</strong> de tu cédula, y una{" "}
-                  <strong>selfie sosteniéndola</strong>. Ganás el sello 🪪 que
-                  destaca tu perfil ante las empresas. Es opcional y solo lo ve
-                  nuestro equipo de revisión.
-                </p>
-                <div className="space-y-2 mt-3">
-                  {(
-                    [
-                      ["front", "🪪 Frente de la cédula"],
-                      ["back", "🔄 Dorso de la cédula"],
-                      ["selfie", "🤳 Selfie sosteniendo la cédula"],
-                    ] as const
-                  ).map(([key, label]) => (
-                    <label
-                      key={key}
-                      className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2.5 text-sm cursor-pointer ${
-                        idFiles[key]
-                          ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                          : "border-gray-200 text-gray-600 hover:border-primary"
-                      }`}
-                    >
-                      <span>{idFiles[key] ? `✓ ${label}` : label}</span>
-                      <span className="text-xs text-primary font-medium">
-                        {idFiles[key] ? "Cambiar" : "Cámara o galería"}
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) =>
-                          setIdFiles((f) => ({
-                            ...f,
-                            [key]: e.target.files?.[0] ?? null,
-                          }))
-                        }
-                      />
-                    </label>
-                  ))}
-                </div>
-                {idError && (
-                  <p className="text-xs text-danger mt-2">{idError}</p>
-                )}
-                <button
-                  className="btn-primary w-full mt-3 text-sm"
-                  disabled={
-                    pending || !idFiles.front || !idFiles.back || !idFiles.selfie
-                  }
-                  onClick={submitIdentity}
-                >
-                  {pending ? "Enviando…" : "Enviar para revisión"}
-                </button>
-              </>
-            )}
-          </div>
-
-          <div id="configuracion" className="card p-5 space-y-1 scroll-mt-24">
-            <h2 className="font-semibold text-primary-dark mb-2">
-              ⚙️ Configuración
-            </h2>
-            {(
-              [
-                { icon: "✏️", label: "Editar mis datos", key: "editar" },
-                { icon: "🔔", label: "Notificaciones", key: "notificaciones" },
-                { icon: "🔒", label: "Privacidad y datos", key: "privacidad" },
-                { icon: "❓", label: "Ayuda y contacto", key: "ayuda" },
-              ] as const
-            ).map((item) => (
-              <button
-                key={item.key}
-                onClick={() => {
-                  setEditSaved(false);
-                  setConfigModal(item.key);
-                }}
-                className="w-full flex items-center justify-between px-3 py-3 rounded-xl text-sm text-gray-700 hover:bg-surface text-left"
-              >
-                <span>
-                  <span className="mr-2.5" aria-hidden>
-                    {item.icon}
-                  </span>
-                  {item.label}
-                </span>
-                <span className="text-gray-300">→</span>
-              </button>
-            ))}
-            <div className="border-t border-gray-100 my-2" />
-            <button
-              className="w-full flex items-center px-3 py-3 rounded-xl text-sm font-medium text-gray-600 hover:bg-surface text-left"
-              onClick={() => signOut()}
-            >
-              <span className="mr-2.5" aria-hidden>
-                🚪
-              </span>
-              Cerrar sesión
-            </button>
-            <button
-              className="w-full flex items-center px-3 py-3 rounded-xl text-sm font-medium text-danger hover:bg-red-50 text-left"
-              onClick={() => setDeleteOpen(true)}
-            >
-              <span className="mr-2.5" aria-hidden>
-                🗑️
-              </span>
-              Eliminar mi cuenta
-            </button>
-          </div>
-
-          <div className="card p-5 bg-blue-50 border-blue-100">
-            <p className="text-sm font-medium text-primary-dark">
-              💡 Consejo de Worka
-            </p>
-            <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-              Un CV actualizado ayuda a mostrar tu experiencia. Si no tenés uno,
-              generalo gratis desde &ldquo;Mi CV&rdquo;.
-            </p>
-          </div>
-        </div>
+        <aside className="profile-sidebar">
+          <section className="card profile-section profile-visibility"><h2><ShieldCheck size={18} /> Tu perfil en Worka</h2><p className="profile-section-description">Decidís cómo te encuentran y qué compartís con las empresas.</p><div className="profile-visibility-status"><span className={`job-active-dot ${visibleToCompanies ? "" : "is-private"}`} /><span>{visibleToCompanies ? "Visible en la búsqueda de talento" : "Oculto en la búsqueda de talento"}</span></div><p className="text-xs text-gray-500 mt-3">Al postularte, esa empresa recibe tu perfil aunque no estés visible en las búsquedas.</p></section>
+          <details className="card profile-section profile-settings" id="privacidad"><summary><span><Bell size={17} /> Avisos y privacidad</span><ChevronDown size={16} /></summary><div className="profile-settings-body">
+            <label className="profile-toggle"><span><strong>Visible para empresas</strong><small>Permite encontrarte sin una postulación.</small></span><input type="checkbox" checked={visibleToCompanies} disabled={pending} onChange={(e) => togglePref("visible_to_companies", e.target.checked, setVisibleToCompanies)} /></label>
+            <label className="profile-toggle"><span><strong>Perfil público</strong><small>Una página que podés compartir por enlace.</small></span><input type="checkbox" checked={publicProfile} disabled={pending} onChange={(e) => togglePref("public_profile", e.target.checked, setPublicProfile)} /></label>
+            <label className="profile-toggle"><span><strong>Avisos por email</strong><small>Novedades sobre tus postulaciones.</small></span><input type="checkbox" checked={emailsEnabled} disabled={pending} onChange={(e) => savePreference("email_notifications", e.target.checked, setEmailsEnabled)} /></label>
+            <label className="profile-toggle"><span><strong>Novedades de empleo</strong><small>Vacantes por email según tus intereses.</small></span><input type="checkbox" checked={alertsEnabled} disabled={pending} onChange={(e) => toggleAlerts(e.target.checked)} /></label>
+            <Link href="/alertas" className="profile-text-action">Administrar mis alertas <ArrowUpRight size={14} /></Link>
+          </div></details>
+          <section className="card profile-section profile-tip"><h2><Lightbulb size={18} /> Un perfil que te represente</h2><p>Contá tu experiencia con ejemplos concretos y mantené actualizado tu CV. Tu foto y tus referencias son opcionales.</p></section>
+          <details className="card profile-section profile-settings" id="configuracion"><summary><span><Settings size={17} /> Ajustes de cuenta</span><ChevronDown size={16} /></summary><div className="profile-settings-body"><button className="profile-setting-link" onClick={() => setConfigModal("ayuda")}>Ayuda y contacto <ArrowUpRight size={15} /></button><Link href="/recuperar" className="profile-setting-link">Cambiar contraseña <ArrowUpRight size={15} /></Link>
+            <details className="profile-identity"><summary>Verificación de identidad <ChevronDown size={14} /></summary><p className="text-xs text-gray-500 my-3">Es opcional. Los documentos solo los revisa el equipo de Worka.</p>
+              {identityStatus === "verified" ? <p className="text-sm text-emerald-700">Identidad verificada</p> : identityStatus === "pending" ? <p className="text-sm text-primary">Documentos en revisión.</p> : <div className="space-y-3">{([ ["front", "Frente del documento"], ["back", "Dorso del documento"], ["selfie", "Selfie con el documento"] ] as const).map(([key, label]) => <label key={key} className="block"><span className="text-xs font-medium">{label}</span><input type="file" accept="image/*" className="block w-full text-xs mt-1" onChange={(e) => setIdFiles((current) => ({ ...current, [key]: e.target.files?.[0] ?? null }))} /></label>)}{idError && <p role="alert" className="text-xs text-danger">{idError}</p>}<button className="btn-secondary w-full" disabled={pending || !idFiles.front || !idFiles.back || !idFiles.selfie} onClick={submitIdentity}>{pending ? "Enviando…" : "Enviar a revisión"}</button></div>}
+            </details><button className="profile-setting-link" onClick={() => signOut()}>Cerrar sesión <LogOut size={15} /></button><button className="profile-setting-link text-danger" onClick={() => setDeleteOpen(true)}>Eliminar mi cuenta</button>
+          </div></details>
+        </aside>
       </div>
-
       {/* Configuración accesible en móvil y escritorio. */}
       <MobileSheet desktop open={configModal !== null} onClose={() => setConfigModal(null)} label="Configuración del perfil" className="p-5 overflow-y-auto">
         <button className="btn-secondary ml-auto mb-3" onClick={() => setConfigModal(null)}>Cerrar configuración</button>
         {profileError && <p role="alert" className="text-sm text-danger mb-3">{profileError}</p>}
             {configModal === "editar" && (
-              <div className="space-y-3">
+              <div className="space-y-3" onChangeCapture={() => setEditSaved(false)}>
                 <h4 className="font-semibold text-primary-dark">
                   ✏️ Editar mis datos
                 </h4>
@@ -948,109 +458,6 @@ export default function ProfileClient({
                     {pending ? "Guardando…" : "Guardar"}
                   </button>
                 </div>
-              </div>
-            )}
-
-            {configModal === "notificaciones" && (
-              <div className="space-y-4">
-                <h4 className="font-semibold text-primary-dark">
-                  🔔 Notificaciones
-                </h4>
-                <label className="flex items-center justify-between gap-3 cursor-pointer">
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      🔔 Novedades de empleo
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Vacantes nuevas de tus rubros y avisos de perfil visto.
-                    </p>
-                  </div>
-                  <input
-                    type="checkbox"
-                disabled={pending}
-                    checked={alertsEnabled}
-                    onChange={(e) => toggleAlerts(e.target.checked)}
-                    className="w-5 h-5 accent-primary"
-                  />
-                </label>
-                <p className="text-xs text-gray-400">
-                  Las notificaciones dentro de la app (🔔) están siempre
-                  activas: son tu historial de avisos.
-                </p>
-                <button
-                  className="btn-primary w-full"
-                  onClick={() => setConfigModal(null)}
-                >
-                  Listo
-                </button>
-              </div>
-            )}
-
-            {configModal === "privacidad" && (
-              <div className="space-y-4">
-                <h4 className="font-semibold text-primary-dark">
-                  🔒 Privacidad y datos
-                </h4>
-                <label className="flex items-center justify-between gap-3 cursor-pointer">
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      🔎 Visible para empresas
-                    </p>
-                  </div>
-                  <input
-                    type="checkbox"
-                disabled={pending}
-                    checked={visibleToCompanies}
-                    onChange={(e) =>
-                      togglePref(
-                        "visible_to_companies",
-                        e.target.checked,
-                        setVisibleToCompanies
-                      )
-                    }
-                    className="w-5 h-5 accent-primary"
-                  />
-                </label>
-                <label className="flex items-center justify-between gap-3 cursor-pointer">
-                  <div>
-                    <p className="text-sm font-medium text-gray-700">
-                      🔗 Perfil público
-                    </p>
-                  </div>
-                  <input
-                    type="checkbox"
-                disabled={pending}
-                    checked={publicProfile}
-                    onChange={(e) =>
-                      togglePref(
-                        "public_profile",
-                        e.target.checked,
-                        setPublicProfile
-                      )
-                    }
-                    className="w-5 h-5 accent-primary"
-                  />
-                </label>
-                <p className="text-xs text-gray-400 leading-relaxed">
-                  Tus datos se usan solo para conectarte con empresas. Nunca
-                  vendemos tu información. Podés descargar o borrar todo cuando
-                  quieras, conforme a la ley de protección de datos personales.
-                </p>
-                <button
-                  className="w-full text-sm font-medium text-danger py-2 rounded-xl hover:bg-red-50"
-                  onClick={() => {
-                    setConfigModal(null);
-                    setDeleteOpen(true);
-                  }}
-                >
-                  🗑️ Eliminar mi cuenta y todos mis datos
-                </button>
-                <button
-                  className="btn-primary w-full"
-                  onClick={() => setConfigModal(null)}
-                >
-                  Listo
-                </button>
               </div>
             )}
 
