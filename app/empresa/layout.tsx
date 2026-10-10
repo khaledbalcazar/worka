@@ -1,3 +1,4 @@
+import "./company.css";
 import CompanyShell from "@/components/CompanyShell";
 import MaintenanceGate from "@/components/MaintenanceGate";
 import { getCurrentCompany, getMyNotifications } from "@/lib/data";

@@ -107,6 +107,12 @@ html {
 .chip {
   @apply inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium;
 }
+
+/* Ícono redondo verde de "listo" en confirmaciones (postulación, email
+   enviado, contraseña cambiada). */
+.confirmation-icon {
+  @apply grid place-items-center w-14 h-14 mx-auto rounded-full bg-[#e6f5ec] text-[#057642];
+}
 }
 
 /* Números del panel de empresa.

@@ -37,7 +37,6 @@
 .job-empty p { color:#666; font-size:14px; margin:8px 0 20px; }
 .filter-check { display:flex; align-items:center; gap:10px; min-height:38px; font-size:14px; }
 .filter-check input { width:18px; height:18px; accent-color:#0a66c2; }
-.confirmation-icon { display:grid; place-items:center; width:56px; height:56px; margin:auto; border-radius:50%; background:#e6f5ec; color:#057642; }
 /* Profile: identity first, a short presentation, then optional details. */
 .profile-section-nav { display:flex; align-items:center; gap:22px; white-space:nowrap; overflow-x:auto; scrollbar-width:none; font-size:12px; margin: -4px 0 16px; min-height:38px; }
 .profile-section-nav a { min-height:38px; display:flex; align-items:center; color:#555; }

@@ -1,0 +1,74 @@
+/* Panel de empresa con el sistema de diseño de Worka: lienzo cálido,
+   encabezado blanco con íconos, tarjetas blancas con borde fino y el azul
+   cobalto solo para las acciones. Las pantallas internas usan utilidades
+   slate/blue de Tailwind; acá se acomodan a la paleta sin reescribir cada
+   componente. Va sin capa, así que le gana a las utilidades. */
+.company-app {
+  --color-primary: #0a66c2;
+  --color-primary-hover: #004182;
+  --color-primary-dark: #17212b;
+  --color-surface: #f3efea;
+  background: #f3efea;
+  color: #1d2226;
+}
+.company-app .card { border:1px solid #e0dfdc; border-radius:8px; box-shadow:none; }
+.company-app .btn-primary { background:#0a66c2; }
+.company-app .btn-primary:hover { background:#004182; }
+.company-app .input { border-radius:6px; border-color:#c9c7c3; font-size:16px; }
+.company-app :is(button,a,input,select,textarea,summary):focus-visible { outline:2px solid #0a66c2; outline-offset:2px; }
+
+/* Encabezado */
+.co-header { position:sticky; top:0; z-index:40; height:56px; background:#fff; border-bottom:1px solid #e0dfdc; }
+.co-header-inner { height:100%; max-width:1180px; margin:auto; padding:0 16px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.co-brand { display:flex; align-items:center; white-space:nowrap; }
+.co-brand-name { font-size:21px; font-weight:700; letter-spacing:-.03em; color:#004e99; }
+.co-brand-name span { color:#0a66c2; font-weight:500; }
+.co-brand small { margin-left:8px; align-self:center; font-size:11px; font-weight:600; letter-spacing:.02em; color:#01754f; background:#e9f4ec; padding:2px 8px; border-radius:999px; }
+.co-nav { display:none; }
+.co-publish { display:none; align-items:center; gap:6px; height:36px; padding:0 12px; border-radius:999px; background:#0a66c2; color:#fff; font-size:14px; font-weight:600; }
+.co-publish:hover { background:#004182; }
+.co-account { display:flex; align-items:center; gap:4px; padding:2px; border-radius:999px; color:#666; }
+.co-account[aria-expanded=true] .co-avatar { box-shadow:0 0 0 2px #0a66c2; }
+.co-avatar { display:grid; place-items:center; overflow:hidden; border-radius:6px; background:#dfeaf3; color:#235477; font-weight:650; flex-shrink:0; }
+.co-avatar img { width:100%; height:100%; object-fit:cover; }
+.co-avatar.is-small { width:34px; height:34px; font-size:12px; }
+.co-avatar.is-large { width:52px; height:52px; font-size:17px; }
+.co-menu { position:fixed; z-index:60; top:56px; left:8px; right:8px; max-height:calc(100dvh - 140px); overflow-y:auto; background:#fff; border:1px solid #e0dfdc; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.14); padding:14px; display:flex; flex-direction:column; gap:12px; }
+.co-menu-head { display:flex; align-items:center; gap:12px; }
+.co-menu-link { display:flex; align-items:center; gap:12px; width:100%; min-height:44px; padding:0 6px; border-radius:6px; font-size:14px; color:#333; text-align:left; }
+.co-menu-link svg { color:#666; }
+.co-menu-link:hover { background:#f3f2f0; }
+.co-menu-link.is-danger, .co-menu-link.is-danger svg { color:#b42318; }
+.co-main { flex:1; width:100%; max-width:1180px; margin:0 auto; padding:16px 16px 96px; }
+.co-greeting { font-size:14px; color:#404040; margin-bottom:12px; }
+.co-greeting strong { font-weight:600; color:#1d2226; }
+.co-greeting span { color:#666; }
+.co-bottom { position:fixed; inset:auto 0 0 0; z-index:40; display:grid; grid-template-columns:repeat(5,1fr); background:#fff; border-top:1px solid #e0dfdc; padding-bottom:env(safe-area-inset-bottom); }
+.co-bottom a, .co-bottom button { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; min-height:56px; font-size:11px; color:#666; }
+.co-bottom [aria-current=page] { color:#1d2226; font-weight:600; box-shadow:inset 0 2px 0 #1d2226; }
+.co-bottom-plus { width:30px; height:24px; border-radius:6px; display:grid; place-items:center; background:#0a66c2; color:#fff; }
+@media (min-width:640px) {
+  .co-menu { position:absolute; top:calc(100% + 10px); left:auto; right:0; width:300px; }
+}
+@media (min-width:1024px) {
+  .co-header { height:64px; }
+  .co-nav { display:flex; align-self:stretch; gap:28px; margin-left:auto; margin-right:16px; }
+  .co-nav a { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-size:12px; color:#666; border-bottom:2px solid transparent; padding-top:2px; }
+  .co-nav a:hover { color:#1d2226; }
+  .co-nav a[aria-current=page] { color:#1d2226; border-bottom-color:#1d2226; }
+  .co-bottom { display:none; }
+  .co-publish { display:inline-flex; }
+  .co-menu-link.is-nav { display:none; }
+  .co-main { padding:24px 24px 56px; }
+}
+
+/* Utilidades de las pantallas internas, a la paleta de Worka. */
+.company-app .bg-slate-50 { background:#f3efea; }
+.company-app :is(.text-slate-900, .text-slate-800) { color:#1d2226; }
+.company-app :is(.text-slate-400) { color:#666; }
+.company-app :is(.text-blue-600, .text-blue-700) { color:#0a66c2; }
+.company-app :is(.bg-blue-600, .bg-blue-700) { background:#0a66c2; }
+.company-app :is(.border-slate-100, .border-slate-50) { border-color:#e0dfdc; }
+.company-app :is(.rounded-xl, .rounded-2xl) { border-radius:8px; }
+.company-app .bg-gradient-to-br.from-blue-600, .company-app .bg-gradient-to-br.from-blue-800 { background:#0a66c2; }
+.company-app .bg-gradient-to-r.from-blue-600 { background:#0a66c2; }
