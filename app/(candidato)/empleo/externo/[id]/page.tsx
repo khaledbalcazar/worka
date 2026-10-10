@@ -2,18 +2,11 @@ import JobViewTracker from "@/components/JobViewTracker";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  MapPin,
-  ExternalLink,
-  Mail,
-  Lock,
-  ArrowRight,
-  Briefcase,
-  CalendarDays,
-  ShieldAlert,
-  Wallet,
-} from "lucide-react";
-import { getCurrentCandidate, getExternalJob } from "@/lib/data";
+import { ArrowLeft, Briefcase, Building2, ShieldAlert, Wallet } from "lucide-react";
+import EntityAvatar from "@/components/EntityAvatar";
+import ExternalApplyPanel from "@/components/jobs/ExternalApplyPanel";
+import SafetyNotice from "@/components/jobs/SafetyNotice";
+import { getCurrentCandidate, getExternalJob, getMyExternalApplication, isLive } from "@/lib/data";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { SITE_URL } from "@/lib/supabase/config";
 import { timeAgo } from "@/lib/format";
@@ -62,14 +55,16 @@ export default async function ExternalJobPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [job, user, candidate] = await Promise.all([
+  const [job, user, candidate, application] = await Promise.all([
     getExternalJob(id),
-    getCurrentUser(),
+    isLive() ? getCurrentUser() : null,
     getCurrentCandidate(),
+    getMyExternalApplication(id),
   ]);
   if (!job) notFound();
 
-  const loggedIn = !!user;
+  // En demo se navega como logueado, igual que en el resto del área.
+  const loggedIn = isLive() ? !!user : true;
   // Pais real de la vacante: define el marcado para Google y la moneda.
   const pais = countryByCode(job.country);
   const pageUrl = `${BASE}/empleo/externo/${job.id}`;
@@ -95,11 +90,6 @@ export default async function ExternalJobPage({
     .filter((line, i, arr) => !(line === "" && arr[i - 1] === ""))
     .join("\n");
 
-  const mailto = job.apply_email
-    ? `mailto:${job.apply_email}?subject=${encodeURIComponent(
-        mailSubject
-      )}&body=${encodeURIComponent(mailBody)}`
-    : null;
 
   // Tipo de empleo para Google (mapeo desde el contrato; por defecto jornada
   // completa, que es lo más común y lo que Google recomienda tener siempre).
@@ -191,8 +181,34 @@ export default async function ExternalJobPage({
     url: pageUrl,
   };
 
+  const applyPanel = (anchorId?: string) => (
+    <ExternalApplyPanel
+            jobId={job.id}
+            sourceName={job.source_name}
+            applyEmail={job.apply_email}
+            applyUrl={job.apply_url}
+            sourceUrl={job.source_url}
+            mailSubject={mailSubject}
+            mailBody={mailBody}
+            loggedIn={loggedIn}
+            hasCv={!!candidate?.cv_url}
+            nextHref={`/empleo/externo/${job.id}`}
+            initialApplication={application}
+      anchorId={anchorId}
+    />
+  );
+
+  const insights = [
+    [job.modality, job.contract_type].filter(Boolean).join(" · ") && {
+      Icon: Briefcase,
+      text: [job.modality, job.contract_type].filter(Boolean).join(" · "),
+    },
+    { Icon: Wallet, text: job.salary_range || "Salario no informado", strong: !!job.salary_range },
+    job.industry && { Icon: Building2, text: job.industry },
+  ].filter(Boolean) as { Icon: typeof Wallet; text: string; strong?: boolean }[];
+
   return (
-    <main className="flex-1 bg-surface min-h-screen pb-36 lg:pb-20">
+    <div className="space-y-4 pb-24 lg:pb-0">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -203,210 +219,87 @@ export default async function ExternalJobPage({
         company={job.company_name}
         external
       />
+      <Link href="/empleos" className="inline-flex items-center gap-1 text-sm text-primary font-semibold min-h-10">
+        <ArrowLeft size={16} /> Volver a la búsqueda
+      </Link>
 
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        <Link href="/empleos" className="text-sm text-primary font-medium">
-          ← Volver a empleos
-        </Link>
-
-        {/* Encabezado */}
-        <div className="card overflow-hidden mt-4">
-          <div className="h-20 bg-[linear-gradient(135deg,#a0b4b7_0%,#c9d6d4_55%,#e9e5df_100%)]" />
-          <div className="px-5 pb-5 -mt-9">
-            <div className="w-18 h-18 rounded-2xl bg-white border border-gray-100 shadow-sm flex items-center justify-center overflow-hidden">
-              {job.company_logo_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={job.company_logo_url}
-                  alt={job.company_name}
-                  className="w-full h-full object-contain p-2"
-                />
-              ) : (
-                <span className="font-extrabold text-2xl text-primary">
-                  {job.company_name[0]?.toUpperCase()}
-                </span>
-              )}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6 lg:items-start space-y-4 lg:space-y-0">
+        <article className="li-detail-card li-detail-page">
+          <header className="li-detail-top">
+            <div className="li-detail-company">
+              <EntityAvatar url={job.company_logo_url} name={job.company_name} className="li-logo is-small" />
+              {job.company_name}
+              <span className="ext-badge">Sin verificar</span>
             </div>
-
-            <h1 className="text-2xl font-extrabold text-primary-dark leading-tight mt-3">
-              {job.title}
-            </h1>
-            <p className="text-gray-600 font-medium mt-1">{job.company_name}</p>
-
-            <div className="flex flex-wrap gap-2 mt-3">
-              {job.city && (
-                <span className="chip bg-surface text-gray-600">
-                  <MapPin size={12} /> {job.city}
-                </span>
-              )}
-              {job.industry && (
-                <span className="chip bg-surface text-gray-600">
-                  <Briefcase size={12} /> {job.industry}
-                </span>
-              )}
-              {job.salary_range && (
-                <span className="chip bg-emerald-50 text-emerald-700">
-                  <Wallet size={12} /> {job.salary_range}
-                </span>
-              )}
-              <span className="chip bg-surface text-gray-500">
-                <CalendarDays size={12} /> {timeAgo(job.imported_at)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* Descripción */}
-        {job.description && (
-          <div className="card p-5 mt-4">
-            <h2 className="font-bold text-primary-dark mb-2">
-              Sobre el puesto
-            </h2>
-            <p className="text-[0.925rem] text-gray-700 leading-relaxed whitespace-pre-line">
-              {job.description}
+            <h1 className="li-detail-title">{job.title}</h1>
+            <p className="li-detail-meta">
+              {job.city && <span>{job.city}</span>}
+              <span>Publicada {timeAgo(job.imported_at)}</span>
+              <span>vía {job.source_name}</span>
             </p>
-          </div>
-        )}
+            <ul className="li-detail-insights">
+              {insights.map(({ Icon, text, strong }) => (
+                <li key={text}><Icon size={18} /><span className={strong ? "is-strong" : ""}>{text}</span></li>
+              ))}
+            </ul>
+          </header>
 
-        {/* Postulación */}
-        <div className="card p-5 mt-4">
-          <h2 className="font-bold text-primary-dark mb-3">Cómo postularte</h2>
-
-          {loggedIn ? (
-            <div className="space-y-3">
-              {mailto && (
-                <>
-                  <a href={mailto} className="btn-primary w-full">
-                    <Mail size={16} /> Postularme por correo
-                  </a>
-                  <p className="text-xs text-gray-500 text-center">
-                    Te abre el correo con el mensaje ya escrito. Solo{" "}
-                    <b>adjuntá tu CV</b> y enviá.
-                  </p>
-                  <p className="text-xs text-gray-400 text-center">
-                    Contacto: {job.apply_email}
-                  </p>
-                </>
-              )}
-              {job.apply_url && (
-                <a
-                  href={job.apply_url}
-                  target="_blank"
-                  rel="noopener noreferrer nofollow"
-                  className="btn-secondary w-full"
-                >
-                  <ExternalLink size={16} /> Ver el aviso original
-                </a>
-              )}
-              {!candidate?.cv_url && (
-                <Link
-                  href="/cv"
-                  className="block text-xs text-primary text-center pt-1"
-                >
-                  ¿No tenés CV? Generá uno gratis en Worka →
-                </Link>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-2">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                <Lock size={20} className="text-primary" />
-              </div>
-              <p className="text-sm text-gray-700 font-medium mb-1">
-                Creá tu cuenta gratis para postularte
-              </p>
-              <p className="text-xs text-gray-500 mb-4 max-w-sm mx-auto">
-                Te mostramos el contacto de la empresa y te armamos el correo de
-                postulación. Además podés generar tu CV sin costo.
-              </p>
-              <Link
-                href={`/registro?next=/empleo/externo/${job.id}`}
-                className="btn-primary w-full"
-              >
-                Crear cuenta gratis <ArrowRight size={16} />
-              </Link>
-              <Link
-                href={`/ingresar?next=/empleo/externo/${job.id}`}
-                className="block text-sm text-primary mt-3"
-              >
-                Ya tengo cuenta
-              </Link>
-            </div>
+          {job.description && (
+            <section className="li-detail-section">
+              <h2 className="job-block-title">Acerca del empleo</h2>
+              <p className="li-detail-text">{job.description}</p>
+            </section>
           )}
-        </div>
 
-        {/* Aviso de origen */}
-        <div className="card p-4 mt-4 bg-amber-50 border-amber-100">
-          <div className="flex gap-3">
-            <ShieldAlert size={18} className="text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-amber-900">
-                Esta empresa no fue verificada por Worka
-              </p>
-              <p className="text-xs text-amber-800 leading-relaxed mt-1">
-                El aviso no lo publicó una empresa registrada en la plataforma
+          {/* En celular la postulación va enseguida de la descripción. */}
+          <div className="li-detail-section lg:hidden">{applyPanel("postular")}</div>
+
+          <section className="li-detail-section">
+            <h2 className="job-block-title">De dónde viene este aviso</h2>
+            <div className="ext-origin">
+              <ShieldAlert size={20} className="shrink-0" />
+              <p>
+                No lo publicó una empresa registrada en Worka, así que no verificamos su {pais.taxIdLabel}
                 {job.source_url ? (
                   <>
-                    {"; lo tomamos de "}
-                    <a
-                      href={job.source_url}
-                      target="_blank"
-                      rel="noopener noreferrer nofollow"
-                      className="underline"
-                    >
-                      {job.source_name}
-                    </a>
+                    {". Lo tomamos de "}
+                    <a href={job.source_url} target="_blank" rel="noopener noreferrer nofollow">{job.source_name}</a>
                   </>
                 ) : (
                   <> (fuente: {job.source_name})</>
                 )}
-                . Revisá bien antes de dar tus datos y recordá que{" "}
-                <b>nunca</b> tenés que pagar para conseguir un trabajo.
+                . La postulación y el seguimiento se hacen fuera de Worka.
               </p>
             </div>
-          </div>
-        </div>
+            <Link href="/empleos?verificadas=1" className="profile-text-action mt-2">
+              Ver solo vacantes de empresas verificadas
+            </Link>
+          </section>
 
-        <p className="text-center mt-5">
-          <Link href="/empleos" className="text-sm text-primary font-medium">
-            Ver vacantes verificadas de Worka →
-          </Link>
-        </p>
+          <div className="li-detail-section">
+            <SafetyNotice jobId={job.id} external />
+          </div>
+        </article>
+
+        <div className="hidden lg:block lg:sticky lg:top-24">{applyPanel()}</div>
       </div>
 
-      {/* Barra fija de postulación, igual que en las vacantes de Worka: acá el
-          botón también quedaba al final de una página larga. */}
-      <div className="lg:hidden fixed inset-x-0 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] z-40 bg-white/95 backdrop-blur border-t border-gray-200 px-4 py-3">
+      {/* Barra fija en celular: lleva al panel de postulación, que arma el
+          mensaje y guarda la postulación. */}
+      <div className="lg:hidden fixed inset-x-0 bottom-[calc(3.5rem_+_env(safe-area-inset-bottom))] z-40 bg-white/95 backdrop-blur border-t border-line px-4 py-3">
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-primary-dark truncate">
-              {job.salary_range ?? job.title}
-            </p>
-            <p className="text-[11px] text-gray-400 truncate">
+            <p className="text-sm font-semibold truncate">{job.title}</p>
+            <p className="text-[11px] text-muted truncate">
               {job.company_name}
               {job.city ? ` · ${job.city}` : ""} · sin verificar
             </p>
           </div>
-          {loggedIn ? (
-            <a
-              href={mailto ?? job.apply_url ?? "#"}
-              {...(mailto
-                ? {}
-                : { target: "_blank", rel: "noopener noreferrer nofollow" })}
-              className="btn-primary press text-sm shrink-0 px-5"
-            >
-              Postularme
-            </a>
-          ) : (
-            <Link
-              href={`/ingresar?modo=registro&next=${encodeURIComponent(`/empleo/externo/${job.id}`)}`}
-              className="btn-primary press text-sm shrink-0 px-5"
-            >
-              Postularme gratis
-            </Link>
-          )}
+          <a href="#postular" className="btn-primary press text-sm shrink-0 px-5">
+            {application ? "Ver estado" : "Postularme"}
+          </a>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

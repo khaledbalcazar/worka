@@ -1223,9 +1223,10 @@ function gateContact(
 export async function getExternalJobs(
   country?: string
 ): Promise<import("./types").ExternalJob[]> {
-  if (!(await externalJobsEnabled())) return [];
   const supabase = await getServerClient();
-  if (!supabase) return [];
+  // En demo se muestran dos avisos de ejemplo para poder revisar el flujo.
+  if (!supabase) return mock.externalJobs.filter((j) => !country || j.country === country);
+  if (!(await externalJobsEnabled())) return [];
   const user = await getCurrentUser();
   let q = supabase
     .from("external_jobs")
@@ -1243,9 +1244,9 @@ export async function getExternalJobs(
 export async function getExternalJob(
   id: string
 ): Promise<import("./types").ExternalJob | null> {
-  if (!(await externalJobsEnabled())) return null;
   const supabase = await getServerClient();
-  if (!supabase) return null;
+  if (!supabase) return mock.externalJobs.find((j) => j.id === id) ?? null;
+  if (!(await externalJobsEnabled())) return null;
   const user = await getCurrentUser();
   const { data } = await supabase
     .from("external_jobs")
@@ -1255,6 +1256,36 @@ export async function getExternalJob(
     .maybeSingle();
   if (!data) return null;
   return gateContact(data as import("./types").ExternalJob, !!user);
+}
+
+// Postulaciones del candidato a vacantes de otros portales (migración 043).
+export async function getMyExternalApplications(): Promise<import("./types").ExternalApplication[]> {
+  const supabase = await getServerClient();
+  if (!supabase) return mock.externalApplications;
+  const user = await getCurrentUser();
+  if (!user) return [];
+  const { data } = await supabase
+    .from("external_applications")
+    .select("*")
+    .eq("candidate_id", user.id)
+    .order("applied_at", { ascending: false });
+  return (data ?? []) as import("./types").ExternalApplication[];
+}
+
+export async function getMyExternalApplication(
+  externalJobId: string
+): Promise<import("./types").ExternalApplication | null> {
+  const supabase = await getServerClient();
+  if (!supabase) return mock.externalApplications.find((a) => a.external_job_id === externalJobId) ?? null;
+  const user = await getCurrentUser();
+  if (!user) return null;
+  const { data } = await supabase
+    .from("external_applications")
+    .select("*")
+    .eq("candidate_id", user.id)
+    .eq("external_job_id", externalJobId)
+    .maybeSingle();
+  return (data ?? null) as import("./types").ExternalApplication | null;
 }
 
 // Para el admin: ve todo, incluidas las ocultas y con los contactos.

@@ -26,6 +26,7 @@ import {
   GraduationCap,
   MapPin,
   Navigation,
+  ShieldAlert,
   Users,
   Wallet,
 } from "lucide-react";
@@ -221,6 +222,12 @@ export default async function JobDetailPage({
               {insights.map(({ Icon, text, strong }) => (
                 <li key={text}><Icon size={18} /><span className={strong ? "is-strong" : ""}>{text}</span></li>
               ))}
+              {!job.company.is_verified && (
+                <li className="is-warning">
+                  <ShieldAlert size={18} />
+                  <span>Empresa en verificación: todavía no contrastamos su {pais.taxIdLabel}. Postularte por Worka es seguro; no pagues ni envíes documentos por fuera.</span>
+                </li>
+              )}
             </ul>
             <div className="flex flex-wrap gap-1.5 mt-4">
               {job.urgent && <UrgentBadge />}

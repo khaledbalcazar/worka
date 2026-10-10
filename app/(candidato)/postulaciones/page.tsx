@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { getMyApplications, getMyInterviews } from "@/lib/data";
+import { getMyApplications, getMyExternalApplications, getMyInterviews } from "@/lib/data";
+import ExternalApplicationsList from "@/components/jobs/ExternalApplicationsList";
 import { ClipboardList, PartyPopper } from "lucide-react";
 import MyJobsShell from "@/components/MyJobsShell";
 import { StatusChip } from "@/components/Badges";
@@ -21,9 +22,10 @@ function stepIndex(status: ApplicationStatus): number {
 }
 
 export default async function ApplicationsPage() {
-  const [apps, interviews] = await Promise.all([
+  const [apps, interviews, externalApps] = await Promise.all([
     getMyApplications(),
     getMyInterviews(),
+    getMyExternalApplications(),
   ]);
   const inProcess = apps.filter(
     (a) => a.status === "Revisado" || a.status === "Contactado"
@@ -72,7 +74,7 @@ export default async function ApplicationsPage() {
           </div>
         )}
 
-        {apps.length === 0 ? (
+        {apps.length === 0 && externalApps.length === 0 ? (
           <div className="myjobs-empty">
             <ClipboardList size={28} />
             <h2>Todavía no te postulaste a nada</h2>
@@ -126,6 +128,7 @@ export default async function ApplicationsPage() {
             })}
           </ul>
         )}
+        <ExternalApplicationsList applications={externalApps} />
       </section>
     </MyJobsShell>
   );

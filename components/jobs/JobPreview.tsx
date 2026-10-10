@@ -7,6 +7,7 @@ import {
   Clock,
   GraduationCap,
   MapPin,
+  ShieldAlert,
   Share2,
   Wallet,
 } from "lucide-react";
@@ -50,7 +51,7 @@ export default function JobPreview({ job, saved, applied, loggedIn, requiresEval
       </p>
       <ul className="li-detail-insights">
         {insights.map(({ Icon, text, strong }) => <li key={text}><Icon size={18} /><span className={strong ? "is-strong" : ""}>{text}</span></li>)}
-        {job.company.is_verified && <li><BadgeCheck size={18} /><span>Empresa verificada · RUC contrastado</span></li>}
+        {job.company.is_verified ? <li><BadgeCheck size={18} /><span>Empresa verificada · RUC contrastado</span></li> : <li className="is-warning"><ShieldAlert size={18} /><span>Empresa en verificación: todavía no contrastamos su RUC. Postularte por Worka es seguro; no pagues ni envíes documentos por fuera.</span></li>}
       </ul>
       <div className="li-detail-actions">
         <JobApplicationButton requiresEvaluation={requiresEvaluation} job={job} applied={applied} loggedIn={loggedIn} onApplied={onApplied} />
