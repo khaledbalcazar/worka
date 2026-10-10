@@ -211,7 +211,7 @@ export default async function ExternalJobPage({
 
         {/* Encabezado */}
         <div className="card overflow-hidden mt-4">
-          <div className="h-20 bg-gradient-to-r from-primary to-primary-dark" />
+          <div className="h-20 bg-[linear-gradient(135deg,#a0b4b7_0%,#c9d6d4_55%,#e9e5df_100%)]" />
           <div className="px-5 pb-5 -mt-9">
             <div className="w-18 h-18 rounded-2xl bg-white border border-gray-100 shadow-sm flex items-center justify-center overflow-hidden">
               {job.company_logo_url ? (

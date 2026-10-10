@@ -47,7 +47,7 @@ const CATEGORY_ICONS: Record<string, React.ComponentType<{ className?: string }>
   General: Sparkles,
 };
 
-const ACCENT = "#7C5CFC";
+const ACCENT = "#0A66C2";
 
 const STEPS = [
   {
@@ -86,43 +86,39 @@ export default async function FreelancersDirectory({
       <HomeNav />
 
       {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div
-          className="absolute inset-0 opacity-95"
-          style={{
-            background: `linear-gradient(135deg, ${ACCENT}, #5b3fd6)`,
-          }}
-        />
-        <div className="relative max-w-6xl mx-auto px-4 py-12 lg:py-16 text-white">
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-white/15">
+      <section className="bg-white border-b border-line">
+        <div className="max-w-6xl mx-auto px-4 py-10 lg:py-14">
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-primary/[0.08] text-brand">
             <Sparkles className="w-3.5 h-3.5" /> Worka Freelancers
           </span>
-          <h1 className="text-3xl lg:text-5xl font-bold mt-3 max-w-2xl leading-tight">
+          <h1 className="font-light text-[34px] leading-[42px] lg:text-[52px] lg:leading-[62px] tracking-[-0.02em] text-[#8f3b1f] mt-3 max-w-3xl">
             Contratá al profesional ideal para tu proyecto
           </h1>
-          <p className="text-white/85 mt-3 max-w-xl">
+          <p className="text-[#404040] text-[16px] sm:text-lg mt-3 max-w-xl">
             Diseñadores, programadores, redactores y más, verificados y en{" "}
             {country.name}. Mirá su trabajo y pedí presupuesto sin compromiso.
           </p>
 
           {/* Buscador */}
           <form action="/freelancers" className="relative max-w-xl mt-6">
-            <Search className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+            <Search className="w-5 h-5 text-[#56687a] absolute left-4 top-1/2 -translate-y-1/2" />
             <input
               name="q"
               defaultValue={q ?? ""}
-              placeholder="¿Qué necesitás? Ej: logo, landing page, community manager"
-              className="w-full pl-11 pr-4 py-3.5 rounded-2xl text-gray-800 bg-white shadow-lg outline-none"
+              aria-label="Buscar freelancers"
+              enterKeyHint="search"
+              placeholder="¿Qué necesitás? Ej: logo, landing page"
+              className="w-full pl-11 pr-4 h-12 rounded-md text-base text-ink bg-[#edf3f8] border border-transparent outline-none focus:bg-white focus:border-primary focus:shadow-[0_0_0_1px_#0a66c2]"
             />
           </form>
           <div className="flex flex-wrap gap-2 mt-4 text-sm">
-            <span className="text-white/70">Popular:</span>
+            <span className="text-muted self-center">Popular:</span>
             {["Diseño", "Desarrollo y Programación", "Marketing Digital"].map(
               (c) => (
                 <Link
                   key={c}
                   href={`/freelancers?cat=${encodeURIComponent(c)}`}
-                  className="underline decoration-white/40 hover:decoration-white"
+                  className="inline-flex items-center min-h-9 px-3.5 rounded-full border border-[#8c8c8c] font-semibold text-[#404040] hover:bg-[#f3f2f0]"
                 >
                   {c}
                 </Link>
@@ -254,8 +250,7 @@ export default async function FreelancersDirectory({
 
         {/* CTA freelancer */}
         <section
-          className="rounded-3xl p-8 lg:p-10 text-center text-white"
-          style={{ background: `linear-gradient(135deg, #1e3a8a, ${ACCENT})` }}
+          className="rounded-lg p-8 lg:p-10 text-center text-white bg-primary"
         >
           <h2 className="text-2xl lg:text-3xl font-bold">
             ¿Ofrecés servicios profesionales?
@@ -266,7 +261,7 @@ export default async function FreelancersDirectory({
           </p>
           <Link
             href="/unirme-freelancer"
-            className="inline-flex items-center gap-2 mt-5 bg-white text-primary-dark font-bold px-6 py-3 rounded-2xl hover:bg-white/90 transition-colors"
+            className="inline-flex items-center gap-2 mt-5 bg-white text-primary font-semibold px-6 min-h-12 rounded-full hover:bg-white/90 transition-colors"
           >
             Crear mi perfil de freelancer <ArrowRight className="w-4 h-4" />
           </Link>

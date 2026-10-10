@@ -74,8 +74,8 @@ export default function GamesPage() {
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       <div>
-        <h1 className="text-lg lg:text-2xl font-bold text-primary-dark">
-          🎮 Worka Play
+        <h1 className="page-title">
+          Worka Play
         </h1>
         <p className="text-sm text-gray-500">
           Un ratito por día: jugá, aprendé a conseguir trabajo y volvé mañana
@@ -88,7 +88,7 @@ export default function GamesPage() {
       </div>
       <section className="card p-5">
         <h2 className="font-semibold text-primary-dark mb-2">
-          🎯 Preparate para la entrevista
+          Preparate para la entrevista
         </h2>
         <ul className="space-y-1.5 text-sm text-gray-600">
           <li>• Investigá la empresa 10 minutos antes de ir.</li>
@@ -111,7 +111,7 @@ function Quiz() {
   return (
     <section className="card p-5">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="font-semibold text-primary-dark">🧠 Quiz laboral</h2>
+        <h2 className="font-semibold text-primary-dark">Quiz laboral</h2>
         <span className="text-xs text-gray-400">
           {done ? "Terminado" : `${step + 1} / ${QUIZ.length}`}
         </span>
@@ -215,7 +215,7 @@ function WordGame() {
   return (
     <section className="card p-5">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="font-semibold text-primary-dark">🔤 Palabra del día</h2>
+        <h2 className="font-semibold text-primary-dark">Palabra del día</h2>
         <span className="text-xs text-gray-400">{guesses.length}/5 intentos</span>
       </div>
       <p className="text-xs text-gray-400 mb-3">

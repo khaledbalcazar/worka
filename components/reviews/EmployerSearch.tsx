@@ -57,7 +57,7 @@ export default function EmployerSearch({ country }: { country: string }) {
     <div className="relative">
       <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
       <input
-        className="input pl-9"
+        className="input pl-9 !h-12 !rounded-md !bg-[#edf3f8] !border-transparent focus:!bg-white focus:!border-primary"
         placeholder="Buscá una empresa para ver o dejar opiniones…"
         value={q}
         onChange={(e) => onChange(e.target.value)}

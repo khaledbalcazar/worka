@@ -53,7 +53,7 @@ export default function CvBuilder({ candidate }: { candidate: Candidate }) {
             <Link href="/perfil" className="text-sm text-primary font-medium">
               ← Volver a mi perfil
             </Link>
-            <h1 className="text-lg lg:text-2xl font-bold text-primary-dark mt-1">
+            <h1 className="page-title mt-1">
               📄 Mi CV, gratis
             </h1>
             <p className="text-sm text-gray-500">

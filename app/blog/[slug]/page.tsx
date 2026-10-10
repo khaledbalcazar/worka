@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { getBlogPost, getPublishedPosts } from "@/lib/data";
 import { SITE_URL } from "@/lib/supabase/config";
 import { formatDate } from "@/lib/format";
-import SiteHeader from "@/components/SiteHeader";
+import HomeNav from "@/components/home/HomeNav";
 import BlogContent from "@/components/BlogContent";
 import BlogCta from "@/components/BlogCta";
 import BlogCard from "@/components/BlogCard";
@@ -62,7 +62,7 @@ export default async function BlogPostPage({
 
   return (
     <main className="flex-1 bg-surface min-h-screen flex flex-col">
-      <SiteHeader active="/blog" />
+      <HomeNav />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

@@ -5,6 +5,7 @@ import Logo from "@/components/Logo";
 import { getCandidateCareer, getPublicCandidate } from "@/lib/data";
 import CareerSummary from "@/components/profile/CareerSummary";
 import { formatDate } from "@/lib/format";
+import { SITE_URL } from "@/lib/supabase/config";
 
 // Perfil público del candidato: una URL compartible por WhatsApp,
 // visible para cualquier empleador (esté o no en Worka).
@@ -19,7 +20,7 @@ export default async function PublicCandidatePage({
   const career = await getCandidateCareer(candidate.id, candidate.skills ?? []);
 
   const shareUrl = `https://wa.me/?text=${encodeURIComponent(
-    `Mirá mi perfil laboral en Worka: worka.com.py/p/${candidate.id}`
+    `Mirá mi perfil laboral en Worka: ${SITE_URL.replace(/\/$/, "")}/p/${candidate.id}`
   )}`;
 
   return (
@@ -35,7 +36,7 @@ export default async function PublicCandidatePage({
 
       <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
         <div className="card overflow-hidden">
-          <div className="h-24 bg-gradient-to-r from-primary-dark to-primary" />
+          <div className="h-24 sm:h-32 bg-[linear-gradient(135deg,#a0b4b7_0%,#c9d6d4_55%,#e9e5df_100%)]" />
           <div className="p-5 pt-0">
             <div className="-mt-10 inline-block">
               <EntityAvatar

@@ -2,8 +2,12 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import Logo from "@/components/Logo";
+import { Mail } from "lucide-react";
+import AuthShell from "@/components/auth/AuthShell";
 import { requestPasswordReset } from "@/app/actions";
+
+const field =
+  "w-full h-[52px] rounded-[4px] border border-[#8c8c8c] bg-white px-3.5 text-base text-ink outline-none focus:border-primary focus:shadow-[0_0_0_1px_#0a66c2]";
 
 // Olvidé mi contraseña: sirve para cuentas de personas y de empresas.
 export default function RecoverPage() {
@@ -22,54 +26,44 @@ export default function RecoverPage() {
   }
 
   return (
-    <main className="flex-1 flex flex-col items-center justify-center px-4 py-10">
-      <div className="card w-full max-w-sm p-6 space-y-4 text-center">
-        <Logo />
-        {sent ? (
-          <div className="py-4 animate-pop">
-            <p className="text-4xl mb-2">📨</p>
-            <p className="font-semibold text-primary-dark">¡Correo enviado!</p>
-            <p className="text-sm text-gray-500 mt-1">
-              Si {email} tiene una cuenta en Worka, te llega un link para crear
-              una contraseña nueva. Revisá también el correo no deseado.
-            </p>
-            <Link href="/ingresar" className="btn-primary w-full mt-4">
-              Volver a ingresar
-            </Link>
-          </div>
-        ) : (
-          <>
-            <div>
-              <h1 className="font-bold text-primary-dark text-lg">
-                Recuperar mi cuenta
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                Sirve para cuentas de personas y de empresas. Te enviamos un
-                link para crear una contraseña nueva.
-              </p>
-            </div>
-            <input
-              className="input"
-              type="email"
-              placeholder="El email de tu cuenta"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && email && submit()}
-            />
-            {error && <p className="text-sm text-danger">{error}</p>}
-            <button
-              className="btn-primary w-full"
-              disabled={!email || pending}
-              onClick={submit}
-            >
-              {pending ? "Enviando…" : "Enviarme el link"}
-            </button>
-            <Link href="/ingresar" className="text-sm text-gray-500 underline">
-              Volver
-            </Link>
-          </>
-        )}
-      </div>
-    </main>
+    <AuthShell
+      below={
+        <Link href="/ingresar" className="text-primary font-semibold hover:underline">
+          Volver a iniciar sesión
+        </Link>
+      }
+    >
+      {sent ? (
+        <div className="text-center py-6 animate-pop" role="status">
+          <span className="confirmation-icon mx-auto"><Mail size={26} /></span>
+          <h1 className="text-2xl font-semibold mt-4">Revisá tu email</h1>
+          <p className="text-[15px] text-muted mt-2">
+            Si <strong className="text-ink">{email}</strong> tiene una cuenta en Worka, te llega un enlace para crear
+            una contraseña nueva. Revisá también el correo no deseado.
+          </p>
+        </div>
+      ) : (
+        <form onSubmit={(e) => { e.preventDefault(); if (email) submit(); }}>
+          <h1 className="text-[32px] leading-tight font-semibold tracking-[-0.01em]">¿Olvidaste tu contraseña?</h1>
+          <p className="text-[15px] text-muted mt-2">
+            Escribí el email de tu cuenta, de persona o de empresa, y te enviamos un enlace para crear una nueva.
+          </p>
+          <label className="block text-[15px] mt-6 mb-1.5" htmlFor="recover-email">Email</label>
+          <input
+            id="recover-email"
+            className={field}
+            type="email"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          {error && <p role="alert" className="text-sm text-danger mt-3">{error}</p>}
+          <button className="btn-primary w-full !min-h-[52px] !text-base mt-6" disabled={!email || pending}>
+            {pending ? "Enviando…" : "Enviarme el enlace"}
+          </button>
+        </form>
+      )}
+    </AuthShell>
   );
 }

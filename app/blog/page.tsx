@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getPublishedPosts } from "@/lib/data";
-import SiteHeader from "@/components/SiteHeader";
+import HomeNav from "@/components/home/HomeNav";
 import BlogCard from "@/components/BlogCard";
 
 export const metadata: Metadata = {
@@ -35,14 +35,14 @@ export default async function BlogListPage({
 
   return (
     <main className="flex-1 bg-surface min-h-screen flex flex-col">
-      <SiteHeader active="/blog" />
+      <HomeNav />
 
-      <section className="bg-gradient-to-b from-blue-50 to-surface">
+      <section className="bg-white border-b border-line">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 text-center">
           <p className="text-xs font-bold tracking-widest text-primary uppercase">
             Blog de Worka
           </p>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-primary-dark mt-2">
+          <h1 className="font-light text-[32px] leading-[40px] sm:text-[44px] sm:leading-[54px] tracking-[-0.02em] text-[#8f3b1f] mt-2">
             Todo para conseguir (y ofrecer) empleo en Paraguay
           </h1>
           <p className="text-gray-500 mt-3 max-w-xl mx-auto">
@@ -52,7 +52,7 @@ export default async function BlogListPage({
         </div>
       </section>
 
-      <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 pb-16 -mt-2">
+      <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 pb-16 pt-6">
         <div className="flex flex-wrap gap-2 justify-center mb-6">
           {tabs.map((t) => (
             <Link

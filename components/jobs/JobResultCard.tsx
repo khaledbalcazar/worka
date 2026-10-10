@@ -10,9 +10,9 @@ import { jobMatch, type MatchCandidate } from "@/lib/job-match";
 // Fila de resultado al estilo de una bolsa de empleo profesional: logo,
 // título, empresa, lugar y una línea de datos. Toda la fila es clickeable:
 // en escritorio abre el detalle al costado; en celular, la página del aviso.
-export default function JobResultCard({ job, selected, saved, loggedIn, applied, requiresEvaluation, matchProfile = null, onSelect, onSaved }: {
+export default function JobResultCard({ job, selected, saved, loggedIn, applied, requiresEvaluation, matchProfile = null, linkOnly = false, onSelect, onSaved }: {
   job: JobWithCompany; selected: boolean; saved: boolean; applied: boolean; loggedIn: boolean; requiresEvaluation: boolean;
-  matchProfile?: MatchCandidate | null; onSelect: () => void; onSaved: (value: boolean) => void; onApplied?: () => void;
+  matchProfile?: MatchCandidate | null; linkOnly?: boolean; onSelect: () => void; onSaved: (value: boolean) => void; onApplied?: () => void;
 }) {
   const match = matchProfile ? jobMatch(matchProfile, job) : null;
   const quickApply = !requiresEvaluation && job.filter_questions.length === 0;
@@ -20,8 +20,8 @@ export default function JobResultCard({ job, selected, saved, loggedIn, applied,
     <EntityAvatar url={job.company.logo_url} name={job.company.trade_name} className="li-logo" />
     <div className="li-item-body">
       <h3 className="li-item-title">
-        <Link className="lg:hidden" href={`/empleo/${job.id}`}>{job.title}</Link>
-        <button className="hidden lg:inline text-left" onClick={onSelect} aria-current={selected ? "true" : undefined}>{job.title}</button>
+        <Link className={linkOnly ? "" : "lg:hidden"} href={`/empleo/${job.id}`}>{job.title}</Link>
+        {!linkOnly && <button className="hidden lg:inline text-left" onClick={onSelect} aria-current={selected ? "true" : undefined}>{job.title}</button>}
       </h3>
       <p className="li-item-company">{job.company.trade_name}{job.company.is_verified && <BadgeCheck size={14} aria-label="Empresa verificada" />}</p>
       <p className="li-item-location">{job.company.location_city} ({job.modality})</p>

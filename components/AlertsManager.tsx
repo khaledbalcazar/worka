@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Bell, Plus, Trash2, Mail, Smartphone } from "lucide-react";
+import { Plus, Trash2, Mail, Smartphone } from "lucide-react";
 import { CITIES, INDUSTRIES } from "@/lib/mock-data";
 import {
   createJobAlert,
@@ -59,12 +59,10 @@ export default function AlertsManager({
   }
 
   return (
-    <div className="space-y-4 max-w-2xl mx-auto">
-      <div>
-        <h1 className="text-lg lg:text-2xl font-bold text-primary-dark flex items-center gap-2">
-          <Bell className="w-6 h-6" /> Alertas de empleo
-        </h1>
-        <p className="text-sm text-gray-500">
+    <div className="space-y-4">
+      <div className="myjobs-card myjobs-card-head">
+        <h1>Alertas de empleo</h1>
+        <p>
           Guardá una búsqueda y te avisamos cuando entren vacantes nuevas —
           tanto de Worka como de otros portales.
         </p>
@@ -170,7 +168,7 @@ export default function AlertsManager({
                 </div>
                 <button
                   onClick={() => remove(a.id)}
-                  className="text-gray-300 hover:text-red-500"
+                  className="job-save -mt-2 -mr-2 hover:!text-red-600"
                   aria-label="Borrar alerta"
                 >
                   <Trash2 className="w-4 h-4" />

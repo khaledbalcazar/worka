@@ -19,8 +19,8 @@ export default async function SalariosPage() {
   return (
     <div className="space-y-4 max-w-3xl mx-auto">
       <div>
-        <h1 className="text-lg lg:text-2xl font-bold text-primary-dark">
-          💰 ¿Cuánto se paga en tu rubro?
+        <h1 className="page-title">
+          ¿Cuánto se paga en tu rubro?
         </h1>
         <p className="text-sm text-gray-500">
           Rangos reales, calculados de las vacantes publicadas en Worka con
