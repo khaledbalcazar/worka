@@ -6,6 +6,8 @@ import {
   CheckCircle,
   Zap,
   Star,
+  BadgeCheck,
+  ChevronRight,
   FileText,
   TrendingUp,
   MessageCircle,
@@ -56,14 +58,14 @@ const ICON_MAP = {
 type IconKey = keyof typeof ICON_MAP;
 
 const CATEGORIES: { icon: IconKey; color: string; name: string; rubro: string }[] = [
-  { icon: "ventas", color: "#2563EB", name: "Ventas y Comercio", rubro: "Ventas" },
-  { icon: "gastronomia", color: "#F59E0B", name: "Gastronomía", rubro: "Gastronomía" },
-  { icon: "atencion", color: "#10B981", name: "Atención al Cliente", rubro: "Atención al Cliente" },
-  { icon: "logistica", color: "#7C5CFC", name: "Logística y Transporte", rubro: "Logística" },
-  { icon: "administracion", color: "#2563EB", name: "Administración", rubro: "Administración" },
-  { icon: "produccion", color: "#F59E0B", name: "Producción / Operario", rubro: "Producción" },
-  { icon: "salud", color: "#E11D6C", name: "Salud", rubro: "Salud" },
-  { icon: "construccion", color: "#10B981", name: "Construcción", rubro: "Construcción" },
+  { icon: "ventas", color: "#0A66C2", name: "Ventas y Comercio", rubro: "Ventas" },
+  { icon: "gastronomia", color: "#B24020", name: "Gastronomía", rubro: "Gastronomía" },
+  { icon: "atencion", color: "#057642", name: "Atención al Cliente", rubro: "Atención al Cliente" },
+  { icon: "logistica", color: "#5F4BB6", name: "Logística y Transporte", rubro: "Logística" },
+  { icon: "administracion", color: "#0A66C2", name: "Administración", rubro: "Administración" },
+  { icon: "produccion", color: "#B24020", name: "Producción / Operario", rubro: "Producción" },
+  { icon: "salud", color: "#C0264D", name: "Salud", rubro: "Salud" },
+  { icon: "construccion", color: "#057642", name: "Construcción", rubro: "Construcción" },
 ];
 
 // ── Contenido en el contexto de cada país ──
@@ -81,7 +83,7 @@ function buildDifferentiators(
   return [
     {
       icon: "bus",
-      color: "#2563EB",
+      color: "#0A66C2",
       title: vos ? "Sabés cómo llegar" : "Sabes cómo llegar",
       text:
         c.code === "py"
@@ -90,18 +92,18 @@ function buildDifferentiators(
     },
     {
       icon: "check",
-      color: "#10B981",
+      color: "#057642",
       title: `${c.taxIdLabel} verificado`,
       text:
         c.code === "py"
           ? "Contrastamos el RUC de cada empresa contra el registro público de la DNIT."
           : `Contrastamos el ${c.taxIdLabel} de cada empresa contra los registros públicos antes de verificarla.`,
     },
-    { icon: "whatsapp", color: "#10B981", title: "Alertas por WhatsApp", text: "Te avisamos cuando una empresa ve tu perfil o aparecen vacantes de tu rubro." },
-    { icon: "rayo", color: "#F59E0B", title: "Postulación en segundos", text: "1 clic y hasta 3 preguntas simples. Sin formularios eternos." },
+    { icon: "whatsapp", color: "#057642", title: "Alertas por WhatsApp", text: "Te avisamos cuando una empresa ve tu perfil o aparecen vacantes de tu rubro." },
+    { icon: "rayo", color: "#B24020", title: "Postulación en segundos", text: "1 clic y hasta 3 preguntas simples. Sin formularios eternos." },
     {
       icon: "estrella",
-      color: "#7C5CFC",
+      color: "#5F4BB6",
       title: "Modo primer empleo",
       text: vos
         ? `Filtrá solo vacantes sin requisito de experiencia. Nadie más lo hace en ${c.name}.`
@@ -109,16 +111,16 @@ function buildDifferentiators(
     },
     {
       icon: "cv",
-      color: "#2563EB",
+      color: "#0A66C2",
       title: "CV gratis",
       text: vos
         ? "Respondé unas preguntas y generamos un PDF profesional sin costo alguno."
         : "Responde unas preguntas y generamos un PDF profesional sin costo alguno.",
     },
-    { icon: "escudo", color: "#10B981", title: "Cero estafas", text: "Bloqueamos ofertas que piden dinero. Con 3 denuncias la vacante se oculta sola." },
+    { icon: "escudo", color: "#057642", title: "Cero estafas", text: "Bloqueamos ofertas que piden dinero. Con 3 denuncias la vacante se oculta sola." },
     {
       icon: "grafico",
-      color: "#F59E0B",
+      color: "#B24020",
       title: "Seguimiento real",
       text: vos
         ? "Sabés cuándo la empresa revisó tu perfil y por qué no avanzaste."
@@ -216,51 +218,64 @@ function parseLines<T>(
     .filter((x): x is T => x !== null);
 }
 
-function Eyebrow({ children, light }: { children: string; light?: boolean }) {
-  return (
-    <p
-      className={`text-[0.7rem] font-semibold tracking-[0.12em] uppercase mb-2.5 ${
-        light ? "text-blue-300" : "text-primary"
-      }`}
-    >
-      {children}
-    </p>
-  );
-}
+// Contenedor y ritmo vertical del sistema: 1128px de ancho útil y bloques
+// separados en múltiplos de 8.
+const WRAP = "max-w-[1128px] mx-auto px-4 sm:px-6";
+const SECTION = "py-10 sm:py-14 lg:py-16";
+
+const FOOTER_COLUMNS: { title: string; links: [string, string][] }[] = [
+  {
+    title: "Candidatos",
+    links: [
+      ["Buscar empleos", "/empleos"],
+      ["Crear mi perfil", "/onboarding"],
+      ["Sueldos y salarios", "/salarios"],
+      ["Alertas de empleo", "/alertas"],
+      ["Academia", "/academia"],
+    ],
+  },
+  {
+    title: "Empresas",
+    links: [
+      ["Publicar vacante", "/empresa/vacantes/nueva"],
+      ["Registrar empresa", "/empresa/registro"],
+      ["Para empresas", "/para-empresas"],
+      ["Opiniones de empresas", "/opiniones"],
+    ],
+  },
+  {
+    title: "Legal y privacidad",
+    links: [
+      ["Términos de servicio", "/terminos"],
+      ["Política de privacidad", "/privacidad"],
+      ["Blog", "/blog"],
+    ],
+  },
+];
 
 function SectionHead({
   eyebrow,
+  eyebrowClass = "text-primary",
   title,
   sub,
   center,
-  light,
 }: {
   eyebrow: string;
+  eyebrowClass?: string;
   title: React.ReactNode;
   sub?: string;
   center?: boolean;
-  light?: boolean;
 }) {
   return (
-    <div
-      className={`mb-10 ${center ? "text-center max-w-lg mx-auto" : "max-w-xl"}`}
-    >
-      <Eyebrow light={light}>{eyebrow}</Eyebrow>
-      <h2
-        className={`font-extrabold text-[clamp(1.6rem,4vw,2.6rem)] leading-[1.12] tracking-tight mb-3 ${
-          light ? "text-white" : "text-primary-dark"
-        }`}
-      >
+    <div className={`mb-6 sm:mb-8 ${center ? "text-center max-w-xl mx-auto" : "max-w-2xl"}`}>
+      <p className={`text-[11px] font-semibold tracking-[0.12em] uppercase mb-2 ${eyebrowClass}`}>
+        {eyebrow}
+      </p>
+      <h2 className="font-semibold text-[26px] leading-[34px] lg:text-[36px] lg:leading-[44px] tracking-[-0.015em] text-ink">
         {title}
       </h2>
       {sub && (
-        <p
-          className={`text-[0.95rem] leading-relaxed ${
-            light ? "text-white/60" : "text-gray-500"
-          }`}
-        >
-          {sub}
-        </p>
+        <p className="text-[15px] leading-relaxed text-muted mt-2">{sub}</p>
       )}
     </div>
   );
@@ -281,7 +296,7 @@ export default async function LandingPage() {
 
   const customDiffs = parseLines(settings.landing_differentiators, (p) =>
     p.length >= 3
-      ? { icon: (p[0] as IconKey) in ICON_MAP ? (p[0] as IconKey) : ("estrella" as IconKey), color: "#2563EB", title: p[1], text: p[2] }
+      ? { icon: (p[0] as IconKey) in ICON_MAP ? (p[0] as IconKey) : ("estrella" as IconKey), color: "#0A66C2", title: p[1], text: p[2] }
       : null
   );
   const differentiators =
@@ -302,7 +317,7 @@ export default async function LandingPage() {
     p.length >= 2
       ? {
           icon: ((p[0] as IconKey) in ICON_MAP ? p[0] : "ventas") as IconKey,
-          color: p[3] || "#2563EB",
+          color: p[3] || "#0A66C2",
           name: p[1],
           rubro: p[2] || p[1],
         }
@@ -346,37 +361,28 @@ export default async function LandingPage() {
   const statIcons = [Briefcase, Building2, Bus, Users];
 
   return (
-    <main className="flex-1 bg-surface min-h-screen">
+    <main className="flex-1 bg-canvas min-h-screen text-ink">
       <HomeNav />
 
       {/* ── HERO ── */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#EEF1FC] to-surface">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-1/4 -right-[10%] w-[600px] h-[600px] rounded-full"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(37,99,235,0.10) 0%, transparent 70%)",
-          }}
-        />
-        <div className="relative max-w-6xl mx-auto grid lg:grid-cols-2 gap-10 lg:gap-16 items-center px-5 pt-[clamp(36px,7vw,64px)] pb-[clamp(44px,8vw,72px)]">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/[0.06] px-3.5 py-1.5 mb-5">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-              <span className="text-[0.7rem] text-primary tracking-wide">
+      <section className="bg-white border-b border-line">
+        <div className={`${WRAP} grid lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)] gap-10 lg:gap-14 items-center pt-8 pb-8 sm:pt-12 lg:pt-16 lg:pb-12`}>
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 rounded-full bg-primary/[0.08] px-3 py-1.5 mb-4 sm:mb-5">
+              <span className="text-[12px] font-medium text-brand">
                 {country.code === "py" && settings.hero_badge
                   ? settings.hero_badge
-                  : `${country.flag} Empleos en ${country.name} · 100% gratis`}
+                  : `${country.flag} Hecho en ${country.name} · 100% gratis para candidatos`}
               </span>
             </div>
 
-            <h1 className="font-extrabold text-[clamp(2.1rem,6vw,4rem)] leading-[1.05] tracking-[-0.025em] text-primary-dark mb-4">
+            <h1 className="font-bold text-[32px] leading-[40px] sm:text-[42px] sm:leading-[50px] lg:text-[48px] lg:leading-[56px] tracking-[-0.02em] text-ink mb-3 sm:mb-4">
               Tu próximo trabajo
               <br />
               <span className="text-primary">está en Worka.</span>
             </h1>
 
-            <p className="text-[clamp(0.95rem,2vw,1.1rem)] text-gray-500 max-w-md leading-relaxed mb-7">
+            <p className="text-[15px] sm:text-lg leading-relaxed text-[#4a4a4a] max-w-xl mb-6">
               {country.code === "py" && settings.hero_subtitle
                 ? settings.hero_subtitle
                 : `Encontrá tu próximo trabajo en ${country.name}. Sin estafas, sin comisiones, con las mejores empresas.`}
@@ -385,121 +391,112 @@ export default async function LandingPage() {
             <HeroSearch cities={country.cities} />
 
             <div className="flex items-center gap-3 mt-6">
-              <div className="flex items-center">
+              <div className="flex items-center" aria-hidden>
                 {["A", "R", "J", "M"].map((ini, i) => (
                   <div
                     key={ini}
-                    className="w-9 h-9 rounded-full border-2 border-surface bg-primary/15 text-primary flex items-center justify-center text-xs font-bold"
-                    style={{ marginLeft: i === 0 ? 0 : -12 }}
+                    className="w-8 h-8 rounded-full border-2 border-white bg-[#dfeaf3] text-brand flex items-center justify-center text-xs font-semibold"
+                    style={{ marginLeft: i === 0 ? 0 : -10 }}
                   >
                     {ini}
                   </div>
                 ))}
               </div>
-              <span className="text-[0.82rem] text-gray-500 leading-snug">
+              <span className="text-[13px] text-muted leading-snug">
                 {usesVoseo(country) ? "Sumate" : "Súmate"} a los{" "}
-                {country.demonym} que
-                <br />
-                ya buscan trabajo en Worka.
+                {country.demonym} que ya buscan trabajo en Worka.
               </span>
             </div>
           </div>
 
-          {/* Tarjetas flotantes (desktop) */}
-          <div className="relative hidden lg:block">
-            {/* Foto de portada: se sube desde /admin. Sin imagen, cae en la
-                tarjeta de marca para que el hero nunca quede vacío. */}
-            <div className="rounded-3xl overflow-hidden aspect-[4/3.4] shadow-[0_30px_70px_rgba(27,37,89,0.18)]">
-              {settings.hero_image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={settings.hero_image_url}
-                  alt="Personas buscando empleo en Worka"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center">
-                  <span className="text-white/95 text-7xl font-extrabold tracking-tight">
-                    w.
+          {/* Panel de confianza (escritorio y tablet). */}
+          <div className="hidden md:block min-w-0">
+            {settings.hero_image_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={settings.hero_image_url}
+                alt="Personas buscando empleo en Worka"
+                className="w-full aspect-[16/9] object-cover rounded-[10px] border border-line mb-4"
+              />
+            )}
+            <div className="bg-white rounded-[10px] border border-line shadow-[0_8px_24px_rgba(0,0,0,0.08)] p-5">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <p className="inline-flex items-center gap-2 text-[11px] font-semibold tracking-[0.08em] uppercase text-success-ink">
+                  <span className="w-2 h-2 rounded-full bg-success-ink" />
+                  Verificación activa
+                </p>
+                <span className="text-[12px] text-muted">
+                  {country.code === "py" ? "DNIT conectado" : `${country.taxIdLabel} validado`}
+                </span>
+              </div>
+              <ul className="flex flex-col gap-2.5">
+                <li className="flex items-center gap-3 rounded-lg bg-[#f8f6f3] p-3">
+                  <span className="w-10 h-10 rounded-full bg-[#e6f3e9] text-success-ink grid place-items-center shrink-0">
+                    <BadgeCheck size={20} />
                   </span>
-                </div>
-              )}
-            </div>
-            <div className="absolute top-6 -left-7 bg-white rounded-2xl px-4 py-3 shadow-[0_14px_40px_rgba(27,37,89,0.16)] flex items-center gap-2.5">
-              <div className="w-8.5 h-8.5 rounded-lg bg-success/15 flex items-center justify-center">
-                <CheckCircle size={17} className="text-success" />
-              </div>
-              <div>
-                <p className="font-bold text-[0.8rem] text-primary-dark">
-                  Empresa verificada
-                </p>
-                <p className="text-[0.62rem] text-gray-400 mt-0.5">
-                  {country.code === "py"
-                    ? "RUC contrastado ✓ DNIT"
-                    : `${country.taxIdLabel} contrastado ✓`}
-                </p>
-              </div>
-            </div>
-            <div className="absolute bottom-6 -right-6 bg-primary-dark rounded-2xl px-4 py-3 shadow-[0_14px_40px_rgba(0,0,0,0.25)] flex items-center gap-2.5">
-              <div className="w-8.5 h-8.5 rounded-lg bg-primary/40 flex items-center justify-center">
-                <MessageCircle size={17} className="text-blue-200" />
-              </div>
-              <div>
-                <p className="font-bold text-[0.8rem] text-white">
-                  ¡Te vieron el perfil!
-                </p>
-                <p className="text-[0.62rem] text-white/60 mt-0.5">
-                  Aviso por WhatsApp
-                </p>
-              </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-[15px]">Empresa verificada</p>
+                    <p className="text-[13px] text-muted">
+                      {country.code === "py"
+                        ? "RUC contrastado ✓ DNIT"
+                        : `${country.taxIdLabel} contrastado ✓`}
+                    </p>
+                  </div>
+                </li>
+                <li className="flex items-center gap-3 rounded-lg bg-[#f8f6f3] p-3">
+                  <span className="w-10 h-10 rounded-full bg-primary/10 text-primary grid place-items-center shrink-0">
+                    <MessageCircle size={19} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-[15px]">¡Te vieron el perfil!</p>
+                    <p className="text-[13px] text-muted">Seguí tu postulación en Worka</p>
+                  </div>
+                  <span className="text-[12px] font-medium text-primary">Ahora</span>
+                </li>
+              </ul>
+              <p className="mt-4 pt-3 border-t border-line text-[13px] text-muted text-center">
+                Sin intermediarios ni cobros ocultos.
+              </p>
             </div>
           </div>
         </div>
 
         {/* Franja de estadísticas */}
-        <div className="border-t border-primary-dark/10 bg-white/50">
-          <div className="max-w-6xl mx-auto grid grid-cols-2 md:flex md:flex-wrap md:justify-center gap-x-8 gap-y-5 md:gap-x-12 p-5">
+        <div className={`${WRAP} pb-8 lg:pb-12`}>
+          <dl className="grid grid-cols-3 gap-2 sm:gap-4">
             {stats.map((s, i) => {
               const Icon = statIcons[i % statIcons.length];
               return (
-                <div key={s.label} className="flex items-center gap-2.5">
-                  <Icon size={18} className="text-primary/90 shrink-0" />
-                  <div>
-                    <p className="font-extrabold text-[1.15rem] text-primary-dark leading-none">
+                <div
+                  key={s.label}
+                  className="rounded-[10px] border border-line bg-[#faf9f7] px-3 py-3 sm:px-5 sm:py-4 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 min-w-0"
+                >
+                  <Icon size={20} className="text-primary shrink-0 hidden sm:block" />
+                  <div className="min-w-0">
+                    <dd className="font-bold text-lg sm:text-2xl leading-tight tracking-tight text-ink">
                       {s.value}
-                    </p>
-                    <p className="text-[0.64rem] text-gray-500 mt-1 tracking-wide">
+                    </dd>
+                    <dt className="text-[11px] sm:text-[13px] text-muted leading-snug mt-0.5">
                       {s.label}
-                    </p>
+                    </dt>
                   </div>
                 </div>
               );
             })}
-          </div>
+          </dl>
         </div>
       </section>
 
       {/* ── NOVEDADES ── */}
-      <section
-        id="novedades"
-        className="max-w-6xl mx-auto px-5 py-[clamp(56px,9vw,80px)]"
-      >
-        <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+      <section id="novedades" className={SECTION}>
+        <div className={`${WRAP} grid lg:grid-cols-2 gap-8 lg:gap-14 items-center`}>
           <div>
             <SectionHead
-              eyebrow="Lo que pasa ahora"
-              title={
-                <>
-                  Worka está <span className="text-primary">vivo</span> las 24
-                  horas.
-                </>
-              }
+              eyebrow="En vivo"
+              title="Worka está vivo las 24 horas."
               sub="Empresas revisando perfiles, gente consiguiendo trabajo y vacantes nuevas cada minuto."
             />
-            <Link
-              href="/registro"
-              className="inline-flex items-center gap-2 bg-primary text-white font-bold text-sm px-6 py-3.5 rounded-xl hover:bg-primary-hover transition-colors"
-            >
+            <Link href="/registro" className="btn-primary hidden lg:inline-flex">
               Unirme ahora <ArrowRight size={16} />
             </Link>
           </div>
@@ -508,88 +505,87 @@ export default async function LandingPage() {
       </section>
 
       {/* ── RUBROS ── */}
-      <section
-        id="rubros"
-        className="bg-white border-y border-primary-dark/10 py-[clamp(56px,9vw,80px)]"
-      >
-        <div className="max-w-6xl mx-auto px-5">
-          <SectionHead
-            center
-            eyebrow="Explorá por rubro"
-            title="¿En qué querés trabajar?"
-            sub="Elegí tu rubro y encontrá vacantes cerca tuyo, con salario y cómo llegar."
-          />
-          <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr))]">
+      <section id="rubros" className={`${SECTION} bg-white border-y border-line`}>
+        <div className={WRAP}>
+          <div className="flex items-end justify-between gap-4">
+            <SectionHead
+              eyebrow="Explorá por rubro"
+              title="¿En qué querés trabajar?"
+              sub="Elegí tu rubro y encontrá vacantes cerca tuyo, con salario y cómo llegar."
+            />
+            <Link
+              href="/empleos"
+              className="hidden sm:inline-flex items-center gap-1 text-sm font-semibold text-primary mb-8 whitespace-nowrap hover:underline"
+            >
+              Ver todas las vacantes <ChevronRight size={16} />
+            </Link>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
             {categories.map((c) => {
               const Icon = ICON_MAP[c.icon] ?? ShoppingBag;
               return (
                 <Link
                   key={c.name}
                   href={`/empleos?rubro=${encodeURIComponent(c.rubro)}`}
-                  className="group flex items-center gap-4 bg-surface border border-primary-dark/10 rounded-2xl px-4.5 py-4 transition-all hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-[0_12px_30px_rgba(27,37,89,0.08)]"
+                  className="group flex flex-col gap-3 bg-white border border-line rounded-[10px] p-3.5 sm:p-5 transition-[box-shadow,transform] hover:-translate-y-px hover:shadow-[0_0_0_1px_rgba(0,0,0,0.12),0_4px_12px_rgba(0,0,0,0.08)] active:scale-[0.98]"
                 >
-                  <div
-                    className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: `${c.color}18` }}
+                  <span
+                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ background: `${c.color}14` }}
                   >
                     <Icon size={20} style={{ color: c.color }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-[0.9rem] text-primary-dark">
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block font-semibold text-[14px] sm:text-[15px] leading-snug text-ink group-hover:text-primary">
                       {c.name}
-                    </p>
-                    <p className="text-[0.68rem] text-gray-500 mt-0.5">
-                      Ver vacantes
-                    </p>
-                  </div>
-                  <ArrowRight
-                    size={16}
-                    className="text-gray-400 shrink-0 transition-transform group-hover:translate-x-1"
-                  />
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[12px] text-primary mt-1">
+                      Ver vacantes <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+                    </span>
+                  </span>
                 </Link>
               );
             })}
           </div>
+          <Link
+            href="/empleos"
+            className="sm:hidden btn-secondary w-full mt-4"
+          >
+            Ver todas las vacantes
+          </Link>
         </div>
       </section>
 
       {/* ── CÓMO FUNCIONA ── */}
-      <section id="como-funciona" className="py-[clamp(56px,9vw,80px)]">
-        <div className="max-w-6xl mx-auto px-5">
+      <section id="como-funciona" className={SECTION}>
+        <div className={WRAP}>
           <SectionHead
             eyebrow="Para candidatos"
-            title={
-              <>
-                Conseguí trabajo,
-                <br />
-                sin vueltas.
-              </>
-            }
+            title="Conseguí trabajo, sin vueltas."
             sub="Tres pasos. Nada de formularios eternos ni CVs enviados al vacío."
           />
-          <div className="grid gap-6 [grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))]">
+          <ol className="grid gap-3 sm:gap-4 md:grid-cols-3">
             {steps.map((s, i) => (
-              <div
+              <li
                 key={s.title}
-                className="relative bg-white rounded-3xl border border-primary-dark/10 px-6 py-8"
+                className="flex md:flex-col gap-4 bg-white rounded-[10px] border border-line p-4 sm:p-6"
               >
-                <div className="absolute -top-3.5 left-6 w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-extrabold text-[0.8rem] shadow-[0_4px_14px_rgba(37,99,235,0.35)]">
+                <span className="w-9 h-9 rounded-full bg-primary text-white flex items-center justify-center font-semibold text-sm shrink-0">
                   {i + 1}
+                </span>
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-base text-ink mb-1.5">
+                    {s.title}
+                  </h3>
+                  <p className="text-sm text-[#4a4a4a] leading-relaxed">
+                    {s.text}
+                  </p>
                 </div>
-                <h3 className="font-bold text-base text-primary-dark mt-4 mb-2.5">
-                  {s.title}
-                </h3>
-                <p className="text-[0.85rem] text-gray-500 leading-relaxed">
-                  {s.text}
-                </p>
-              </div>
+              </li>
             ))}
-          </div>
-          <div className="mt-10">
-            <Link
-              href="/onboarding"
-              className="inline-flex items-center gap-2 bg-primary text-white font-bold text-sm px-7 py-3.5 rounded-xl hover:bg-primary-hover transition-colors"
-            >
+          </ol>
+          <div className="mt-6 sm:mt-8">
+            <Link href="/onboarding" className="btn-primary w-full sm:w-auto">
               Crear mi perfil gratis <ArrowRight size={16} />
             </Link>
           </div>
@@ -597,34 +593,36 @@ export default async function LandingPage() {
       </section>
 
       {/* ── DIFERENCIADORES ── */}
-      <section className="bg-white border-t border-primary-dark/10 py-[clamp(56px,9vw,80px)]">
-        <div className="max-w-6xl mx-auto px-5">
+      <section className={`${SECTION} bg-white border-y border-line`}>
+        <div className={WRAP}>
           <SectionHead
             center
             eyebrow="Lo que nos hace distintos"
             title="Solo en Worka."
             sub={`Cada detalle está pensado para cómo se busca trabajo en ${country.name}.`}
           />
-          <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr))]">
+          <div className="grid gap-x-6 gap-y-1 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {differentiators.map((d) => {
               const Icon = ICON_MAP[d.icon] ?? Star;
               return (
                 <div
                   key={d.title}
-                  className="bg-surface border border-primary-dark/10 rounded-2xl px-5 py-5.5 transition-all hover:-translate-y-0.5 hover:shadow-[0_12px_30px_rgba(27,37,89,0.08)]"
+                  className="flex sm:flex-col gap-3.5 py-3.5 border-b border-line last:border-b-0 sm:border sm:rounded-[10px] sm:bg-[#faf9f7] sm:p-5 sm:last:border-b"
                 >
-                  <div
-                    className="w-10 h-10 rounded-xl flex items-center justify-center mb-3.5"
-                    style={{ background: `${d.color}18` }}
+                  <span
+                    className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                    style={{ background: `${d.color}14` }}
                   >
-                    <Icon size={18} style={{ color: d.color }} />
+                    <Icon size={19} style={{ color: d.color }} />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="font-semibold text-[15px] text-ink mb-1">
+                      {d.title}
+                    </h3>
+                    <p className="text-[13px] text-muted leading-relaxed">
+                      {d.text}
+                    </p>
                   </div>
-                  <h3 className="font-bold text-[0.9rem] text-primary-dark mb-2">
-                    {d.title}
-                  </h3>
-                  <p className="text-[0.78rem] text-gray-500 leading-relaxed">
-                    {d.text}
-                  </p>
                 </div>
               );
             })}
@@ -633,126 +631,83 @@ export default async function LandingPage() {
       </section>
 
       {/* ── PARA EMPRESAS ── */}
-      <section
-        id="empresas"
-        className="relative overflow-hidden bg-primary-dark py-[clamp(56px,9vw,80px)]"
-      >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-1/5 -right-[8%] w-[500px] h-[500px] rounded-full"
-          style={{
-            background:
-              "radial-gradient(circle, rgba(37,99,235,0.25) 0%, transparent 70%)",
-          }}
-        />
-        <div className="relative max-w-6xl mx-auto px-5 grid gap-12 items-center [grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))]">
+      <section id="empresas" className={SECTION}>
+        <div className={`${WRAP} grid gap-8 lg:gap-14 items-center lg:grid-cols-2`}>
           <div>
             <SectionHead
-              light
               eyebrow="Para empresas"
-              title={
-                <>
-                  Talento local,
-                  <br />
-                  verificado y sin pagar un {country.currencyName}.
-                </>
-              }
+              eyebrowClass="text-clay"
+              title={<>Talento local, verificado y sin pagar un {country.currencyName}.</>}
               sub="Desde la pyme del barrio hasta la cadena nacional. Publicá en minutos y contactá al candidato ideal por WhatsApp."
             />
-            <ul className="flex flex-col gap-3 mb-8">
+            <ul className="grid sm:grid-cols-2 gap-x-6 gap-y-3 mb-7">
               {companyFeatures.map((f) => (
-                <li
-                  key={f}
-                  className="flex items-start gap-3 text-[0.875rem] text-white/85"
-                >
-                  <div className="w-5 h-5 rounded-full bg-primary/40 flex items-center justify-center shrink-0 mt-0.5">
-                    <CheckCircle size={11} className="text-blue-200" />
-                  </div>
+                <li key={f} className="flex items-start gap-2.5 text-sm text-ink">
+                  <CheckCircle size={17} className="text-success-ink shrink-0 mt-0.5" />
                   {f}
                 </li>
               ))}
             </ul>
-            <div className="flex flex-wrap gap-3">
-              <Link
-                href="/empresa/registro"
-                className="inline-flex items-center gap-2 bg-white text-primary-dark font-bold text-[0.875rem] px-6 py-3 rounded-xl hover:bg-white/90 transition-colors"
-              >
-                Registrar mi empresa <ArrowRight size={14} />
+            <div className="flex flex-col sm:flex-row gap-2.5">
+              <Link href="/empresa/registro" className="btn-primary">
+                Registrar mi empresa <ArrowRight size={15} />
               </Link>
-              <Link
-                href="/para-empresas"
-                className="inline-flex items-center gap-2 text-white font-semibold text-[0.875rem] px-6 py-3 rounded-xl border border-white/25 hover:bg-white/10 transition-colors"
-              >
+              <Link href="/para-empresas" className="btn-secondary">
                 Conocé Worka para empresas
               </Link>
             </div>
           </div>
 
           {/* Panel simulado */}
-          <div className="rounded-3xl overflow-hidden bg-white shadow-[0_24px_60px_rgba(0,0,0,0.28)]">
-            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-100">
+          <div className="hidden md:block rounded-[10px] overflow-hidden bg-white border border-line shadow-[0_8px_24px_rgba(0,0,0,0.08)]" aria-hidden>
+            <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-line">
               <div className="min-w-0">
-                <p className="text-[0.64rem] text-gray-400 tracking-widest uppercase mb-1">
+                <p className="text-[11px] font-semibold text-muted tracking-[0.08em] uppercase mb-1">
                   Vacante activa
                 </p>
-                <p className="font-bold text-[0.92rem] text-primary-dark">
+                <p className="font-semibold text-[15px] text-ink">
                   Cajero/a — Sucursal Centro
                 </p>
               </div>
-              <span className="text-[0.62rem] bg-success/15 text-emerald-700 px-2.5 py-1 rounded-full tracking-wide shrink-0">
-                ACTIVA
+              <span className="text-[11px] font-semibold bg-[#e6f3e9] text-success-ink px-2.5 py-1 rounded-full shrink-0">
+                Activa
               </span>
             </div>
-            <div className="p-5">
-              <div className="grid grid-cols-3 gap-2.5 mb-5">
+            <div className="p-4 sm:p-5">
+              <div className="grid grid-cols-3 gap-2 mb-5">
                 {[
                   { v: "342", l: "Vistas" },
                   { v: "23", l: "Postulantes" },
                   { v: "5", l: "Contactados" },
                 ].map((s) => (
-                  <div
-                    key={s.l}
-                    className="bg-surface rounded-xl py-3.5 px-2 text-center"
-                  >
-                    <p className="font-extrabold text-[1.25rem] text-primary-dark">
-                      {s.v}
-                    </p>
-                    <p className="text-[0.62rem] text-gray-500 mt-1">{s.l}</p>
+                  <div key={s.l} className="bg-[#f8f6f3] rounded-lg py-3 px-2 text-center">
+                    <p className="font-bold text-xl text-ink">{s.v}</p>
+                    <p className="text-[11px] text-muted mt-0.5">{s.l}</p>
                   </div>
                 ))}
               </div>
-              <p className="text-[0.64rem] text-gray-400 tracking-widest uppercase mb-2.5">
-                Candidatos
+              <p className="text-[11px] font-semibold text-muted tracking-[0.08em] uppercase mb-2">
+                Candidatos destacados
               </p>
               <div className="flex flex-col gap-2">
                 {[
-                  { name: "Carlos Benítez", score: "2/2 ✓", c: "#10B981" },
-                  { name: "Lucía Martínez", score: "1/2 ✓", c: "#F59E0B" },
-                  { name: "Miguel Rodríguez", score: "2/2 ✓", c: "#10B981" },
+                  { name: "Carlos Benítez", score: "2/2 requisitos" },
+                  { name: "Lucía Martínez", score: "1/2 requisitos" },
+                  { name: "Miguel Rodríguez", score: "2/2 requisitos" },
                 ].map((c) => (
-                  <div
-                    key={c.name}
-                    className="flex items-center justify-between gap-2 bg-surface rounded-xl px-3 py-2.5"
-                  >
+                  <div key={c.name} className="flex items-center justify-between gap-2 border border-line rounded-lg px-3 py-2.5">
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-7.5 h-7.5 rounded-full bg-primary text-white flex items-center justify-center font-extrabold text-[0.72rem] shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-[#dfeaf3] text-brand flex items-center justify-center font-semibold text-xs shrink-0">
                         {c.name[0]}
                       </div>
-                      <span className="font-semibold text-[0.82rem] text-primary-dark truncate">
-                        {c.name}
-                      </span>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-[13px] text-ink truncate">{c.name}</p>
+                        <p className="text-[11px] text-muted">{c.score}</p>
+                      </div>
                     </div>
-                    <div className="flex gap-1.5 shrink-0">
-                      <span
-                        className="text-[0.62rem] px-2 py-0.5 rounded-full"
-                        style={{ background: `${c.c}18`, color: c.c }}
-                      >
-                        {c.score}
-                      </span>
-                      <span className="text-[0.62rem] bg-success/12 text-emerald-700 px-2 py-0.5 rounded-full">
-                        💬
-                      </span>
-                    </div>
+                    <span className="w-8 h-8 rounded-full bg-[#e6f3e9] text-success-ink grid place-items-center shrink-0">
+                      <MessageCircle size={15} />
+                    </span>
                   </div>
                 ))}
               </div>
@@ -761,72 +716,61 @@ export default async function LandingPage() {
         </div>
       </section>
 
-      {/* ── HISTORIAS (se cargan desde el admin) ── */}
-      {testimonials.length > 0 && (
-        <section id="historias" className="py-[clamp(56px,9vw,80px)]">
-          <div className="max-w-6xl mx-auto px-5">
-            <SectionHead
-              center
-              eyebrow="Historias reales"
-              title="Ya encontraron trabajo."
-              sub={`${country.demonym[0].toUpperCase()}${country.demonym.slice(1)} que consiguieron empleo en Worka.`}
-            />
-            <div className="grid gap-4.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))]">
-              {testimonials.map((t) => (
-                <div
-                  key={t.name}
-                  className="bg-white border border-primary-dark/10 rounded-3xl px-6 py-6 flex flex-col gap-4"
-                >
-                  <Quote size={24} className="text-primary/35" />
-                  <p className="text-[0.9rem] text-primary-dark leading-relaxed flex-1">
-                    “{t.quote}”
-                  </p>
-                  <div className="flex items-center gap-3 pt-1.5 border-t border-gray-100">
-                    {t.photo ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={t.photo}
-                        alt={t.name}
-                        className="w-11 h-11 rounded-full object-cover shrink-0"
-                      />
-                    ) : (
-                      <div className="w-11 h-11 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold shrink-0">
-                        {t.name[0]}
+      {/* ── HISTORIAS Y CONFIANZA ── */}
+      <section className={`${SECTION} bg-white border-y border-line`}>
+        <div className={`${WRAP} grid gap-6 ${testimonials.length > 0 ? "lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]" : ""}`}>
+          {testimonials.length > 0 && (
+            <div id="historias">
+              <SectionHead
+                eyebrow="Historias reales"
+                title="Ya encontraron trabajo."
+                sub={`${country.demonym[0].toUpperCase()}${country.demonym.slice(1)} que consiguieron empleo en Worka.`}
+              />
+              <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory -mx-4 px-4 pb-1 [scrollbar-width:none] sm:grid sm:grid-cols-2 sm:overflow-visible sm:mx-0 sm:px-0">
+                {testimonials.map((t) => (
+                  <figure
+                    key={t.name}
+                    className="snap-start shrink-0 w-[85%] sm:w-auto bg-[#faf9f7] border border-line rounded-[10px] p-5 flex flex-col gap-4"
+                  >
+                    <Quote size={22} className="text-primary/40" />
+                    <blockquote className="text-[15px] text-ink leading-relaxed flex-1">
+                      “{t.quote}”
+                    </blockquote>
+                    <figcaption className="flex items-center gap-3 pt-3 border-t border-line">
+                      {t.photo ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={t.photo} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-[#dfeaf3] text-brand flex items-center justify-center font-semibold shrink-0">
+                          {t.name[0]}
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-semibold text-sm text-ink">{t.name}</p>
+                        <p className="text-[12px] text-muted">{t.role}</p>
                       </div>
-                    )}
-                    <div>
-                      <p className="font-bold text-[0.85rem] text-primary-dark">
-                        {t.name}
-                      </p>
-                      <p className="text-[0.68rem] text-gray-500 mt-0.5">
-                        {t.role}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
-      )}
+          )}
 
-      {/* ── CONFIANZA ── */}
-      <section className="bg-white border-t border-primary-dark/10 px-5 py-[clamp(44px,8vw,56px)]">
-        <div className="max-w-4xl mx-auto">
-          <div className="rounded-3xl border border-primary-dark/10 bg-gradient-to-br from-primary/8 to-success/8 p-[clamp(24px,5vw,36px)] flex flex-wrap items-center gap-5">
-            <div className="w-14 h-14 rounded-2xl bg-primary/15 flex items-center justify-center shrink-0">
-              <Shield size={26} className="text-primary" />
-            </div>
-            <div className="flex-1 min-w-[220px]">
-              <h3 className="font-extrabold text-[1.2rem] text-primary-dark mb-2">
+          <div className={`rounded-[10px] border border-[#f0d5c9] bg-[#fff6f1] p-5 sm:p-7 flex gap-4 ${testimonials.length > 0 ? "flex-col self-end" : "flex-col sm:flex-row sm:items-center max-w-4xl mx-auto w-full"}`}>
+            <span className="w-12 h-12 rounded-full bg-white text-clay grid place-items-center shrink-0 border border-[#f0d5c9]">
+              <Shield size={22} />
+            </span>
+            <div className="min-w-0">
+              <h3 className="font-semibold text-xl text-ink mb-1.5">
                 El portal donde no te estafan.
               </h3>
-              <p className="text-[0.875rem] text-gray-500 leading-relaxed">
+              <p className="text-sm text-[#4a4a4a] leading-relaxed">
                 Bloqueamos automáticamente ofertas que piden dinero, verificamos
-                el RUC y la comunidad puede denunciar vacantes sospechosas.{" "}
-                <span className="text-primary-dark font-semibold">
+                el {country.taxIdLabel} y la comunidad puede denunciar vacantes
+                sospechosas.{" "}
+                <strong className="font-semibold text-clay">
                   Nunca pagues para conseguir un trabajo.
-                </span>
+                </strong>
               </p>
             </div>
           </div>
@@ -834,137 +778,89 @@ export default async function LandingPage() {
       </section>
 
       {/* ── FAQ ── */}
-      <section
-        id="faq"
-        className="border-t border-primary-dark/10 py-[clamp(56px,9vw,80px)]"
-      >
-        <div className="max-w-3xl mx-auto px-5">
-          <SectionHead center eyebrow="Soporte" title="Preguntas frecuentes" />
+      <section id="faq" className={SECTION}>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6">
+          <SectionHead center eyebrow="Soporte y transparencia" title="Preguntas frecuentes" />
           <FaqAccordion faqs={faqs} />
         </div>
       </section>
 
       {/* ── CTA FINAL ── */}
-      <section className="relative overflow-hidden bg-white border-t border-primary-dark/10 px-5 py-[clamp(64px,10vw,96px)] text-center">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[400px] rounded-full"
-          style={{
-            background:
-              "radial-gradient(ellipse, rgba(37,99,235,0.08) 0%, transparent 70%)",
-          }}
-        />
-        <div className="relative max-w-xl mx-auto">
-          <Eyebrow>Tu próximo paso</Eyebrow>
-          <h2 className="font-extrabold text-[clamp(1.9rem,6vw,3.4rem)] leading-[1.08] tracking-tight text-primary-dark mb-4">
-            Las mejores oportunidades
-            <br />
-            <span className="text-primary">te están esperando.</span>
-          </h2>
-          <p className="text-[0.95rem] text-gray-500 mb-9">
-            Registrate gratis. En 2 minutos ya podés postularte.
-          </p>
-          <div className="flex flex-wrap gap-3 justify-center">
-            <Link
-              href="/onboarding"
-              className="inline-flex items-center gap-2 bg-primary text-white font-extrabold text-[0.95rem] px-8 py-4 rounded-xl hover:bg-primary-hover transition-colors"
-            >
-              Buscar empleo <ArrowRight size={16} />
-            </Link>
-            <Link
-              href="/empresa/registro"
-              className="inline-flex items-center gap-2 text-primary-dark font-semibold text-[0.95rem] px-8 py-4 rounded-xl border border-primary-dark/10 hover:bg-surface transition-colors"
-            >
-              Publicar una vacante
-            </Link>
+      <section className="pb-12 lg:pb-16">
+        <div className={WRAP}>
+          <div className="rounded-[10px] bg-primary text-white text-center px-5 py-10 sm:px-10 sm:py-14 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.14),transparent_60%)]">
+            <p className="text-[11px] font-semibold tracking-[0.12em] uppercase text-white/75 mb-3">
+              Tu próximo paso
+            </p>
+            <h2 className="font-bold text-[26px] leading-[34px] sm:text-[36px] sm:leading-[44px] tracking-[-0.015em] mb-3">
+              Las mejores oportunidades te están esperando.
+            </h2>
+            <p className="text-[15px] text-white/80 mb-7 max-w-md mx-auto">
+              {usesVoseo(country)
+                ? "Registrate gratis. En 2 minutos ya podés postularte a ofertas comprobadas."
+                : "Regístrate gratis. En 2 minutos ya puedes postularte a ofertas comprobadas."}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2.5 justify-center">
+              <Link
+                href="/empleos"
+                className="inline-flex items-center justify-center gap-2 bg-white text-primary font-semibold text-[15px] px-7 min-h-12 rounded-full hover:bg-white/90 transition-colors"
+              >
+                Buscar empleo <ArrowRight size={16} />
+              </Link>
+              <Link
+                href="/empresa/registro"
+                className="inline-flex items-center justify-center gap-2 text-white font-semibold text-[15px] px-7 min-h-12 rounded-full border border-white/50 hover:bg-white/10 transition-colors"
+              >
+                Publicar una vacante
+              </Link>
+            </div>
           </div>
         </div>
       </section>
 
       {/* ── FOOTER ── */}
-      <footer className="bg-primary-dark">
-        <div className="max-w-6xl mx-auto px-5 py-12 grid gap-9 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]">
-          <div className="col-span-2">
-            <Logo light />
-            <p className="text-[0.82rem] text-white/50 leading-relaxed mt-3.5 max-w-[240px]">
-              La plataforma de empleo 100% gratuita de {country.name}. Tu
-              próximo paso.
+      <footer className="bg-white border-t border-line">
+        <div className={`${WRAP} py-10 lg:py-12 grid gap-8 grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr_1fr]`}>
+          <div className="col-span-2 lg:col-span-1">
+            <Logo />
+            <p className="text-[13px] text-muted leading-relaxed mt-3 max-w-[260px]">
+              Infraestructura de empleo y contratación verificada para{" "}
+              {country.name} y América Latina.
             </p>
           </div>
-          {[
-            {
-              title: "Candidatos",
-              links: [
-                ["Buscar empleo", "/empleos"],
-                ["Crear mi perfil", "/onboarding"],
-                ["Mis postulaciones", "/postulaciones"],
-                ["Blog", "/blog"],
-                ["Academia", "/academia"],
-              ],
-            },
-            {
-              title: "Empresas",
-              links: [
-                ["Registrar empresa", "/empresa/registro"],
-                ["Para empresas", "/para-empresas"],
-                ["Publicar vacante", "/empresa/vacantes/nueva"],
-              ],
-            },
-            {
-              title: "Legal",
-              links: [
-                ["Términos", "/terminos"],
-                ["Privacidad", "/privacidad"],
-              ],
-            },
-          ].map((col) => (
-            <div key={col.title}>
-              <p className="text-[0.67rem] text-white/40 tracking-widest uppercase mb-4">
-                {col.title}
-              </p>
-              <ul className="flex flex-col gap-3">
+          {FOOTER_COLUMNS.map((col) => (
+            <nav key={col.title} aria-label={col.title}>
+              <p className="font-semibold text-sm text-ink mb-3">{col.title}</p>
+              <ul className="flex flex-col">
                 {col.links.map(([label, href]) => (
                   <li key={label}>
-                    <Link
-                      href={href}
-                      className="text-[0.82rem] text-white/55 hover:text-white transition-colors"
-                    >
+                    <Link href={href} className="inline-flex items-center min-h-9 text-[13px] text-muted hover:text-primary hover:underline">
                       {label}
                     </Link>
                   </li>
                 ))}
               </ul>
-            </div>
+            </nav>
           ))}
-        </div>
-        {/* Worka en la región */}
-        <div className="border-t border-white/10">
-          <div className="max-w-6xl mx-auto px-5 py-5">
-            <p className="text-[0.67rem] text-white/40 tracking-widest uppercase mb-3">
-              Worka en tu país
-            </p>
-            <div className="flex flex-wrap gap-x-5 gap-y-2">
+          <nav aria-label="Worka en tu país">
+            <p className="font-semibold text-sm text-ink mb-3">Worka en tu país</p>
+            <ul className="flex flex-col">
               {COUNTRIES.map((c) => (
-                <Link
-                  key={c.code}
-                  href={`/${c.slug}`}
-                  className="text-sm text-white/60 hover:text-white"
-                >
-                  {c.flag} {c.name}
-                </Link>
+                <li key={c.code}>
+                  <Link href={`/${c.slug}`} className="inline-flex items-center gap-2 min-h-9 text-[13px] text-muted hover:text-primary hover:underline">
+                    <span aria-hidden>{c.flag}</span> {c.name}
+                  </Link>
+                </li>
               ))}
-            </div>
-          </div>
+            </ul>
+          </nav>
         </div>
-        <div className="border-t border-white/10">
-          <div className="max-w-6xl mx-auto px-5 py-4.5 flex flex-wrap justify-between gap-2">
-            <span className="text-[0.67rem] text-white/40">
-              {settings.site_name || "Worka"} © {new Date().getFullYear()} ·
-              Hecho en Paraguay 🇵🇾
+        <div className="border-t border-line">
+          <div className={`${WRAP} py-5 flex flex-col sm:flex-row sm:justify-between gap-2 text-[12px] text-muted`}>
+            <span>
+              {settings.site_name || "Worka"} © {new Date().getFullYear()} · Hecho en Paraguay 🇵🇾
             </span>
-            <span className="text-[0.67rem] text-white/40">
-              Nunca pagues para conseguir un trabajo.
-            </span>
+            <span>Nunca pagues para conseguir un trabajo.</span>
           </div>
         </div>
       </footer>

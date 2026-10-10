@@ -52,10 +52,10 @@ export default function CountrySelector({
         onClick={() => setOpen((o) => !o)}
         disabled={pending}
         aria-label="Cambiar de país"
-        className={`inline-flex items-center gap-1.5 text-sm rounded-xl px-2.5 py-2 transition-colors ${
+        className={`inline-flex items-center gap-1.5 text-sm rounded-full px-3 min-h-10 transition-colors ${
           dark
             ? "text-white/80 hover:bg-white/10"
-            : "text-gray-600 hover:bg-white"
+            : "text-ink bg-canvas/70 hover:bg-canvas"
         } ${pending ? "opacity-60" : ""}`}
       >
         <span className="text-base leading-none">{current.flag}</span>
@@ -64,7 +64,7 @@ export default function CountrySelector({
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 bg-white rounded-xl border border-gray-100 shadow-lg py-1 min-w-48 z-50">
+        <div className="absolute right-0 top-full mt-1 bg-white rounded-lg border border-line shadow-[0_8px_24px_rgba(0,0,0,0.14)] py-1 min-w-48 z-50">
           <p className="px-4 py-1.5 text-[0.65rem] text-gray-400 uppercase tracking-widest">
             Elegí tu país
           </p>
@@ -72,7 +72,7 @@ export default function CountrySelector({
             <button
               key={c.code}
               onClick={() => choose(c.code)}
-              className={`w-full text-left flex items-center gap-2.5 px-4 py-2 text-sm hover:bg-surface ${
+              className={`w-full text-left flex items-center gap-2.5 px-4 min-h-11 text-sm hover:bg-canvas ${
                 c.code === current.code
                   ? "text-primary font-semibold"
                   : "text-gray-700"

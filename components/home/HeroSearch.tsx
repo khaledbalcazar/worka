@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Search, MapPin, ArrowRight, CheckCircle } from "lucide-react";
+import { Search, MapPin, CheckCircle } from "lucide-react";
 import { CITIES } from "@/lib/mock-data";
 
 type Props = { cities?: string[] };
@@ -72,9 +72,9 @@ export default function HeroSearch({ cities = CITIES }: Props) {
     <div data-search className="relative w-full" onBlur={(e) => {
       if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false);
     }}>
-      <div className="flex flex-col sm:flex-row bg-white rounded-2xl border border-primary-dark/10 shadow-[0_12px_40px_rgba(27,37,89,0.10)] overflow-hidden">
-        <div className="flex items-center gap-2.5 flex-1 px-4 py-3.5">
-          <Search size={17} className="text-gray-400 shrink-0" />
+      <div className="flex flex-col sm:flex-row gap-1.5 bg-white rounded-[10px] border border-line p-1.5 shadow-[0_0_0_1px_rgba(0,0,0,0.02),0_2px_4px_rgba(0,0,0,0.04)]">
+        <div className="flex items-center gap-2.5 flex-1 min-w-0 px-3 min-h-12 rounded-md focus-within:ring-2 focus-within:ring-primary">
+          <Search size={18} className="text-muted shrink-0" />
           <input
             value={q}
             onChange={(e) => {
@@ -91,17 +91,18 @@ export default function HeroSearch({ cities = CITIES }: Props) {
             }}
             placeholder="Cargo, empresa o rubro…"
             aria-label="Buscar empleo"
-            className="w-full bg-transparent border-0 outline-none text-sm text-primary-dark placeholder:text-gray-400"
+            enterKeyHint="search"
+            className="w-full min-w-0 bg-transparent border-0 outline-none text-base sm:text-[15px] text-ink placeholder:text-muted"
           />
         </div>
 
-        <div className="flex items-center gap-2 px-4 py-3.5 border-t sm:border-t-0 sm:border-l border-primary-dark/10">
-          <MapPin size={15} className="text-primary shrink-0" />
+        <div className="flex items-center gap-2 px-3 min-h-12 rounded-md border-t sm:border-t-0 sm:border-l sm:rounded-none border-line focus-within:ring-2 focus-within:ring-primary">
+          <MapPin size={17} className="text-primary shrink-0" />
           <select
             value={city}
             onChange={(e) => setCity(e.target.value)}
             aria-label="Ciudad"
-            className="w-full sm:w-40 bg-transparent border-0 outline-none text-sm text-primary-dark cursor-pointer"
+            className="w-full sm:w-36 bg-transparent border-0 outline-none text-base sm:text-sm text-ink cursor-pointer"
           >
             <option value="">Toda ciudad</option>
             {cities.map((c) => (
@@ -112,15 +113,18 @@ export default function HeroSearch({ cities = CITIES }: Props) {
 
         <button
           onClick={search}
-          className="w-full sm:w-auto bg-primary text-white font-bold text-sm px-7 py-3.5 flex items-center justify-center gap-2 hover:bg-primary-hover transition-colors whitespace-nowrap"
+          className="w-full sm:w-auto bg-primary text-white font-semibold text-[15px] px-7 min-h-12 rounded-full sm:rounded-md flex items-center justify-center gap-2 hover:bg-primary-hover transition-colors whitespace-nowrap"
         >
-          Buscar <ArrowRight size={15} />
+          <Search size={17} />
+          <span>
+            Buscar<span className="sm:hidden xl:inline"> empleos</span>
+          </span>
         </button>
       </div>
 
       {/* Autocompletado */}
       {open && matches.length > 0 && (
-        <div className="absolute top-[calc(100%_+_8px)] left-0 right-0 bg-white rounded-2xl border border-primary-dark/10 shadow-[0_16px_44px_rgba(27,37,89,0.16)] overflow-hidden z-30">
+        <div className="absolute top-[calc(100%_+_6px)] left-0 right-0 bg-white rounded-lg border border-line shadow-[0_8px_24px_rgba(0,0,0,0.14)] overflow-hidden z-30">
           {matches.map((m) => (
             <button
               key={m}
@@ -129,17 +133,18 @@ export default function HeroSearch({ cities = CITIES }: Props) {
                 setQ(m);
                 setOpen(false);
               }}
-              className="w-full flex items-center gap-3 text-left px-4 py-3 hover:bg-primary/5 transition-colors"
+              className="w-full flex items-center gap-3 text-left px-4 min-h-11 hover:bg-canvas transition-colors"
             >
               <Search size={14} className="text-gray-400 shrink-0" />
-              <span className="text-sm text-primary-dark">{m}</span>
+              <span className="text-sm text-ink">{m}</span>
             </button>
           ))}
         </div>
       )}
 
       {/* Chips de filtro rápido */}
-      <div className="flex flex-wrap gap-2 mt-4">
+      <div className="flex items-center gap-2 mt-3.5 -mx-4 px-4 overflow-x-auto [scrollbar-width:none] sm:mx-0 sm:px-0 sm:flex-wrap sm:overflow-visible">
+        <span className="hidden sm:inline text-xs text-muted mr-1">Filtros rápidos:</span>
         {FILTER_CHIPS.map((c) => {
           const on = chips.includes(c.label);
           return (
@@ -147,10 +152,10 @@ export default function HeroSearch({ cities = CITIES }: Props) {
               key={c.label}
               onClick={() => toggleChip(c.label)}
               aria-pressed={on}
-              className={`inline-flex items-center gap-1.5 text-xs rounded-full px-3.5 py-1.5 border transition-all ${
+              className={`inline-flex shrink-0 items-center gap-1.5 text-[13px] font-medium rounded-full px-3.5 min-h-9 border transition-colors ${
                 on
-                  ? "bg-primary text-white border-primary font-semibold"
-                  : "bg-white text-gray-500 border-primary-dark/10 hover:border-primary/40"
+                  ? "bg-primary text-white border-primary"
+                  : "bg-white text-ink border-[#c0bfbc] hover:border-ink"
               }`}
             >
               {on && <CheckCircle size={12} />}

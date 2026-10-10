@@ -60,7 +60,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export const viewport = {
-  themeColor: "#1e3a8a",
+  themeColor: "#ffffff",
   width: "device-width",
   initialScale: 1,
   // Necesario para que env(safe-area-inset-*) devuelva algo: sin esto, en los
