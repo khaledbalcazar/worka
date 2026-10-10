@@ -142,7 +142,7 @@ export default function CompanyProfileEditor({
       {/* Banner + logo */}
       <section className="card overflow-hidden">
         <button
-          className="relative w-full h-36 sm:h-44 bg-gradient-to-r from-primary-dark to-primary group"
+          className="relative w-full h-36 sm:h-44 bg-[linear-gradient(135deg,#a0b4b7_0%,#c9d6d4_55%,#e9e5df_100%)] group"
           onClick={() => bannerInput.current?.click()}
           style={
             bannerPreview

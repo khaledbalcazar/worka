@@ -665,12 +665,11 @@ export default function CompanyDashboard({
         </Tarjeta>
 
         <div className="rounded-xl p-5 text-white bg-gradient-to-br from-blue-800 to-blue-600">
-          <p className="text-[10px] font-bold tracking-[.08em] uppercase text-blue-200/70">
+          <p className="text-[10px] font-bold tracking-[.08em] uppercase text-white/70">
             Más visibilidad
           </p>
           <p className="text-sm font-semibold mt-1 mb-3 leading-snug">
-            Potenciá tus vacantes y recibí{" "}
-            <span className="text-blue-300">3× más vistas</span>
+            Destacá tus vacantes para que aparezcan primero en la búsqueda
           </p>
           <button
             onClick={() => {
@@ -687,7 +686,7 @@ export default function CompanyDashboard({
             }}
             className="text-xs font-semibold px-3 py-2 rounded-lg bg-white/15 hover:bg-white/25 transition-colors cursor-pointer"
           >
-            ⚡ Ver planes →
+            Ver planes →
           </button>
         </div>
       </div>

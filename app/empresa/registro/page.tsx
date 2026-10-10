@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import Logo from "@/components/Logo";
+import { Mail } from "lucide-react";
 import { useCountryCookie } from "@/lib/useCountryCookie";
 import { registerCompany, signUpWithEmail } from "@/app/actions";
 import { validateRucFormat } from "@/lib/ruc";
@@ -54,24 +54,23 @@ export default function CompanyRegisterPage() {
   }
 
   return (
-    <main className="flex-1 flex flex-col items-center justify-center px-4 py-10">
-      <div className="card w-full max-w-md p-6 space-y-4">
-        <div className="text-center">
-          <Logo />
-          <h1 className="text-lg font-bold text-primary-dark mt-2">
+    <div className="flex flex-col items-center sm:py-6">
+      <div className="w-full max-w-[520px] bg-white rounded-lg border border-line shadow-[0_4px_12px_rgba(0,0,0,0.08)] p-6 sm:p-9 space-y-4">
+        <div>
+          <h1 className="text-[32px] leading-tight font-semibold tracking-[-0.01em]">
             Registrá tu empresa
           </h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-[15px] text-muted mt-2">
             Publicar vacantes es gratis. Verificamos el RUC de cada empresa para
             proteger a los candidatos.
           </p>
         </div>
 
         {sent ? (
-          <div className="text-center py-6 space-y-2">
-            <p className="text-4xl">📨</p>
-            <p className="font-semibold text-primary-dark">
-              ¡Solicitud enviada!
+          <div className="text-center py-6 space-y-2" role="status">
+            <span className="confirmation-icon mx-auto"><Mail size={26} /></span>
+            <p className="text-xl font-semibold">
+              Solicitud enviada
             </p>
             <p className="text-sm text-gray-500">
               {sent === "confirm"
@@ -193,6 +192,14 @@ export default function CompanyRegisterPage() {
           </>
         )}
       </div>
-    </main>
+      {!sent && (
+        <p className="text-[15px] mt-6 text-center">
+          ¿Tu empresa ya tiene cuenta?{" "}
+          <Link href="/ingresar/empresa" className="text-primary font-semibold hover:underline">
+            Iniciá sesión
+          </Link>
+        </p>
+      )}
+    </div>
   );
 }
