@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #111827;
+  --background: #f3efea;
+  --foreground: #1d2226;
 }
 
 @theme inline {
@@ -10,11 +10,19 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
 
-  /* Paleta Worka */
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
-  --color-primary-dark: #1e3a8a;
-  --color-surface: #f3f4f6;
+  /* Paleta Worka — sistema "Latin Professional Trust": lienzo cálido, tarjetas
+     blancas con borde fino y un azul cobalto reservado para las acciones. */
+  --color-primary: #0a66c2;
+  --color-primary-hover: #004182;
+  --color-primary-dark: #0f2a44;
+  --color-surface: #f3efea;
+  --color-canvas: #f3efea;
+  --color-ink: #1d2226;
+  --color-muted: #666666;
+  --color-line: #e0dfdc;
+  --color-brand: #004e99;
+  --color-clay: #b24020;
+  --color-success-ink: #057642;
   --color-success: #10b981;
   --color-danger: #ef4444;
   --color-warning: #f59e0b;
@@ -69,13 +77,13 @@ html {
 .btn-secondary,
 .btn-success,
 .btn-danger-outline {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-colors min-h-11 px-5 text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-colors min-h-11 px-5 text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
 }
 .btn-primary {
   @apply bg-primary text-white hover:bg-primary-hover;
 }
 .btn-secondary {
-  @apply bg-white text-primary-dark border border-gray-200 hover:bg-surface;
+  @apply bg-white text-primary border border-primary/60 hover:bg-primary/[0.06];
 }
 .btn-success {
   @apply bg-success text-white hover:bg-emerald-600;
@@ -85,11 +93,11 @@ html {
 }
 
 .card {
-  @apply bg-white rounded-2xl border border-gray-100 shadow-sm;
+  @apply bg-white rounded-[10px] border border-line;
 }
 
 .input {
-  @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-foreground placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary min-h-11;
+  @apply w-full rounded-md border border-[#b2b2b2]/70 bg-white px-4 py-3 text-sm text-foreground placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary min-h-11;
 }
 
 .label {

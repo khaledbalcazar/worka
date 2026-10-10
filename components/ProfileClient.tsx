@@ -1,11 +1,12 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { ArrowUpRight, BadgeCheck, Bell, BriefcaseBusiness, Camera, Check, ChevronDown, Eye, FileText, Lightbulb, LogOut, MapPin, Pencil, Phone, Plus, Settings, ShieldCheck, Upload, X } from "lucide-react";
 import MobileSheet from "@/components/MobileSheet";
 import { countryByCode } from "@/lib/countries";
-import type { Candidate, IdentityStatus, WorkReference } from "@/lib/types";
+import type { CareerData, Candidate, IdentityStatus, WorkReference } from "@/lib/types";
+import ProfileCareer from "@/components/profile/ProfileCareer";
 import {
   addWorkReference,
   deleteAccount,
@@ -23,6 +24,27 @@ import {
 import { compressImage } from "@/lib/compress-image";
 import { toPyWhatsapp } from "@/lib/format";
 import { INDUSTRIES } from "@/lib/mock-data";
+import { AVATAR_EVENT } from "@/components/ProfileMenu";
+
+// Avisa al menú de la cuenta que la foto cambió.
+function announceAvatar(url: string) {
+  window.dispatchEvent(new CustomEvent(AVATAR_EVENT, { detail: url }));
+}
+
+// Los accesos del menú de la cuenta llevan a /perfil#configuracion o
+// #privacidad, que son <details>: sin esto el ancla llega cerrada.
+function useOpenDetailsFromHash() {
+  useEffect(() => {
+    function openFromHash() {
+      const el = document.getElementById(window.location.hash.slice(1));
+      if (el instanceof HTMLDetailsElement) el.open = true;
+      el?.scrollIntoView({ block: "start" });
+    }
+    openFromHash();
+    window.addEventListener("hashchange", openFromHash);
+    return () => window.removeEventListener("hashchange", openFromHash);
+  }, []);
+}
 
 async function saveProfileAction(action: () => Promise<ActionResult>): Promise<ActionResult> {
   try { return await action(); }
@@ -41,11 +63,14 @@ export default function ProfileClient({
   candidate: initialCandidate,
   references: initialReferences = [],
   settings = {},
+  career,
 }: {
   candidate: Candidate;
   references?: WorkReference[];
   settings?: Record<string, string>;
+  career?: CareerData;
 }) {
+  useOpenDetailsFromHash();
   const [candidate, setCandidate] = useState(initialCandidate);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [savedBio, setSavedBio] = useState(initialCandidate.bio ?? "");
@@ -123,10 +148,10 @@ export default function ProfileClient({
         fd.append("image", compressed);
         const result = await uploadAvatar(fd);
         if (!result.ok) { setProfileError(result.error ?? "No pudimos guardar la foto."); return; }
-        if (result.url) setAvatarUrl(result.url);
+        if (result.url) { setAvatarUrl(result.url); announceAvatar(result.url); }
         else if (result.demo) {
           const reader = new FileReader();
-          reader.onload = () => setAvatarUrl(reader.result as string);
+          reader.onload = () => { setAvatarUrl(reader.result as string); announceAvatar(reader.result as string); };
           reader.readAsDataURL(file);
         }
       } catch { setProfileError("No pudimos procesar la imagen. Probá con otra foto."); }
@@ -265,7 +290,7 @@ export default function ProfileClient({
     <div className="profile-page">
       <nav className="profile-section-nav" aria-label="Secciones de mi perfil">
         <span className="profile-nav-label"><span className="job-active-dot" /> Mi perfil</span>
-        {[["datos", "Resumen"], ["presentacion", "Sobre mí"], ["curriculum", "Mi CV"], ["preferencias", "Preferencias"], ["referencias", "Referencias"]].map(([id, label]) => <a key={id} href={`#${id}`}>{label}</a>)}
+        {[["datos", "Resumen"], ["presentacion", "Sobre mí"], ["experiencia", "Experiencia"], ["estudios", "Estudios"], ["habilidades", "Habilidades"], ["cursos", "Cursos"], ["curriculum", "Mi CV"], ["preferencias", "Preferencias"], ["referencias", "Referencias"]].map(([id, label]) => <a key={id} href={`#${id}`}>{label}</a>)}
       </nav>
       {profileError && <p role="alert" className="profile-error">{profileError}</p>}
       <div className="profile-layout">
@@ -297,6 +322,8 @@ export default function ProfileClient({
             {bioSaved && <p role="status" className="text-xs text-emerald-700 mt-3">Presentación guardada.</p>}
           </section>
 
+          {career && <ProfileCareer initial={career} />}
+
           <section id="curriculum" className="card profile-section">
             <div className="profile-section-title"><h2><FileText size={18} /> Mi currículum</h2>{hasCv && <span className="profile-status">PDF cargado</span>}</div>
             <input ref={cvInput} type="file" accept="application/pdf" className="hidden" onChange={(e) => { handleCvFile(e.target.files?.[0]); e.target.value = ""; }} />
@@ -326,6 +353,20 @@ export default function ProfileClient({
         </div>
 
         <aside className="profile-sidebar">
+          {(() => {
+            const checks = [
+              { done: identityStatus === "verified", label: "Cédula verificada", hint: identityStatus === "pending" ? "Documentos en revisión" : "Validada por el equipo de Worka", href: "#configuracion" },
+              { done: candidate.phone_verified, label: "WhatsApp confirmado", hint: "Las empresas pueden contactarte", href: "#datos" },
+              { done: hasCv, label: "CV cargado", hint: "Se envía con cada postulación", href: "#curriculum" },
+              { done: references.some((r) => r.status === "confirmada"), label: "Referencia confirmada", hint: "Alguien avaló tu experiencia", href: "#referencias" },
+            ];
+            const done = checks.filter((c) => c.done).length;
+            return <section className="card profile-section profile-seal" aria-labelledby="seal-title">
+              <h2 id="seal-title"><span className="profile-seal-icon"><ShieldCheck size={18} /></span> Sello de Confianza Worka</h2>
+              <p className="profile-section-description">{done === checks.length ? "Tu perfil tiene el sello completo. Las empresas ven que tus datos están confirmados." : `Tenés ${done} de ${checks.length} verificaciones. Cada una muestra a las empresas que tu perfil es real.`}</p>
+              <ul className="profile-seal-list">{checks.map((c) => <li key={c.label} className={c.done ? "is-done" : ""}>{c.done ? <Check size={16} /> : <span className="profile-seal-pending" />}<div><strong>{c.label}</strong>{c.done ? <small>{c.hint}</small> : <a href={c.href} onClick={() => { const el = document.getElementById(c.href.slice(1)); if (el instanceof HTMLDetailsElement) el.open = true; }}>Completar</a>}</div></li>)}</ul>
+            </section>;
+          })()}
           <section className="card profile-section profile-visibility"><h2><ShieldCheck size={18} /> Tu perfil en Worka</h2><p className="profile-section-description">Decidís cómo te encuentran y qué compartís con las empresas.</p><div className="profile-visibility-status"><span className={`job-active-dot ${visibleToCompanies ? "" : "is-private"}`} /><span>{visibleToCompanies ? "Visible en la búsqueda de talento" : "Oculto en la búsqueda de talento"}</span></div><p className="text-xs text-gray-500 mt-3">Al postularte, esa empresa recibe tu perfil aunque no estés visible en las búsquedas.</p></section>
           <details className="card profile-section profile-settings" id="privacidad"><summary><span><Bell size={17} /> Avisos y privacidad</span><ChevronDown size={16} /></summary><div className="profile-settings-body">
             <label className="profile-toggle"><span><strong>Visible para empresas</strong><small>Permite encontrarte sin una postulación.</small></span><input type="checkbox" checked={visibleToCompanies} disabled={pending} onChange={(e) => togglePref("visible_to_companies", e.target.checked, setVisibleToCompanies)} /></label>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BriefcaseBusiness, Bookmark, ClipboardList, MessageCircle, UserRound } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
+import ProfileMenu, { type ProfileSummary } from "@/components/ProfileMenu";
 import type { Notification } from "@/lib/types";
 
 const NAV = [
@@ -14,8 +15,8 @@ const NAV = [
   { href: "/perfil", label: "Mi perfil", Icon: UserRound },
 ];
 
-export default function CandidateHeader({ loggedIn = false, notifications = [] }: {
-  loggedIn?: boolean; notifications?: Notification[];
+export default function CandidateHeader({ loggedIn = false, notifications = [], profile = null }: {
+  loggedIn?: boolean; notifications?: Notification[]; profile?: ProfileSummary | null;
 }) {
   const pathname = usePathname();
   return (
@@ -31,7 +32,7 @@ export default function CandidateHeader({ loggedIn = false, notifications = [] }
         </nav>
         <div className="flex items-center gap-2">
           {loggedIn ? <NotificationBell notifications={notifications} /> : <Link href="/ingresar" className="text-sm font-semibold text-primary px-2 py-3">Ingresar</Link>}
-          <Link href={loggedIn ? "/perfil" : "/ingresar"} className="candidate-user" aria-label={loggedIn ? "Mi perfil" : "Ingresar a mi cuenta"}><UserRound size={18} /></Link>
+          {loggedIn && profile ? <ProfileMenu profile={profile} /> : <Link href={loggedIn ? "/perfil" : "/ingresar"} className="candidate-user" aria-label={loggedIn ? "Mi perfil" : "Ingresar a mi cuenta"}><UserRound size={18} /></Link>}
         </div>
       </div>
     </header>

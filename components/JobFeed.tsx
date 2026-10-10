@@ -1,9 +1,10 @@
 "use client";
 
 import { Fragment, useState } from "react";
+import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Search, MapPin, SlidersHorizontal, X, Bell, GraduationCap, Wallet, BadgeCheck } from "lucide-react";
+import { Search, MapPin, SlidersHorizontal, X, Bell, GraduationCap, Wallet, BadgeCheck, List, Map as MapIcon } from "lucide-react";
 import type { ExternalJob, JobWithCompany } from "@/lib/types";
 import { CITIES, INDUSTRIES } from "@/lib/mock-data";
 import { matchesJob, matchesExternalJob } from "@/lib/job-search";
@@ -11,10 +12,17 @@ import MobileSheet from "@/components/MobileSheet";
 import ExternalJobCard from "@/components/ExternalJobCard";
 import JobResultCard from "@/components/jobs/JobResultCard";
 import JobPreview from "@/components/jobs/JobPreview";
+import type { MatchCandidate } from "@/lib/job-match";
 
-export default function JobFeed({ jobs, appliedJobIds, savedJobIds = [], evaluationJobIds = [], industries = INDUSTRIES, cities = CITIES, externalJobs = [], loggedIn = true }: {
+// Leaflet usa window: el mapa se carga solo en el navegador y solo si se pide.
+const JobMap = dynamic(() => import("@/components/jobs/JobMap"), {
+  ssr: false,
+  loading: () => <div className="job-map-loading">Cargando mapa…</div>,
+});
+
+export default function JobFeed({ jobs, appliedJobIds, savedJobIds = [], evaluationJobIds = [], industries = INDUSTRIES, cities = CITIES, externalJobs = [], loggedIn = true, matchProfile = null }: {
   jobs: JobWithCompany[]; appliedJobIds: string[]; savedJobIds?: string[]; evaluationJobIds?: string[];
-  industries?: string[]; cities?: string[]; externalJobs?: ExternalJob[]; loggedIn?: boolean;
+  industries?: string[]; cities?: string[]; externalJobs?: ExternalJob[]; loggedIn?: boolean; matchProfile?: MatchCandidate | null;
 }) {
   const params = useSearchParams();
   const [filterOpen, setFilterOpen] = useState(false);
@@ -33,6 +41,7 @@ export default function JobFeed({ jobs, appliedJobIds, savedJobIds = [], evaluat
   const withSalary = params.get("salario") === "1";
   const hideApplied = params.get("sinPostuladas") === "1";
   const sort = params.get("orden") === "urgentes" ? "urgentes" : "recientes";
+  const view = params.get("vista") === "mapa" ? "mapa" : "lista";
   const applied = new Set([...appliedJobIds, ...newApplications]);
   const isSaved = (id: string) => savedChanges[id] ?? savedJobIds.includes(id);
   const filters = { query, city, industry, modality, contract, firstJobOnly, onlyVerified, withSalary, hideApplied };
@@ -56,9 +65,10 @@ export default function JobFeed({ jobs, appliedJobIds, savedJobIds = [], evaluat
     window.history.replaceState(null, "", `/empleos${next.size ? `?${next}` : ""}`);
     setLimit(12);
   }
-  function reset() { window.history.replaceState(null, "", "/empleos"); setLimit(12); }
+  // Limpiar filtros no cambia entre lista y mapa.
+  function reset() { window.history.replaceState(null, "", view === "mapa" ? "/empleos?vista=mapa" : "/empleos"); setLimit(12); }
   const sharedJobProps = (job: JobWithCompany) => ({
-    job, loggedIn, requiresEvaluation: evaluationJobIds.includes(job.id), saved: isSaved(job.id), applied: applied.has(job.id),
+    job, loggedIn, matchProfile, requiresEvaluation: evaluationJobIds.includes(job.id), saved: isSaved(job.id), applied: applied.has(job.id),
     onSaved: (value: boolean) => setSavedChanges((current) => ({ ...current, [job.id]: value })),
     onApplied: () => setNewApplications((current) => [...current, job.id]),
   });
@@ -81,8 +91,9 @@ export default function JobFeed({ jobs, appliedJobIds, savedJobIds = [], evaluat
       {(activeCount > 0 || query) && <button className="filter-clear" onClick={reset}>Limpiar</button>}
       <Link href={alertSupported ? alertHref : "/alertas"} className="job-alert-link"><Bell size={15} /> Mis alertas</Link>
     </div>
-    <div className="job-results-toolbar"><p role="status"><span className="job-active-dot" /><strong>{total} {total === 1 ? "vacante" : "vacantes"}</strong><span className="job-results-hint"> encontradas</span></p><label><span className="hidden sm:inline">Ordenar por:</span><select aria-label="Ordenar vacantes" value={sort} onChange={(e) => update("orden", e.target.value)}><option value="recientes">Más recientes</option><option value="urgentes">Urgentes primero</option></select></label></div>
+    <div className="job-results-toolbar"><p role="status"><span className="job-active-dot" /><strong>{total} {total === 1 ? "vacante" : "vacantes"}</strong><span className="job-results-hint"> encontradas</span></p><div className="job-toolbar-actions"><div className="job-view-toggle" role="group" aria-label="Ver resultados como"><button aria-pressed={view === "lista"} onClick={() => update("vista", "")}><List size={15} /> Lista</button><button aria-pressed={view === "mapa"} onClick={() => update("vista", "mapa")}><MapIcon size={15} /> Mapa</button></div>{view === "lista" && <label><span className="hidden sm:inline">Ordenar por:</span><select aria-label="Ordenar vacantes" value={sort} onChange={(e) => update("orden", e.target.value)}><option value="recientes">Más recientes</option><option value="urgentes">Urgentes primero</option></select></label>}</div></div>
     {total === 0 ? <div className="job-empty"><Search size={32} /><h2>No hay resultados con estos filtros</h2><p>Probá otro cargo o ampliá la ciudad para ver más oportunidades.</p><button className="btn-primary" onClick={reset}>Ver todas las vacantes</button></div> :
+      view === "mapa" ? <JobMap jobs={filtered} homeCity={matchProfile?.location_city ?? null} country={jobs[0]?.company.country ?? "py"} /> :
       <div className={`job-search-grid ${!selected ? "external-only" : ""}`}>
         <div className="job-results-list" aria-label="Resultados de empleo">
           {shownJobs.map((job, index) => <Fragment key={job.id}><JobResultCard {...sharedJobProps(job)} selected={selected?.id === job.id} onSelect={() => setSelectedId(job.id)} />{index === 1 && (!alertDismissed && alertSupported && <aside className="job-alert-banner">

@@ -235,7 +235,46 @@ export interface Candidate {
   visible_to_companies: boolean;
   public_profile: boolean;
   open_to_other_cities: boolean;
+  skills?: string[];
   created_at: string;
+}
+
+export interface CandidateExperience {
+  id: string;
+  candidate_id: string;
+  role: string;
+  company: string;
+  start_date: string; // YYYY-MM-DD (se usa el mes)
+  end_date: string | null; // null = trabajo actual
+  description: string;
+}
+
+export const EDUCATION_LEVELS = ["Secundario", "Técnico", "Universitario", "Curso", "Otro"] as const;
+export type EducationLevel = (typeof EDUCATION_LEVELS)[number];
+
+export interface CandidateEducation {
+  id: string;
+  candidate_id: string;
+  institution: string;
+  title: string;
+  level: EducationLevel;
+  end_year: number | null; // null = en curso
+}
+
+// Curso de Academia terminado al 100%: se muestra como insignia.
+export interface CourseBadge {
+  course_id: string;
+  slug: string;
+  title: string;
+  category: string;
+  completed_at: string;
+}
+
+export interface CareerData {
+  experience: CandidateExperience[];
+  education: CandidateEducation[];
+  skills: string[];
+  courses: CourseBadge[];
 }
 
 // Miembro del equipo de reclutamiento de una empresa

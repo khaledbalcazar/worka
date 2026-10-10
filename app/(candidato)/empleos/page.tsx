@@ -3,6 +3,7 @@ import JobFeed from "@/components/JobFeed";
 import {
   getActiveJobs,
   getCurrentCandidate,
+  getExperienceCount,
   getExternalJobs,
   getMyAppliedJobIds,
   getMySavedJobIds,
@@ -47,6 +48,7 @@ export default async function JobFeedPage() {
   const cities = [...new Set([...country.cities, ...extra(settings.custom_cities)])];
 
   const loggedIn = isLive() ? !!(await getCurrentUser()) : true;
+  const experienceCount = candidate ? await getExperienceCount(candidate.id) : 0;
 
   return (
     <JobFeed
@@ -58,6 +60,16 @@ export default async function JobFeedPage() {
       industries={industries}
       cities={cities}
       externalJobs={externalJobs}
+      matchProfile={candidate ? {
+        location_city: candidate.location_city,
+        open_to_other_cities: candidate.open_to_other_cities,
+        preferences_modality: candidate.preferences_modality,
+        preferences_industry: candidate.preferences_industry,
+        first_job_mode: candidate.first_job_mode,
+        cv_url: candidate.cv_url,
+        experience_count: experienceCount,
+        skills: candidate.skills ?? [],
+      } : null}
     />
   );
 }

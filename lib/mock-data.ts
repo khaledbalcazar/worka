@@ -4,6 +4,9 @@ import type {
   Course,
   Lesson,
   Candidate,
+  CandidateEducation,
+  CandidateExperience,
+  CourseBadge,
   ChatMessage,
   Company,
   CompanyPost,
@@ -572,8 +575,42 @@ export const currentCandidate: Candidate = {
   visible_to_companies: true,
   public_profile: true,
   open_to_other_cities: false,
+  skills: ["Atención al cliente", "Manejo de caja", "Excel básico"],
   created_at: "2026-07-05T16:00:00Z",
 };
+
+export const candidateExperience: CandidateExperience[] = [
+  {
+    id: "exp1",
+    candidate_id: "cand1",
+    role: "Cajera",
+    company: "Despensa Familiar Duarte",
+    start_date: "2024-02-01",
+    end_date: "2025-12-01",
+    description: "Cobro en efectivo y POS, arqueo de caja al cierre y reposición de góndolas.",
+  },
+];
+
+export const candidateEducation: CandidateEducation[] = [
+  {
+    id: "edu1",
+    candidate_id: "cand1",
+    institution: "Colegio Nacional de la Capital",
+    title: "Bachiller en Ciencias Sociales",
+    level: "Secundario",
+    end_year: 2023,
+  },
+];
+
+export const courseBadges: CourseBadge[] = [
+  {
+    course_id: "crs1",
+    slug: "preparate-para-entrevistas",
+    title: "Preparate para tus entrevistas",
+    category: "Entrevistas",
+    completed_at: "2026-08-02T15:00:00Z",
+  },
+];
 
 // Equipo de reclutamiento de la empresa demo
 export const companyMembers = [

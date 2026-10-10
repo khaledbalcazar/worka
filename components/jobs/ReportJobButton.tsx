@@ -4,14 +4,14 @@ import { Flag } from "lucide-react";
 import { reportJob } from "@/app/actions";
 import MobileSheet from "@/components/MobileSheet";
 
-export default function ReportJobButton({ jobId }: { jobId: string }) {
+export default function ReportJobButton({ jobId, label = "Reportar un problema", className = "flex items-center gap-1 text-xs text-gray-500 py-2" }: { jobId: string; label?: string; className?: string }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
   const [pending, start] = useTransition();
   return <>
-    <button className="flex items-center gap-1 text-xs text-gray-500 py-2" onClick={() => setOpen(true)}><Flag size={13} /> Reportar un problema</button>
+    <button className={className} onClick={() => setOpen(true)}><Flag size={14} /> {label}</button>
     <MobileSheet desktop open={open} onClose={() => setOpen(false)} label="Reportar vacante" className="p-5">
       <h2 className="text-lg font-semibold">{done ? "Recibimos tu reporte" : "¿Qué problema encontraste?"}</h2>
       {done ? <p className="text-sm text-gray-600 mt-3">El equipo de Worka revisará la vacante. Gracias por ayudarnos a cuidar la comunidad.</p> : <>

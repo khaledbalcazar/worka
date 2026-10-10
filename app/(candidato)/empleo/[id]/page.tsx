@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getJobById, getMyAppliedJobIds, isLive } from "@/lib/data";
+import { getCurrentCandidate, getExperienceCount, getJobById, getMyAppliedJobIds, isLive } from "@/lib/data";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { SITE_URL } from "@/lib/supabase/config";
 import { formatDate, timeAgo } from "@/lib/format";
 import ApplyPanel from "@/components/ApplyPanel";
-import ReportJobButton from "@/components/jobs/ReportJobButton";
+import JobMatchCard from "@/components/jobs/JobMatchCard";
+import JobBenefits from "@/components/jobs/JobBenefits";
+import SelectionProcess from "@/components/jobs/SelectionProcess";
+import SafetyNotice from "@/components/jobs/SafetyNotice";
 import EntityAvatar from "@/components/EntityAvatar";
 import JobViewTracker from "@/components/JobViewTracker";
 import LinkedJobPanel from "@/components/evaluar/LinkedJobPanel";
@@ -65,10 +68,11 @@ export default async function JobDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [job, appliedIds, user] = await Promise.all([
+  const [job, appliedIds, user, candidate] = await Promise.all([
     getJobById(id),
     getMyAppliedJobIds(),
     isLive() ? getCurrentUser() : null,
+    getCurrentCandidate(),
   ]);
   // En demo se navega como logueado; en vivo depende de la sesión real.
   const loggedIn = isLive() ? !!user : true;
@@ -76,7 +80,10 @@ export default async function JobDetailPage({
 
   // ¿La empresa enlazó esta vacante con un proceso de Worka Evaluar? Si sí, el
   // candidato arranca los tests desde acá, sin salir del aviso.
-  const evaluation = await getProcessForJob(job.id);
+  const [evaluation, experienceCount] = await Promise.all([
+    getProcessForJob(job.id),
+    candidate ? getExperienceCount(candidate.id) : Promise.resolve(0),
+  ]);
   const participation = evaluation
     ? await getMyParticipation(evaluation.id)
     : null;
@@ -247,6 +254,11 @@ export default async function JobDetailPage({
             </p>
           </div>
 
+          <JobMatchCard
+            candidate={candidate ? { ...candidate, skills: candidate.skills ?? [], experience_count: experienceCount } : null}
+            job={job}
+          />
+
           {/* Cómo llegar */}
           {(job.address || job.nearby_transit) && job.modality !== "Remoto" && (
             <div className="card p-5">
@@ -296,50 +308,34 @@ export default async function JobDetailPage({
             </p>
           </div>
 
-          {/* Requisitos y beneficios */}
-          {(job.requirements.length > 0 || job.benefits.length > 0) && (
-            <div className="grid sm:grid-cols-2 gap-4">
-              {job.requirements.length > 0 && (
-                <div className="card p-5">
-                  <h2 className="font-semibold text-primary-dark mb-2.5">
-                    ✅ Requisitos
-                  </h2>
-                  <ul className="space-y-1.5">
-                    {job.requirements.map((r) => (
-                      <li
-                        key={r}
-                        className="text-sm text-gray-600 flex items-start gap-2"
-                      >
-                        <span className="text-primary mt-0.5">•</span> {r}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              {job.benefits.length > 0 && (
-                <div className="card p-5">
-                  <h2 className="font-semibold text-primary-dark mb-2.5">
-                    🎁 Beneficios
-                  </h2>
-                  <ul className="space-y-1.5">
-                    {job.benefits.map((b) => (
-                      <li
-                        key={b}
-                        className="text-sm text-gray-600 flex items-start gap-2"
-                      >
-                        <span className="text-success mt-0.5">✓</span> {b}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+          {job.requirements.length > 0 && (
+            <div className="card p-5">
+              <h2 className="job-block-title">Requisitos</h2>
+              <ul className="space-y-2">
+                {job.requirements.map((r) => (
+                  <li key={r} className="text-sm text-gray-700 flex items-start gap-2">
+                    <span className="text-primary mt-0.5">•</span> {r}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 
-          <div className="text-center text-xs text-gray-500 px-4 pb-2 space-y-2">
-            <p>Nunca pagues para conseguir un trabajo.</p>
-            <ReportJobButton jobId={job.id} />
+          {job.benefits.length > 0 && (
+            <div className="card p-5">
+              <JobBenefits benefits={job.benefits} />
+            </div>
+          )}
+
+          <div className="card p-5">
+            <SelectionProcess
+              company={job.company}
+              questions={job.filter_questions}
+              hasEvaluation={!!evaluation}
+            />
           </div>
+
+          <SafetyNotice jobId={job.id} />
         </div>
 
         {/* Panel de postulación: fijo a la derecha en escritorio */}

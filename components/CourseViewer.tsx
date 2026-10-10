@@ -97,6 +97,11 @@ export default function CourseViewer({
               <Award size={16} /> Ver mi certificado
             </Link>
           )}
+          {pct === 100 && total > 0 && (
+            <Link href="/perfil#cursos" className="mt-2 block text-center text-xs text-primary font-medium py-1.5">
+              Tu insignia ya se muestra en tu perfil →
+            </Link>
+          )}
         </div>
 
         <div className="card divide-y divide-gray-100 overflow-hidden">

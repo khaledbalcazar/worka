@@ -227,6 +227,57 @@ export async function getMyReferences(): Promise<WorkReference[]> {
   return (data ?? []) as WorkReference[];
 }
 
+// Trayectoria del candidato: experiencia, estudios, habilidades y cursos de
+// Academia terminados. Sirve para el perfil propio y para el público; las
+// políticas de la base deciden quién puede leer a quién.
+export async function getCandidateCareer(
+  candidateId: string,
+  skills: string[] = []
+): Promise<import("./types").CareerData> {
+  const supabase = await getServerClient();
+  if (!supabase) {
+    return {
+      experience: mock.candidateExperience.filter((e) => e.candidate_id === candidateId),
+      education: mock.candidateEducation.filter((e) => e.candidate_id === candidateId),
+      skills,
+      courses: candidateId === mock.currentCandidate.id ? mock.courseBadges : [],
+    };
+  }
+  const [experience, education, courses] = await Promise.all([
+    supabase
+      .from("candidate_experience")
+      .select("*")
+      .eq("candidate_id", candidateId)
+      .order("end_date", { ascending: false, nullsFirst: true })
+      .order("start_date", { ascending: false }),
+    supabase
+      .from("candidate_education")
+      .select("*")
+      .eq("candidate_id", candidateId)
+      .order("end_year", { ascending: false, nullsFirst: true }),
+    supabase.rpc("fn_completed_courses", { p_user: candidateId }),
+  ]);
+  return {
+    experience: (experience.data ?? []) as import("./types").CandidateExperience[],
+    education: (education.data ?? []) as import("./types").CandidateEducation[],
+    skills,
+    courses: (courses.data ?? []) as import("./types").CourseBadge[],
+  };
+}
+
+// Cuántas experiencias cargó el candidato: alcanza para la compatibilidad
+// con vacantes que piden experiencia, sin traer toda la trayectoria.
+export async function getExperienceCount(candidateId: string): Promise<number> {
+  const supabase = await getServerClient();
+  if (!supabase)
+    return mock.candidateExperience.filter((e) => e.candidate_id === candidateId).length;
+  const { count } = await supabase
+    .from("candidate_experience")
+    .select("id", { count: "exact", head: true })
+    .eq("candidate_id", candidateId);
+  return count ?? 0;
+}
+
 export async function getMyFollowedCompanyIds(): Promise<Set<string>> {
   const supabase = await getServerClient();
   if (!supabase) return new Set(mock.followedCompanyIds);
