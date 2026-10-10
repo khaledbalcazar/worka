@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import EntityAvatar from "@/components/EntityAvatar";
 import Logo from "@/components/Logo";
-import { getPublicCandidate } from "@/lib/data";
+import { getCandidateCareer, getPublicCandidate } from "@/lib/data";
+import CareerSummary from "@/components/profile/CareerSummary";
 import { formatDate } from "@/lib/format";
 
 // Perfil público del candidato: una URL compartible por WhatsApp,
@@ -15,6 +16,7 @@ export default async function PublicCandidatePage({
   const { id } = await params;
   const candidate = await getPublicCandidate(id);
   if (!candidate) notFound();
+  const career = await getCandidateCareer(candidate.id, candidate.skills ?? []);
 
   const shareUrl = `https://wa.me/?text=${encodeURIComponent(
     `Mirá mi perfil laboral en Worka: worka.com.py/p/${candidate.id}`
@@ -87,6 +89,8 @@ export default async function PublicCandidatePage({
             </p>
           </div>
         </div>
+
+        <CareerSummary career={career} />
 
         {candidate.references.filter((r) => r.status === "confirmada").length >
           0 && (

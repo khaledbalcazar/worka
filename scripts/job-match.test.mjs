@@ -44,3 +44,18 @@ test('first-job candidates do not match jobs that require experience', () => {
   assert.equal(r.items.find((i) => i.key === 'experiencia').status, 'unmet');
   assert.equal(r.percent, 60);
 });
+
+test('loaded experience satisfies jobs that require it', () => {
+  const r = jobMatch({ ...candidate, experience_count: 2 }, { ...job, requires_experience: true });
+  const item = r.items.find((i) => i.key === 'experiencia');
+  assert.equal(item.status, 'met');
+  assert.match(item.text, /2 trabajos/);
+});
+
+test('skills written in the requirements add a met item; missing ones add nothing', () => {
+  const withReq = { ...job, requirements: ['Manejo de CAJA registradora', 'Secundario completo'] };
+  const r = jobMatch({ ...candidate, skills: ['Manejo de caja', 'Inglés'] }, withReq);
+  assert.equal(r.items.find((i) => i.key === 'habilidades').status, 'met');
+  const none = jobMatch({ ...candidate, skills: ['Inglés'] }, withReq);
+  assert.equal(none.items.find((i) => i.key === 'habilidades'), undefined);
+});

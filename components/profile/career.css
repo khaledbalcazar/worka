@@ -1,0 +1,36 @@
+/* Trayectoria del perfil: experiencia, estudios, habilidades e insignias. */
+.career-list { display:flex; flex-direction:column; }
+.career-list li { display:flex; gap:12px; padding:12px 0; border-top:1px solid #ecebe8; }
+.career-list li:first-child { border-top:0; padding-top:2px; }
+.career-icon { width:36px; height:36px; border-radius:8px; background:#eef4fb; color:#0a66c2; display:grid; place-items:center; flex-shrink:0; }
+.career-list strong { display:block; font-size:14px; font-weight:600; line-height:1.4; }
+.career-list p { font-size:13px; color:#444; }
+.career-list small { display:block; font-size:12px; color:#777; margin-top:2px; }
+.career-list .career-description { font-size:12.5px; color:#555; line-height:1.6; margin-top:6px; white-space:pre-line; }
+.career-actions { display:flex; gap:2px; flex-shrink:0; align-self:flex-start; }
+.career-actions button { width:36px; height:36px; display:grid; place-items:center; border-radius:50%; color:#666; }
+.career-actions button:hover { background:#f3f2f0; color:#202124; }
+.skill-list { display:flex; flex-wrap:wrap; gap:6px; }
+.skill-list li { display:inline-flex; align-items:center; gap:2px; padding:4px 4px 4px 12px; border-radius:999px; background:#eef4fb; color:#0a4f96; font-size:13px; font-weight:500; }
+.skill-list li button { width:26px; height:26px; display:grid; place-items:center; border-radius:50%; }
+.skill-list li button:hover { background:#d9e7f6; }
+.skill-form { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; margin-top:12px; }
+.skill-suggestions { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:10px; font-size:12px; color:#777; }
+.skill-suggestions button { display:inline-flex; align-items:center; gap:3px; min-height:32px; padding:0 10px; border-radius:999px; border:1px dashed #c0bfbc; color:#444; font-size:12px; }
+.skill-suggestions button:hover { border-color:#0a66c2; color:#0a66c2; }
+.course-badges { display:grid; gap:8px; }
+.course-badge { display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:10px; border:1px solid #e6e4e0; background:#fff; }
+.course-badge:hover { border-color:#c9c7c3; }
+.course-badge strong { display:block; font-size:13.5px; font-weight:600; line-height:1.35; color:#202124; }
+.course-badge small { display:block; font-size:11.5px; color:#777; margin-top:2px; }
+.course-badge-medal { width:40px; height:40px; border-radius:50%; display:grid; place-items:center; flex-shrink:0; color:#fff; box-shadow:inset 0 0 0 3px rgba(255,255,255,.35); }
+.course-badge.is-blue .course-badge-medal { background:#0a66c2; }
+.course-badge.is-green .course-badge-medal { background:#057642; }
+.course-badge.is-clay .course-badge-medal { background:#b24020; }
+.course-badges-empty { display:flex; gap:10px; align-items:flex-start; padding:12px; border-radius:8px; background:#f6f5f3; color:#666; font-size:12.5px; line-height:1.6; }
+.course-badges-empty svg { flex-shrink:0; color:#0a66c2; }
+.course-badges-empty a { color:#0a66c2; font-weight:600; }
+@media (min-width:640px) { .course-badges { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.career-heading { display:flex; align-items:center; gap:7px; font-size:15px; font-weight:650; margin-bottom:12px; color:#202124; }
+.career-heading svg { color:#0a66c2; }
+.skill-list.is-readonly li { padding:5px 12px; }

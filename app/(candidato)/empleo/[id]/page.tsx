@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getCurrentCandidate, getJobById, getMyAppliedJobIds, isLive } from "@/lib/data";
+import { getCurrentCandidate, getExperienceCount, getJobById, getMyAppliedJobIds, isLive } from "@/lib/data";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { SITE_URL } from "@/lib/supabase/config";
 import { formatDate, timeAgo } from "@/lib/format";
@@ -80,7 +80,10 @@ export default async function JobDetailPage({
 
   // ¿La empresa enlazó esta vacante con un proceso de Worka Evaluar? Si sí, el
   // candidato arranca los tests desde acá, sin salir del aviso.
-  const evaluation = await getProcessForJob(job.id);
+  const [evaluation, experienceCount] = await Promise.all([
+    getProcessForJob(job.id),
+    candidate ? getExperienceCount(candidate.id) : Promise.resolve(0),
+  ]);
   const participation = evaluation
     ? await getMyParticipation(evaluation.id)
     : null;
@@ -251,7 +254,10 @@ export default async function JobDetailPage({
             </p>
           </div>
 
-          <JobMatchCard candidate={candidate} job={job} />
+          <JobMatchCard
+            candidate={candidate ? { ...candidate, skills: candidate.skills ?? [], experience_count: experienceCount } : null}
+            job={job}
+          />
 
           {/* Cómo llegar */}
           {(job.address || job.nearby_transit) && job.modality !== "Remoto" && (

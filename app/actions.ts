@@ -6,6 +6,13 @@ import { redirect } from "next/navigation";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { slugify as toSlug } from "@/lib/slug";
 import { COMPANY_ROLES } from "@/lib/types";
+import {
+  normalizeSkills,
+  validateEducation,
+  validateExperience,
+  type EducationInput,
+  type ExperienceInput,
+} from "@/lib/career";
 import type {
   ApplicationStatus,
   BadgeId,
@@ -435,6 +442,110 @@ export async function addWorkReference(input: {
   if (error) return { ok: false, error: "No pudimos agregar la referencia." };
   revalidatePath("/perfil");
   return { ok: true, token: data.token as string, id: data.id as string };
+}
+
+// ── Trayectoria: experiencia, estudios y habilidades (migración 042) ──
+
+// Crea o actualiza una experiencia. Con id edita; sin id agrega.
+export async function saveExperience(
+  input: ExperienceInput & { id?: string }
+): Promise<ActionResult> {
+  const problem = validateExperience(input);
+  if (problem) return { ok: false, error: problem };
+  const supabase = await getServerClient();
+  if (!supabase) return { ...DEMO, id: input.id ?? `demo-exp-${Date.now()}` };
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión primero." };
+  const row = {
+    candidate_id: user.id,
+    role: input.role.trim(),
+    company: input.company.trim(),
+    start_date: `${input.start_month}-01`,
+    end_date: input.end_month ? `${input.end_month}-01` : null,
+    description: input.description.trim(),
+  };
+  const query = input.id
+    ? supabase.from("candidate_experience").update(row).eq("id", input.id).eq("candidate_id", user.id)
+    : supabase.from("candidate_experience").insert(row);
+  const { data, error } = await query.select("id").single();
+  if (error || !data) return { ok: false, error: "No pudimos guardar la experiencia." };
+  revalidatePath("/perfil");
+  revalidatePath(`/p/${user.id}`);
+  return { ok: true, id: data.id as string };
+}
+
+export async function deleteExperience(id: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión primero." };
+  const { error } = await supabase
+    .from("candidate_experience")
+    .delete()
+    .eq("id", id)
+    .eq("candidate_id", user.id);
+  if (error) return { ok: false, error: "No pudimos eliminar la experiencia." };
+  revalidatePath("/perfil");
+  revalidatePath(`/p/${user.id}`);
+  return { ok: true };
+}
+
+export async function saveEducation(
+  input: EducationInput & { id?: string }
+): Promise<ActionResult> {
+  const problem = validateEducation(input);
+  if (problem) return { ok: false, error: problem };
+  const supabase = await getServerClient();
+  if (!supabase) return { ...DEMO, id: input.id ?? `demo-edu-${Date.now()}` };
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión primero." };
+  const row = {
+    candidate_id: user.id,
+    institution: input.institution.trim(),
+    title: input.title.trim(),
+    level: input.level,
+    end_year: input.end_year,
+  };
+  const query = input.id
+    ? supabase.from("candidate_education").update(row).eq("id", input.id).eq("candidate_id", user.id)
+    : supabase.from("candidate_education").insert(row);
+  const { data, error } = await query.select("id").single();
+  if (error || !data) return { ok: false, error: "No pudimos guardar los estudios." };
+  revalidatePath("/perfil");
+  revalidatePath(`/p/${user.id}`);
+  return { ok: true, id: data.id as string };
+}
+
+export async function deleteEducation(id: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión primero." };
+  const { error } = await supabase
+    .from("candidate_education")
+    .delete()
+    .eq("id", id)
+    .eq("candidate_id", user.id);
+  if (error) return { ok: false, error: "No pudimos eliminar los estudios." };
+  revalidatePath("/perfil");
+  revalidatePath(`/p/${user.id}`);
+  return { ok: true };
+}
+
+export async function updateSkills(skills: string[]): Promise<ActionResult & { skills?: string[] }> {
+  const clean = normalizeSkills(skills);
+  const supabase = await getServerClient();
+  if (!supabase) return { ...DEMO, skills: clean };
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión primero." };
+  const { error } = await supabase
+    .from("candidates")
+    .update({ skills: clean })
+    .eq("id", user.id);
+  if (error) return { ok: false, error: "No pudimos guardar tus habilidades." };
+  revalidatePath("/perfil");
+  revalidatePath(`/p/${user.id}`);
+  return { ok: true, skills: clean };
 }
 
 // Confirmación pública de referencia vía link único (RPC security definer)

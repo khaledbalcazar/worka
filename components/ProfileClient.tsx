@@ -5,7 +5,8 @@ import Link from "next/link";
 import { ArrowUpRight, BadgeCheck, Bell, BriefcaseBusiness, Camera, Check, ChevronDown, Eye, FileText, Lightbulb, LogOut, MapPin, Pencil, Phone, Plus, Settings, ShieldCheck, Upload, X } from "lucide-react";
 import MobileSheet from "@/components/MobileSheet";
 import { countryByCode } from "@/lib/countries";
-import type { Candidate, IdentityStatus, WorkReference } from "@/lib/types";
+import type { CareerData, Candidate, IdentityStatus, WorkReference } from "@/lib/types";
+import ProfileCareer from "@/components/profile/ProfileCareer";
 import {
   addWorkReference,
   deleteAccount,
@@ -62,10 +63,12 @@ export default function ProfileClient({
   candidate: initialCandidate,
   references: initialReferences = [],
   settings = {},
+  career,
 }: {
   candidate: Candidate;
   references?: WorkReference[];
   settings?: Record<string, string>;
+  career?: CareerData;
 }) {
   useOpenDetailsFromHash();
   const [candidate, setCandidate] = useState(initialCandidate);
@@ -287,7 +290,7 @@ export default function ProfileClient({
     <div className="profile-page">
       <nav className="profile-section-nav" aria-label="Secciones de mi perfil">
         <span className="profile-nav-label"><span className="job-active-dot" /> Mi perfil</span>
-        {[["datos", "Resumen"], ["presentacion", "Sobre mí"], ["curriculum", "Mi CV"], ["preferencias", "Preferencias"], ["referencias", "Referencias"]].map(([id, label]) => <a key={id} href={`#${id}`}>{label}</a>)}
+        {[["datos", "Resumen"], ["presentacion", "Sobre mí"], ["experiencia", "Experiencia"], ["estudios", "Estudios"], ["habilidades", "Habilidades"], ["cursos", "Cursos"], ["curriculum", "Mi CV"], ["preferencias", "Preferencias"], ["referencias", "Referencias"]].map(([id, label]) => <a key={id} href={`#${id}`}>{label}</a>)}
       </nav>
       {profileError && <p role="alert" className="profile-error">{profileError}</p>}
       <div className="profile-layout">
@@ -318,6 +321,8 @@ export default function ProfileClient({
             {bioEditor ? <div className="space-y-3"><label htmlFor="profile-bio" className="sr-only">Sobre mí</label><textarea id="profile-bio" aria-describedby="bio-help" className="input min-h-32" maxLength={280} value={bio} placeholder="Contá qué sabés hacer y qué oportunidad estás buscando." onChange={(e) => { setBio(e.target.value); setBioSaved(false); }} /><p id="bio-help" className="text-xs text-gray-500">{bio.length}/280 caracteres · Guardá para actualizar tu perfil.</p><div className="flex gap-2"><button className="btn-primary" disabled={pending || bio.trim() === savedBio} onClick={saveBio}>{pending ? "Guardando…" : "Guardar"}</button><button className="btn-secondary" onClick={() => { setBio(savedBio); setBioEditor(false); }}>Cancelar</button></div></div> : <><p className="profile-bio">{savedBio || "Tu experiencia también cuenta si es tu primer empleo. Contá qué aprendiste, qué te gusta hacer y qué estás buscando."}</p>{!savedBio && <button className="profile-text-action" onClick={() => setBioEditor(true)}>Agregar una presentación</button>}</>}
             {bioSaved && <p role="status" className="text-xs text-emerald-700 mt-3">Presentación guardada.</p>}
           </section>
+
+          {career && <ProfileCareer initial={career} />}
 
           <section id="curriculum" className="card profile-section">
             <div className="profile-section-title"><h2><FileText size={18} /> Mi currículum</h2>{hasCv && <span className="profile-status">PDF cargado</span>}</div>

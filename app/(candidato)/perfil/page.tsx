@@ -1,6 +1,7 @@
 import Link from "next/link";
 import ProfileClient from "@/components/ProfileClient";
 import {
+  getCandidateCareer,
   getCurrentCandidate,
   getMyReferences,
   getSiteSettings,
@@ -28,9 +29,10 @@ export default async function ProfilePage() {
     );
   }
 
-  const [references, settings] = await Promise.all([
+  const [references, settings, career] = await Promise.all([
     getMyReferences(),
     getSiteSettings(),
+    getCandidateCareer(candidate.id, candidate.skills ?? []),
   ]);
   return (
     <div className="space-y-4">
@@ -38,6 +40,7 @@ export default async function ProfilePage() {
         candidate={candidate}
         references={references}
         settings={settings}
+        career={career}
       />
     </div>
   );

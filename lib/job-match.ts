@@ -16,17 +16,23 @@ export type MatchCandidate = Pick<
   | "preferences_industry"
   | "first_job_mode"
   | "cv_url"
->;
+> & {
+  // Opcionales: vienen de la trayectoria (migración 042).
+  experience_count?: number;
+  skills?: string[];
+};
 export type MatchJob = Pick<Job, "modality" | "industry" | "requires_experience"> & {
+  requirements?: string[];
   company: { location_city: string };
 };
 
 const MODALITIES = ["Presencial", "Híbrido", "Remoto"];
 
+const norm = (v: string) =>
+  v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
 function same(a: string, b: string) {
-  const n = (v: string) =>
-    v.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
-  return n(a) === n(b);
+  return norm(a) === norm(b);
 }
 
 export function jobMatch(candidate: MatchCandidate, job: MatchJob) {
@@ -59,12 +65,25 @@ export function jobMatch(candidate: MatchCandidate, job: MatchJob) {
     items.push({ key: "rubro", status: "unmet", text: `Rubro ${job.industry}, fuera de tus intereses` });
   }
 
+  const experienceCount = candidate.experience_count ?? 0;
   if (!job.requires_experience) {
     items.push({ key: "experiencia", status: "met", text: "No pide experiencia previa" });
+  } else if (experienceCount > 0) {
+    items.push({ key: "experiencia", status: "met", text: `Pide experiencia y cargaste ${experienceCount === 1 ? "1 trabajo" : `${experienceCount} trabajos`}` });
   } else if (candidate.first_job_mode) {
     items.push({ key: "experiencia", status: "unmet", text: "Pide experiencia y buscás tu primer empleo" });
   } else {
     items.push({ key: "experiencia", status: "unknown", text: "Pide experiencia: contala en tu perfil" });
+  }
+
+  // Habilidades que aparecen escritas en los requisitos de la vacante. Solo
+  // suma cuando hay coincidencia: que no aparezcan no significa que falten.
+  const requirementText = norm((job.requirements ?? []).join(" | "));
+  const matchedSkills = (candidate.skills ?? []).filter(
+    (skill) => norm(skill).length >= 3 && requirementText.includes(norm(skill))
+  );
+  if (matchedSkills.length > 0) {
+    items.push({ key: "habilidades", status: "met", text: `Pide ${matchedSkills.slice(0, 3).join(", ")}, que está en tus habilidades` });
   }
 
   items.push(
