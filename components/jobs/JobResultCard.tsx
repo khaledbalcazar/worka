@@ -4,13 +4,15 @@ import { BadgeCheck, Bus, MapPin, Check, Zap } from "lucide-react";
 import type { JobWithCompany } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
 import EntityAvatar from "@/components/EntityAvatar";
+import { jobMatch, type MatchCandidate } from "@/lib/job-match";
 import JobApplicationButton from "./JobApplicationButton";
 import SaveJobButton from "./SaveJobButton";
 
-export default function JobResultCard({ job, selected, saved, applied, loggedIn, requiresEvaluation, onSelect, onSaved, onApplied }: {
-  job: JobWithCompany; selected: boolean; saved: boolean; applied: boolean; loggedIn: boolean; requiresEvaluation: boolean;
+export default function JobResultCard({ job, selected, saved, applied, loggedIn, requiresEvaluation, matchProfile = null, onSelect, onSaved, onApplied }: {
+  job: JobWithCompany; matchProfile?: MatchCandidate | null; selected: boolean; saved: boolean; applied: boolean; loggedIn: boolean; requiresEvaluation: boolean;
   onSelect: () => void; onSaved: (value: boolean) => void; onApplied: () => void;
 }) {
+  const match = matchProfile ? jobMatch(matchProfile, job) : null;
   return <article className={`job-result ${selected ? "is-selected" : ""}`}>
     <div className="job-result-heading">
       <EntityAvatar url={job.company.logo_url} name={job.company.trade_name} className="job-company-logo" />
@@ -22,7 +24,7 @@ export default function JobResultCard({ job, selected, saved, applied, loggedIn,
       <SaveJobButton jobId={job.id} saved={saved} loggedIn={loggedIn} onChange={onSaved} />
     </div>
     <div className="job-salary-row"><div><span>Salario ofrecido</span><p>{job.salary_range || "No informado"}</p></div>{job.urgent && <span className="job-urgent"><Zap size={12} /> Contratación inmediata</span>}</div>
-    <div className="job-facts">{!job.requires_experience && <span className="job-first"><Check size={12} /> Sin experiencia</span>}{job.contract_type && <span>{job.contract_type}</span>}</div>
+    <div className="job-facts">{match && match.percent >= 80 && <span className="job-match-chip">{match.percent}% compatible</span>}{!job.requires_experience && <span className="job-first"><Check size={12} /> Sin experiencia</span>}{job.contract_type && <span>{job.contract_type}</span>}</div>
     {job.nearby_transit && <p className="job-transit"><Bus size={13} /><span>{job.nearby_transit}</span></p>}
     <div className="job-mobile-actions lg:hidden"><JobApplicationButton requiresEvaluation={requiresEvaluation} job={job} applied={applied} loggedIn={loggedIn} onApplied={onApplied} /><Link href={`/empleo/${job.id}`} className="btn-secondary">Detalles</Link></div>
     <div className="job-result-footer">{applied ? <span className="text-emerald-700 flex items-center gap-1"><Check size={12} /> Ya te postulaste</span> : <span>{job.vacancies_count > 1 ? `${job.vacancies_count} puestos disponibles` : ""}</span>}<span>Publicado {timeAgo(job.created_at)}</span></div>

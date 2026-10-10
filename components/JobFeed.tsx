@@ -11,10 +11,11 @@ import MobileSheet from "@/components/MobileSheet";
 import ExternalJobCard from "@/components/ExternalJobCard";
 import JobResultCard from "@/components/jobs/JobResultCard";
 import JobPreview from "@/components/jobs/JobPreview";
+import type { MatchCandidate } from "@/lib/job-match";
 
-export default function JobFeed({ jobs, appliedJobIds, savedJobIds = [], evaluationJobIds = [], industries = INDUSTRIES, cities = CITIES, externalJobs = [], loggedIn = true }: {
+export default function JobFeed({ jobs, appliedJobIds, savedJobIds = [], evaluationJobIds = [], industries = INDUSTRIES, cities = CITIES, externalJobs = [], loggedIn = true, matchProfile = null }: {
   jobs: JobWithCompany[]; appliedJobIds: string[]; savedJobIds?: string[]; evaluationJobIds?: string[];
-  industries?: string[]; cities?: string[]; externalJobs?: ExternalJob[]; loggedIn?: boolean;
+  industries?: string[]; cities?: string[]; externalJobs?: ExternalJob[]; loggedIn?: boolean; matchProfile?: MatchCandidate | null;
 }) {
   const params = useSearchParams();
   const [filterOpen, setFilterOpen] = useState(false);
@@ -58,7 +59,7 @@ export default function JobFeed({ jobs, appliedJobIds, savedJobIds = [], evaluat
   }
   function reset() { window.history.replaceState(null, "", "/empleos"); setLimit(12); }
   const sharedJobProps = (job: JobWithCompany) => ({
-    job, loggedIn, requiresEvaluation: evaluationJobIds.includes(job.id), saved: isSaved(job.id), applied: applied.has(job.id),
+    job, loggedIn, matchProfile, requiresEvaluation: evaluationJobIds.includes(job.id), saved: isSaved(job.id), applied: applied.has(job.id),
     onSaved: (value: boolean) => setSavedChanges((current) => ({ ...current, [job.id]: value })),
     onApplied: () => setNewApplications((current) => [...current, job.id]),
   });

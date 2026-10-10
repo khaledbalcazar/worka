@@ -233,3 +233,78 @@
   .job-company-logo { width:36px; height:36px; }
   .profile-primary-actions .btn-primary,.profile-primary-actions .btn-secondary { padding:0 10px; font-size:11px; }
 }
+/* Menú de la cuenta (avatar del encabezado). */
+.profile-menu-trigger { border-radius:50%; padding:2px; display:grid; place-items:center; }
+.profile-menu-trigger[aria-expanded=true] { box-shadow:0 0 0 2px #0a66c2; }
+.profile-menu-avatar { border-radius:50%; background:#004e99; color:#fff; display:grid; place-items:center; overflow:hidden; font-weight:650; flex-shrink:0; }
+.profile-menu-avatar img { width:100%; height:100%; object-fit:cover; }
+.profile-menu-avatar.is-small { width:36px; height:36px; font-size:13px; }
+.profile-menu-avatar.is-large { width:56px; height:56px; font-size:19px; background:#dfeaf3; color:#235477; }
+.profile-menu { position:fixed; z-index:60; top:56px; left:8px; right:8px; max-height:calc(100dvh - 72px); overflow-y:auto; background:#fff; border:1px solid #e0dfdc; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.14),0 0 0 1px rgba(0,0,0,.06); padding:16px; display:flex; flex-direction:column; gap:12px; animation:wk-rise .2s cubic-bezier(.22,1,.36,1) both; }
+.profile-menu-head { display:flex; align-items:center; gap:12px; }
+.profile-menu-name { display:flex; align-items:center; gap:5px; font-size:16px; font-weight:650; line-height:1.3; }
+.profile-menu-meta { display:flex; align-items:center; gap:4px; font-size:12px; color:#666; margin-top:2px; }
+.profile-menu-progress { background:#f6f5f3; border-radius:8px; padding:10px 12px; font-size:12px; color:#444; }
+.profile-menu-group { font-size:11px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:#777; padding:8px 4px 4px; border-top:1px solid #ecebe8; }
+.profile-menu-link { display:flex; align-items:center; gap:12px; width:100%; min-height:44px; padding:0 6px; border-radius:6px; font-size:14px; color:#333; text-align:left; }
+.profile-menu-link > span { flex:1; }
+.profile-menu-link > svg:first-child { color:#666; }
+.profile-menu-link > svg:last-child:not(:first-child) { color:#aaa; }
+.profile-menu-link:hover { background:#f3f2f0; }
+.profile-menu-link.is-danger, .profile-menu-link.is-danger > svg { color:#b42318; }
+@media (min-width:640px) {
+  .profile-menu { position:absolute; top:calc(100% + 10px); left:auto; right:0; width:320px; max-height:calc(100dvh - 90px); }
+}
+/* Detalle de empleo: compatibilidad, beneficios, proceso y seguridad. */
+.job-block-title { font-size:17px; font-weight:650; line-height:1.4; margin:0 0 12px; color:#202124; }
+.job-match { border:1px solid #cfe0f3; background:#f5f9fe; border-radius:10px; padding:16px; }
+.job-match h2 { display:flex; align-items:center; gap:8px; font-size:15px; font-weight:650; line-height:1.4; }
+.job-match h2 svg { color:#0a66c2; flex-shrink:0; }
+.job-match-badge { font-size:11px; font-weight:650; padding:4px 9px; border-radius:999px; white-space:nowrap; }
+.job-match-badge.is-high { background:#0a66c2; color:#fff; }
+.job-match-badge.is-mid { background:#e1ecf8; color:#0a4f96; }
+.job-match-badge.is-low { background:#efedea; color:#555; }
+.job-match-lead { font-size:13px; color:#444; line-height:1.6; margin-top:8px; }
+.job-match-list { display:grid; gap:8px 20px; margin-top:12px; }
+.job-match-list li { display:flex; align-items:flex-start; gap:8px; font-size:13px; line-height:1.45; }
+.job-match-list li svg { flex-shrink:0; margin-top:1px; }
+.job-match-list .is-met { color:#05603a; }
+.job-match-list .is-unmet { color:#8a3a1f; }
+.job-match-list .is-unknown { color:#666; }
+.job-match-note { font-size:11px; color:#777; margin-top:12px; }
+.job-match-note a { color:#0a66c2; font-weight:550; }
+.job-match-chip { display:inline-flex; align-items:center; gap:3px; padding:3px 7px; border-radius:4px; background:#e1ecf8; color:#0a4f96; font-size:10px; font-weight:600; }
+.job-benefits { display:grid; gap:10px; }
+.job-benefits li { display:flex; align-items:center; gap:12px; border:1px solid #e6e4e0; border-radius:10px; padding:12px 14px; background:#fff; }
+.job-benefits li > span { width:38px; height:38px; border-radius:50%; display:grid; place-items:center; background:#eef4fb; color:#0a66c2; flex-shrink:0; }
+.job-benefits li p { font-size:13px; font-weight:550; line-height:1.45; color:#2b2b2b; }
+.job-process { display:grid; gap:10px; }
+.job-process li { border:1px solid #e6e4e0; border-radius:10px; padding:14px; background:#fff; }
+.job-process li p { display:flex; align-items:center; gap:8px; font-weight:650; font-size:14px; color:#0a4f96; }
+.job-process li p span { width:24px; height:24px; border-radius:50%; background:#0a66c2; color:#fff; display:grid; place-items:center; font-size:12px; flex-shrink:0; }
+.job-process li small { display:block; font-size:12.5px; color:#666; line-height:1.55; margin-top:6px; }
+.job-safety { display:flex; flex-wrap:wrap; align-items:center; gap:12px; border:1px solid #f0d5c9; background:#fff6f1; color:#a83919; border-radius:10px; padding:14px 16px; }
+.job-safety > div { flex-basis:calc(100% - 40px); }
+.job-safety strong { display:block; font-size:14px; color:#202124; }
+.job-safety p { font-size:12.5px; color:#5c4a43; line-height:1.55; margin-top:2px; }
+.job-safety-report { display:inline-flex; align-items:center; gap:6px; min-height:40px; padding:0 14px; border-radius:999px; border:1px solid #e8b9a6; background:#fff; color:#a83919; font-size:13px; font-weight:600; }
+.job-safety-report:hover { background:#fdeee6; }
+@media (min-width:640px) {
+  .job-match { padding:20px; }
+  .job-match-list { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .job-benefits { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .job-process { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .job-safety { flex-wrap:nowrap; }
+  .job-safety > div { flex-basis:auto; }
+}
+/* Sello de Confianza: verificaciones reales del perfil. */
+.profile-seal h2 { margin-bottom:4px; }
+.profile-seal-icon { width:30px; height:30px; border-radius:50%; background:#0a66c2; display:grid; place-items:center; }
+.profile-seal h2 .profile-seal-icon svg { color:#fff; }
+.profile-seal-list { display:flex; flex-direction:column; gap:10px; }
+.profile-seal-list li { display:flex; align-items:flex-start; gap:10px; font-size:13px; }
+.profile-seal-list li > svg { color:#057642; flex-shrink:0; margin-top:1px; }
+.profile-seal-list strong { display:block; font-weight:600; }
+.profile-seal-list small { display:block; font-size:11px; color:#777; margin-top:2px; }
+.profile-seal-list a { display:inline-block; font-size:12px; font-weight:600; color:#0a66c2; padding:4px 0; }
+.profile-seal-pending { width:16px; height:16px; border-radius:50%; border:1.5px solid #b9b7b3; flex-shrink:0; margin-top:1px; }
