@@ -6,6 +6,8 @@ import AdminPanel from "@/components/AdminPanel";
 import AdminSubscriptions from "@/components/evaluar/AdminSubscriptions";
 import AdminAiKeys from "@/components/evaluar/AdminAiKeys";
 import EmailTemplates from "@/components/admin/EmailTemplates";
+import WhatsNewEditor from "@/components/admin/WhatsNewEditor";
+import { WHATS_NEW_SETTING, parseWhatsNew } from "@/lib/whats-new";
 import { getAiKeys, getEvaluarAccounts } from "@/lib/evaluar";
 import {
   getActiveJobsCount,
@@ -96,6 +98,13 @@ export default async function AdminPage() {
         </Suspense>
       </div>
 
+      {/* Popup de novedades de /empleos. */}
+      <div className="max-w-6xl mx-auto px-4 pb-10">
+        <Suspense fallback={<Cargando texto="Cargando novedades…" />}>
+          <PanelNovedades />
+        </Suspense>
+      </div>
+
       {/* Editor de los correos que manda la plataforma. */}
       <div className="max-w-6xl mx-auto px-4 pb-10">
         <Suspense fallback={<Cargando texto="Cargando plantillas…" />}>
@@ -157,6 +166,11 @@ async function PanelClaves() {
 async function PanelCorreos() {
   const overrides = await seguro("getEmailTemplateOverrides", () => getEmailTemplateOverrides(), []);
   return <EmailTemplates overrides={overrides} />;
+}
+
+async function PanelNovedades() {
+  const settings = await seguro("getSiteSettings", () => getSiteSettings(), {} as Record<string, string>);
+  return <WhatsNewEditor initial={parseWhatsNew(settings[WHATS_NEW_SETTING])} />;
 }
 
 async function PanelPrincipal() {
@@ -227,7 +241,9 @@ async function PanelPrincipal() {
           identityQueue={identityQueue}
           references={references}
           boosts={boosts}
-          settings={settings}
+          // El popup de novedades tiene su propio editor: si viajara acá,
+          // «Guardar configuración» lo pisaría con la copia vieja.
+          settings={Object.fromEntries(Object.entries(settings).filter(([key]) => key !== WHATS_NEW_SETTING))}
           pendingIndustries={pendingIndustries}
           adminUsers={adminUsers}
           globalStats={globalStats}

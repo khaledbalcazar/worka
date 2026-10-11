@@ -512,3 +512,199 @@ html {
 .nk .border-slate-100 { border-color: var(--nk-line); }
 .nk .text-gray-800,
 .nk .text-slate-900 { color: var(--color-text); }
+
+/* ── Popup de novedades (components/WhatsNewModal.tsx) ──
+   <dialog> nativo: showModal() ya atrapa el foco, cierra con Esc y deja el
+   resto de la página inerte. En el celular es una hoja que sube desde abajo;
+   desde 640px, una tarjeta centrada. */
+@layer components {
+  .wn-dialog {
+    margin: auto auto 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    width: 100%;
+    max-width: 100%;
+    max-height: 92dvh;
+    overflow: visible;
+    color: var(--color-ink);
+  }
+  .wn-dialog::backdrop {
+    background: rgb(15 42 68 / 0.55);
+    backdrop-filter: blur(3px);
+  }
+  .wn-dialog[open] .wn-panel { animation: wn-up 0.28s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .wn-dialog[open]::backdrop { animation: wn-fade 0.2s ease-out; }
+  .wn-panel {
+    outline: none;
+    display: flex;
+    flex-direction: column;
+    max-height: 92dvh;
+    background: #fff;
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -8px 40px rgb(0 0 0 / 0.18);
+    overflow: hidden;
+  }
+  .wn-grabber {
+    display: block;
+    width: 40px;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--color-line);
+    margin: 8px auto 0;
+  }
+  .wn-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 20px 16px;
+    border-bottom: 1px solid var(--color-line);
+  }
+  .wn-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .wn-badge {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: #eef3f8;
+    color: var(--color-primary-dark);
+  }
+  .wn-site { font-size: 12px; color: var(--color-muted); }
+  .wn-title { font-size: 20px; line-height: 1.25; font-weight: 700; letter-spacing: -0.01em; }
+  .wn-subtitle { margin-top: 6px; font-size: 14px; color: var(--color-muted); line-height: 1.5; }
+  .wn-close {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    margin: -4px -8px 0 0;
+    border-radius: 999px;
+    color: var(--color-muted);
+    cursor: pointer;
+  }
+  .wn-close:hover { background: #f3f2ef; color: var(--color-ink); }
+  .wn-body { padding: 16px 20px; overflow-y: auto; overscroll-behavior: contain; }
+  .wn-highlight {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding: 10px 14px;
+    border-radius: 12px;
+    background: #f6f8fa;
+    border: 1px solid #edf0f3;
+    font-size: 13px;
+  }
+  .wn-highlight p { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+  .wn-dot {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--color-success);
+    box-shadow: 0 0 0 3px rgb(16 185 129 / 0.18);
+  }
+  .wn-edition { font-size: 12px; color: var(--color-muted); }
+  .wn-hint {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 16px;
+    font-size: 12px;
+    color: var(--color-muted);
+  }
+  .wn-progress { margin-top: 6px; height: 4px; border-radius: 999px; background: #edf0f3; overflow: hidden; }
+  .wn-progress span { display: block; height: 100%; background: var(--color-primary); border-radius: inherit; transition: width 0.3s ease; }
+  .wn-grid { display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 12px; }
+  .wn-card {
+    border: 1px solid var(--color-line);
+    border-radius: 14px;
+    background: #fff;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .wn-card:hover { border-color: #c9d6e3; }
+  .wn-card.is-open { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgb(10 102 194 / 0.12); }
+  .wn-card-btn {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    width: 100%;
+    padding: 14px;
+    text-align: left;
+    cursor: pointer;
+    border-radius: 14px;
+  }
+  .wn-card-btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  .wn-icon {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: #eef3f8;
+    color: var(--color-primary-dark);
+    transition: background 0.15s, color 0.15s;
+  }
+  .wn-card.is-open .wn-icon { background: var(--color-primary); color: #fff; }
+  .wn-card-title { display: block; font-size: 14px; font-weight: 600; }
+  .wn-card-text { display: block; margin-top: 3px; font-size: 13px; line-height: 1.45; color: var(--color-muted); }
+  .wn-card-text.is-clamped {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .wn-card-more { padding: 0 14px 14px 62px; }
+  .wn-card-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: #eef3f8;
+    color: var(--color-primary);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .wn-card-cta:hover { background: #dde8f3; }
+  .wn-card-note { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; color: var(--color-success-ink); }
+  .wn-foot {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 20px calc(14px + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--color-line);
+    background: #fafafa;
+  }
+  .wn-foot-note { font-size: 12px; color: var(--color-muted); }
+  .wn-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }
+
+  @media (min-width: 640px) {
+    .wn-dialog { margin: auto; width: calc(100% - 48px); max-width: 680px; max-height: calc(100dvh - 48px); }
+    .wn-dialog[open] .wn-panel { animation-name: wn-pop; }
+    .wn-panel { max-height: calc(100dvh - 48px); border-radius: 20px; box-shadow: 0 24px 60px rgb(0 0 0 / 0.25); }
+    .wn-grabber { display: none; }
+    .wn-head { padding: 24px 24px 18px; }
+    .wn-title { font-size: 24px; }
+    .wn-body { padding: 18px 24px; }
+    .wn-grid { grid-template-columns: 1fr 1fr; align-items: start; }
+    .wn-foot { flex-direction: row; align-items: center; justify-content: space-between; padding: 16px 24px; }
+    .wn-actions { display: flex; flex-shrink: 0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wn-dialog[open] .wn-panel,
+    .wn-dialog[open]::backdrop { animation: none; }
+    .wn-progress span { transition: none; }
+  }
+}
+
+@keyframes wn-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes wn-pop { from { transform: translateY(12px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes wn-fade { from { opacity: 0; } to { opacity: 1; } }
