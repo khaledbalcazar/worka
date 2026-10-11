@@ -5,6 +5,7 @@ import { notify, notifyMany } from "@/lib/notify";
 import { redirect } from "next/navigation";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { slugify as toSlug } from "@/lib/slug";
+import { WHATS_NEW_SETTING, sanitizeWhatsNew, type WhatsNewConfig } from "@/lib/whats-new";
 import { COMPANY_ROLES } from "@/lib/types";
 import {
   normalizeSkills,
@@ -2189,6 +2190,30 @@ export async function deleteExternalJob(id: string): Promise<ActionResult> {
   if (error) return { ok: false, error: "No pudimos eliminar la vacante." };
   revalidatePath("/admin/externas");
   revalidatePath("/empleos");
+  return { ok: true };
+}
+
+// Popup de novedades de /empleos. Se guarda limpio (sanitizeWhatsNew): solo
+// enlaces internos y textos con largo máximo. "Eliminar" lo guarda apagado,
+// sin perder el contenido, para poder volver a encenderlo.
+export async function saveWhatsNew(
+  config: WhatsNewConfig
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  const clean = sanitizeWhatsNew(config);
+  if (clean.enabled && clean.items.length === 0)
+    return { ok: false, error: "Agregá al menos una novedad para mostrar el popup." };
+  const { error } = await supabase.from("site_settings").upsert({
+    key: WHATS_NEW_SETTING,
+    value: JSON.stringify(clean),
+    updated_at: new Date().toISOString(),
+  });
+  if (error) return { ok: false, error: "No pudimos guardar el popup." };
+  revalidatePath("/empleos");
+  revalidatePath("/admin");
   return { ok: true };
 }
 

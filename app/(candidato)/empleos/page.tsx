@@ -1,5 +1,7 @@
 import { getJobsWithEvaluation } from "@/lib/evaluar";
 import JobFeed from "@/components/JobFeed";
+import WhatsNewModal from "@/components/WhatsNewModal";
+import { WHATS_NEW_SETTING, activeWhatsNew } from "@/lib/whats-new";
 import {
   getActiveJobs,
   getCurrentCandidate,
@@ -50,27 +52,32 @@ export default async function JobFeedPage() {
   const loggedIn = isLive() ? !!(await getCurrentUser()) : true;
   const experienceCount = candidate ? await getExperienceCount(candidate.id) : 0;
 
+  const whatsNew = activeWhatsNew(settings[WHATS_NEW_SETTING]);
+
   return (
-    <JobFeed
-      jobs={jobs}
-      evaluationJobIds={evaluationJobIds}
-      appliedJobIds={[...appliedIds]}
-      savedJobIds={[...savedIds]}
-      loggedIn={loggedIn}
-      industries={industries}
-      cities={cities}
-      externalJobs={externalJobs}
-      regionName={country.name}
-      matchProfile={candidate ? {
-        location_city: candidate.location_city,
-        open_to_other_cities: candidate.open_to_other_cities,
-        preferences_modality: candidate.preferences_modality,
-        preferences_industry: candidate.preferences_industry,
-        first_job_mode: candidate.first_job_mode,
-        cv_url: candidate.cv_url,
-        experience_count: experienceCount,
-        skills: candidate.skills ?? [],
-      } : null}
-    />
+    <>
+      {whatsNew && <WhatsNewModal config={whatsNew} />}
+      <JobFeed
+        jobs={jobs}
+        evaluationJobIds={evaluationJobIds}
+        appliedJobIds={[...appliedIds]}
+        savedJobIds={[...savedIds]}
+        loggedIn={loggedIn}
+        industries={industries}
+        cities={cities}
+        externalJobs={externalJobs}
+        regionName={country.name}
+        matchProfile={candidate ? {
+          location_city: candidate.location_city,
+          open_to_other_cities: candidate.open_to_other_cities,
+          preferences_modality: candidate.preferences_modality,
+          preferences_industry: candidate.preferences_industry,
+          first_job_mode: candidate.first_job_mode,
+          cv_url: candidate.cv_url,
+          experience_count: experienceCount,
+          skills: candidate.skills ?? [],
+        } : null}
+      />
+    </>
   );
 }
