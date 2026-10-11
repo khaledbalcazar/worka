@@ -8,11 +8,11 @@ import ExternalApplyPanel from "@/components/jobs/ExternalApplyPanel";
 import SafetyNotice from "@/components/jobs/SafetyNotice";
 import { getCurrentCandidate, getExternalJob, getMyExternalApplication, isLive } from "@/lib/data";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { SITE_URL } from "@/lib/supabase/config";
+import { CANONICAL_URL } from "@/lib/supabase/config";
 import { timeAgo } from "@/lib/format";
 import { countryByCode } from "@/lib/countries";
 
-const BASE = SITE_URL.replace(/\/$/, "");
+const BASE = CANONICAL_URL;
 
 export async function generateMetadata({
   params,

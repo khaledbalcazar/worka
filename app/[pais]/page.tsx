@@ -5,12 +5,12 @@ import { ArrowRight, MapPin, Shield, Search } from "lucide-react";
 import { COUNTRIES, DEFAULT_COUNTRY, countryBySlug } from "@/lib/countries";
 import { INDUSTRIES } from "@/lib/mock-data";
 import { getExternalJobs } from "@/lib/data";
-import { SITE_URL } from "@/lib/supabase/config";
+import { CANONICAL_URL } from "@/lib/supabase/config";
 import Logo from "@/components/Logo";
 import ExternalJobCard from "@/components/ExternalJobCard";
 import RememberCountry from "@/components/RememberCountry";
 
-const BASE = SITE_URL.replace(/\/$/, "");
+const BASE = CANONICAL_URL;
 
 // Genera /paraguay, /argentina, /mexico… en build.
 export function generateStaticParams() {

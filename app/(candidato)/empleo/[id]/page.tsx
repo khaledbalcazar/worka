@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentCandidate, getExperienceCount, getJobById, getMyAppliedJobIds, isLive } from "@/lib/data";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { SITE_URL } from "@/lib/supabase/config";
+import { CANONICAL_URL } from "@/lib/supabase/config";
 import { formatDate, timeAgo } from "@/lib/format";
 import ApplyPanel from "@/components/ApplyPanel";
 import JobMatchCard from "@/components/jobs/JobMatchCard";
@@ -153,7 +153,7 @@ export default async function JobDetailPage({
     hiringOrganization: {
       "@type": "Organization",
       name: job.company.trade_name,
-      sameAs: `${SITE_URL.replace(/\/$/, "")}/empresas/${job.company.id}`,
+      sameAs: `${CANONICAL_URL}/empresas/${job.company.id}`,
       ...(job.company.logo_url ? { logo: job.company.logo_url } : {}),
     },
     ...(salaryNums && salaryNums.length > 0

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { getSiteSettings } from "@/lib/data";
 import { getActiveCountry } from "@/lib/country-context";
-import { SITE_URL } from "@/lib/supabase/config";
+import { CANONICAL_URL } from "@/lib/supabase/config";
 import GlobalBanner from "@/components/GlobalBanner";
 import "./globals.css";
 
@@ -39,7 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     // Base para todas las URLs relativas de metadata (og:image, etc.). Sin
     // esto, en producción los previews de redes apuntan a localhost.
-    metadataBase: new URL(SITE_URL),
+    metadataBase: new URL(CANONICAL_URL),
     title: {
       default: title,
       template: `%s | ${settings.site_name || "Worka"}`,

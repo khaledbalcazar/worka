@@ -2449,8 +2449,8 @@ export async function saveBlogPost(input: {
   // Avisar a Bing/Yandex del artículo nuevo o actualizado.
   if (input.status === "publicado") {
     const { pingIndexNow } = await import("@/lib/indexnow");
-    const { SITE_URL } = await import("@/lib/supabase/config");
-    pingIndexNow(`${SITE_URL.replace(/\/$/, "")}/blog/${slug}`);
+    const { CANONICAL_URL } = await import("@/lib/supabase/config");
+    pingIndexNow(`${CANONICAL_URL}/blog/${slug}`);
   }
 
   revalidatePath("/blog");

@@ -1,10 +1,10 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "@/lib/supabase/config";
+import { CANONICAL_URL, evaluarUrl } from "@/lib/supabase/config";
 
 // robots.txt: los buscadores pueden indexar todo lo público, pero no las
 // zonas privadas (paneles, perfil, mensajes). Apunta al sitemap dinámico.
 export default function robots(): MetadataRoute.Robots {
-  const base = SITE_URL.replace(/\/$/, "");
+  const base = CANONICAL_URL;
   return {
     rules: [
       {
@@ -24,6 +24,9 @@ export default function robots(): MetadataRoute.Robots {
           "/empresa", // panel privado (excepto /empresa/registro, permitido arriba)
           "/restablecer",
           "/recuperar",
+          // Pantallas de acceso: no aportan nada en un buscador.
+          "/ingresar",
+          "/registro",
           "/auth/",
           "/ref/",
           // Worka Evaluar. La portada y los precios se indexan; el panel de
@@ -37,6 +40,7 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: `${base}/sitemap.xml`,
+    // El de worka.click y el de Evaluar, que vive en su propio subdominio.
+    sitemap: [`${base}/sitemap.xml`, `${evaluarUrl()}/sitemap.xml`],
   };
 }

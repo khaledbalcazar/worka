@@ -4,11 +4,11 @@ import { notFound } from "next/navigation";
 import { Lock, GraduationCap, ArrowRight } from "lucide-react";
 import { getCourse, getMyCompletions } from "@/lib/data";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { SITE_URL } from "@/lib/supabase/config";
+import { CANONICAL_URL } from "@/lib/supabase/config";
 import HomeNav from "@/components/home/HomeNav";
 import CourseViewer from "@/components/CourseViewer";
 
-const BASE = SITE_URL.replace(/\/$/, "");
+const BASE = CANONICAL_URL;
 
 export async function generateMetadata({
   params,
