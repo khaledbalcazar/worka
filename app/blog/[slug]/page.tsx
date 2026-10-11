@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getBlogPost, getPublishedPosts } from "@/lib/data";
-import { SITE_URL } from "@/lib/supabase/config";
+import { CANONICAL_URL } from "@/lib/supabase/config";
 import { formatDate } from "@/lib/format";
 import HomeNav from "@/components/home/HomeNav";
 import BlogContent from "@/components/BlogContent";
@@ -56,7 +56,7 @@ export default async function BlogPostPage({
     dateModified: post.updated_at,
     author: { "@type": "Organization", name: post.author },
     publisher: { "@type": "Organization", name: "Worka" },
-    mainEntityOfPage: `${SITE_URL.replace(/\/$/, "")}/blog/${post.slug}`,
+    mainEntityOfPage: `${CANONICAL_URL}/blog/${post.slug}`,
     ...(post.cover_url ? { image: post.cover_url } : {}),
   };
 

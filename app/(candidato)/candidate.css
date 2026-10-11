@@ -433,3 +433,26 @@
 /* Título de página del área de candidatos. */
 .page-title { font-size:22px; font-weight:600; line-height:1.3; letter-spacing:-.01em; color:#1d2226; }
 @media (min-width:1024px) { .page-title { font-size:26px; } }
+/* Vacantes de otros portales: panel de postulación y avisos. */
+.li-detail-insights li.is-warning { color:#8a5300; }
+.li-detail-insights li.is-warning svg { color:#b26a00; }
+.ext-badge { display:inline-flex; align-items:center; padding:1px 8px; border-radius:999px; background:#fff4e5; color:#8a5300; font-size:11px; font-weight:600; }
+.ext-origin { display:flex; gap:10px; padding:12px 14px; border-radius:8px; background:#fff8ec; color:#6b4300; font-size:13px; line-height:1.6; }
+.ext-origin svg { color:#b26a00; margin-top:2px; }
+.ext-origin a { text-decoration:underline; font-weight:600; }
+.ext-apply { background:#fff; border:1px solid #e0dfdc; border-radius:8px; padding:18px; scroll-margin-top:80px; }
+.ext-apply-lock { width:48px; height:48px; border-radius:50%; display:grid; place-items:center; margin:0 auto 10px; background:#e1ecf8; color:#0a66c2; }
+.ext-apply-done { display:flex; align-items:center; gap:12px; }
+.ext-steps { display:flex; flex-direction:column; gap:16px; margin-top:16px; }
+.ext-steps > li { display:flex; gap:12px; }
+.ext-step-num { width:26px; height:26px; border-radius:50%; border:2px solid #0a66c2; color:#0a66c2; display:grid; place-items:center; font-size:12px; font-weight:700; flex-shrink:0; }
+.ext-step-title { font-size:14px; font-weight:600; line-height:26px; }
+.ext-warning { display:flex; gap:10px; margin-top:16px; padding:12px; border-radius:8px; background:#fdf1ef; color:#7c2d1f; font-size:12.5px; line-height:1.55; }
+.ext-warning svg { color:#b42318; margin-top:1px; }
+.ext-status-select { width:auto; flex:none; min-height:34px; padding:0 30px 0 12px; border-radius:999px; border:1px solid #8c8c8c; background:#fff; font-size:13px; font-weight:600; color:#404040; }
+.ext-status-select[data-status=me_contactaron], .ext-status-select[data-status=entrevista] { border-color:#01754f; color:#01754f; background:#f1f9f4; }
+.ext-status-select[data-status=descartada] { color:#666; background:#f3f2ef; }
+@media (min-width:640px) { .ext-apply { padding:22px; } }
+.li-detail-section > .ext-apply { border:0; padding:0; border-radius:0; }
+.li-item-foot .is-external { white-space:nowrap; }
+.app-job-state { display:inline-block; margin-top:4px; padding:1px 8px; border-radius:4px; background:#f3f2ef; color:#555; font-size:12px; }

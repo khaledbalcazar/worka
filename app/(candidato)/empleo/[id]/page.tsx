@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCurrentCandidate, getExperienceCount, getJobById, getMyAppliedJobIds, isLive } from "@/lib/data";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { SITE_URL } from "@/lib/supabase/config";
+import { CANONICAL_URL } from "@/lib/supabase/config";
 import { formatDate, timeAgo } from "@/lib/format";
 import ApplyPanel from "@/components/ApplyPanel";
 import JobMatchCard from "@/components/jobs/JobMatchCard";
@@ -26,6 +26,7 @@ import {
   GraduationCap,
   MapPin,
   Navigation,
+  ShieldAlert,
   Users,
   Wallet,
 } from "lucide-react";
@@ -152,7 +153,7 @@ export default async function JobDetailPage({
     hiringOrganization: {
       "@type": "Organization",
       name: job.company.trade_name,
-      sameAs: `${SITE_URL.replace(/\/$/, "")}/empresas/${job.company.id}`,
+      sameAs: `${CANONICAL_URL}/empresas/${job.company.id}`,
       ...(job.company.logo_url ? { logo: job.company.logo_url } : {}),
     },
     ...(salaryNums && salaryNums.length > 0
@@ -221,6 +222,12 @@ export default async function JobDetailPage({
               {insights.map(({ Icon, text, strong }) => (
                 <li key={text}><Icon size={18} /><span className={strong ? "is-strong" : ""}>{text}</span></li>
               ))}
+              {!job.company.is_verified && (
+                <li className="is-warning">
+                  <ShieldAlert size={18} />
+                  <span>Empresa en verificación: todavía no contrastamos su {pais.taxIdLabel}. Postularte por Worka es seguro; no pagues ni envíes documentos por fuera.</span>
+                </li>
+              )}
             </ul>
             <div className="flex flex-wrap gap-1.5 mt-4">
               {job.urgent && <UrgentBadge />}

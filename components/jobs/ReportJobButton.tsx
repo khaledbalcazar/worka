@@ -1,10 +1,10 @@
 "use client";
 import { useState, useTransition } from "react";
 import { Flag } from "lucide-react";
-import { reportJob } from "@/app/actions";
+import { reportExternalJob, reportJob } from "@/app/actions";
 import MobileSheet from "@/components/MobileSheet";
 
-export default function ReportJobButton({ jobId, label = "Reportar un problema", className = "flex items-center gap-1 text-xs text-gray-500 py-2" }: { jobId: string; label?: string; className?: string }) {
+export default function ReportJobButton({ jobId, external = false, label = "Reportar un problema", className = "flex items-center gap-1 text-xs text-gray-500 py-2" }: { jobId: string; external?: boolean; label?: string; className?: string }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
@@ -18,7 +18,7 @@ export default function ReportJobButton({ jobId, label = "Reportar un problema",
         <label className="block mt-4"><span className="label">Motivo del reporte</span><select className="input" value={reason} onChange={(e) => setReason(e.target.value)}><option value="">Seleccioná un motivo</option>{["Piden dinero o inversión inicial", "Parece una estafa", "Información falsa o engañosa", "Contenido discriminatorio", "Otro motivo"].map((value) => <option key={value}>{value}</option>)}</select></label>
         {error && <p role="alert" className="text-sm text-danger mt-3">{error}</p>}
       </>}
-      <div className="flex gap-2 mt-5"><button className="btn-secondary flex-1" onClick={() => setOpen(false)}>{done ? "Cerrar" : "Cancelar"}</button>{!done && <button className="btn-primary flex-1" disabled={pending || !reason} onClick={() => { setError(""); start(async () => { try { const result = await reportJob(jobId, reason); if (result.ok) setDone(true); else setError(result.error ?? "No pudimos enviar el reporte."); } catch { setError("No pudimos conectar. Volvé a intentar."); } }); }}>{pending ? "Enviando…" : "Enviar reporte"}</button>}</div>
+      <div className="flex gap-2 mt-5"><button className="btn-secondary flex-1" onClick={() => setOpen(false)}>{done ? "Cerrar" : "Cancelar"}</button>{!done && <button className="btn-primary flex-1" disabled={pending || !reason} onClick={() => { setError(""); start(async () => { try { const result = await (external ? reportExternalJob : reportJob)(jobId, reason); if (result.ok) setDone(true); else setError(result.error ?? "No pudimos enviar el reporte."); } catch { setError("No pudimos conectar. Volvé a intentar."); } }); }}>{pending ? "Enviando…" : "Enviar reporte"}</button>}</div>
     </MobileSheet>
   </>;
 }

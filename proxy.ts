@@ -29,7 +29,7 @@ const PROTECTED_PREFIXES = [
 // lista al revés, cualquier ruta compartida que nadie recordara agregar
 // terminaba reescrita a /evaluar/<algo> y devolvía 404. Fue exactamente lo que
 // pasó con /ingresar, que dejaba a la empresa sin poder entrar.
-const EVALUAR_PATHS = ["/app", "/e/", "/precios", "/recursos"];
+const EVALUAR_PATHS = ["/app", "/e/", "/precios", "/recursos", "/sitemap.xml"];
 
 function evaluarTarget(request: NextRequest): URL | null {
   const host = request.headers.get("host") ?? "";
@@ -48,8 +48,18 @@ function evaluarTarget(request: NextRequest): URL | null {
   return url;
 }
 
+// Archivos para buscadores: públicos y sin sesión. Salen antes de crear el
+// cliente de Supabase para que Googlebot no dependa de nada más que la ruta.
+function isCrawlerFile(path: string) {
+  return path === "/robots.txt" || path === "/sitemap.xml" || path.startsWith("/sitemap/");
+}
+
 export async function proxy(request: NextRequest) {
   const evaluarUrl = evaluarTarget(request);
+
+  if (isCrawlerFile(request.nextUrl.pathname)) {
+    return evaluarUrl ? NextResponse.rewrite(evaluarUrl) : NextResponse.next();
+  }
 
   // Modo demo: sin Supabase, todo es navegable.
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {

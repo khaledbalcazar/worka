@@ -1,5 +1,5 @@
 import "server-only";
-import { SITE_URL } from "./supabase/config";
+import { CANONICAL_URL } from "./supabase/config";
 
 // IndexNow: protocolo abierto de Bing/Yandex/Seznam para avisar "esta URL
 // cambió" y que la re-rastreen enseguida, sin esperar el crawl normal.
@@ -12,7 +12,9 @@ export const INDEXNOW_KEY = "ec79b07438ad9ac60255be6f298b6bfe";
 export async function pingIndexNow(urls: string | string[]): Promise<void> {
   const urlList = Array.isArray(urls) ? urls : [urls];
   if (urlList.length === 0) return;
-  const host = SITE_URL.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  // Mismo host que el sitemap y los canonical: IndexNow descarta URLs de un
+  // host distinto al declarado.
+  const host = CANONICAL_URL.replace(/^https?:\/\//, "");
   // En local/demo (host = localhost) no tiene sentido avisarle a Bing.
   if (host.includes("localhost")) return;
 
@@ -23,7 +25,7 @@ export async function pingIndexNow(urls: string | string[]): Promise<void> {
       body: JSON.stringify({
         host,
         key: INDEXNOW_KEY,
-        keyLocation: `${SITE_URL.replace(/\/$/, "")}/${INDEXNOW_KEY}.txt`,
+        keyLocation: `${CANONICAL_URL}/${INDEXNOW_KEY}.txt`,
         urlList,
       }),
     });
@@ -33,5 +35,5 @@ export async function pingIndexNow(urls: string | string[]): Promise<void> {
 }
 
 export function jobUrl(jobId: string): string {
-  return `${SITE_URL.replace(/\/$/, "")}/empleo/${jobId}`;
+  return `${CANONICAL_URL}/empleo/${jobId}`;
 }

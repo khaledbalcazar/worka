@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { getMyApplications, getMyInterviews } from "@/lib/data";
+import { getMyApplications, getMyExternalApplications, getMyInterviews } from "@/lib/data";
+import ExternalApplicationsList from "@/components/jobs/ExternalApplicationsList";
+import { unavailableLabel } from "@/lib/applications";
 import { ClipboardList, PartyPopper } from "lucide-react";
 import MyJobsShell from "@/components/MyJobsShell";
 import { StatusChip } from "@/components/Badges";
@@ -21,9 +23,10 @@ function stepIndex(status: ApplicationStatus): number {
 }
 
 export default async function ApplicationsPage() {
-  const [apps, interviews] = await Promise.all([
+  const [apps, interviews, externalApps] = await Promise.all([
     getMyApplications(),
     getMyInterviews(),
+    getMyExternalApplications(),
   ]);
   const inProcess = apps.filter(
     (a) => a.status === "Revisado" || a.status === "Contactado"
@@ -72,7 +75,7 @@ export default async function ApplicationsPage() {
           </div>
         )}
 
-        {apps.length === 0 ? (
+        {apps.length === 0 && externalApps.length === 0 ? (
           <div className="myjobs-empty">
             <ClipboardList size={28} />
             <h2>Todavía no te postulaste a nada</h2>
@@ -85,13 +88,18 @@ export default async function ApplicationsPage() {
               const idx = stepIndex(app.status);
               return (
                 <li key={app.id} className={`li-item app-item ${app.status === "Contactado" ? "is-contacted" : ""}`}>
-                  <EntityAvatar url={app.job.company.logo_url} name={app.job.company.trade_name} className="li-logo" />
+                  <EntityAvatar url={app.summary.company_logo_url} name={app.summary.company_name} className="li-logo" />
                   <div className="li-item-body">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <h2 className="li-item-title"><Link href={`/empleo/${app.job.id}`}>{app.job.title}</Link></h2>
-                        <p className="li-item-company">{app.job.company.trade_name}</p>
+                        <h2 className="li-item-title">
+                          {/* El aviso solo se puede abrir mientras está activo;
+                              si no, la postulación igual se lista con su estado. */}
+                          {app.summary.available ? <Link href={`/empleo/${app.summary.job_id}`}>{app.summary.title}</Link> : <span className="text-ink">{app.summary.title}</span>}
+                        </h2>
+                        <p className="li-item-company">{app.summary.company_name}</p>
                         <p className="li-item-location">Postulada el {formatDate(app.applied_at)}</p>
+                        {!app.summary.available && <p className="app-job-state">{unavailableLabel(app.summary.status)}</p>}
                       </div>
                       <span className="relative z-[1] shrink-0"><StatusChip status={app.status} /></span>
                     </div>
@@ -115,8 +123,8 @@ export default async function ApplicationsPage() {
                       <div className="relative z-[1]">
                         <InterviewCard
                           interview={interviews[app.id]}
-                          jobTitle={app.job.title}
-                          companyName={app.job.company.trade_name}
+                          jobTitle={app.summary.title}
+                          companyName={app.summary.company_name}
                         />
                       </div>
                     )}
@@ -126,6 +134,7 @@ export default async function ApplicationsPage() {
             })}
           </ul>
         )}
+        <ExternalApplicationsList applications={externalApps} />
       </section>
     </MyJobsShell>
   );

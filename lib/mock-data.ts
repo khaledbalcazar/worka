@@ -7,6 +7,8 @@ import type {
   CandidateEducation,
   CandidateExperience,
   CourseBadge,
+  ExternalApplication,
+  ExternalJob,
   ChatMessage,
   Company,
   CompanyPost,
@@ -602,6 +604,72 @@ export const candidateEducation: CandidateEducation[] = [
   },
 ];
 
+// Vacantes de otros portales (modo demo).
+export const externalJobs: ExternalJob[] = [
+  {
+    id: "ext1",
+    source_id: null,
+    external_key: "demo-1",
+    country: "py",
+    title: "Asistente contable",
+    company_name: "Estudio Contable Ramírez",
+    company_logo_url: null,
+    description:
+      "Carga de facturas, conciliaciones bancarias y apoyo en liquidación de IVA.\nRequisitos: estudiante avanzado de Contabilidad, manejo de Excel.\nHorario: lunes a viernes de 8:00 a 17:00.",
+    industry: "Administración",
+    city: "Asunción",
+    modality: "Presencial",
+    contract_type: "Tiempo completo",
+    salary_range: "Gs. 3.200.000",
+    apply_email: "rrhh@estudioramirez.com.py",
+    apply_url: "https://example.com/aviso/asistente-contable",
+    source_name: "Portal de ejemplo",
+    source_url: "https://example.com",
+    status: "activa",
+    imported_at: "2026-10-08T12:00:00Z",
+    expires_at: null,
+    created_at: "2026-10-08T12:00:00Z",
+  },
+  {
+    id: "ext2",
+    source_id: null,
+    external_key: "demo-2",
+    country: "py",
+    title: "Vendedor/a de mostrador",
+    company_name: "Ferretería El Tornillo",
+    company_logo_url: null,
+    description: "Atención al público, cobro y reposición. Se valora experiencia en ferretería.",
+    industry: "Ventas",
+    city: "Luque",
+    modality: "Presencial",
+    contract_type: "Medio tiempo",
+    salary_range: null,
+    apply_email: null,
+    apply_url: "https://example.com/aviso/vendedor-mostrador",
+    source_name: "Portal de ejemplo",
+    source_url: "https://example.com",
+    status: "activa",
+    imported_at: "2026-10-09T15:00:00Z",
+    expires_at: null,
+    created_at: "2026-10-09T15:00:00Z",
+  },
+];
+
+export const externalApplications: ExternalApplication[] = [
+  {
+    id: "xapp1",
+    candidate_id: "cand1",
+    external_job_id: "ext2",
+    job_title: "Vendedor/a de mostrador",
+    company_name: "Ferretería El Tornillo",
+    source_name: "Portal de ejemplo",
+    method: "enlace",
+    status: "enviada",
+    applied_at: "2026-10-09T18:00:00Z",
+    updated_at: "2026-10-09T18:00:00Z",
+  },
+];
+
 export const courseBadges: CourseBadge[] = [
   {
     course_id: "crs1",
@@ -916,11 +984,4 @@ export function getActiveJobs(): JobWithCompany[] {
 
 export function getJobById(id: string): JobWithCompany | undefined {
   return getJobsWithCompany().find((j) => j.id === id);
-}
-
-export function getApplicationsWithJob() {
-  return applications.map((app) => ({
-    ...app,
-    job: getJobById(app.job_id)!,
-  }));
 }

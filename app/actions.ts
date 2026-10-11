@@ -263,6 +263,102 @@ export async function reportJob(
   return { ok: true };
 }
 
+// ── Vacantes de otros portales (migración 043) ──
+
+const EXTERNAL_STATUSES = ["enviada", "me_contactaron", "entrevista", "descartada"] as const;
+
+// "Ya me postulé": deja la postulación externa en Mis postulaciones. Los
+// datos del aviso se copian del registro en la base, no de lo que mande el
+// navegador.
+export async function recordExternalApplication(
+  externalJobId: string,
+  method: "email" | "enlace"
+): Promise<ActionResult> {
+  if (method !== "email" && method !== "enlace") return { ok: false, error: "Método inválido." };
+  const supabase = await getServerClient();
+  if (!supabase) return { ...DEMO, id: `demo-xapp-${Date.now()}` };
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión primero." };
+  const { data: job } = await supabase
+    .from("external_jobs")
+    .select("id,title,company_name,source_name")
+    .eq("id", externalJobId)
+    .maybeSingle();
+  if (!job) return { ok: false, error: "Este aviso ya no está disponible." };
+  const { data, error } = await supabase
+    .from("external_applications")
+    .upsert(
+      {
+        candidate_id: user.id,
+        external_job_id: job.id,
+        job_title: job.title,
+        company_name: job.company_name,
+        source_name: job.source_name,
+        method,
+      },
+      { onConflict: "candidate_id,external_job_id" }
+    )
+    .select("id")
+    .single();
+  if (error || !data) return { ok: false, error: "No pudimos guardar tu postulación." };
+  revalidatePath("/postulaciones");
+  return { ok: true, id: data.id as string };
+}
+
+export async function updateExternalApplicationStatus(
+  id: string,
+  status: (typeof EXTERNAL_STATUSES)[number]
+): Promise<ActionResult> {
+  if (!EXTERNAL_STATUSES.includes(status)) return { ok: false, error: "Estado inválido." };
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión primero." };
+  const { error } = await supabase
+    .from("external_applications")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("candidate_id", user.id);
+  if (error) return { ok: false, error: "No pudimos actualizar el estado." };
+  revalidatePath("/postulaciones");
+  return { ok: true };
+}
+
+export async function deleteExternalApplication(id: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión primero." };
+  const { error } = await supabase
+    .from("external_applications")
+    .delete()
+    .eq("id", id)
+    .eq("candidate_id", user.id);
+  if (error) return { ok: false, error: "No pudimos quitar la postulación." };
+  revalidatePath("/postulaciones");
+  return { ok: true };
+}
+
+export async function reportExternalJob(
+  externalJobId: string,
+  reason: string
+): Promise<ActionResult> {
+  const clean = reason.trim().slice(0, 200);
+  if (clean.length < 3) return { ok: false, error: "Elegí un motivo." };
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión para denunciar." };
+  const { error } = await supabase
+    .from("external_job_reports")
+    .insert({ external_job_id: externalJobId, reporter_id: user.id, reason: clean });
+  if (error) {
+    if (error.code === "23505") return { ok: false, error: "Ya denunciaste este aviso." };
+    return { ok: false, error: "No pudimos registrar la denuncia." };
+  }
+  return { ok: true };
+}
+
 // Verificación de WhatsApp. En producción, requestPhoneCode envía un código
 // por la API de WhatsApp (Meta Cloud API) y verifyPhoneCode lo contrasta.
 // Hasta conectar esa API, el código de prueba es 123456.
@@ -2353,8 +2449,8 @@ export async function saveBlogPost(input: {
   // Avisar a Bing/Yandex del artículo nuevo o actualizado.
   if (input.status === "publicado") {
     const { pingIndexNow } = await import("@/lib/indexnow");
-    const { SITE_URL } = await import("@/lib/supabase/config");
-    pingIndexNow(`${SITE_URL.replace(/\/$/, "")}/blog/${slug}`);
+    const { CANONICAL_URL } = await import("@/lib/supabase/config");
+    pingIndexNow(`${CANONICAL_URL}/blog/${slug}`);
   }
 
   revalidatePath("/blog");

@@ -17,6 +17,19 @@ export const SITE_URL =
     ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
     : "http://localhost:3000");
 
+// Dominio canónico para buscadores: canonical, metadataBase, JSON-LD,
+// robots.txt, sitemap e IndexNow. Es worka.click, sin www.
+//
+// Va separado de SITE_URL a propósito: SITE_URL también arma los enlaces de
+// confirmación por email y el retorno del login, y esos tienen que coincidir
+// con las Redirect URLs de Supabase. Cambiar el dominio de SEO no debe tocar
+// el login. Si SITE_URL apunta a www, acá se le saca el www; para forzar otro
+// valor existe NEXT_PUBLIC_CANONICAL_URL.
+export const CANONICAL_URL = (
+  process.env.NEXT_PUBLIC_CANONICAL_URL ??
+  SITE_URL.replace(/^(https?:\/\/)www\./, "$1")
+).replace(/\/$/, "");
+
 // La base de Worka Evaluar, para los enlaces que van por correo.
 //
 // Estaba escrita a mano en seis archivos como

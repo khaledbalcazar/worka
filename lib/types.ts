@@ -129,6 +129,23 @@ export interface ExternalJob {
   created_at: string;
 }
 
+// Postulación a una vacante de otro portal. La empresa no está en Worka,
+// así que el estado lo lleva el propio candidato.
+export type ExternalApplicationStatus = "enviada" | "me_contactaron" | "entrevista" | "descartada";
+
+export interface ExternalApplication {
+  id: string;
+  candidate_id: string;
+  external_job_id: string | null;
+  job_title: string;
+  company_name: string;
+  source_name: string;
+  method: "email" | "enlace";
+  status: ExternalApplicationStatus;
+  applied_at: string;
+  updated_at: string;
+}
+
 // Artículo del blog (SEO). audience define el CTA que se muestra al final.
 export interface BlogPost {
   id: string;
