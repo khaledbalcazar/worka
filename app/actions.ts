@@ -7,6 +7,7 @@ import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { slugify as toSlug } from "@/lib/slug";
 import { WHATS_NEW_SETTING, sanitizeWhatsNew, type WhatsNewConfig } from "@/lib/whats-new";
 import { BOOST_PLANS, COMPANY_ROLES } from "@/lib/types";
+import { isJobListed } from "@/lib/job-visibility";
 import {
   normalizeSkills,
   validateEducation,
@@ -106,6 +107,16 @@ export async function applyToJob(
       error:
         "Completá tu perfil (nombre y ciudad) para postularte. Te toma 2 minutos.",
     };
+
+  // Solo vacantes publicadas: activas y sin vencer. Una vencida sigue
+  // "Activo" en la base, pero la empresa ya no la espera.
+  const { data: target } = await supabase
+    .from("jobs")
+    .select("status, expires_at")
+    .eq("id", jobId)
+    .maybeSingle();
+  if (!target || !isJobListed(target))
+    return { ok: false, error: "Esta vacante ya no recibe postulaciones." };
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);

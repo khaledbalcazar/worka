@@ -305,6 +305,12 @@ export const companyPosts: CompanyPost[] = [
   },
 ];
 
+// Vigencias relativas a hoy: con fechas fijas, la demo se quedaba sin
+// vacantes publicadas apenas pasaban (las vencidas no se muestran).
+function daysFromNow(days: number): string {
+  return new Date(Date.now() + days * 86400000).toISOString();
+}
+
 export const jobs: Job[] = [
   {
     id: "j1",
@@ -341,7 +347,7 @@ export const jobs: Job[] = [
     ],
     views_count: 342,
     created_at: "2026-07-14T10:00:00Z",
-    expires_at: "2026-08-14T10:00:00Z",
+    expires_at: daysFromNow(12),
   },
   {
     id: "j2",
@@ -369,7 +375,7 @@ export const jobs: Job[] = [
     ],
     views_count: 187,
     created_at: "2026-07-12T15:00:00Z",
-    expires_at: "2026-08-12T15:00:00Z",
+    expires_at: daysFromNow(20),
   },
   {
     id: "j3",
@@ -405,7 +411,7 @@ export const jobs: Job[] = [
     ],
     views_count: 521,
     created_at: "2026-07-10T09:00:00Z",
-    expires_at: "2026-08-10T09:00:00Z",
+    expires_at: daysFromNow(25),
   },
   {
     id: "j4",
@@ -432,7 +438,7 @@ export const jobs: Job[] = [
     ],
     views_count: 156,
     created_at: "2026-07-15T08:00:00Z",
-    expires_at: "2026-08-15T08:00:00Z",
+    expires_at: daysFromNow(8),
   },
   {
     id: "j5",
@@ -468,7 +474,7 @@ export const jobs: Job[] = [
     ],
     views_count: 98,
     created_at: "2026-07-16T07:30:00Z",
-    expires_at: "2026-08-16T07:30:00Z",
+    expires_at: daysFromNow(30),
   },
   {
     id: "j6",
@@ -504,7 +510,7 @@ export const jobs: Job[] = [
     ],
     views_count: 734,
     created_at: "2026-07-08T12:00:00Z",
-    expires_at: "2026-08-08T12:00:00Z",
+    expires_at: daysFromNow(18),
   },
   {
     id: "j7",
@@ -529,7 +535,7 @@ export const jobs: Job[] = [
     filter_questions: [],
     views_count: 45,
     created_at: "2026-07-13T18:00:00Z",
-    expires_at: "2026-08-13T18:00:00Z",
+    expires_at: daysFromNow(22),
   },
   {
     id: "j8",
@@ -554,7 +560,7 @@ export const jobs: Job[] = [
     filter_questions: [],
     views_count: 264,
     created_at: "2026-06-10T10:00:00Z",
-    expires_at: "2026-07-10T10:00:00Z",
+    expires_at: daysFromNow(5),
   },
 ];
 
@@ -979,7 +985,9 @@ export function getJobsWithCompany(): JobWithCompany[] {
 }
 
 export function getActiveJobs(): JobWithCompany[] {
-  return getJobsWithCompany().filter((j) => j.status === "Activo");
+  // Igual que en vivo: activas y sin vencer.
+  const now = Date.now();
+  return getJobsWithCompany().filter((j) => j.status === "Activo" && !(j.expires_at && Date.parse(j.expires_at) <= now));
 }
 
 export function getJobById(id: string): JobWithCompany | undefined {

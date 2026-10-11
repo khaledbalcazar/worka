@@ -5,6 +5,7 @@ import { getCurrentCandidate, getExperienceCount, getJobById, getMyAppliedJobIds
 import { getCurrentUser } from "@/lib/supabase/server";
 import { CANONICAL_URL } from "@/lib/supabase/config";
 import { formatDate, timeAgo } from "@/lib/format";
+import { isJobExpired } from "@/lib/job-visibility";
 import ApplyPanel from "@/components/ApplyPanel";
 import JobMatchCard from "@/components/jobs/JobMatchCard";
 import JobBenefits from "@/components/jobs/JobBenefits";
@@ -53,6 +54,8 @@ export async function generateMetadata({
   return {
     title,
     description,
+    // Vencida: la página queda para quien tenga el enlace, pero fuera de Google.
+    ...(isJobExpired(job.expires_at) ? { robots: { index: false, follow: true } } : {}),
     alternates: { canonical: `/empleo/${job.id}` },
     openGraph: {
       title,
@@ -85,6 +88,7 @@ export default async function JobDetailPage({
   // En demo se navega como logueado; en vivo depende de la sesión real.
   const loggedIn = isLive() ? !!user : true;
   if (!job || job.status !== "Activo") notFound();
+  const expired = isJobExpired(job.expires_at);
 
   // ¿La empresa enlazó esta vacante con un proceso de Worka Evaluar? Si sí, el
   // candidato arranca los tests desde acá, sin salir del aviso.
@@ -191,10 +195,13 @@ export default async function JobDetailPage({
   // navegación, y sin ese respiro tapan el final del contenido.
   return (
     <div className="space-y-4 pb-20 lg:pb-0">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      {/* Google pide sacar el JobPosting de las vacantes que ya cerraron. */}
+      {!expired && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
       <JobViewTracker
         jobId={job.id}
         title={job.title}
@@ -303,7 +310,9 @@ export default async function JobDetailPage({
 
           <div className="li-detail-section">
             <SafetyNotice jobId={job.id} />
-            <p className="text-xs text-gray-500 mt-3">Postulate antes del {formatDate(job.expires_at)}.</p>
+            <p className="text-xs text-gray-500 mt-3">
+              {expired ? `Cerró el ${formatDate(job.expires_at)}.` : `Postulate antes del ${formatDate(job.expires_at)}.`}
+            </p>
           </div>
         </article>
 
@@ -312,7 +321,18 @@ export default async function JobDetailPage({
           {/* Con evaluacion enlazada hay UN solo camino, en orden: mostrar
               tambien el panel normal dejaba postularse salteando los tests,
               que es justo lo que la empresa quiere evitar al enlazarlo. */}
-          {evaluation ? (
+          {expired ? (
+            <section className="card p-5">
+              <h2 className="font-semibold">Esta vacante ya no recibe postulaciones</h2>
+              <p className="text-sm text-muted mt-1">
+                Cerró el {formatDate(job.expires_at)}.
+                {appliedIds.has(job.id) && " Tu postulación sigue en Mis postulaciones."}
+              </p>
+              <Link href={`/empleos?rubro=${encodeURIComponent(job.industry)}`} className="btn-primary w-full mt-4">
+                Ver vacantes de {job.industry}
+              </Link>
+            </section>
+          ) : evaluation ? (
             <LinkedJobPanel
               job={job}
               alreadyApplied={appliedIds.has(job.id)}
