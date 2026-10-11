@@ -441,6 +441,8 @@ export interface Job {
   requires_experience: boolean;
   urgent: boolean;
   featured: boolean;
+  // Fin del destaque pago. null = sin vencimiento (lo puso el admin a mano).
+  featured_until?: string | null;
   filter_questions: FilterQuestion[];
   views_count: number;
   created_at: string;

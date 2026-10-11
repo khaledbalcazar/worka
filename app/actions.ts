@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { slugify as toSlug } from "@/lib/slug";
 import { WHATS_NEW_SETTING, sanitizeWhatsNew, type WhatsNewConfig } from "@/lib/whats-new";
-import { COMPANY_ROLES } from "@/lib/types";
+import { BOOST_PLANS, COMPANY_ROLES } from "@/lib/types";
 import {
   normalizeSkills,
   validateEducation,
@@ -513,6 +513,8 @@ export async function setIdentityStatus(
 ): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
   const { error } = await supabase
     .from("candidates")
     .update({ identity_status: status })
@@ -1481,11 +1483,25 @@ export async function requestBoost(
   if (!supabase) return DEMO;
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Iniciá sesión como empresa." };
+  // El plan y el precio salen de la lista oficial, no de lo que mande el
+  // navegador: antes una llamada armada a mano podía pedir 30 días por Gs. 1.
+  void priceGs;
+  const option = BOOST_PLANS.find((p) => p.plan === plan);
+  if (!option) return { ok: false, error: "Elegí uno de los planes disponibles." };
+  const companyId = await getEffectiveCompanyId(supabase, user.id);
+  if (!companyId) return { ok: false, error: "Tu cuenta no tiene una empresa asociada." };
+  const { data: job } = await supabase
+    .from("jobs")
+    .select("id")
+    .eq("id", jobId)
+    .eq("company_id", companyId)
+    .maybeSingle();
+  if (!job) return { ok: false, error: "Esa vacante no es de tu empresa." };
   const { error } = await supabase.from("boost_requests").insert({
     job_id: jobId,
-    company_id: user.id,
-    plan,
-    price_gs: priceGs,
+    company_id: companyId,
+    plan: option.plan,
+    price_gs: option.price_gs,
   });
   if (error) return { ok: false, error: "No pudimos registrar la solicitud." };
   return { ok: true };
@@ -1497,6 +1513,8 @@ export async function resolveBoost(
 ): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
   const { data: boost } = await supabase
     .from("boost_requests")
     .select("job_id, plan")
@@ -1700,6 +1718,34 @@ export async function adminSetJobStatus(
   return { ok: true };
 }
 
+// Extiende la vigencia de vacantes activas (desde hoy). Una vacante vencida
+// sigue "Activo" pero no aparece en /empleos; esto la vuelve a publicar.
+export async function adminRenewJobs(
+  jobIds: string[],
+  days = 30
+): Promise<ActionResult & { renewed?: number }> {
+  const supabase = await getServerClient();
+  if (!supabase) return { ...DEMO, renewed: jobIds.length };
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  const ids = [...new Set(jobIds)].slice(0, 500);
+  if (ids.length === 0) return { ok: true, renewed: 0 };
+  const span = Math.min(Math.max(Math.round(days), 1), 90);
+  const { data, error } = await supabase
+    .from("jobs")
+    .update({ expires_at: new Date(Date.now() + span * 86400000).toISOString() })
+    .in("id", ids)
+    .eq("status", "Activo")
+    .select("id");
+  if (error) return { ok: false, error: "No pudimos renovar las vacantes." };
+  const { pingIndexNow, jobUrl } = await import("@/lib/indexnow");
+  if (data?.length) pingIndexNow(data.map((row) => jobUrl(row.id)));
+  revalidatePath("/admin");
+  revalidatePath("/empleos");
+  revalidatePath("/");
+  return { ok: true, renewed: data?.length ?? 0 };
+}
+
 export async function adminDeleteJob(jobId: string): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
@@ -1875,6 +1921,8 @@ export async function broadcastNotification(input: {
 export async function approveIndustryTag(tag: string): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
   const { data } = await supabase
     .from("site_settings")
     .select("value")
@@ -1900,6 +1948,8 @@ export async function saveSiteSettings(
 ): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
   const rows = Object.entries(settings).map(([key, value]) => ({
     key,
     value,
@@ -1920,6 +1970,8 @@ export async function resolveModeration(
 ): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
   const { error } = await supabase
     .from("jobs")
     .update({ status: decision === "aprobar" ? "Activo" : "Cerrado" })
@@ -2563,6 +2615,8 @@ export async function toggleCompanyBadge(
 ): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
   const { data: company } = await supabase
     .from("companies")
     .select("badges")
@@ -2585,6 +2639,8 @@ export async function toggleCompanyBadge(
 export async function verifyCompany(companyId: string): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
   const { error } = await supabase
     .from("companies")
     .update({ is_verified: true, ruc_check_status: "coincide" })

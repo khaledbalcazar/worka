@@ -1,6 +1,8 @@
 import Link from "next/link";
 import CvBuilder from "@/components/CvBuilder";
-import { getCurrentCandidate } from "@/lib/data";
+import { getCandidateCareer, getCurrentCandidate, isLive } from "@/lib/data";
+import { cvFromProfile } from "@/lib/cv";
+import { getCurrentUser } from "@/lib/supabase/server";
 
 export const metadata = { title: "Mi CV" };
 
@@ -24,5 +26,16 @@ export default async function CvPage() {
     );
   }
 
-  return <CvBuilder candidate={candidate} />;
+  const [career, user] = await Promise.all([
+    getCandidateCareer(candidate.id, candidate.skills ?? []),
+    isLive() ? getCurrentUser() : Promise.resolve(null),
+  ]);
+
+  return (
+    <CvBuilder
+      candidateId={candidate.id}
+      initial={cvFromProfile(candidate, career, user?.email ?? null)}
+      photoUrl={candidate.avatar_url}
+    />
+  );
 }

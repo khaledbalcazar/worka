@@ -1,4 +1,5 @@
 import "server-only";
+import { isJobListed } from "@/lib/job-visibility";
 import { getServerClient, getCurrentUser } from "./supabase/server";
 import { isSupabaseConfigured } from "./supabase/config";
 import { slugify } from "./slug";
@@ -765,7 +766,8 @@ export async function getCompanyStats(
 ): Promise<CompanyStats> {
   const supabase = await getServerClient();
   const jobs = await getJobsByCompany(companyId);
-  const activeJobs = jobs.filter((j) => j.status === "Activo").length;
+  // Publicadas de verdad: activas y vigentes (las vencidas no se ven en /empleos).
+  const activeJobs = jobs.filter((j) => isJobListed(j)).length;
   const totalViews = jobs.reduce((s, j) => s + j.views_count, 0);
   if (!supabase)
     return {
@@ -1051,7 +1053,7 @@ export async function getGlobalStats(): Promise<GlobalStats> {
   ] = await Promise.all([
     count("candidates"),
     count("companies"),
-    count("jobs", (q) => q.eq("status", "Activo")),
+    count("jobs", (q) => q.eq("status", "Activo").gt("expires_at", new Date().toISOString())),
     count("jobs"),
     count("applications"),
     count("applications", (q) => q.gte("applied_at", weekAgo)),
@@ -1583,7 +1585,8 @@ export async function getActiveJobsCount(): Promise<number> {
   const { count } = await supabase
     .from("jobs")
     .select("id", { count: "exact", head: true })
-    .eq("status", "Activo");
+    .eq("status", "Activo")
+    .gt("expires_at", new Date().toISOString());
   return count ?? 0;
 }
 
@@ -1603,6 +1606,7 @@ export async function getCountryJobsCount(country: string): Promise<number> {
     // inner join a companies para filtrar por país de la empresa
     .select("id, companies!inner(country)", { count: "exact", head: true })
     .eq("status", "Activo")
+    .gt("expires_at", new Date().toISOString())
     .eq("companies.country", country);
 
   let externalCount = 0;

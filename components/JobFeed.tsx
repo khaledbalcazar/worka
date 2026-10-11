@@ -8,6 +8,7 @@ import { Search, MapPin, SlidersHorizontal, X, Bell, GraduationCap, Wallet, Badg
 import type { ExternalJob, JobWithCompany } from "@/lib/types";
 import { CITIES, INDUSTRIES } from "@/lib/mock-data";
 import { matchesJob, matchesExternalJob } from "@/lib/job-search";
+import { isJobFeatured } from "@/lib/job-visibility";
 import MobileSheet from "@/components/MobileSheet";
 import ExternalJobRow from "@/components/jobs/ExternalJobRow";
 import JobResultCard from "@/components/jobs/JobResultCard";
@@ -44,8 +45,11 @@ export default function JobFeed({ jobs, appliedJobIds, savedJobIds = [], evaluat
   const applied = new Set([...appliedJobIds, ...newApplications]);
   const isSaved = (id: string) => savedChanges[id] ?? savedJobIds.includes(id);
   const filters = { query, city, industry, modality, contract, firstJobOnly, onlyVerified, withSalary, hideApplied };
+  // Las destacadas (destaque pago vigente) van arriba; después, el orden elegido.
   const filtered = jobs.filter((job) => matchesJob(job, filters, applied)).sort((a, b) =>
-    (sort === "urgentes" ? Number(b.urgent) - Number(a.urgent) : 0) || Date.parse(b.created_at) - Date.parse(a.created_at));
+    (sort === "urgentes" ? Number(b.urgent) - Number(a.urgent) : 0) ||
+    Number(isJobFeatured(b)) - Number(isJobFeatured(a)) ||
+    Date.parse(b.created_at) - Date.parse(a.created_at));
   const external = externalJobs.filter((job) => matchesExternalJob(job, filters)).sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
   const total = filtered.length + external.length;
   const shownJobs = filtered.slice(0, limit);

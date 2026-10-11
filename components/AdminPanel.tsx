@@ -14,8 +14,10 @@ import type { CustomBadge } from "@/lib/types";
 import { BADGE_CATALOG } from "@/lib/types";
 import { StatusChip } from "@/components/Badges";
 import { formatDate, timeAgo } from "@/lib/format";
+import { isJobExpired, renewalDate } from "@/lib/job-visibility";
 import {
   adminDeleteJob,
+  adminRenewJobs,
   adminDeleteUser,
   adminSendRecovery,
   adminSetJobFeatured,
@@ -120,12 +122,38 @@ export default function AdminPanel({
   const [broadcastSent, setBroadcastSent] = useState<number | null>(null);
   // Gestión de vacantes
   const [jobState, setJobState] = useState<
-    Record<string, { featured: boolean; status: string; deleted?: boolean }>
+    Record<string, { featured: boolean; status: string; expires_at: string; deleted?: boolean }>
   >(
     Object.fromEntries(
-      allJobs.map((j) => [j.id, { featured: j.featured, status: j.status }])
+      allJobs.map((j) => [j.id, { featured: j.featured, status: j.status, expires_at: j.expires_at }])
     )
   );
+  const [renewMessage, setRenewMessage] = useState<string | null>(null);
+  // Activas pero vencidas: figuran como "Activo" y no se ven en /empleos.
+  const expiredIds = allJobs
+    .filter((j) => {
+      const st = jobState[j.id];
+      return st && !st.deleted && st.status === "Activo" && isJobExpired(st.expires_at);
+    })
+    .map((j) => j.id);
+
+  function renewJobs(ids: string[]) {
+    if (ids.length === 0) return;
+    if (ids.length > 1 && !window.confirm(`¿Volver a publicar ${ids.length} vacantes por 30 días? Revisá antes que sigan vigentes.`)) return;
+    const until = renewalDate(30);
+    const previous = Object.fromEntries(ids.map((id) => [id, jobState[id]?.expires_at]));
+    setJobState((s) => ({ ...s, ...Object.fromEntries(ids.map((id) => [id, { ...s[id], expires_at: until }])) }));
+    setRenewMessage(null);
+    startTransition(async () => {
+      const result = await adminRenewJobs(ids, 30);
+      if (!result.ok) {
+        setJobState((s) => ({ ...s, ...Object.fromEntries(ids.map((id) => [id, { ...s[id], expires_at: previous[id] ?? s[id].expires_at }])) }));
+        setRenewMessage(result.error ?? "No pudimos renovar.");
+      } else {
+        setRenewMessage(`${result.renewed ?? ids.length} vacante${(result.renewed ?? ids.length) === 1 ? "" : "s"} publicada${(result.renewed ?? ids.length) === 1 ? "" : "s"} otra vez por 30 días.`);
+      }
+    });
+  }
   const [jobFilter, setJobFilter] = useState("");
   const [indexNowResult, setIndexNowResult] = useState<string | null>(null);
 
@@ -1071,6 +1099,18 @@ export default function AdminPanel({
           Todas las vacantes de la plataforma. Destacalas en el feed, cerralas o
           eliminalas.
         </p>
+        {expiredIds.length > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p>
+              <strong>{expiredIds.length} vacante{expiredIds.length === 1 ? "" : "s"} vencida{expiredIds.length === 1 ? "" : "s"}.</strong>{" "}
+              Siguen como «Activo», pero no aparecen en /empleos porque pasó su fecha de vigencia.
+            </p>
+            <button className="btn-secondary !min-h-9" disabled={pending} onClick={() => renewJobs(expiredIds)}>
+              Renovar todas por 30 días
+            </button>
+          </div>
+        )}
+        {renewMessage && <p role="status" className="text-sm text-gray-600">{renewMessage}</p>}
         <input
           className="input max-w-sm"
           placeholder="Buscar por puesto o empresa…"
@@ -1102,7 +1142,9 @@ export default function AdminPanel({
                   const st = jobState[j.id] ?? {
                     featured: j.featured,
                     status: j.status,
+                    expires_at: j.expires_at,
                   };
+                  const expired = st.status === "Activo" && isJobExpired(st.expires_at);
                   return (
                     <tr key={j.id} className="hover:bg-surface/60">
                       <td className="px-4 py-2.5">
@@ -1124,7 +1166,16 @@ export default function AdminPanel({
                         {j.company.trade_name}
                       </td>
                       <td className="px-4 py-2.5">
-                        <StatusChip status={st.status as never} />
+                        {expired ? (
+                          <span
+                            className="chip bg-amber-50 text-amber-800"
+                            title={`Venció el ${formatDate(st.expires_at)}: no aparece en /empleos`}
+                          >
+                            Vencida
+                          </span>
+                        ) : (
+                          <StatusChip status={st.status as never} />
+                        )}
                       </td>
                       <td className="px-4 py-2.5 text-gray-500">
                         {j.views_count}
@@ -1137,6 +1188,15 @@ export default function AdminPanel({
                         >
                           {st.featured ? "Quitar ⭐" : "Destacar"}
                         </button>
+                        {expired && (
+                          <button
+                            className="text-primary font-medium disabled:opacity-50"
+                            disabled={pending}
+                            onClick={() => renewJobs([j.id])}
+                          >
+                            Renovar
+                          </button>
+                        )}
                         {st.status !== "Cerrado" && (
                           <button
                             className="text-gray-500 hover:text-primary font-medium disabled:opacity-50"

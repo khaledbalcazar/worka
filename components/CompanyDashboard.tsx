@@ -42,7 +42,19 @@ const DIA = 86400000;
 
 /* ── Piezas chicas ─────────────────────────────────────────────────────── */
 
-function EstadoChip({ status }: { status: JobStatus }) {
+function EstadoChip({ status, vencida = false }: { status: JobStatus; vencida?: boolean }) {
+  // "Activo" pero vencida: no aparece en /empleos aunque el estado no cambie.
+  if (vencida && status === "Activo") {
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700"
+        title="Pasó su fecha de vigencia: no aparece en /empleos. Renovala desde el menú."
+      >
+        <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-red-500" />
+        Vencida
+      </span>
+    );
+  }
   const cfg: Record<string, string> = {
     Activo: "bg-emerald-100 text-emerald-800",
     Pausado: "bg-amber-100 text-amber-800",
@@ -783,7 +795,7 @@ export default function CompanyDashboard({
                         </p>
                       </td>
                       <td className="px-4 lg:px-5 py-3.5 whitespace-nowrap">
-                        <EstadoChip status={job.status} />
+                        <EstadoChip status={job.status} vencida={vencida} />
                       </td>
                       <td className="px-4 lg:px-5 py-3.5">
                         <span className="font-mono-data text-sm font-semibold text-slate-700">
