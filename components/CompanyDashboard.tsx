@@ -385,20 +385,20 @@ export default function CompanyDashboard({
         flash(result.error ?? "No pudimos actualizar la vigencia.");
         return;
       }
+      const finalDate = result.expires_at ?? new Date(fecha).toISOString();
       setJobs((prev) =>
-        prev.map((j) =>
-          j.id === jobId ? { ...j, expires_at: new Date(fecha).toISOString() } : j
-        )
+        prev.map((j) => (j.id === jobId ? { ...j, expires_at: finalDate } : j))
       );
-      flash(`📅 Vigencia actualizada al ${formatDate(fecha)}.`);
+      flash(`📅 Vigencia actualizada al ${formatDate(finalDate)}.${result.note ? ` ${result.note}` : ""}`);
     });
   }
 
   // Renovar: lo que la empresa quiere cuando ve "vence en 2 días" es "dame un
   // mes más", no un calendario. Se cuenta desde hoy y no desde el vencimiento
   // anterior, para que renovar una ya vencida sirva de algo.
+  // Se pide 60 días y el servidor lo ajusta a la vigencia del plan (30 en Gratis).
   function renovar(job: JobWithCompany) {
-    guardarVigencia(job.id, isoEnDias(30));
+    guardarVigencia(job.id, isoEnDias(60));
   }
 
   /* ── Derivados ────────────────────────────────────────────────────── */

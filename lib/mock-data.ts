@@ -994,3 +994,10 @@ export function getActiveJobs(): JobWithCompany[] {
 export function getJobById(id: string): JobWithCompany | undefined {
   return getJobsWithCompany().find((j) => j.id === id);
 }
+
+// Planes en modo demo (sin Supabase). Cambiarlos sirve para ver la app con
+// y sin plan pago.
+export const demoPlans: { enterprise: "gratis" | "pro" | "empresa"; pro: boolean } = {
+  enterprise: "pro",
+  pro: false,
+};

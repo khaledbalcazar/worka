@@ -585,7 +585,7 @@ export default function NewJobPage() {
                   }
                 />
               </Campo>
-              <Campo label="Vence el" hint="Si no elegís, vence en 30 días">
+              <Campo label="Vence el" hint="Si no elegís: 30 días (60 con Worka Enterprise Pro)">
                 <input
                   type="date"
                   className="input"

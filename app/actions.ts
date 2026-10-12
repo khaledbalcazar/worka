@@ -8,6 +8,8 @@ import { slugify as toSlug } from "@/lib/slug";
 import { WHATS_NEW_SETTING, sanitizeWhatsNew, type WhatsNewConfig } from "@/lib/whats-new";
 import { BOOST_PLANS, COMPANY_ROLES } from "@/lib/types";
 import { isJobListed } from "@/lib/job-visibility";
+import { getEffectiveCompanyId } from "@/lib/company-context";
+import { getEnterpriseLimits, listingLimitError, planErrorMessage } from "@/lib/subscriptions";
 import {
   normalizeSkills,
   validateEducation,
@@ -56,28 +58,6 @@ export type ActionResult = {
 };
 
 const DEMO: ActionResult = { ok: true, demo: true };
-
-// Empresa efectiva del usuario: su propia empresa, o aquella de la que es
-// miembro activo del equipo de reclutamiento (invitado por el dueño).
-async function getEffectiveCompanyId(
-  supabase: NonNullable<Awaited<ReturnType<typeof getServerClient>>>,
-  userId: string
-): Promise<string | null> {
-  const { data: own } = await supabase
-    .from("companies")
-    .select("id")
-    .eq("id", userId)
-    .maybeSingle();
-  if (own) return own.id;
-  const { data: membership } = await supabase
-    .from("company_members")
-    .select("company_id")
-    .eq("member_id", userId)
-    .eq("status", "activa")
-    .limit(1)
-    .maybeSingle();
-  return membership?.company_id ?? null;
-}
 
 // --- Candidato ---
 
@@ -1088,17 +1068,27 @@ export async function createJob(input: {
   if (!companyId)
     return { ok: false, error: "Tu cuenta no tiene una empresa asociada." };
 
+  // Plan Gratis: hasta 3 publicadas a la vez (la base lo vuelve a frenar).
+  const limitError = await listingLimitError(companyId);
+  if (limitError) return { ok: false, error: limitError };
+  // Vigencia del plan: 30 días gratis, 60 con Worka Enterprise Pro.
+  const { jobValidityDays } = await getEnterpriseLimits(companyId);
+  const maxExpiry = Date.now() + jobValidityDays * 86400000;
+
   const { questions, expires_at, ...jobFields } = input;
+  const requested = expires_at ? Date.parse(expires_at) : NaN;
+  const expiry = Number.isFinite(requested) ? Math.min(requested, maxExpiry) : maxExpiry;
   const { data: job, error } = await supabase
     .from("jobs")
     .insert({
       ...jobFields,
       company_id: companyId,
-      ...(expires_at ? { expires_at } : {}),
+      expires_at: new Date(expiry).toISOString(),
     })
     .select("id")
     .single();
-  if (error) return { ok: false, error: "No pudimos publicar la vacante." };
+  if (error)
+    return { ok: false, error: planErrorMessage(error.message) ?? "No pudimos publicar la vacante." };
 
   if (questions.length > 0) {
     await supabase.from("job_questions").insert(
@@ -1249,11 +1239,17 @@ export async function setJobStatus(
 ): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+  if (status === "Activo") {
+    const { data: job } = await supabase.from("jobs").select("company_id").eq("id", jobId).maybeSingle();
+    const limitError = job ? await listingLimitError(job.company_id, jobId) : null;
+    if (limitError) return { ok: false, error: limitError };
+  }
   const { error } = await supabase
     .from("jobs")
     .update({ status })
     .eq("id", jobId);
-  if (error) return { ok: false, error: "No pudimos cambiar el estado." };
+  if (error)
+    return { ok: false, error: planErrorMessage(error.message) ?? (error.message.includes("revisión") ? "La vacante está en revisión por Worka." : "No pudimos cambiar el estado.") };
 
   const { pingIndexNow, jobUrl } = await import("@/lib/indexnow");
   pingIndexNow(jobUrl(jobId));
@@ -1280,16 +1276,34 @@ export async function deleteJob(jobId: string): Promise<ActionResult> {
 export async function updateJobExpiry(
   jobId: string,
   expiresAt: string
-): Promise<ActionResult> {
+): Promise<ActionResult & { expires_at?: string; note?: string }> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+  const { data: job } = await supabase.from("jobs").select("company_id, status, expires_at").eq("id", jobId).maybeSingle();
+  if (!job) return { ok: false, error: "No encontramos la vacante." };
+  const { jobValidityDays } = await getEnterpriseLimits(job.company_id);
+  const maxExpiry = Date.now() + jobValidityDays * 86400000;
+  const requested = Date.parse(expiresAt);
+  if (!Number.isFinite(requested)) return { ok: false, error: "Elegí una fecha válida." };
+  // Renovar una vencida la vuelve a publicar: cuenta para el límite del plan.
+  if (job.status === "Activo" && Date.parse(job.expires_at) <= Date.now() && requested > Date.now()) {
+    const limitError = await listingLimitError(job.company_id, jobId);
+    if (limitError) return { ok: false, error: limitError };
+  }
+  const clamped = Math.min(requested, maxExpiry);
   const { error } = await supabase
     .from("jobs")
-    .update({ expires_at: new Date(expiresAt).toISOString() })
+    .update({ expires_at: new Date(clamped).toISOString() })
     .eq("id", jobId);
-  if (error) return { ok: false, error: "No pudimos actualizar la vigencia." };
+  if (error)
+    return { ok: false, error: planErrorMessage(error.message) ?? "No pudimos actualizar la vigencia." };
   revalidatePath("/empresa");
-  return { ok: true };
+  revalidatePath("/empleos");
+  return {
+    ok: true,
+    expires_at: new Date(clamped).toISOString(),
+    ...(clamped < requested ? { note: `Tu plan permite publicar hasta ${jobValidityDays} días seguidos.` } : {}),
+  };
 }
 
 export async function updateCompanyProfile(input: {
@@ -1540,6 +1554,8 @@ export async function inviteTeamMember(
   if (!user) return { ok: false, error: "Iniciá sesión como empresa." };
   const companyId = await getEffectiveCompanyId(supabase, user.id);
   if (!companyId) return { ok: false, error: "No encontramos tu empresa." };
+  if (!(await getEnterpriseLimits(companyId)).team)
+    return { ok: false, error: "El equipo de selección con varios usuarios es del plan Empresa de Worka Enterprise Pro." };
   const clean = email.trim().toLowerCase();
   if (!clean.includes("@"))
     return { ok: false, error: "Escribí un email válido." };
