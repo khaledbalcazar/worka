@@ -218,3 +218,13 @@ export function daysLeft(endsAt: string | null, now = Date.now()): number {
   if (!endsAt) return 0;
   return Math.max(0, Math.ceil((Date.parse(endsAt) - now) / 86400000));
 }
+
+// Claves de site_settings con precios y links de pago (las edita el admin
+// en «Pagos y planes»): [clave, etiqueta, ejemplo].
+export const PLAN_SETTING_KEYS = [
+  ["price_enterprise_pro", `${ENTERPRISE_BRAND} · Pro (Gs. por mes)`, String(ENTERPRISE_PLANS[1].defaultPriceGs)],
+  ["price_enterprise_empresa", `${ENTERPRISE_BRAND} · Empresa (Gs. por mes)`, String(ENTERPRISE_PLANS[2].defaultPriceGs)],
+  ["price_worka_pro", `${PRO_BRAND} (Gs. por mes)`, String(WORKA_PRO.defaultPriceGs)],
+  ["payment_link_enterprise", "Link de pago para empresas", "https://…"],
+  ["payment_link_pro", `Link de pago para ${PRO_BRAND}`, "Vacío = usa el link de pago general"],
+] as const;

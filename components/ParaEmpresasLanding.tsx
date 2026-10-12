@@ -14,6 +14,7 @@ import {
   Zap,
 } from "lucide-react";
 import HomeNav from "@/components/home/HomeNav";
+import { ENTERPRISE_BRAND, ENTERPRISE_PLANS, formatGs } from "@/lib/plans";
 import SiteFooter from "@/components/home/SiteFooter";
 
 // Landing "Para empresas", con el mismo sistema que el inicio: banda blanca
@@ -30,14 +31,17 @@ export default function ParaEmpresasLanding({
   currencyName = "guaraní",
   taxIdLabel = "RUC",
   isPy = true,
+  prices = {},
 }: {
   countryName?: string;
   currencyName?: string;
   taxIdLabel?: string;
   isPy?: boolean;
+  // Precio mensual en Gs. de cada plan pago (lo edita el admin).
+  prices?: Record<string, number>;
 }) {
   const features = [
-    { Icon: FileText, title: "Vacantes ilimitadas y gratis", text: "Publicá todas las que necesites. Con plantillas, una vacante sale en un par de minutos." },
+    { Icon: FileText, title: "Empezá gratis", text: "Hasta 3 vacantes publicadas a la vez, sin tarjeta. Con plantillas, una vacante sale en un par de minutos." },
     { Icon: Filter, title: "Preguntas de filtro", text: "Hasta 3 preguntas de Sí o No. Las respuestas eliminatorias te ahorran revisar perfiles que no aplican." },
     { Icon: Users, title: "Tablero de candidatos", text: "Cada postulación avanza por columnas: nuevos, en proceso y descartados, con entrevistas agendadas." },
     { Icon: MessageCircle, title: "Contacto directo", text: "Escribile al candidato por WhatsApp o por los mensajes de Worka, sin intermediarios." },
@@ -227,6 +231,41 @@ export default function ParaEmpresasLanding({
                 denunciar avisos sospechosos. Por eso las personas se postulan con tranquilidad.
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── PLANES ── */}
+      <section id="planes">
+        <div className={`${WRAP} ${SECTION}`}>
+          <p className="plan-eyebrow">{ENTERPRISE_BRAND}</p>
+          <h2 className={`${H2} mt-1`}>Empezá gratis. Crecé cuando lo necesites.</h2>
+          <p className="text-[15px] text-muted mt-2 max-w-2xl">
+            El plan Gratis alcanza para una pyme que contrata de vez en cuando. Si publicás seguido, Pro y Empresa suman alcance y herramientas.
+          </p>
+          <div className="plan-grid mt-8">
+            {ENTERPRISE_PLANS.map((p) => {
+              const price = p.id === "gratis" ? 0 : prices[p.id] ?? p.defaultPriceGs;
+              return (
+                <article key={p.id} className={`plan-card${p.id === "pro" ? " is-featured" : ""}`}>
+                  {p.id === "pro" && <span className="plan-ribbon">Más elegido</span>}
+                  <h3 className="text-lg font-semibold">{p.name}</h3>
+                  <p className="text-sm text-muted">{p.tagline}</p>
+                  <p className="plan-price">{price === 0 ? "Gratis" : formatGs(price)}{price > 0 && <small> / mes</small>}</p>
+                  <ul className="plan-features">
+                    {p.features.map((f) => (
+                      <li key={f}><Check size={15} /> {f}</li>
+                    ))}
+                  </ul>
+                  <Link
+                    href={p.id === "gratis" ? "/empresa/registro" : `/empresa/planes?plan=${p.id}#contratar`}
+                    className={`${p.id === "pro" ? "btn-primary" : "btn-secondary"} w-full mt-auto`}
+                  >
+                    {p.id === "gratis" ? "Empezar gratis" : `Elegir ${p.name}`}
+                  </Link>
+                </article>
+              );
+            })}
           </div>
         </div>
       </section>

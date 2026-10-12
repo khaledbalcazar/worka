@@ -133,7 +133,7 @@ export async function enviarDigest(
   const { data: jobsRaw } = await admin
     .from("jobs")
     .select(
-      "id,title,industry,modality,salary_range,urgent,requires_experience,created_at,expires_at,company:companies!inner(id,trade_name,company_name,logo_url,location_city,country,is_verified)"
+      "id,title,industry,modality,salary_range,urgent,requires_experience,featured,featured_until,created_at,expires_at,company:companies!inner(id,trade_name,company_name,logo_url,location_city,country,is_verified)"
     )
     .eq("status", "Activo")
     // El filtro usa el alias del join ("company"), no el nombre de la tabla:
@@ -143,6 +143,16 @@ export async function enviarDigest(
     .gte("created_at", desdeJobs)
     .order("created_at", { ascending: false })
     .limit(300);
+
+  /* Empresas con Worka Enterprise Pro vigente: sus vacantes suben en el
+     correo. Sin la migración 047 la tabla no existe y nadie tiene prioridad. */
+  const { data: paidRows } = await admin
+    .from("subscriptions")
+    .select("user_id")
+    .eq("product", "enterprise")
+    .eq("status", "activa")
+    .gt("ends_at", nowIso);
+  const paid = new Set(((paidRows ?? []) as { user_id: string }[]).map((r) => r.user_id));
 
   const jobs = ((jobsRaw ?? []) as any[])
     // La vacante puede seguir "Activo" y estar vencida: mandar a alguien a
@@ -163,6 +173,8 @@ export async function enviarDigest(
         country: norm(c.country) || "py",
         company: (c.trade_name || c.company_name || "Empresa") as string,
         logo: (c.logo_url ?? null) as string | null,
+        destacada: !!j.featured && (!j.featured_until || j.featured_until > nowIso),
+        prioridad: paid.has(c.id),
       };
     });
 
@@ -237,6 +249,13 @@ export async function enviarDigest(
           motivo = "No piden experiencia";
         }
         if (j.urgent) puntos += 1;
+        // Destaque pago y Worka Enterprise Pro: suben, pero solo entre las
+        // vacantes que ya le sirven a esta persona (el universo de arriba).
+        if (j.prioridad) puntos += 2;
+        if (j.destacada) {
+          puntos += 4;
+          motivo = motivo ?? "Vacante destacada";
+        }
         return { j, puntos, motivo };
       })
       // Sin ciudad propia y sin rubros elegidos, todo queda en cero y la

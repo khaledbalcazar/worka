@@ -195,3 +195,27 @@ export async function listingLimitError(companyId: string, excludeJobId?: string
 export function planErrorMessage(message: string | undefined): string | null {
   return message && message.includes("plan Gratis") ? message : null;
 }
+
+// Admin: pagos recientes y planes vigentes.
+export async function getAdminPlansData(): Promise<{ payments: PaymentRequestRow[]; subscriptions: SubscriptionRow[] }> {
+  const supabase = await getServerClient();
+  if (!supabase) {
+    return {
+      payments: [
+        { id: "demo-pay", user_id: mock.companies[1]?.id ?? "c2", product: "enterprise", plan: "pro", months: 1, amount_gs: 250000, reference: "004512339", status: "pendiente", admin_note: null, created_at: new Date().toISOString(), resolved_at: null },
+      ],
+      subscriptions: [],
+    };
+  }
+  const [{ data: payments }, { data: subs }] = await Promise.all([
+    supabase.from("payment_requests").select("*").order("created_at", { ascending: false }).limit(60),
+    supabase
+      .from("subscriptions")
+      .select("*")
+      .eq("status", "activa")
+      .gt("ends_at", new Date().toISOString())
+      .order("ends_at", { ascending: true })
+      .limit(300),
+  ]);
+  return { payments: (payments ?? []) as PaymentRequestRow[], subscriptions: (subs ?? []) as SubscriptionRow[] };
+}

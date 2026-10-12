@@ -708,3 +708,45 @@ html {
 @keyframes wn-up { from { transform: translateY(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes wn-pop { from { transform: translateY(12px) scale(0.98); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes wn-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── Planes: Worka Enterprise Pro y Worka Pro ──────────────────────────── */
+@layer components {
+  .plan-eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #8a5a00; }
+  .plan-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; background: #fff4d6; color: #8a5a00; font-size: 12px; font-weight: 700; }
+  .plan-meters { display: grid; gap: 16px; margin-top: 18px; }
+  .plan-meter { height: 6px; border-radius: 999px; background: #edf0f3; margin-top: 6px; overflow: hidden; }
+  .plan-meter span { display: block; height: 100%; border-radius: inherit; background: var(--color-primary); }
+  .plan-grid { display: grid; gap: 14px; }
+  .plan-card { position: relative; display: flex; flex-direction: column; gap: 6px; padding: 20px; border-radius: 12px; background: #fff; border: 1px solid var(--color-line); }
+  .plan-card.is-featured { border: 2px solid var(--color-primary); }
+  .plan-card.is-current { background: #f7fbff; }
+  .plan-ribbon { position: absolute; top: -11px; left: 20px; padding: 2px 10px; border-radius: 999px; background: var(--color-primary); color: #fff; font-size: 12px; font-weight: 600; }
+  .plan-price { font-size: 26px; font-weight: 700; margin: 8px 0 4px; letter-spacing: -0.01em; }
+  .plan-price small { font-size: 14px; font-weight: 500; color: var(--color-muted); }
+  .plan-features { display: grid; gap: 8px; margin: 8px 0 18px; font-size: 14px; }
+  .plan-features li { display: flex; gap: 8px; align-items: flex-start; }
+  .plan-features svg { color: var(--color-success-ink); flex-shrink: 0; margin-top: 2px; }
+  .plan-checkout-icon { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 999px; background: #fff4d6; color: #8a5a00; flex-shrink: 0; }
+  .plan-options { display: grid; gap: 8px; grid-template-columns: 1fr 1fr; }
+  .plan-options.is-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .plan-option { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1.5px solid var(--color-line); border-radius: 10px; cursor: pointer; background: #fff; }
+  .plan-option input { position: absolute; opacity: 0; pointer-events: none; }
+  .plan-option.is-active { border-color: var(--color-primary); box-shadow: 0 0 0 3px rgb(10 102 194 / 0.12); }
+  .plan-option:has(input:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+  .plan-total { display: flex; align-items: baseline; justify-content: space-between; margin: 16px 0; padding: 12px 14px; border-radius: 10px; background: #f6f8fa; }
+  .plan-total strong { font-size: 20px; }
+  .plan-steps { display: grid; gap: 16px; }
+  .plan-steps li { display: flex; gap: 12px; }
+  .plan-step-num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--color-primary); color: #fff; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+  .plan-note { display: flex; gap: 8px; align-items: flex-start; padding: 12px; border-radius: 10px; background: #f6f8fa; font-size: 14px; color: var(--color-muted); }
+  .plan-status { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+  .plan-status.is-pendiente { background: #fff4d6; color: #8a5a00; }
+  .plan-status.is-aprobada { background: #e7f5ec; color: var(--color-success-ink); }
+  .plan-status.is-rechazada { background: #fdecec; color: #b42318; }
+  .plan-lock { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 28px 20px; border-radius: 12px; background: linear-gradient(180deg, #fffaf0, #fff); border: 1px solid #f3e3b8; }
+  .pro-chip { display: inline-flex; align-items: center; gap: 3px; padding: 1px 7px; border-radius: 999px; background: #fff4d6; color: #8a5a00; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; }
+  @media (min-width: 768px) {
+    .plan-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .plan-meters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+}

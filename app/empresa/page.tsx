@@ -8,6 +8,8 @@ import {
   getJobsByCompany,
   getSiteSettings,
 } from "@/lib/data";
+import { enterprisePlan, paymentLink } from "@/lib/plans";
+import { getCompanySubscription, getEnterprisePlanId, getPromotionUsage } from "@/lib/subscriptions";
 
 export const metadata = { title: "Panel de empresa" };
 
@@ -31,12 +33,16 @@ export default async function CompanyDashboardPage() {
     );
   }
 
-  const [jobs, settings, stats, activity] = await Promise.all([
+  const [jobs, settings, stats, activity, planId, subscription, usage] = await Promise.all([
     getJobsByCompany(company.id),
     getSiteSettings(),
     getCompanyStats(company.id),
     getCompanyActivity(company.id),
+    getEnterprisePlanId(company.id),
+    getCompanySubscription(company.id),
+    getPromotionUsage(company.id),
   ]);
+  const plan = enterprisePlan(planId);
   return (
     <div className="space-y-4">
       {/* Puerta de entrada a Worka Evaluar desde donde la empresa ya trabaja:
@@ -45,7 +51,8 @@ export default async function CompanyDashboardPage() {
       <CompanyDashboard
         company={company}
         jobs={jobs}
-        paymentLink={settings.payment_link}
+        paymentLink={paymentLink("enterprise", settings) ?? ""}
+        plan={{ id: plan.id, name: plan.name, endsAt: subscription?.ends_at ?? null, limits: plan.limits, usage }}
         stats={stats}
         activity={activity}
       />

@@ -409,6 +409,11 @@ export interface Company {
   is_verified: boolean;
   ruc_check_status: "pendiente" | "coincide" | "no_coincide";
   fast_responder: boolean;
+  // Página con marca (plan Empresa de Worka Enterprise Pro, migración 047).
+  brand_color?: string | null;
+  culture?: string | null;
+  perks?: string[];
+  video_url?: string | null;
   created_at: string;
 }
 
@@ -446,6 +451,8 @@ export interface Job {
   featured: boolean;
   // Fin del destaque pago. null = sin vencimiento (lo puso el admin a mano).
   featured_until?: string | null;
+  // Renovación automática (Worka Enterprise Pro, migración 047).
+  auto_renew?: boolean;
   filter_questions: FilterQuestion[];
   views_count: number;
   created_at: string;

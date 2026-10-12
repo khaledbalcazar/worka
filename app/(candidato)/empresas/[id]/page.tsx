@@ -14,6 +14,10 @@ import {
 } from "@/components/Badges";
 import EntityAvatar from "@/components/EntityAvatar";
 import { resolveBadges } from "@/lib/types";
+import { Crown } from "lucide-react";
+import { enterpriseLimits } from "@/lib/plans";
+import { getEnterprisePlanId } from "@/lib/subscriptions";
+import { videoEmbedUrl } from "@/lib/video";
 
 // Página pública de empresa: funciona como referencia verificable para candidatos.
 export default async function CompanyPublicPage({
@@ -30,6 +34,13 @@ export default async function CompanyPublicPage({
     getCompanyPosts(id),
     getCustomBadges(),
   ]);
+  // Marca empleadora: solo con el plan Empresa vigente (si el plan vence, la
+  // página vuelve a la versión estándar sin perder lo cargado).
+  const branded = enterpriseLimits(await getEnterprisePlanId(company.id)).brandedPage;
+  const brandColor = branded && company.brand_color && /^#[0-9a-f]{6}$/i.test(company.brand_color) ? company.brand_color : null;
+  const video = branded ? videoEmbedUrl(company.video_url) : null;
+  const perks = branded ? (company.perks ?? []).filter(Boolean) : [];
+  const culture = branded ? company.culture?.trim() : "";
   const companyJobs = companyJobsAll.filter((j) => j.status !== "Moderacion");
   const active = companyJobs.filter((j) => j.status === "Activo");
   const badges = resolveBadges(company.badges, customBadges);
@@ -56,7 +67,9 @@ export default async function CompanyPublicPage({
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                 }
-              : undefined
+              : brandColor
+                ? { background: `linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 60%, ${brandColor}88 100%)` }
+                : undefined
           }
         />
         <div className="p-5 pt-0">
@@ -75,6 +88,7 @@ export default async function CompanyPublicPage({
           </div>
           <div className="flex flex-wrap gap-1.5 mt-3">
             {company.is_verified && <VerifiedBadge />}
+            {branded && <span className="pro-chip"><Crown size={11} /> Empresa Pro</span>}
             {company.fast_responder && <FastResponderBadge />}
             {badges.map((b) => (
               <span
@@ -111,6 +125,32 @@ export default async function CompanyPublicPage({
           </p>
         </div>
       </div>
+
+      {(culture || perks.length > 0 || video) && (
+        <section className="card p-5 space-y-4" style={brandColor ? { borderTop: `4px solid ${brandColor}` } : undefined}>
+          <h2 className="font-semibold text-lg">Por qué trabajar en {company.trade_name}</h2>
+          {culture && <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">{culture}</p>}
+          {perks.length > 0 && (
+            <ul className="flex flex-wrap gap-2">
+              {perks.map((p) => (
+                <li key={p} className="chip border" style={brandColor ? { borderColor: brandColor, color: brandColor } : undefined}>✓ {p}</li>
+              ))}
+            </ul>
+          )}
+          {video && (
+            <div className="relative w-full overflow-hidden rounded-xl" style={{ aspectRatio: "16 / 9" }}>
+              <iframe
+                src={video}
+                title={`Video de ${company.trade_name}`}
+                className="absolute inset-0 w-full h-full"
+                loading="lazy"
+                allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          )}
+        </section>
+      )}
 
       <div className="lg:grid lg:grid-cols-2 lg:gap-4 space-y-4 lg:space-y-0 items-start">
         {/* Vacantes */}

@@ -291,7 +291,7 @@ async function companyForJob(jobId: string): Promise<
 }
 
 // Destaque incluido en el plan: se activa al instante, sin pago aparte.
-export async function useIncludedBoost(jobId: string): Promise<Result> {
+export async function applyIncludedBoost(jobId: string): Promise<Result> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
   const ctx = await companyForJob(jobId);

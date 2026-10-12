@@ -7,6 +7,7 @@ import {
   BarChart3,
   Building2,
   ChevronDown,
+  Crown,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -31,6 +32,7 @@ const NAV = [
   { href: "/empresa/metricas", label: "Métricas", Icon: BarChart3 },
 ];
 const ACCOUNT = [
+  { href: "/empresa/planes", label: "Worka Enterprise Pro", Icon: Crown },
   { href: "/empresa/perfil", label: "Perfil de empresa", Icon: Building2 },
   { href: "/empresa/equipo", label: "Equipo", Icon: Users },
 ];
