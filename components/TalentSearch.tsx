@@ -131,9 +131,9 @@ export default function TalentSearch({
               <p className="text-xs text-gray-500 mt-2 line-clamp-2">{c.bio}</p>
             )}
             <div className="flex flex-wrap gap-1.5 mt-3">
-              {c.phone_verified && (
+              {c.email_verified && (
                 <span className="chip bg-emerald-50 text-emerald-700">
-                  ✓ WhatsApp
+                  ✓ Email verificado
                 </span>
               )}
               {c.identity_status === "verified" && (

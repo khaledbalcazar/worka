@@ -93,9 +93,8 @@ export async function applyToJob(
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Iniciá sesión para postularte." };
 
-  // Medida anti-spam liviana: exigimos perfil con datos básicos.
-  // (La verificación de WhatsApp quedará como requisito cuando conectemos la
-  // API de Meta; hoy no bloquea para no frenar postulaciones legítimas.)
+  // Medida anti-spam liviana: exigimos perfil con datos básicos. La cuenta
+  // ya viene verificada por email (Supabase Auth).
   const { data: candidate } = await supabase
     .from("candidates")
     .select("full_name, location_city")
@@ -368,35 +367,6 @@ export async function reportExternalJob(
     if (error.code === "23505") return { ok: false, error: "Ya denunciaste este aviso." };
     return { ok: false, error: "No pudimos registrar la denuncia." };
   }
-  return { ok: true };
-}
-
-// Verificación de WhatsApp. En producción, requestPhoneCode envía un código
-// por la API de WhatsApp (Meta Cloud API) y verifyPhoneCode lo contrasta.
-// Hasta conectar esa API, el código de prueba es 123456.
-export async function requestPhoneCode(): Promise<ActionResult> {
-  const supabase = await getServerClient();
-  if (!supabase) return DEMO;
-  const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "Iniciá sesión primero." };
-  // TODO(whatsapp-api): generar código, guardarlo con vencimiento y enviarlo.
-  return { ok: true };
-}
-
-export async function verifyPhoneCode(code: string): Promise<ActionResult> {
-  const supabase = await getServerClient();
-  if (!supabase) return DEMO;
-  const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "Iniciá sesión primero." };
-  // TODO(whatsapp-api): contrastar contra el código enviado de verdad.
-  if (code.trim() !== "123456")
-    return { ok: false, error: "Código incorrecto. Revisá tu WhatsApp." };
-  const { error } = await supabase
-    .from("candidates")
-    .update({ phone_verified: true })
-    .eq("id", user.id);
-  if (error) return { ok: false, error: "No pudimos verificar tu número." };
-  revalidatePath("/perfil");
   return { ok: true };
 }
 
@@ -1082,9 +1052,8 @@ export async function completeOnboarding(input: {
     id: user.id,
     ...input,
     country: input.country ?? "py",
-    // La verificación de la cuenta es por email (confirmación de Supabase);
-    // el número de WhatsApp queda como dato de contacto, sin OTP.
-    phone_verified: true,
+    // La cuenta se verifica por email (confirmación de Supabase Auth, ver
+    // migración 046). El WhatsApp queda solo como dato de contacto.
   });
   if (error) return { ok: false, error: "No pudimos guardar tus datos." };
   return { ok: true };

@@ -236,7 +236,10 @@ export interface Candidate {
   id: string;
   full_name: string;
   phone_whatsapp: string;
+  // Dato heredado de la verificación por WhatsApp, que ya no existe. No se usa.
   phone_verified: boolean;
+  // Email confirmado en Supabase Auth (migración 046).
+  email_verified?: boolean;
   identity_status: IdentityStatus;
   location_city: string;
   country: string;

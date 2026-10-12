@@ -315,7 +315,7 @@ export default function ProfileClient({
               <h1>{candidate.full_name}{identityStatus === "verified" && <BadgeCheck size={20} className="text-primary shrink-0" aria-label="Identidad verificada" />}</h1>
               <p className="profile-headline">{candidate.preferences_industry.length ? `En búsqueda de oportunidades en ${candidate.preferences_industry.join(", ")}.` : "Completá tus intereses para orientar tu búsqueda laboral."}</p>
               <p className="profile-contact"><MapPin size={14} /> {candidate.location_city} · {countryByCode(candidate.country ?? "py").name}</p>
-              <p className="profile-contact"><Phone size={14} /> {candidate.phone_whatsapp}{candidate.phone_verified && <Check size={13} className="text-emerald-700" />}</p>
+              <p className="profile-contact"><Phone size={14} /> {candidate.phone_whatsapp}</p>
               <div className="profile-primary-actions"><button className="btn-primary" onClick={() => { setEditSaved(false); setConfigModal("editar"); }}><Pencil size={14} /> Editar perfil</button>{publicProfile && <Link href={`/p/${candidate.id}`} className="btn-secondary"><Eye size={15} /> Ver perfil público</Link>}</div>
               {visibleToCompanies && <a href="#preferencias" className="profile-open-box"><strong>Buscando empleo</strong><span>{[candidate.preferences_industry.slice(0, 3).join(", "), ["Presencial", "Híbrido", "Remoto"].includes(candidate.preferences_modality) ? candidate.preferences_modality : "Cualquier modalidad", candidate.first_job_mode ? "Primer empleo" : ""].filter(Boolean).join(" · ")}</span><small>Ver preferencias</small></a>}
               <div className="profile-completion"><div><strong>{completedCount === 4 ? "Tu perfil está listo" : <a href={nextStep.href}>{nextStep.label} →</a>}</strong><p>{completedCount} de 4 secciones básicas completas</p></div><div role="progressbar" aria-label="Secciones básicas completas" aria-valuemin={0} aria-valuemax={4} aria-valuenow={completedCount} className="profile-progress-track"><span style={{ width: `${completedCount * 25}%` }} /></div></div>
@@ -363,7 +363,7 @@ export default function ProfileClient({
           {(() => {
             const checks = [
               { done: identityStatus === "verified", label: "Cédula verificada", hint: identityStatus === "pending" ? "Documentos en revisión" : "Validada por el equipo de Worka", href: "#configuracion" },
-              { done: candidate.phone_verified, label: "WhatsApp confirmado", hint: "Las empresas pueden contactarte", href: "#datos" },
+              { done: !!candidate.email_verified, label: "Email confirmado", hint: candidate.email_verified ? "Tu cuenta está verificada" : "Abrí el enlace que te mandamos por correo", href: "#datos" },
               { done: hasCv, label: "CV cargado", hint: "Se envía con cada postulación", href: "#curriculum" },
               { done: references.some((r) => r.status === "confirmada"), label: "Referencia confirmada", hint: "Alguien avaló tu experiencia", href: "#referencias" },
             ];

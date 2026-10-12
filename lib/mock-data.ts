@@ -569,6 +569,7 @@ export const currentCandidate: Candidate = {
   full_name: "María Fernanda González",
   phone_whatsapp: "+595 981 234 567",
   phone_verified: true,
+  email_verified: true,
   identity_status: "none",
   location_city: "Asunción",
   country: "py",

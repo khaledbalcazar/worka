@@ -57,9 +57,9 @@ export default async function PublicCandidatePage({
               </p>
             )}
             <div className="flex flex-wrap gap-1.5 mt-3">
-              {candidate.phone_verified && (
+              {candidate.email_verified && (
                 <span className="chip bg-emerald-50 text-emerald-700">
-                  ✓ WhatsApp verificado
+                  ✓ Email verificado
                 </span>
               )}
               {candidate.identity_status === "verified" && (

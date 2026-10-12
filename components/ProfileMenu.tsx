@@ -23,7 +23,7 @@ export type ProfileSummary = {
   city: string;
   avatarUrl: string | null;
   identityVerified: boolean;
-  phoneVerified: boolean;
+  emailVerified: boolean;
   completion: number; // 0–100
   nextStep: { label: string; href: string } | null;
 };
@@ -158,7 +158,7 @@ export default function ProfileMenu({ profile }: { profile: ProfileSummary }) {
                 </p>
               )}
               <p className="profile-menu-meta">
-                {profile.phoneVerified ? "WhatsApp verificado" : "WhatsApp sin verificar"}
+                {profile.emailVerified ? "Email verificado" : "Email sin confirmar"}
               </p>
             </div>
           </div>

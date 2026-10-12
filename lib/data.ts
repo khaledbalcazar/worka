@@ -115,7 +115,9 @@ export async function getCurrentCandidate(): Promise<Candidate | null> {
     .select("*")
     .eq("id", user.id)
     .maybeSingle();
-  return data as Candidate | null;
+  if (!data) return null;
+  // Sin la migración 046 la columna no existe: se toma de la sesión.
+  return { ...data, email_verified: data.email_verified ?? !!user.email_confirmed_at } as Candidate;
 }
 
 export type ApplicationWithJob = import("./applications").ApplicationView;
