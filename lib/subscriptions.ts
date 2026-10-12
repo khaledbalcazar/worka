@@ -219,3 +219,70 @@ export async function getAdminPlansData(): Promise<{ payments: PaymentRequestRow
   ]);
   return { payments: (payments ?? []) as PaymentRequestRow[], subscriptions: (subs ?? []) as SubscriptionRow[] };
 }
+
+export type ProfileViewer = {
+  company_id: string;
+  company_name: string;
+  logo_url: string | null;
+  city: string | null;
+  source: "postulacion" | "cv" | "talento" | "perfil";
+  viewed_at: string;
+};
+
+// Vistas del perfil del candidato logueado: conteo para todos, detalle solo
+// con Worka Pro (la política de la tabla ya lo exige).
+export async function getMyProfileViews(withDetail: boolean): Promise<{ views: number; companies: number; list: ProfileViewer[] }> {
+  const supabase = await getServerClient();
+  if (!supabase) {
+    const list: ProfileViewer[] = mock.companies.slice(0, 3).map((c, i) => ({
+      company_id: c.id,
+      company_name: c.trade_name,
+      logo_url: c.logo_url,
+      city: c.location_city,
+      source: (["postulacion", "cv", "perfil"] as const)[i],
+      viewed_at: new Date(Date.now() - (i + 1) * 86400000).toISOString(),
+    }));
+    return { views: 5, companies: 3, list: withDetail ? list : [] };
+  }
+  const { data: counts } = await supabase.rpc("fn_my_profile_view_count", { p_days: 30 });
+  const row = (Array.isArray(counts) ? counts[0] : counts) as { views?: number; companies?: number } | null;
+  let list: ProfileViewer[] = [];
+  if (withDetail) {
+    const { data } = await supabase
+      .from("profile_views")
+      .select("company_id, source, viewed_at, company:companies(trade_name, company_name, logo_url, location_city)")
+      .order("viewed_at", { ascending: false })
+      .limit(40);
+    list = ((data ?? []) as unknown as {
+      company_id: string;
+      source: ProfileViewer["source"];
+      viewed_at: string;
+      company: { trade_name: string | null; company_name: string; logo_url: string | null; location_city: string | null } | null;
+    }[]).map((r) => ({
+      company_id: r.company_id,
+      company_name: r.company?.trade_name || r.company?.company_name || "Empresa",
+      logo_url: r.company?.logo_url ?? null,
+      city: r.company?.location_city ?? null,
+      source: r.source,
+      viewed_at: r.viewed_at,
+    }));
+  }
+  return { views: Number(row?.views ?? 0), companies: Number(row?.companies ?? 0), list };
+}
+
+export type ApplicationInsight = { job_id: string; applicants: number; company_viewed_at: string | null };
+
+// Detalle de cada postulación propia (Worka Pro).
+export async function getMyApplicationInsights(): Promise<Map<string, ApplicationInsight>> {
+  const supabase = await getServerClient();
+  if (!supabase) {
+    return new Map(
+      mock.applications
+        .filter((a) => a.candidate_id === mock.currentCandidate.id)
+        .map((a, i) => [a.job_id, { job_id: a.job_id, applicants: 8 + i * 5, company_viewed_at: i % 2 ? null : new Date(Date.now() - 86400000).toISOString() }])
+    );
+  }
+  const { data, error } = await supabase.rpc("fn_my_application_insights");
+  if (error) return new Map();
+  return new Map(((data ?? []) as ApplicationInsight[]).map((r) => [r.job_id, { ...r, applicants: Number(r.applicants) }]));
+}

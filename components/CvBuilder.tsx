@@ -25,6 +25,8 @@ import {
   X,
 } from "lucide-react";
 import CvSheet, { SHEET_WIDTH } from "@/components/cv/CvTemplates";
+import CvAiReview from "@/components/cv/CvAiReview";
+import { Crown, Lock } from "lucide-react";
 import {
   CV_TEMPLATES,
   EMPTY_CERTIFICATION,
@@ -33,6 +35,7 @@ import {
   LANGUAGE_LEVELS,
   cvChecklist,
   cvStorageKey,
+  isPremiumTemplate,
   sanitizeCv,
   templateById,
   type CvData,
@@ -50,10 +53,13 @@ export default function CvBuilder({
   candidateId,
   initial,
   photoUrl,
+  isPro = false,
 }: {
   candidateId: string;
   initial: CvData;
   photoUrl: string | null;
+  // Worka Pro: plantillas premium y revisión con IA.
+  isPro?: boolean;
 }) {
   const [cv, setCv] = useState<CvData>(initial);
   const [loaded, setLoaded] = useState(false);
@@ -65,13 +71,17 @@ export default function CvBuilder({
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(cvStorageKey(candidateId));
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- leer localStorage solo es posible después de montar
-      if (raw) setCv(sanitizeCv(JSON.parse(raw), initial));
+      if (raw) {
+        const saved = sanitizeCv(JSON.parse(raw), initial);
+        // Plantilla premium sin Worka Pro (por ejemplo, venció): vuelve a una libre.
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- leer localStorage solo es posible después de montar
+        setCv(isPremiumTemplate(saved.template) && !isPro ? { ...saved, template: "moderno", accent: templateById("moderno").accents[0] } : saved);
+      }
     } catch {
       // Sin almacenamiento o borrador roto: se arranca del perfil.
     }
     setLoaded(true);
-  }, [candidateId, initial]);
+  }, [candidateId, initial, isPro]);
 
   // Guardado automático, medio segundo después del último cambio.
   useEffect(() => {
@@ -91,7 +101,13 @@ export default function CvBuilder({
     setCv((c) => ({ ...c, [key]: value }));
   }
 
+  const [premiumAsk, setPremiumAsk] = useState(false);
   function setTemplate(id: CvTemplateId) {
+    if (isPremiumTemplate(id) && !isPro) {
+      setPremiumAsk(true);
+      return;
+    }
+    setPremiumAsk(false);
     setCv((c) => ({ ...c, template: id, accent: templateById(id).accents[0] }));
   }
 
@@ -152,6 +168,8 @@ export default function CvBuilder({
             </ul>
           </div>
 
+          <CvAiReview cv={cv} isPro={isPro} />
+
           <Section id="plantilla" title="Plantilla y color" icon={<LayoutTemplate size={17} />} open={open} onToggle={toggle} summary={template.name}>
             <div className="cvb-templates">
               {CV_TEMPLATES.map((t) => (
@@ -167,11 +185,20 @@ export default function CvBuilder({
                       <CvSheet cv={{ ...cv, template: t.id, accent: cv.template === t.id ? cv.accent : t.accents[0] }} photoUrl={photoUrl} />
                     </span>
                   </span>
-                  <span className="cvb-template-name">{t.name}</span>
+                  <span className="cvb-template-name">
+                    {t.name}
+                    {isPremiumTemplate(t.id) && <span className="pro-chip ml-1.5">{isPro ? <Crown size={10} /> : <Lock size={10} />} Pro</span>}
+                  </span>
                   <span className="cvb-template-desc">{t.description}</span>
                 </button>
               ))}
             </div>
+            {premiumAsk && (
+              <p className="plan-note mt-3">
+                <Crown size={15} /> Esta plantilla es de Worka Pro.{" "}
+                <Link href="/pro" className="text-primary font-semibold">Conocé Worka Pro</Link>
+              </p>
+            )}
             <p className="label mt-4">Color</p>
             <div className="flex gap-2">
               {template.accents.map((color) => (

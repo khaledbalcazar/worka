@@ -2,6 +2,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail, emailLayout, emailEnabled } from "@/lib/email";
+import { CANONICAL_URL } from "@/lib/supabase/config";
+
+function esc(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
 
 // Evalúa las alertas de empleo activas y avisa a cada candidato de las
 // vacantes nuevas (Worka + externas) que matchean. La dispara Vercel Cron.
@@ -62,6 +67,16 @@ export async function GET(request: Request) {
     .eq("status", "activa")
     .gt("imported_at", windowIso);
 
+  // Worka Pro: las vacantes de Worka ya les llegaron al instante al
+  // publicarse (lib/instant-alerts.ts); acá solo reciben las externas.
+  const { data: proSubs } = await supabase
+    .from("subscriptions")
+    .select("user_id")
+    .eq("product", "pro")
+    .eq("status", "activa")
+    .gt("ends_at", nowIso);
+  const proUsers = new Set(((proSubs ?? []) as any[]).map((s) => s.user_id as string));
+
   let notified = 0;
   let emailsSent = 0;
 
@@ -75,7 +90,7 @@ export async function GET(request: Request) {
     const matches: Match[] = [];
 
     // Vacantes de Worka
-    for (const j of (workaJobs ?? []) as any[]) {
+    for (const j of (proUsers.has(a.user_id) ? [] : workaJobs ?? []) as any[]) {
       if (j.created_at <= since) continue;
       const company = j.company ?? {};
       if (norm(company.country) !== norm(a.country)) continue;
@@ -139,15 +154,15 @@ export async function GET(request: Request) {
           const items = top
             .map(
               (m) =>
-                `<li style="margin-bottom:8px"><strong>${m.title}</strong> — ${m.company} <span style="color:#9ca3af">(${m.source})</span></li>`
+                `<li style="margin-bottom:8px"><strong>${esc(m.title)}</strong> — ${esc(m.company)} <span style="color:#9ca3af">(${esc(m.source)})</span></li>`
             )
             .join("");
           const html = emailLayout(
             `<p>Encontramos <strong>${matches.length}</strong> vacante${
               matches.length === 1 ? "" : "s"
-            } nueva${matches.length === 1 ? "" : "s"} para tu alerta <em>${label}</em>:</p>
+            } nueva${matches.length === 1 ? "" : "s"} para tu alerta <em>${esc(label)}</em>:</p>
              <ul style="padding-left:18px">${items}</ul>
-             <a href="https://worka.com.py/empleos" style="display:inline-block;margin-top:12px;background:#2563eb;color:#fff;text-decoration:none;padding:10px 18px;border-radius:10px;font-weight:600">Ver las vacantes</a>`
+             <a href="${CANONICAL_URL}/empleos" style="display:inline-block;margin-top:12px;background:#2563eb;color:#fff;text-decoration:none;padding:10px 18px;border-radius:10px;font-weight:600">Ver las vacantes</a>`
           );
           const ok = await sendEmail({
             to,

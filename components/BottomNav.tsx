@@ -24,6 +24,7 @@ import {
   User,
   Wallet,
   X,
+  Crown,
 } from "lucide-react";
 import { signOut } from "@/app/actions";
 
@@ -47,6 +48,7 @@ const GROUPS: {
     items: [
       { href: "/postulaciones", label: "Mis postulaciones", hint: "Seguí tus procesos", Icon: ClipboardList },
       { href: "/mensajes", label: "Mensajes", hint: "Conversaciones con empresas", Icon: MessageCircle },
+      { href: "/pro", label: "Worka Pro", hint: "Quién vio tu perfil, IA y más", Icon: Crown },
       {
         href: "/alertas",
         label: "Alertas de empleo",

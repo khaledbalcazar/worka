@@ -23,7 +23,26 @@ export const CV_TEMPLATES = [
     description: "Barra lateral con tus datos, idiomas y certificados. Ideal con mucha experiencia.",
     accents: ["#1f3864", "#0f766e", "#7f1d1d", "#374151"],
   },
+  {
+    id: "elegante",
+    name: "Elegante",
+    description: "Encabezado centrado y tipografía clásica con detalles finos. Para puestos administrativos y de gestión.",
+    accents: ["#a16207", "#1f3864", "#4b5563", "#7f1d1d"],
+    premium: true,
+  },
+  {
+    id: "creativo",
+    name: "Creativo",
+    description: "Banda de color, línea de tiempo y etiquetas. Para ventas, marketing y atención al público.",
+    accents: ["#db2777", "#0a66c2", "#ea580c", "#059669"],
+    premium: true,
+  },
 ] as const;
+
+export function isPremiumTemplate(id: string): boolean {
+  const t = CV_TEMPLATES.find((x) => x.id === id);
+  return !!t && "premium" in t && t.premium === true;
+}
 
 export type CvTemplateId = (typeof CV_TEMPLATES)[number]["id"];
 

@@ -825,6 +825,8 @@ export async function getApplicantCvUrl(
     .createSignedUrl(`${candidateId}/cv.pdf`, 300);
   if (error || !data)
     return { ok: false, error: "Este candidato no cargó un CV." };
+  // "Quién vio tu CV" (Worka Pro). La función ignora a quien no es empresa.
+  await supabase.rpc("fn_record_profile_view", { p_candidate: candidateId, p_source: "cv", p_job: null });
   return { ok: true, url: data.signedUrl };
 }
 
@@ -1135,6 +1137,9 @@ export async function createJob(input: {
 
   revalidatePath("/empresa");
   revalidatePath("/empleos");
+  // Worka Pro: alertas al instante (no frena la publicación si falla).
+  const { notifyInstantAlerts } = await import("@/lib/instant-alerts");
+  await notifyInstantAlerts(job.id);
   return { ok: true };
 }
 
@@ -2344,6 +2349,7 @@ export async function saveCourse(input: {
   level: "Básico" | "Intermedio" | "Avanzado";
   status: "borrador" | "publicado";
   sort?: number;
+  premium?: boolean;
 }): Promise<ActionResult & { id?: string }> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
@@ -2363,6 +2369,9 @@ export async function saveCourse(input: {
     level: input.level,
     status: input.status,
     sort: input.sort ?? 0,
+    // Solo se manda si es premium: así guardar cursos sigue andando aunque
+    // todavía no se haya corrido la migración 047.
+    ...(input.premium !== undefined ? { premium: input.premium } : {}),
     updated_at: new Date().toISOString(),
   };
 

@@ -133,8 +133,9 @@ export default async function AcademiaPage() {
                       {c.description}
                     </p>
                     <div className="flex items-center justify-between mt-4">
-                      <span className="chip bg-surface text-gray-500">
-                        {c.level}
+                      <span className="flex items-center gap-1.5">
+                        <span className="chip bg-surface text-gray-500">{c.level}</span>
+                        {c.premium && <span className="pro-chip">Pro</span>}
                       </span>
                       <span className="inline-flex items-center gap-1 text-xs text-primary font-semibold">
                         Empezar <ArrowRight size={13} />

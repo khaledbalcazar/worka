@@ -21,6 +21,7 @@ const EMPTY_COURSE = {
   level: "Básico" as "Básico" | "Intermedio" | "Avanzado",
   status: "borrador" as "borrador" | "publicado",
   sort: 0,
+  premium: false,
 };
 
 const EMPTY_LESSON = {
@@ -74,6 +75,7 @@ export default function AcademiaAdmin({
       level: c.level,
       status: c.status,
       sort: c.sort,
+      premium: !!c.premium,
     });
     setError(null);
     startTransition(async () => {
@@ -283,6 +285,15 @@ export default function AcademiaAdmin({
                 }
               />
               Publicado (visible en la Academia)
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-600">
+              <input
+                type="checkbox"
+                className="w-5 h-5 accent-primary"
+                checked={courseDraft.premium}
+                onChange={(e) => setCourseDraft((d) => ({ ...d, premium: e.target.checked }))}
+              />
+              Premium (solo Worka Pro)
             </label>
             <button
               className="btn-primary"

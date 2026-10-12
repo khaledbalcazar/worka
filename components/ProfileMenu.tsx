@@ -15,6 +15,7 @@ import {
   Settings,
   ShieldCheck,
   UserRound,
+  Crown,
 } from "lucide-react";
 import { signOut } from "@/app/actions";
 
@@ -121,6 +122,7 @@ export default function ProfileMenu({ profile }: { profile: ProfileSummary }) {
     { href: "/postulaciones", label: "Mis postulaciones", Icon: ClipboardList },
     { href: "/guardados", label: "Empleos guardados", Icon: Bookmark },
     { href: "/alertas", label: "Alertas de empleo", Icon: Bell },
+    { href: "/pro", label: "Worka Pro", Icon: Crown },
   ];
   const account = [
     { href: "/perfil#privacidad", label: "Avisos y privacidad", Icon: ShieldCheck },

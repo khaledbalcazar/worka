@@ -966,7 +966,13 @@ export async function getTalentPool(country?: string): Promise<Candidate[]> {
   const { data } = await q
     .order("created_at", { ascending: false })
     .limit(100);
-  return (data ?? []) as Candidate[];
+  const rows = (data ?? []) as Candidate[];
+  // Worka Pro: perfil destacado, primero en la búsqueda de talento.
+  const { data: proIds } = await supabase.rpc("fn_pro_users", { p_ids: rows.map((r) => r.id) });
+  const pro = new Set(((proIds ?? []) as string[]).map(String));
+  return rows
+    .map((r) => ({ ...r, is_pro: pro.has(r.id) }))
+    .sort((a, b) => Number(b.is_pro) - Number(a.is_pro));
 }
 
 // --- Admin ---

@@ -556,3 +556,8 @@
   .cvb-scaler { transform: none !important; width: 210mm; }
   .cv-sheet { width: 210mm !important; }
 }
+.cvb-ai { background: #fff; border: 1px solid #b8cde3; border-radius: 14px; padding: 14px 16px; }
+.cvb-ai.is-locked { display: flex; align-items: center; gap: 12px; border-color: #f3e3b8; background: #fffaf0; color: #1d2226; }
+.cvb-ai.is-locked > svg { color: #8a5a00; flex-shrink: 0; }
+.cvb-ai-score { display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 999px; color: #fff; font-weight: 700; font-size: 16px; flex-shrink: 0; }
+.cvb-templates { grid-template-columns: repeat(3, minmax(0, 1fr)); }

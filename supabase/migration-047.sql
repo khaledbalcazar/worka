@@ -334,6 +334,10 @@ begin
   if v_code is not null then
     return v_code;
   end if;
+  if exists (select 1 from courses where id = p_course and premium)
+     and fn_active_plan(auth.uid(), 'pro') is null then
+    raise exception 'Este curso es de Worka Pro' using errcode = 'P0001';
+  end if;
   if not exists (select 1 from fn_completed_courses(auth.uid()) c where c.course_id = p_course) then
     raise exception 'El curso todavía no está completo' using errcode = 'P0001';
   end if;

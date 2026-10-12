@@ -49,6 +49,8 @@ export interface Course {
   category: string;
   level: "Básico" | "Intermedio" | "Avanzado";
   status: "borrador" | "publicado";
+  // Curso premium: solo con Worka Pro (migración 047).
+  premium?: boolean;
   sort: number;
   created_at: string;
   updated_at: string;
@@ -240,6 +242,8 @@ export interface Candidate {
   phone_verified: boolean;
   // Email confirmado en Supabase Auth (migración 046).
   email_verified?: boolean;
+  // Tiene Worka Pro (solo lo completa la búsqueda de talento).
+  is_pro?: boolean;
   identity_status: IdentityStatus;
   location_city: string;
   country: string;

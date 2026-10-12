@@ -12,6 +12,7 @@ const PROTECTED_PREFIXES = [
   "/perfil",
   "/postulaciones",
   "/mensajes",
+  "/pro",
   "/onboarding",
   "/admin",
 ];

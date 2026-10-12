@@ -38,6 +38,8 @@ const TEMPLATES: Record<CvTemplateId, (p: { cv: CvData; photo: string | null }) 
   clasico: (p) => <Classic {...p} />,
   moderno: (p) => <Modern {...p} />,
   ejecutivo: (p) => <Executive {...p} />,
+  elegante: (p) => <Elegant {...p} />,
+  creativo: (p) => <Creative {...p} />,
 };
 
 function Lines({ text, style }: { text: string; style?: CSSProperties }) {
@@ -473,6 +475,214 @@ function Executive({ cv, photo }: { cv: CvData; photo: string | null }) {
           </>
         )}
       </main>
+    </div>
+  );
+}
+
+/* ── 4. Elegante (Worka Pro) ──────────────────────────────────────────── */
+
+function ElegantH({ color, children }: { color: string; children: ReactNode }) {
+  return (
+    <h3 style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 12.5, fontWeight: 600, letterSpacing: 3, textTransform: "uppercase", color, margin: "22px 0 10px" }}>
+      <span style={{ flex: 1, height: 1, background: color, opacity: 0.5 }} />
+      <span style={{ whiteSpace: "nowrap" }}>{children}</span>
+      <span style={{ flex: 1, height: 1, background: color, opacity: 0.5 }} />
+    </h3>
+  );
+}
+
+function Elegant({ cv, photo }: { cv: CvData; photo: string | null }) {
+  const s = sectionsOf(cv);
+  const gold = cv.accent;
+  const contact = [cv.city, cv.phone, cv.email, cv.website].filter((v) => v.trim());
+  return (
+    <div style={{ padding: "52px 64px", fontFamily: "Georgia, 'Times New Roman', serif", color: "#1f2937", fontSize: 12.5, lineHeight: 1.55 }}>
+      <header style={{ textAlign: "center" }}>
+        {photo && <img src={photo} alt="" style={{ width: 96, height: 96, borderRadius: "50%", objectFit: "cover", margin: "0 auto 14px", border: `2px solid ${gold}` }} />}
+        <h1 style={{ fontSize: 34, fontWeight: 400, letterSpacing: 2 }}>{cv.name}</h1>
+        {cv.headline && <p style={{ fontSize: 13, letterSpacing: 3, textTransform: "uppercase", color: gold, marginTop: 6 }}>{cv.headline}</p>}
+        {contact.length > 0 && <p style={{ fontSize: 12, marginTop: 10, color: "#4b5563" }}>{contact.join("   |   ")}</p>}
+      </header>
+      {cv.summary.trim() && (
+        <>
+          <ElegantH color={gold}>Perfil</ElegantH>
+          <Lines text={cv.summary} style={{ textAlign: "center", fontStyle: "italic" }} />
+        </>
+      )}
+      {s.experience.length > 0 && (
+        <>
+          <ElegantH color={gold}>Experiencia</ElegantH>
+          {s.experience.map((e, i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "130px 1fr", gap: 18, marginTop: i ? 14 : 0, breakInside: "avoid" }}>
+              <p style={{ fontSize: 11.5, color: "#6b7280", textAlign: "right" }}>{formatPeriod(e.start, e.end, e.current)}</p>
+              <div>
+                <p style={{ fontWeight: 700 }}>{e.role}</p>
+                <p style={{ fontStyle: "italic", color: gold }}>{[e.company, e.city].filter(Boolean).join(" · ")}</p>
+                {e.description.trim() && <Lines text={e.description} style={{ marginTop: 4 }} />}
+                <Bullets text={e.highlights} marker="circle" />
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+      {s.education.length > 0 && (
+        <>
+          <ElegantH color={gold}>Formación</ElegantH>
+          {s.education.map((e, i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "130px 1fr", gap: 18, marginTop: i ? 10 : 0 }}>
+              <p style={{ fontSize: 11.5, color: "#6b7280", textAlign: "right" }}>{formatPeriod(e.start, e.end, e.current)}</p>
+              <div>
+                <p style={{ fontWeight: 700 }}>{e.title}</p>
+                <p style={{ fontStyle: "italic" }}>{[e.institution, e.city].filter(Boolean).join(" · ")}</p>
+                <Bullets text={e.notes} marker="circle" />
+              </div>
+            </div>
+          ))}
+        </>
+      )}
+      {(cv.skills.length > 0 || s.tools.length > 0 || s.languages.length > 0) && (
+        <>
+          <ElegantH color={gold}>Competencias</ElegantH>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 32px" }}>
+            {[...cv.skills, ...s.tools.map((t) => t.name), ...s.languages.map((l) => (l.level ? `${l.name} (${l.level})` : l.name))].map((x, i) => (
+              <p key={i}><span style={{ color: gold }}>◆</span> {x}</p>
+            ))}
+          </div>
+        </>
+      )}
+      {(s.certifications.length > 0 || s.courses.length > 0) && (
+        <>
+          <ElegantH color={gold}>Certificaciones</ElegantH>
+          {[...s.certifications, ...s.courses].map((c, i) => (
+            <p key={i} style={{ textAlign: "center", marginTop: i ? 3 : 0 }}>
+              {c.name}{c.issuer && <span style={{ fontStyle: "italic" }}> — {c.issuer}</span>}{c.year && ` (${c.year})`}
+            </p>
+          ))}
+        </>
+      )}
+      {cv.extra.trim() && (
+        <>
+          <ElegantH color={gold}>Además</ElegantH>
+          <Lines text={cv.extra} style={{ textAlign: "center" }} />
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ── 5. Creativo (Worka Pro) ──────────────────────────────────────────── */
+
+function CreativeH({ color, children }: { color: string; children: ReactNode }) {
+  return (
+    <h3 style={{ fontSize: 16, fontWeight: 800, color, margin: "22px 0 10px", display: "flex", alignItems: "center", gap: 8 }}>
+      <span style={{ width: 18, height: 6, borderRadius: 3, background: color }} />
+      {children}
+    </h3>
+  );
+}
+
+function Creative({ cv, photo }: { cv: CvData; photo: string | null }) {
+  const s = sectionsOf(cv);
+  const c = cv.accent;
+  const contact: [typeof MapPin, string][] = (
+    [
+      [MapPin, cv.city],
+      [Phone, cv.phone],
+      [Mail, cv.email],
+      [Globe, cv.website],
+    ] as [typeof MapPin, string][]
+  ).filter(([, v]) => v.trim());
+  return (
+    <div style={{ fontFamily: "'Inter', Arial, sans-serif", color: "#111827", fontSize: 12, lineHeight: 1.5 }}>
+      <header style={{ background: c, color: "#fff", padding: "34px 44px 30px", display: "flex", alignItems: "center", gap: 24 }}>
+        {photo && <img src={photo} alt="" style={{ width: 104, height: 104, borderRadius: 20, objectFit: "cover", border: "4px solid rgba(255,255,255,.85)", flexShrink: 0 }} />}
+        <div style={{ minWidth: 0 }}>
+          <h1 style={{ fontSize: 34, fontWeight: 800, lineHeight: 1.05 }}>{cv.name}</h1>
+          {cv.headline && <p style={{ fontSize: 15, marginTop: 6, fontWeight: 500, opacity: 0.95 }}>{cv.headline}</p>}
+          {contact.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 18px", marginTop: 12 }}>
+              {contact.map(([Icon, value]) => (
+                <span key={value} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Icon size={13} color="#fff" /> {value}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      </header>
+      <div style={{ padding: "8px 44px 36px", display: "grid", gridTemplateColumns: "1fr 210px", gap: 32 }}>
+        <main>
+          {cv.summary.trim() && (
+            <>
+              <CreativeH color={c}>Sobre mí</CreativeH>
+              <Lines text={cv.summary} />
+            </>
+          )}
+          {s.experience.length > 0 && (
+            <>
+              <CreativeH color={c}>Experiencia</CreativeH>
+              <div style={{ borderLeft: `2px solid ${c}33`, paddingLeft: 16 }}>
+                {s.experience.map((e, i) => (
+                  <div key={i} style={{ position: "relative", marginTop: i ? 16 : 0, breakInside: "avoid" }}>
+                    <span style={{ position: "absolute", left: -22, top: 4, width: 10, height: 10, borderRadius: 999, background: c }} />
+                    <p style={{ fontSize: 11, fontWeight: 700, color: c, textTransform: "uppercase", letterSpacing: 0.5 }}>{formatPeriod(e.start, e.end, e.current)}</p>
+                    <p style={{ fontWeight: 700, fontSize: 13 }}>{e.role}</p>
+                    <p style={{ color: "#4b5563" }}>{[e.company, e.city].filter(Boolean).join(" · ")}</p>
+                    {e.description.trim() && <Lines text={e.description} style={{ marginTop: 4 }} />}
+                    <Bullets text={e.highlights} />
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+          {s.education.length > 0 && (
+            <>
+              <CreativeH color={c}>Estudios</CreativeH>
+              {s.education.map((e, i) => (
+                <div key={i} style={{ marginTop: i ? 10 : 0 }}>
+                  <p style={{ fontWeight: 700 }}>{e.title}</p>
+                  <p style={{ color: "#4b5563" }}>{[e.institution, formatPeriod(e.start, e.end, e.current)].filter(Boolean).join(" · ")}</p>
+                </div>
+              ))}
+            </>
+          )}
+        </main>
+        <aside>
+          {(cv.skills.length > 0 || s.tools.length > 0) && (
+            <>
+              <CreativeH color={c}>Habilidades</CreativeH>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {[...cv.skills, ...s.tools.map((t) => t.name)].map((x, i) => (
+                  <span key={i} style={{ padding: "3px 10px", borderRadius: 999, background: `${c}1a`, color: c, fontWeight: 600, fontSize: 11 }}>{x}</span>
+                ))}
+              </div>
+            </>
+          )}
+          {s.languages.length > 0 && (
+            <>
+              <CreativeH color={c}>Idiomas</CreativeH>
+              {s.languages.map((l, i) => (
+                <p key={i} style={{ marginTop: 3 }}><strong>{l.name}</strong>{l.level && ` · ${l.level}`}</p>
+              ))}
+            </>
+          )}
+          {(s.certifications.length > 0 || s.courses.length > 0) && (
+            <>
+              <CreativeH color={c}>Certificados</CreativeH>
+              {[...s.certifications, ...s.courses].map((x, i) => (
+                <div key={i} style={{ marginTop: i ? 8 : 0 }}>
+                  <p style={{ fontWeight: 600 }}>{x.name}</p>
+                  <p style={{ color: "#6b7280", fontSize: 11 }}>{[x.issuer, x.year].filter(Boolean).join(" · ")}</p>
+                </div>
+              ))}
+            </>
+          )}
+          {cv.extra.trim() && (
+            <>
+              <CreativeH color={c}>Más</CreativeH>
+              <Lines text={cv.extra} />
+            </>
+          )}
+        </aside>
+      </div>
     </div>
   );
 }
