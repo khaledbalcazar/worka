@@ -7,6 +7,9 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { CANONICAL_URL } from "@/lib/supabase/config";
 import HomeNav from "@/components/home/HomeNav";
 import CourseViewer from "@/components/CourseViewer";
+import PlanLock from "@/components/plans/PlanLock";
+import { PRO_BRAND } from "@/lib/plans";
+import { isCurrentUserPro } from "@/lib/subscriptions";
 
 const BASE = CANONICAL_URL;
 
@@ -81,10 +84,12 @@ export default async function CoursePage({
 
             <div className="mt-7 rounded-2xl bg-gradient-to-r from-primary to-primary-dark p-5 text-white">
               <p className="font-bold">
-                Registrate gratis y accedé a toda la Academia
+                {course.premium ? `Curso de ${PRO_BRAND}` : "Registrate gratis y accedé a toda la Academia"}
               </p>
               <p className="text-white/80 text-sm mt-1">
-                Todos los cursos son gratis para los usuarios de Worka.
+                {course.premium
+                  ? "Creá tu cuenta y activá Worka Pro para hacerlo, con certificado verificable."
+                  : "Los cursos de la Academia son gratis para los usuarios de Worka."}
               </p>
               <Link
                 href={`/registro?next=/academia/${course.slug}`}
@@ -100,6 +105,30 @@ export default async function CoursePage({
               Ya tengo cuenta
             </Link>
           </div>
+        </div>
+      </main>
+    );
+  }
+
+  // Curso premium: el contenido de las lecciones no se envía sin Worka Pro.
+  if (course.premium && !(await isCurrentUserPro())) {
+    return (
+      <main className="flex-1 bg-surface min-h-screen flex flex-col">
+        <HomeNav />
+        <div className="max-w-2xl mx-auto w-full px-4 py-10 space-y-4">
+          <Link href="/academia" className="text-sm text-primary font-medium">← Academia</Link>
+          <PlanLock
+            title={course.title}
+            text={`${course.description.slice(0, 220)} Este curso es parte de ${PRO_BRAND} e incluye certificado verificable.`}
+            href="/pro#contratar"
+            cta={`Desbloquear con ${PRO_BRAND}`}
+          >
+            <ul className="text-left text-sm text-muted space-y-1.5 mt-2">
+              {course.lessons.slice(0, 6).map((l) => (
+                <li key={l.id} className="flex items-center gap-2"><Lock size={13} /> {l.title}</li>
+              ))}
+            </ul>
+          </PlanLock>
         </div>
       </main>
     );

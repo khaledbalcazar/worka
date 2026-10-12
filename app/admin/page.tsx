@@ -8,6 +8,9 @@ import AdminAiKeys from "@/components/evaluar/AdminAiKeys";
 import EmailTemplates from "@/components/admin/EmailTemplates";
 import WhatsNewEditor from "@/components/admin/WhatsNewEditor";
 import { WHATS_NEW_SETTING, parseWhatsNew } from "@/lib/whats-new";
+import PlansAdmin from "@/components/admin/PlansAdmin";
+import { PLAN_SETTING_KEYS } from "@/lib/plans";
+import { getAdminPlansData } from "@/lib/subscriptions";
 import { getAiKeys, getEvaluarAccounts } from "@/lib/evaluar";
 import {
   getActiveJobsCount,
@@ -98,6 +101,13 @@ export default async function AdminPage() {
         </Suspense>
       </div>
 
+      {/* Pagos manuales y planes (Worka Enterprise Pro y Worka Pro). */}
+      <div className="max-w-6xl mx-auto px-4 pb-10">
+        <Suspense fallback={<Cargando texto="Cargando pagos…" />}>
+          <PanelPlanes />
+        </Suspense>
+      </div>
+
       {/* Popup de novedades de /empleos. */}
       <div className="max-w-6xl mx-auto px-4 pb-10">
         <Suspense fallback={<Cargando texto="Cargando novedades…" />}>
@@ -166,6 +176,26 @@ async function PanelClaves() {
 async function PanelCorreos() {
   const overrides = await seguro("getEmailTemplateOverrides", () => getEmailTemplateOverrides(), []);
   return <EmailTemplates overrides={overrides} />;
+}
+
+// Precios y links de pago se editan en «Pagos y planes»; fuera del formulario
+// general para que guardarlo no los pise con una copia vieja.
+const PLAN_KEYS = new Set<string>(PLAN_SETTING_KEYS.map(([key]) => key));
+
+async function PanelPlanes() {
+  const [data, adminUsers, settings] = await Promise.all([
+    seguro("getAdminPlansData", () => getAdminPlansData(), { payments: [], subscriptions: [] }),
+    seguro("getAdminUsers", () => getAdminUsers(), { users: [], fullAccess: false }),
+    seguro("getSiteSettings", () => getSiteSettings(), {} as Record<string, string>),
+  ]);
+  return (
+    <PlansAdmin
+      payments={data.payments}
+      subscriptions={data.subscriptions}
+      users={adminUsers.users.map((u) => ({ id: u.id, email: u.email, role: u.role, name: u.name }))}
+      settings={settings}
+    />
+  );
 }
 
 async function PanelNovedades() {
@@ -243,7 +273,7 @@ async function PanelPrincipal() {
           boosts={boosts}
           // El popup de novedades tiene su propio editor: si viajara acá,
           // «Guardar configuración» lo pisaría con la copia vieja.
-          settings={Object.fromEntries(Object.entries(settings).filter(([key]) => key !== WHATS_NEW_SETTING))}
+          settings={Object.fromEntries(Object.entries(settings).filter(([key]) => key !== WHATS_NEW_SETTING && !PLAN_KEYS.has(key)))}
           pendingIndustries={pendingIndustries}
           adminUsers={adminUsers}
           globalStats={globalStats}

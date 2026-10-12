@@ -150,7 +150,7 @@ function buildSteps(c: Country) {
 
 function buildCompanyFeatures(c: Country) {
   return [
-    "Vacantes ilimitadas, sin costo",
+    "Empezá gratis: hasta 3 vacantes publicadas",
     "Plantillas para publicar en 2 minutos",
     "Preguntas de filtro personalizadas",
     "Panel Kanban con WhatsApp directo",
@@ -162,7 +162,7 @@ function buildCompanyFeatures(c: Country) {
 function buildFaqs(c: Country) {
   const vos = usesVoseo(c);
   return [
-    { q: "¿Worka es gratis?", a: "Sí, para candidatos es gratis para siempre. Para empresas, publicar y gestionar candidatos tampoco tiene costo. Habrá opciones de visibilidad extra pagas, pero lo esencial no se cobra." },
+    { q: "¿Worka es gratis?", a: "Para candidatos, postularse y armar el CV es gratis para siempre; Worka Pro suma herramientas opcionales. Las empresas publican gratis hasta 3 vacantes a la vez y pueden sumar alcance con Worka Enterprise Pro." },
     {
       q: "¿Cómo sé que la empresa es real?",
       a:

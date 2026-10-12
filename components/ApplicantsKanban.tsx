@@ -10,6 +10,7 @@ import {
   setApplicationNote,
   setApplicationStatus,
 } from "@/app/actions";
+import { recordProfileView } from "@/app/plans-actions";
 import { formatDate, timeAgo } from "@/lib/format";
 
 type Column = "Nuevos" | "En proceso" | "Descartados";
@@ -207,6 +208,8 @@ export default function ApplicantsKanban({
                         className="text-left"
                         onClick={() => {
                           setDetail(a);
+                          // Para "quién vio tu perfil" (Worka Pro). No bloquea nada.
+                          void recordProfileView(a.candidate_id, "postulacion").catch(() => {});
                           setNoteDraft(a.internal_note);
                           setNoteSaved(false);
                           setInterviewOpen(false);

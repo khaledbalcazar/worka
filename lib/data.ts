@@ -1,4 +1,5 @@
 import "server-only";
+import { isJobListed } from "@/lib/job-visibility";
 import { getServerClient, getCurrentUser } from "./supabase/server";
 import { isSupabaseConfigured } from "./supabase/config";
 import { slugify } from "./slug";
@@ -114,7 +115,9 @@ export async function getCurrentCandidate(): Promise<Candidate | null> {
     .select("*")
     .eq("id", user.id)
     .maybeSingle();
-  return data as Candidate | null;
+  if (!data) return null;
+  // Sin la migración 046 la columna no existe: se toma de la sesión.
+  return { ...data, email_verified: data.email_verified ?? !!user.email_confirmed_at } as Candidate;
 }
 
 export type ApplicationWithJob = import("./applications").ApplicationView;
@@ -765,7 +768,8 @@ export async function getCompanyStats(
 ): Promise<CompanyStats> {
   const supabase = await getServerClient();
   const jobs = await getJobsByCompany(companyId);
-  const activeJobs = jobs.filter((j) => j.status === "Activo").length;
+  // Publicadas de verdad: activas y vigentes (las vencidas no se ven en /empleos).
+  const activeJobs = jobs.filter((j) => isJobListed(j)).length;
   const totalViews = jobs.reduce((s, j) => s + j.views_count, 0);
   if (!supabase)
     return {
@@ -962,7 +966,13 @@ export async function getTalentPool(country?: string): Promise<Candidate[]> {
   const { data } = await q
     .order("created_at", { ascending: false })
     .limit(100);
-  return (data ?? []) as Candidate[];
+  const rows = (data ?? []) as Candidate[];
+  // Worka Pro: perfil destacado, primero en la búsqueda de talento.
+  const { data: proIds } = await supabase.rpc("fn_pro_users", { p_ids: rows.map((r) => r.id) });
+  const pro = new Set(((proIds ?? []) as string[]).map(String));
+  return rows
+    .map((r) => ({ ...r, is_pro: pro.has(r.id) }))
+    .sort((a, b) => Number(b.is_pro) - Number(a.is_pro));
 }
 
 // --- Admin ---
@@ -1051,7 +1061,7 @@ export async function getGlobalStats(): Promise<GlobalStats> {
   ] = await Promise.all([
     count("candidates"),
     count("companies"),
-    count("jobs", (q) => q.eq("status", "Activo")),
+    count("jobs", (q) => q.eq("status", "Activo").gt("expires_at", new Date().toISOString())),
     count("jobs"),
     count("applications"),
     count("applications", (q) => q.gte("applied_at", weekAgo)),
@@ -1583,7 +1593,8 @@ export async function getActiveJobsCount(): Promise<number> {
   const { count } = await supabase
     .from("jobs")
     .select("id", { count: "exact", head: true })
-    .eq("status", "Activo");
+    .eq("status", "Activo")
+    .gt("expires_at", new Date().toISOString());
   return count ?? 0;
 }
 
@@ -1603,6 +1614,7 @@ export async function getCountryJobsCount(country: string): Promise<number> {
     // inner join a companies para filtrar por país de la empresa
     .select("id, companies!inner(country)", { count: "exact", head: true })
     .eq("status", "Activo")
+    .gt("expires_at", new Date().toISOString())
     .eq("companies.country", country);
 
   let externalCount = 0;

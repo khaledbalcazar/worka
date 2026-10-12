@@ -9,11 +9,15 @@ export default function Certificate({
   courseTitle,
   dateStr,
   courseSlug,
+  code = null,
+  verifyUrl = null,
 }: {
   name: string;
   courseTitle: string;
   dateStr: string;
   courseSlug: string;
+  code?: string | null;
+  verifyUrl?: string | null;
 }) {
   return (
     <div className="min-h-screen bg-surface py-8 px-4">
@@ -103,9 +107,14 @@ export default function Certificate({
                 </div>
               </div>
 
-              <p className="text-[0.65rem] text-gray-300 mt-8">
-                Verificable en worka.click/academia · Certificado gratuito
-              </p>
+              {code && verifyUrl ? (
+                <p className="text-[0.7rem] text-gray-500 mt-8">
+                  Código <strong className="font-mono">{code}</strong> · Verificalo en{" "}
+                  <span className="text-primary">{verifyUrl.replace(/^https?:\/\//, "")}</span>
+                </p>
+              ) : (
+                <p className="text-[0.65rem] text-gray-300 mt-8">Academia Worka</p>
+              )}
             </div>
           </div>
         </div>

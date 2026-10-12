@@ -6,6 +6,7 @@ import { getCandidateCareer, getPublicCandidate } from "@/lib/data";
 import CareerSummary from "@/components/profile/CareerSummary";
 import { formatDate } from "@/lib/format";
 import { SITE_URL } from "@/lib/supabase/config";
+import { recordProfileView } from "@/app/plans-actions";
 
 // Perfil público del candidato: una URL compartible por WhatsApp,
 // visible para cualquier empleador (esté o no en Worka).
@@ -18,6 +19,8 @@ export default async function PublicCandidatePage({
   const candidate = await getPublicCandidate(id);
   if (!candidate) notFound();
   const career = await getCandidateCareer(candidate.id, candidate.skills ?? []);
+  // Si quien mira es una empresa, queda registrado para "quién vio tu perfil".
+  await recordProfileView(candidate.id, "perfil");
 
   const shareUrl = `https://wa.me/?text=${encodeURIComponent(
     `Mirá mi perfil laboral en Worka: ${SITE_URL.replace(/\/$/, "")}/p/${candidate.id}`
@@ -57,9 +60,9 @@ export default async function PublicCandidatePage({
               </p>
             )}
             <div className="flex flex-wrap gap-1.5 mt-3">
-              {candidate.phone_verified && (
+              {candidate.email_verified && (
                 <span className="chip bg-emerald-50 text-emerald-700">
-                  ✓ WhatsApp verificado
+                  ✓ Email verificado
                 </span>
               )}
               {candidate.identity_status === "verified" && (

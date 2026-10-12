@@ -6,6 +6,9 @@ import { createPortal } from "react-dom";
 import type { Company, JobStatus, JobWithCompany } from "@/lib/types";
 import type { CompanyActivity } from "@/lib/data";
 import { BOOST_PLANS } from "@/lib/types";
+import { isJobListed } from "@/lib/job-visibility";
+import { ENTERPRISE_BRAND, type EnterpriseLimits } from "@/lib/plans";
+import { sendUrgentAlert, setJobAutoRenew, applyIncludedBoost } from "@/app/plans-actions";
 import { daysUntil, formatDate, isoEnDias, timeAgo } from "@/lib/format";
 import {
   deleteJob,
@@ -42,7 +45,19 @@ const DIA = 86400000;
 
 /* ── Piezas chicas ─────────────────────────────────────────────────────── */
 
-function EstadoChip({ status }: { status: JobStatus }) {
+function EstadoChip({ status, vencida = false }: { status: JobStatus; vencida?: boolean }) {
+  // "Activo" pero vencida: no aparece en /empleos aunque el estado no cambie.
+  if (vencida && status === "Activo") {
+    return (
+      <span
+        className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700"
+        title="Pasó su fecha de vigencia: no aparece en /empleos. Renovala desde el menú."
+      >
+        <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-red-500" />
+        Vencida
+      </span>
+    );
+  }
   const cfg: Record<string, string> = {
     Activo: "bg-emerald-100 text-emerald-800",
     Pausado: "bg-amber-100 text-amber-800",
@@ -109,6 +124,10 @@ function MenuVacante({
   onDuplicar,
   onEliminar,
   onVigencia,
+  plan,
+  onIncludedBoost,
+  onUrgent,
+  onAutoRenew,
   disabled,
 }: {
   job: JobWithCompany;
@@ -117,8 +136,15 @@ function MenuVacante({
   onDuplicar: () => void;
   onEliminar: () => void;
   onVigencia: () => void;
+  plan: DashboardPlan;
+  onIncludedBoost: () => void;
+  onUrgent: () => void;
+  onAutoRenew: () => void;
   disabled: boolean;
 }) {
+  const listed = isJobListed(job);
+  const boostsLeft = plan.limits.boostsPerMonth - plan.usage.boosts;
+  const alertsLeft = plan.limits.urgentAlertsPerMonth - plan.usage.urgentAlerts;
   // El menú se dibuja en el <body> y no al lado del botón.
   //
   // La tabla vive dentro de un contenedor con overflow-x-auto para que en el
@@ -165,10 +191,10 @@ function MenuVacante({
     };
   }, [open]);
 
-  // Alto máximo posible del menú: siete opciones más el separador. Se usa
+  // Alto máximo posible del menú: nueve opciones más el separador. Se usa
   // como cota para decidir el lado, porque en el momento de abrirlo todavía
   // no existe en el DOM y no se le puede medir el alto real.
-  const ALTO_MENU = 300;
+  const ALTO_MENU = 400;
 
   function alternar() {
     if (open) return setCaja(null);
@@ -229,9 +255,17 @@ function MenuVacante({
               item("▶ Activar vacante", () => onEstado("Activo"))}
             {(job.status === "Activo" || job.status === "Pausado") &&
               item("🔒 Cerrar búsqueda", () => onEstado("Cerrado"))}
+            {listed && !job.featured && boostsLeft > 0 &&
+              item(`⭐ Destacar 7 días (te quedan ${boostsLeft})`, onIncludedBoost)}
             {job.status === "Activo" &&
               !job.featured &&
-              item("⚡ Potenciar", onBoost)}
+              boostsLeft <= 0 &&
+              item("⚡ Potenciar (pago)", onBoost)}
+            {listed && alertsLeft > 0 &&
+              item(`📣 Alerta urgente (te quedan ${alertsLeft})`, onUrgent)}
+            {plan.limits.autoRenew &&
+              job.status === "Activo" &&
+              item(job.auto_renew ? "🔁 Renovación automática: sí" : "🔁 Renovar sola al vencer", onAutoRenew)}
             <div className="border-t border-slate-100 my-1" />
             {item("🗑 Eliminar", onEliminar, true)}
           </div>,
@@ -264,19 +298,49 @@ function Modal({
 
 /* ── Panel ─────────────────────────────────────────────────────────────── */
 
+export type DashboardPlan = {
+  id: "gratis" | "pro" | "empresa";
+  name: string;
+  endsAt: string | null;
+  limits: EnterpriseLimits;
+  usage: { boosts: number; urgentAlerts: number };
+};
+
+const FREE_PLAN: DashboardPlan = {
+  id: "gratis",
+  name: "Gratis",
+  endsAt: null,
+  limits: {
+    maxListedJobs: 3,
+    jobValidityDays: 30,
+    boostsPerMonth: 0,
+    boostDays: 0,
+    urgentAlertsPerMonth: 0,
+    talentSearch: false,
+    team: false,
+    brandedPage: false,
+    autoRenew: false,
+    digestPriority: false,
+  },
+  usage: { boosts: 0, urgentAlerts: 0 },
+};
+
 export default function CompanyDashboard({
   company,
   jobs: initialJobs,
   paymentLink = "",
   stats: realStats,
   activity = [],
+  plan: initialPlan = FREE_PLAN,
 }: {
   company: Company;
   jobs: JobWithCompany[];
   paymentLink?: string;
   stats?: DashStats;
   activity?: CompanyActivity[];
+  plan?: DashboardPlan;
 }) {
+  const [plan, setPlan] = useState(initialPlan);
   const [jobs, setJobs] = useState(initialJobs);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -373,20 +437,50 @@ export default function CompanyDashboard({
         flash(result.error ?? "No pudimos actualizar la vigencia.");
         return;
       }
+      const finalDate = result.expires_at ?? new Date(fecha).toISOString();
       setJobs((prev) =>
-        prev.map((j) =>
-          j.id === jobId ? { ...j, expires_at: new Date(fecha).toISOString() } : j
-        )
+        prev.map((j) => (j.id === jobId ? { ...j, expires_at: finalDate } : j))
       );
-      flash(`📅 Vigencia actualizada al ${formatDate(fecha)}.`);
+      flash(`📅 Vigencia actualizada al ${formatDate(finalDate)}.${result.note ? ` ${result.note}` : ""}`);
     });
   }
 
   // Renovar: lo que la empresa quiere cuando ve "vence en 2 días" es "dame un
   // mes más", no un calendario. Se cuenta desde hoy y no desde el vencimiento
   // anterior, para que renovar una ya vencida sirva de algo.
+  // Se pide 60 días y el servidor lo ajusta a la vigencia del plan (30 en Gratis).
+  function destacarIncluido(job: JobWithCompany) {
+    startTransition(async () => {
+      const result = await applyIncludedBoost(job.id);
+      if (!result.ok) return flash(result.error ?? "No pudimos destacar la vacante.");
+      setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, featured: true } : j)));
+      setPlan((p) => ({ ...p, usage: { ...p.usage, boosts: p.usage.boosts + 1 } }));
+      flash(`⭐ «${job.title}» queda destacada ${plan.limits.boostDays} días: aparece primera en las búsquedas.`);
+    });
+  }
+
+  function alertaUrgente(job: JobWithCompany) {
+    if (!window.confirm(`¿Avisar ahora a los candidatos compatibles con «${job.title}»? Usa una de tus alertas urgentes del mes.`)) return;
+    startTransition(async () => {
+      const result = await sendUrgentAlert(job.id);
+      if (!result.ok) return flash(result.error ?? "No pudimos enviar la alerta.");
+      setPlan((p) => ({ ...p, usage: { ...p.usage, urgentAlerts: p.usage.urgentAlerts + 1 } }));
+      flash(`📣 Avisamos a ${result.recipients ?? 0} candidatos compatibles.`);
+    });
+  }
+
+  function alternarRenovacion(job: JobWithCompany) {
+    const next = !job.auto_renew;
+    startTransition(async () => {
+      const result = await setJobAutoRenew(job.id, next);
+      if (!result.ok) return flash(result.error ?? "No pudimos guardar el cambio.");
+      setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, auto_renew: next } : j)));
+      flash(next ? `🔁 «${job.title}» se va a renovar sola al vencer.` : `«${job.title}» ya no se renueva sola.`);
+    });
+  }
+
   function renovar(job: JobWithCompany) {
-    guardarVigencia(job.id, isoEnDias(30));
+    guardarVigencia(job.id, isoEnDias(60));
   }
 
   /* ── Derivados ────────────────────────────────────────────────────── */
@@ -456,8 +550,28 @@ export default function CompanyDashboard({
     .filter((x) => x.dias <= 7)
     .sort((a, b) => a.dias - b.dias);
 
+  const publicadas = jobs.filter((j) => isJobListed(j)).length;
+
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm">
+        <span>
+          {plan.id === "gratis" ? (
+            <>
+              <strong>Plan Gratis</strong> · {publicadas} de {plan.limits.maxListedJobs} vacantes publicadas
+            </>
+          ) : (
+            <>
+              <strong>{ENTERPRISE_BRAND} · {plan.name}</strong>
+              {plan.endsAt && <> · activo hasta el {formatDate(plan.endsAt)}</>}
+              {" "}· {plan.limits.boostsPerMonth - plan.usage.boosts} destaques y {plan.limits.urgentAlertsPerMonth - plan.usage.urgentAlerts} alertas urgentes disponibles este mes
+            </>
+          )}
+        </span>
+        <Link href="/empresa/planes" className="font-semibold text-blue-600 hover:underline">
+          {plan.id === "gratis" ? `Conocé ${ENTERPRISE_BRAND} →` : "Ver mi plan →"}
+        </Link>
+      </div>
       {notice && (
         <div className="flex items-center justify-between px-4 py-3 rounded-xl text-sm bg-emerald-50 border border-emerald-200 text-emerald-800 animate-fade-up">
           <span className="font-medium">{notice}</span>
@@ -783,7 +897,7 @@ export default function CompanyDashboard({
                         </p>
                       </td>
                       <td className="px-4 lg:px-5 py-3.5 whitespace-nowrap">
-                        <EstadoChip status={job.status} />
+                        <EstadoChip status={job.status} vencida={vencida} />
                       </td>
                       <td className="px-4 lg:px-5 py-3.5">
                         <span className="font-mono-data text-sm font-semibold text-slate-700">
@@ -867,6 +981,10 @@ export default function CompanyDashboard({
                               setEditingExpiry(job.id);
                               setExpiryValue(job.expires_at.slice(0, 10));
                             }}
+                            plan={plan}
+                            onIncludedBoost={() => destacarIncluido(job)}
+                            onUrgent={() => alertaUrgente(job)}
+                            onAutoRenew={() => alternarRenovacion(job)}
                           />
                         </div>
                       </td>

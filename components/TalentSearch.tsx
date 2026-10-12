@@ -102,7 +102,7 @@ export default function TalentSearch({
 
       <div className="grid lg:grid-cols-2 xl:grid-cols-3 gap-4">
         {filtered.map((c) => (
-          <div key={c.id} className="card p-5">
+          <div key={c.id} className={`card p-5${c.is_pro ? " !border-[#e9c46a]" : ""}`}>
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center font-bold shrink-0 overflow-hidden">
                 {c.avatar_url ? (
@@ -131,9 +131,10 @@ export default function TalentSearch({
               <p className="text-xs text-gray-500 mt-2 line-clamp-2">{c.bio}</p>
             )}
             <div className="flex flex-wrap gap-1.5 mt-3">
-              {c.phone_verified && (
+              {c.is_pro && <span className="pro-chip">★ Perfil destacado</span>}
+              {c.email_verified && (
                 <span className="chip bg-emerald-50 text-emerald-700">
-                  ✓ WhatsApp
+                  ✓ Email verificado
                 </span>
               )}
               {c.identity_status === "verified" && (

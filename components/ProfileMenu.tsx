@@ -15,6 +15,7 @@ import {
   Settings,
   ShieldCheck,
   UserRound,
+  Crown,
 } from "lucide-react";
 import { signOut } from "@/app/actions";
 
@@ -23,7 +24,7 @@ export type ProfileSummary = {
   city: string;
   avatarUrl: string | null;
   identityVerified: boolean;
-  phoneVerified: boolean;
+  emailVerified: boolean;
   completion: number; // 0–100
   nextStep: { label: string; href: string } | null;
 };
@@ -121,6 +122,7 @@ export default function ProfileMenu({ profile }: { profile: ProfileSummary }) {
     { href: "/postulaciones", label: "Mis postulaciones", Icon: ClipboardList },
     { href: "/guardados", label: "Empleos guardados", Icon: Bookmark },
     { href: "/alertas", label: "Alertas de empleo", Icon: Bell },
+    { href: "/pro", label: "Worka Pro", Icon: Crown },
   ];
   const account = [
     { href: "/perfil#privacidad", label: "Avisos y privacidad", Icon: ShieldCheck },
@@ -158,7 +160,7 @@ export default function ProfileMenu({ profile }: { profile: ProfileSummary }) {
                 </p>
               )}
               <p className="profile-menu-meta">
-                {profile.phoneVerified ? "WhatsApp verificado" : "WhatsApp sin verificar"}
+                {profile.emailVerified ? "Email verificado" : "Email sin confirmar"}
               </p>
             </div>
           </div>

@@ -6,7 +6,10 @@ import { redirect } from "next/navigation";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { slugify as toSlug } from "@/lib/slug";
 import { WHATS_NEW_SETTING, sanitizeWhatsNew, type WhatsNewConfig } from "@/lib/whats-new";
-import { COMPANY_ROLES } from "@/lib/types";
+import { BOOST_PLANS, COMPANY_ROLES } from "@/lib/types";
+import { isJobListed } from "@/lib/job-visibility";
+import { getEffectiveCompanyId } from "@/lib/company-context";
+import { getEnterpriseLimits, listingLimitError, planErrorMessage } from "@/lib/subscriptions";
 import {
   normalizeSkills,
   validateEducation,
@@ -56,28 +59,6 @@ export type ActionResult = {
 
 const DEMO: ActionResult = { ok: true, demo: true };
 
-// Empresa efectiva del usuario: su propia empresa, o aquella de la que es
-// miembro activo del equipo de reclutamiento (invitado por el dueño).
-async function getEffectiveCompanyId(
-  supabase: NonNullable<Awaited<ReturnType<typeof getServerClient>>>,
-  userId: string
-): Promise<string | null> {
-  const { data: own } = await supabase
-    .from("companies")
-    .select("id")
-    .eq("id", userId)
-    .maybeSingle();
-  if (own) return own.id;
-  const { data: membership } = await supabase
-    .from("company_members")
-    .select("company_id")
-    .eq("member_id", userId)
-    .eq("status", "activa")
-    .limit(1)
-    .maybeSingle();
-  return membership?.company_id ?? null;
-}
-
 // --- Candidato ---
 
 // Límite diario de postulaciones: frena bots y postulaciones masivas sin sentido.
@@ -92,9 +73,8 @@ export async function applyToJob(
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Iniciá sesión para postularte." };
 
-  // Medida anti-spam liviana: exigimos perfil con datos básicos.
-  // (La verificación de WhatsApp quedará como requisito cuando conectemos la
-  // API de Meta; hoy no bloquea para no frenar postulaciones legítimas.)
+  // Medida anti-spam liviana: exigimos perfil con datos básicos. La cuenta
+  // ya viene verificada por email (Supabase Auth).
   const { data: candidate } = await supabase
     .from("candidates")
     .select("full_name, location_city")
@@ -106,6 +86,16 @@ export async function applyToJob(
       error:
         "Completá tu perfil (nombre y ciudad) para postularte. Te toma 2 minutos.",
     };
+
+  // Solo vacantes publicadas: activas y sin vencer. Una vencida sigue
+  // "Activo" en la base, pero la empresa ya no la espera.
+  const { data: target } = await supabase
+    .from("jobs")
+    .select("status, expires_at")
+    .eq("id", jobId)
+    .maybeSingle();
+  if (!target || !isJobListed(target))
+    return { ok: false, error: "Esta vacante ya no recibe postulaciones." };
 
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -360,35 +350,6 @@ export async function reportExternalJob(
   return { ok: true };
 }
 
-// Verificación de WhatsApp. En producción, requestPhoneCode envía un código
-// por la API de WhatsApp (Meta Cloud API) y verifyPhoneCode lo contrasta.
-// Hasta conectar esa API, el código de prueba es 123456.
-export async function requestPhoneCode(): Promise<ActionResult> {
-  const supabase = await getServerClient();
-  if (!supabase) return DEMO;
-  const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "Iniciá sesión primero." };
-  // TODO(whatsapp-api): generar código, guardarlo con vencimiento y enviarlo.
-  return { ok: true };
-}
-
-export async function verifyPhoneCode(code: string): Promise<ActionResult> {
-  const supabase = await getServerClient();
-  if (!supabase) return DEMO;
-  const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "Iniciá sesión primero." };
-  // TODO(whatsapp-api): contrastar contra el código enviado de verdad.
-  if (code.trim() !== "123456")
-    return { ok: false, error: "Código incorrecto. Revisá tu WhatsApp." };
-  const { error } = await supabase
-    .from("candidates")
-    .update({ phone_verified: true })
-    .eq("id", user.id);
-  if (error) return { ok: false, error: "No pudimos verificar tu número." };
-  revalidatePath("/perfil");
-  return { ok: true };
-}
-
 export async function toggleSaveJob(
   jobId: string,
   save: boolean
@@ -513,6 +474,8 @@ export async function setIdentityStatus(
 ): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
   const { error } = await supabase
     .from("candidates")
     .update({ identity_status: status })
@@ -862,6 +825,8 @@ export async function getApplicantCvUrl(
     .createSignedUrl(`${candidateId}/cv.pdf`, 300);
   if (error || !data)
     return { ok: false, error: "Este candidato no cargó un CV." };
+  // "Quién vio tu CV" (Worka Pro). La función ignora a quien no es empresa.
+  await supabase.rpc("fn_record_profile_view", { p_candidate: candidateId, p_source: "cv", p_job: null });
   return { ok: true, url: data.signedUrl };
 }
 
@@ -1069,9 +1034,8 @@ export async function completeOnboarding(input: {
     id: user.id,
     ...input,
     country: input.country ?? "py",
-    // La verificación de la cuenta es por email (confirmación de Supabase);
-    // el número de WhatsApp queda como dato de contacto, sin OTP.
-    phone_verified: true,
+    // La cuenta se verifica por email (confirmación de Supabase Auth, ver
+    // migración 046). El WhatsApp queda solo como dato de contacto.
   });
   if (error) return { ok: false, error: "No pudimos guardar tus datos." };
   return { ok: true };
@@ -1106,17 +1070,27 @@ export async function createJob(input: {
   if (!companyId)
     return { ok: false, error: "Tu cuenta no tiene una empresa asociada." };
 
+  // Plan Gratis: hasta 3 publicadas a la vez (la base lo vuelve a frenar).
+  const limitError = await listingLimitError(companyId);
+  if (limitError) return { ok: false, error: limitError };
+  // Vigencia del plan: 30 días gratis, 60 con Worka Enterprise Pro.
+  const { jobValidityDays } = await getEnterpriseLimits(companyId);
+  const maxExpiry = Date.now() + jobValidityDays * 86400000;
+
   const { questions, expires_at, ...jobFields } = input;
+  const requested = expires_at ? Date.parse(expires_at) : NaN;
+  const expiry = Number.isFinite(requested) ? Math.min(requested, maxExpiry) : maxExpiry;
   const { data: job, error } = await supabase
     .from("jobs")
     .insert({
       ...jobFields,
       company_id: companyId,
-      ...(expires_at ? { expires_at } : {}),
+      expires_at: new Date(expiry).toISOString(),
     })
     .select("id")
     .single();
-  if (error) return { ok: false, error: "No pudimos publicar la vacante." };
+  if (error)
+    return { ok: false, error: planErrorMessage(error.message) ?? "No pudimos publicar la vacante." };
 
   if (questions.length > 0) {
     await supabase.from("job_questions").insert(
@@ -1163,6 +1137,9 @@ export async function createJob(input: {
 
   revalidatePath("/empresa");
   revalidatePath("/empleos");
+  // Worka Pro: alertas al instante (no frena la publicación si falla).
+  const { notifyInstantAlerts } = await import("@/lib/instant-alerts");
+  await notifyInstantAlerts(job.id);
   return { ok: true };
 }
 
@@ -1267,11 +1244,17 @@ export async function setJobStatus(
 ): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+  if (status === "Activo") {
+    const { data: job } = await supabase.from("jobs").select("company_id").eq("id", jobId).maybeSingle();
+    const limitError = job ? await listingLimitError(job.company_id, jobId) : null;
+    if (limitError) return { ok: false, error: limitError };
+  }
   const { error } = await supabase
     .from("jobs")
     .update({ status })
     .eq("id", jobId);
-  if (error) return { ok: false, error: "No pudimos cambiar el estado." };
+  if (error)
+    return { ok: false, error: planErrorMessage(error.message) ?? (error.message.includes("revisión") ? "La vacante está en revisión por Worka." : "No pudimos cambiar el estado.") };
 
   const { pingIndexNow, jobUrl } = await import("@/lib/indexnow");
   pingIndexNow(jobUrl(jobId));
@@ -1298,16 +1281,34 @@ export async function deleteJob(jobId: string): Promise<ActionResult> {
 export async function updateJobExpiry(
   jobId: string,
   expiresAt: string
-): Promise<ActionResult> {
+): Promise<ActionResult & { expires_at?: string; note?: string }> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+  const { data: job } = await supabase.from("jobs").select("company_id, status, expires_at").eq("id", jobId).maybeSingle();
+  if (!job) return { ok: false, error: "No encontramos la vacante." };
+  const { jobValidityDays } = await getEnterpriseLimits(job.company_id);
+  const maxExpiry = Date.now() + jobValidityDays * 86400000;
+  const requested = Date.parse(expiresAt);
+  if (!Number.isFinite(requested)) return { ok: false, error: "Elegí una fecha válida." };
+  // Renovar una vencida la vuelve a publicar: cuenta para el límite del plan.
+  if (job.status === "Activo" && Date.parse(job.expires_at) <= Date.now() && requested > Date.now()) {
+    const limitError = await listingLimitError(job.company_id, jobId);
+    if (limitError) return { ok: false, error: limitError };
+  }
+  const clamped = Math.min(requested, maxExpiry);
   const { error } = await supabase
     .from("jobs")
-    .update({ expires_at: new Date(expiresAt).toISOString() })
+    .update({ expires_at: new Date(clamped).toISOString() })
     .eq("id", jobId);
-  if (error) return { ok: false, error: "No pudimos actualizar la vigencia." };
+  if (error)
+    return { ok: false, error: planErrorMessage(error.message) ?? "No pudimos actualizar la vigencia." };
   revalidatePath("/empresa");
-  return { ok: true };
+  revalidatePath("/empleos");
+  return {
+    ok: true,
+    expires_at: new Date(clamped).toISOString(),
+    ...(clamped < requested ? { note: `Tu plan permite publicar hasta ${jobValidityDays} días seguidos.` } : {}),
+  };
 }
 
 export async function updateCompanyProfile(input: {
@@ -1481,11 +1482,25 @@ export async function requestBoost(
   if (!supabase) return DEMO;
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Iniciá sesión como empresa." };
+  // El plan y el precio salen de la lista oficial, no de lo que mande el
+  // navegador: antes una llamada armada a mano podía pedir 30 días por Gs. 1.
+  void priceGs;
+  const option = BOOST_PLANS.find((p) => p.plan === plan);
+  if (!option) return { ok: false, error: "Elegí uno de los planes disponibles." };
+  const companyId = await getEffectiveCompanyId(supabase, user.id);
+  if (!companyId) return { ok: false, error: "Tu cuenta no tiene una empresa asociada." };
+  const { data: job } = await supabase
+    .from("jobs")
+    .select("id")
+    .eq("id", jobId)
+    .eq("company_id", companyId)
+    .maybeSingle();
+  if (!job) return { ok: false, error: "Esa vacante no es de tu empresa." };
   const { error } = await supabase.from("boost_requests").insert({
     job_id: jobId,
-    company_id: user.id,
-    plan,
-    price_gs: priceGs,
+    company_id: companyId,
+    plan: option.plan,
+    price_gs: option.price_gs,
   });
   if (error) return { ok: false, error: "No pudimos registrar la solicitud." };
   return { ok: true };
@@ -1497,6 +1512,8 @@ export async function resolveBoost(
 ): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
   const { data: boost } = await supabase
     .from("boost_requests")
     .select("job_id, plan")
@@ -1542,6 +1559,8 @@ export async function inviteTeamMember(
   if (!user) return { ok: false, error: "Iniciá sesión como empresa." };
   const companyId = await getEffectiveCompanyId(supabase, user.id);
   if (!companyId) return { ok: false, error: "No encontramos tu empresa." };
+  if (!(await getEnterpriseLimits(companyId)).team)
+    return { ok: false, error: "El equipo de selección con varios usuarios es del plan Empresa de Worka Enterprise Pro." };
   const clean = email.trim().toLowerCase();
   if (!clean.includes("@"))
     return { ok: false, error: "Escribí un email válido." };
@@ -1698,6 +1717,34 @@ export async function adminSetJobStatus(
   revalidatePath("/admin");
   revalidatePath("/empleos");
   return { ok: true };
+}
+
+// Extiende la vigencia de vacantes activas (desde hoy). Una vacante vencida
+// sigue "Activo" pero no aparece en /empleos; esto la vuelve a publicar.
+export async function adminRenewJobs(
+  jobIds: string[],
+  days = 30
+): Promise<ActionResult & { renewed?: number }> {
+  const supabase = await getServerClient();
+  if (!supabase) return { ...DEMO, renewed: jobIds.length };
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
+  const ids = [...new Set(jobIds)].slice(0, 500);
+  if (ids.length === 0) return { ok: true, renewed: 0 };
+  const span = Math.min(Math.max(Math.round(days), 1), 90);
+  const { data, error } = await supabase
+    .from("jobs")
+    .update({ expires_at: new Date(Date.now() + span * 86400000).toISOString() })
+    .in("id", ids)
+    .eq("status", "Activo")
+    .select("id");
+  if (error) return { ok: false, error: "No pudimos renovar las vacantes." };
+  const { pingIndexNow, jobUrl } = await import("@/lib/indexnow");
+  if (data?.length) pingIndexNow(data.map((row) => jobUrl(row.id)));
+  revalidatePath("/admin");
+  revalidatePath("/empleos");
+  revalidatePath("/");
+  return { ok: true, renewed: data?.length ?? 0 };
 }
 
 export async function adminDeleteJob(jobId: string): Promise<ActionResult> {
@@ -1875,6 +1922,8 @@ export async function broadcastNotification(input: {
 export async function approveIndustryTag(tag: string): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
   const { data } = await supabase
     .from("site_settings")
     .select("value")
@@ -1900,6 +1949,8 @@ export async function saveSiteSettings(
 ): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
   const rows = Object.entries(settings).map(([key, value]) => ({
     key,
     value,
@@ -1920,6 +1971,8 @@ export async function resolveModeration(
 ): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
   const { error } = await supabase
     .from("jobs")
     .update({ status: decision === "aprobar" ? "Activo" : "Cerrado" })
@@ -2296,6 +2349,7 @@ export async function saveCourse(input: {
   level: "Básico" | "Intermedio" | "Avanzado";
   status: "borrador" | "publicado";
   sort?: number;
+  premium?: boolean;
 }): Promise<ActionResult & { id?: string }> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
@@ -2315,6 +2369,9 @@ export async function saveCourse(input: {
     level: input.level,
     status: input.status,
     sort: input.sort ?? 0,
+    // Solo se manda si es premium: así guardar cursos sigue andando aunque
+    // todavía no se haya corrido la migración 047.
+    ...(input.premium !== undefined ? { premium: input.premium } : {}),
     updated_at: new Date().toISOString(),
   };
 
@@ -2563,6 +2620,8 @@ export async function toggleCompanyBadge(
 ): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
   const { data: company } = await supabase
     .from("companies")
     .select("badges")
@@ -2585,6 +2644,8 @@ export async function toggleCompanyBadge(
 export async function verifyCompany(companyId: string): Promise<ActionResult> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
+  if (!(await assertAdmin()))
+    return { ok: false, error: "Solo el admin puede hacer esto." };
   const { error } = await supabase
     .from("companies")
     .update({ is_verified: true, ruc_check_status: "coincide" })

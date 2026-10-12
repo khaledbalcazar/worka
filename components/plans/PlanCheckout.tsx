@@ -1,0 +1,144 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { Check, Clock, ExternalLink, Info } from "lucide-react";
+import { requestPlanPayment } from "@/app/plans-actions";
+import { BILLING_OPTIONS, formatGs, type Product } from "@/lib/plans";
+
+export type CheckoutPlan = { id: string; name: string; monthly: number };
+export type PendingPayment = { plan: string; months: number; amount_gs: number; created_at: string } | null;
+
+// Pago manual: la persona elige plan y duración, paga con el link de pago
+// y después avisa "ya pagué". El admin confirma y el plan se activa.
+export default function PlanCheckout({
+  product,
+  plans,
+  initialPlan,
+  paymentLink,
+  pending,
+  canPay = true,
+  cannotPayReason,
+}: {
+  product: Product;
+  plans: CheckoutPlan[];
+  initialPlan?: string;
+  paymentLink: string | null;
+  pending: PendingPayment;
+  canPay?: boolean;
+  cannotPayReason?: string;
+}) {
+  const [plan, setPlan] = useState(initialPlan && plans.some((p) => p.id === initialPlan) ? initialPlan : plans[0]?.id);
+  const [months, setMonths] = useState<number>(1);
+  const [paid, setPaid] = useState(false);
+  const [reference, setReference] = useState("");
+  const [sent, setSent] = useState<PendingPayment>(pending);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, startTransition] = useTransition();
+
+  const selected = plans.find((p) => p.id === plan) ?? plans[0];
+  const option = BILLING_OPTIONS.find((o) => o.months === months) ?? BILLING_OPTIONS[0];
+  const total = (selected?.monthly ?? 0) * option.paidMonths;
+
+  if (sent) {
+    return (
+      <div className="plan-checkout">
+        <div className="flex items-start gap-3">
+          <span className="plan-checkout-icon"><Clock size={18} /></span>
+          <div>
+            <p className="font-semibold">Estamos confirmando tu pago</p>
+            <p className="text-sm text-muted mt-1">
+              {plans.find((p) => p.id === sent.plan)?.name ?? "Plan"} · {sent.months} {sent.months === 1 ? "mes" : "meses"} · {formatGs(sent.amount_gs)}.
+              Te avisamos por correo y en la campanita apenas lo activemos (normalmente en el día).
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function submit() {
+    setError(null);
+    startTransition(async () => {
+      try {
+        const result = await requestPlanPayment({ product, plan: selected.id, months, reference });
+        if (!result.ok) {
+          setError(result.error ?? "No pudimos registrar el pago.");
+          return;
+        }
+        setSent({ plan: selected.id, months, amount_gs: total, created_at: new Date().toISOString() });
+      } catch {
+        setError("No pudimos conectar. Probá de nuevo.");
+      }
+    });
+  }
+
+  return (
+    <div className="plan-checkout" id="contratar">
+      {plans.length > 1 && (
+        <fieldset>
+          <legend className="label">Plan</legend>
+          <div className="plan-options">
+            {plans.map((p) => (
+              <label key={p.id} className={`plan-option${plan === p.id ? " is-active" : ""}`}>
+                <input type="radio" name={`plan-${product}`} value={p.id} checked={plan === p.id} onChange={() => setPlan(p.id)} />
+                <span className="font-semibold">{p.name}</span>
+                <span className="text-sm text-muted">{formatGs(p.monthly)} / mes</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
+      <fieldset className="mt-4">
+        <legend className="label">Duración</legend>
+        <div className="plan-options is-3">
+          {BILLING_OPTIONS.map((o) => (
+            <label key={o.months} className={`plan-option${months === o.months ? " is-active" : ""}`}>
+              <input type="radio" name={`months-${product}`} value={o.months} checked={months === o.months} onChange={() => setMonths(o.months)} />
+              <span className="font-semibold">{o.label}</span>
+              <span className="text-xs text-muted">{o.paidMonths < o.months ? `Pagás ${o.paidMonths}` : formatGs((selected?.monthly ?? 0) * o.paidMonths)}</span>
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      <div className="plan-total">
+        <span>Total</span>
+        <strong>{formatGs(total)}</strong>
+      </div>
+
+      {!canPay ? (
+        <p className="plan-note"><Info size={15} /> {cannotPayReason}</p>
+      ) : !paymentLink ? (
+        <p className="plan-note"><Info size={15} /> El pago en línea todavía no está disponible. Escribinos por WhatsApp o email y te pasamos los datos.</p>
+      ) : (
+        <ol className="plan-steps">
+          <li>
+            <span className="plan-step-num">1</span>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">Pagá {formatGs(total)}</p>
+              <p className="text-xs text-muted">Se abre el link de pago en otra pestaña. Guardá el comprobante.</p>
+              <a href={paymentLink} target="_blank" rel="noopener noreferrer" className="btn-primary w-full mt-2" onClick={() => setPaid(true)}>
+                <ExternalLink size={16} /> Ir a pagar
+              </a>
+            </div>
+          </li>
+          <li>
+            <span className="plan-step-num">2</span>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">Avisanos que pagaste</p>
+              <label className="block mt-2">
+                <span className="text-xs text-muted">Número de operación o comprobante (opcional)</span>
+                <input className="input mt-1" value={reference} maxLength={120} onChange={(e) => setReference(e.target.value)} placeholder="Ej: 004512339" />
+              </label>
+              <button type="button" className={`${paid ? "btn-primary" : "btn-secondary"} w-full mt-2`} disabled={busy} onClick={submit}>
+                <Check size={16} /> {busy ? "Enviando…" : "Ya pagué"}
+              </button>
+            </div>
+          </li>
+        </ol>
+      )}
+      {error && <p role="alert" className="text-sm text-danger mt-3">{error}</p>}
+    </div>
+  );
+}

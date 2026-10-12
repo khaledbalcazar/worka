@@ -25,7 +25,7 @@ export default async function CandidateLayout({
         city: candidate.location_city,
         avatarUrl: candidate.avatar_url,
         identityVerified: candidate.identity_status === "verified",
-        phoneVerified: candidate.phone_verified,
+        emailVerified: !!candidate.email_verified,
         completion: completion.percent,
         nextStep: completion.nextStep,
       }

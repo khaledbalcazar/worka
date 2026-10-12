@@ -5,6 +5,8 @@ import {
   getCurrentCompany,
   getMyCompanyRole,
 } from "@/lib/data";
+import PlanLock from "@/components/plans/PlanLock";
+import { getEnterpriseLimits } from "@/lib/subscriptions";
 
 export const metadata = { title: "Equipo" };
 
@@ -27,16 +29,31 @@ export default async function CompanyTeamPage() {
     );
   }
 
-  const [members, rol] = await Promise.all([
+  const [members, rol, limits] = await Promise.all([
     getCompanyMembers(company.id),
     getMyCompanyRole(company.id),
+    getEnterpriseLimits(company.id),
   ]);
+
+  // Sin plan Empresa no se invita gente nueva; quien ya estaba sigue entrando.
+  if (!limits.team && members.length === 0) {
+    return (
+      <div className="max-w-2xl mx-auto mt-6">
+        <PlanLock
+          title="Sumá a tu equipo de selección"
+          text="Invitá a reclutadores y administradores con su propio usuario y permisos. Es parte del plan Empresa de Worka Enterprise Pro."
+          href="/empresa/planes?plan=empresa#contratar"
+          cta="Ver el plan Empresa"
+        />
+      </div>
+    );
+  }
 
   return (
     <CompanyTeam
       members={members}
       companyId={company.id}
-      puedeGestionar={rol === "dueno" || rol === "administrador"}
+      puedeGestionar={limits.team && (rol === "dueno" || rol === "administrador")}
     />
   );
 }

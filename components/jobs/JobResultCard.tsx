@@ -1,11 +1,12 @@
 "use client";
 import Link from "next/link";
-import { BadgeCheck, Check, Zap } from "lucide-react";
+import { BadgeCheck, Check, Star, Zap } from "lucide-react";
 import type { JobWithCompany } from "@/lib/types";
 import { isRecent, timeAgo } from "@/lib/format";
 import EntityAvatar from "@/components/EntityAvatar";
 import SaveJobButton from "./SaveJobButton";
 import { jobMatch, type MatchCandidate } from "@/lib/job-match";
+import { isJobFeatured } from "@/lib/job-visibility";
 
 // Fila de resultado al estilo de una bolsa de empleo profesional: logo,
 // título, empresa, lugar y una línea de datos. Toda la fila es clickeable:
@@ -16,7 +17,8 @@ export default function JobResultCard({ job, selected, saved, loggedIn, applied,
 }) {
   const match = matchProfile ? jobMatch(matchProfile, job) : null;
   const quickApply = !requiresEvaluation && job.filter_questions.length === 0;
-  return <li className={`li-item ${selected ? "is-selected" : ""}`}>
+  const featured = isJobFeatured(job);
+  return <li className={`li-item ${selected ? "is-selected" : ""}${featured ? " is-featured" : ""}`}>
     <EntityAvatar url={job.company.logo_url} name={job.company.trade_name} className="li-logo" />
     <div className="li-item-body">
       <h3 className="li-item-title">
@@ -26,7 +28,8 @@ export default function JobResultCard({ job, selected, saved, loggedIn, applied,
       <p className="li-item-company">{job.company.trade_name}{job.company.is_verified && <BadgeCheck size={14} aria-label="Empresa verificada" />}</p>
       <p className="li-item-location">{job.company.location_city} ({job.modality})</p>
       {job.salary_range && <p className="li-item-salary">{job.salary_range}</p>}
-      {(applied || (match && match.percent >= 80) || job.urgent || !job.requires_experience) && <p className="li-item-tags">
+      {(featured || applied || (match && match.percent >= 80) || job.urgent || !job.requires_experience) && <p className="li-item-tags">
+        {featured && <span className="is-featured"><Star size={12} /> Destacada</span>}
         {applied && <span className="is-applied"><Check size={12} /> Postulado</span>}
         {!applied && match && match.percent >= 80 && <span className="is-match">{match.percent}% compatible</span>}
         {job.urgent && <span className="is-urgent">Contratación inmediata</span>}

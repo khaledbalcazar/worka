@@ -7,7 +7,10 @@ import MyJobsShell from "@/components/MyJobsShell";
 import { StatusChip } from "@/components/Badges";
 import EntityAvatar from "@/components/EntityAvatar";
 import InterviewCard from "@/components/InterviewCard";
-import { formatDate } from "@/lib/format";
+import { formatDate, timeAgo } from "@/lib/format";
+import { Crown, Eye, Users } from "lucide-react";
+import { PRO_BRAND } from "@/lib/plans";
+import { getMyApplicationInsights, isCurrentUserPro } from "@/lib/subscriptions";
 import type { ApplicationStatus } from "@/lib/types";
 
 // Línea de tiempo simple: el candidato siempre sabe en qué está su postulación.
@@ -23,11 +26,14 @@ function stepIndex(status: ApplicationStatus): number {
 }
 
 export default async function ApplicationsPage() {
-  const [apps, interviews, externalApps] = await Promise.all([
+  const [apps, interviews, externalApps, pro] = await Promise.all([
     getMyApplications(),
     getMyInterviews(),
     getMyExternalApplications(),
+    isCurrentUserPro(),
   ]);
+  // Worka Pro: cuántos se postularon y cuándo la empresa vio el perfil.
+  const insights = pro ? await getMyApplicationInsights() : new Map();
   const inProcess = apps.filter(
     (a) => a.status === "Revisado" || a.status === "Contactado"
   ).length;
@@ -75,6 +81,16 @@ export default async function ApplicationsPage() {
           </div>
         )}
 
+        {!pro && apps.length > 0 && (
+          <Link href="/pro" className="myjobs-highlight !bg-[#fffaf0] !border-[#f3e3b8]">
+            <Crown size={18} className="text-[#8a5a00]" />
+            <div>
+              <strong>¿Cuántos se postularon? ¿La empresa ya vio tu perfil?</strong>
+              <span>Con {PRO_BRAND} lo ves en cada postulación.</span>
+            </div>
+          </Link>
+        )}
+
         {apps.length === 0 && externalApps.length === 0 ? (
           <div className="myjobs-empty">
             <ClipboardList size={28} />
@@ -99,6 +115,19 @@ export default async function ApplicationsPage() {
                         </h2>
                         <p className="li-item-company">{app.summary.company_name}</p>
                         <p className="li-item-location">Postulada el {formatDate(app.applied_at)}</p>
+                        {insights.get(app.job_id) && (
+                          <p className="li-item-location flex flex-wrap gap-x-3">
+                            <span className="inline-flex items-center gap-1"><Users size={13} /> {insights.get(app.job_id)!.applicants} postulantes</span>
+                            <span className="inline-flex items-center gap-1">
+                              <Eye size={13} />
+                              {insights.get(app.job_id)!.company_viewed_at
+                                ? `La empresa vio tu perfil ${timeAgo(insights.get(app.job_id)!.company_viewed_at!)}`
+                                : app.status === "Pendiente"
+                                  ? "La empresa todavía no abrió tu perfil"
+                                  : "La empresa ya revisó tu postulación"}
+                            </span>
+                          </p>
+                        )}
                         {!app.summary.available && <p className="app-job-state">{unavailableLabel(app.summary.status)}</p>}
                       </div>
                       <span className="relative z-[1] shrink-0"><StatusChip status={app.status} /></span>

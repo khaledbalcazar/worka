@@ -49,6 +49,8 @@ export interface Course {
   category: string;
   level: "Básico" | "Intermedio" | "Avanzado";
   status: "borrador" | "publicado";
+  // Curso premium: solo con Worka Pro (migración 047).
+  premium?: boolean;
   sort: number;
   created_at: string;
   updated_at: string;
@@ -236,7 +238,12 @@ export interface Candidate {
   id: string;
   full_name: string;
   phone_whatsapp: string;
+  // Dato heredado de la verificación por WhatsApp, que ya no existe. No se usa.
   phone_verified: boolean;
+  // Email confirmado en Supabase Auth (migración 046).
+  email_verified?: boolean;
+  // Tiene Worka Pro (solo lo completa la búsqueda de talento).
+  is_pro?: boolean;
   identity_status: IdentityStatus;
   location_city: string;
   country: string;
@@ -406,6 +413,11 @@ export interface Company {
   is_verified: boolean;
   ruc_check_status: "pendiente" | "coincide" | "no_coincide";
   fast_responder: boolean;
+  // Página con marca (plan Empresa de Worka Enterprise Pro, migración 047).
+  brand_color?: string | null;
+  culture?: string | null;
+  perks?: string[];
+  video_url?: string | null;
   created_at: string;
 }
 
@@ -441,6 +453,10 @@ export interface Job {
   requires_experience: boolean;
   urgent: boolean;
   featured: boolean;
+  // Fin del destaque pago. null = sin vencimiento (lo puso el admin a mano).
+  featured_until?: string | null;
+  // Renovación automática (Worka Enterprise Pro, migración 047).
+  auto_renew?: boolean;
   filter_questions: FilterQuestion[];
   views_count: number;
   created_at: string;

@@ -110,6 +110,25 @@ ${BOTON}`,
 ${BOTON}`,
   },
   {
+    key: "vacantes_vencimiento",
+    name: "Vacantes por vencer o vencidas (empresa)",
+    when: "Una vez por día: vacantes que vencen en 3 días o que ya vencieron.",
+    audience: "empresa",
+    vars: [
+      V.empresa,
+      { key: "titulo", label: "Resumen corto", sample: "2 vacantes vencen pronto" },
+      { key: "detalle", label: "Lista de vacantes", sample: "Cajero/a — vence el 14 de octubre · Repositor/a — venció el 10 de octubre" },
+      V.enlace,
+      V.cta,
+    ],
+    subject: "{{titulo}}",
+    body: `<p>Hola, equipo de {{empresa}}:</p>
+<p>{{detalle}}</p>
+<p>Una vacante vencida deja de aparecer en las búsquedas y no recibe más postulaciones. Si todavía buscás gente, renovala con un clic.</p>
+${BOTON}
+<p style="color:#6b7280;font-size:13px">Si ya cubriste el puesto, no hace falta que hagas nada.</p>`,
+  },
+  {
     key: "aviso_general",
     name: "Aviso general",
     when: "Respaldo: cualquier aviso que todavía no tenga plantilla propia.",
