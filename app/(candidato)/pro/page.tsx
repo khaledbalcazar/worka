@@ -15,7 +15,10 @@ import PlanCheckout from "@/components/plans/PlanCheckout";
 import EntityAvatar from "@/components/EntityAvatar";
 import { getCurrentCandidate, getMyApplications, getSiteSettings, isLive } from "@/lib/data";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { ALWAYS_FREE_FOR_PEOPLE, PRO_BRAND, WORKA_PRO, formatGs, monthlyPrice, paymentLink } from "@/lib/plans";
+import { ALWAYS_FREE_FOR_PEOPLE, PRO_BRAND, WORKA_PRO, formatMoney, localMonthlyPrice, monthlyPrice, paymentLink, requestMoney } from "@/lib/plans";
+import { countryByCode } from "@/lib/countries";
+import { listReceipts } from "@/lib/receipts-server";
+import ReceiptList from "@/components/plans/ReceiptList";
 import {
   INTERVIEW_CALLS_PER_MONTH,
   getAiUsage,
@@ -58,8 +61,15 @@ export default async function WorkaProPage() {
     getMyApplications(),
     pro && isLive() ? getAiUsage(userId) : Promise.resolve({ cvReviews: 0, interview: 0 }),
   ]);
-  const price = monthlyPrice("pro", "pro", settings);
-  const pending = requests.find((r) => r.status === "pendiente") ?? null;
+  const country = countryByCode(candidate.country ?? "py");
+  const localPrice = localMonthlyPrice("pro", "pro", country.code, settings);
+  const priceLabel = formatMoney(localPrice);
+  const receipts = await listReceipts(userId);
+  const pendingRow = requests.find((r) => r.status === "pendiente") ?? null;
+  const pendingMoney = pendingRow ? requestMoney(pendingRow) : null;
+  const pending = pendingRow && pendingMoney
+    ? { plan: pendingRow.plan, months: pendingRow.months, amount: pendingMoney.amount, currency: pendingMoney.currency, created_at: pendingRow.created_at }
+    : null;
   const answered = applications.filter((a) => a.status !== "Pendiente").length;
   const responseRate = applications.length ? Math.round((answered / applications.length) * 100) : 0;
 
@@ -82,7 +92,7 @@ export default async function WorkaProPage() {
             ? subscription
               ? `Tu plan está activo hasta el ${formatDate(subscription.ends_at)}.`
               : "Tu plan está activo."
-            : `Quién vio tu perfil, herramientas con IA y más, por ${formatGs(price)} al mes. Lo esencial de Worka sigue siendo gratis.`}
+            : `Quién vio tu perfil, herramientas con IA y más, por ${priceLabel} al mes. Lo esencial de Worka sigue siendo gratis.`}
         </p>
       </header>
 
@@ -164,14 +174,23 @@ export default async function WorkaProPage() {
         </div>
       </section>
 
+      {receipts.length > 0 && (
+        <section className="card p-5">
+          <h2 className="font-semibold text-lg">Tus pagos</h2>
+          <ReceiptList receipts={receipts} />
+        </section>
+      )}
+
       {!pro && (
         <section className="grid lg:grid-cols-[1fr_340px] gap-6 items-start">
           <div className="card p-5">
             <h2 className="font-semibold text-lg">Activá {PRO_BRAND}</h2>
-            <p className="text-sm text-muted mb-4">{formatGs(price)} por mes. Pagás con el link de pago, nos avisás y lo activamos en el día.</p>
+            <p className="text-sm text-muted mb-4">{priceLabel} por mes. Pagás con el link de pago, nos avisás y lo activamos en el día.</p>
             <PlanCheckout
               product="pro"
-              plans={[{ id: "pro", name: PRO_BRAND, monthly: price }]}
+              plans={[{ id: "pro", name: PRO_BRAND, monthly: localPrice.amount, monthlyGs: monthlyPrice("pro", "pro", settings) }]}
+              currency={country.currencyCode}
+              billing={{ name: candidate.full_name, doc: "", docLabel: country.taxIdLabel }}
               paymentLink={paymentLink("pro", settings)}
               pending={pending}
             />

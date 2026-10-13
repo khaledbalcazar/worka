@@ -29,6 +29,7 @@ import HomeNav from "@/components/home/HomeNav";
 import HeroSearch from "@/components/home/HeroSearch";
 import FaqAccordion from "@/components/home/FaqAccordion";
 import SiteFooter from "@/components/home/SiteFooter";
+import PlansPromo from "@/components/plans/PlansPromo";
 
 export const revalidate = 300;
 
@@ -423,6 +424,17 @@ export default async function LandingPage() {
           </div>
         </section>
       )}
+
+      {/* ── PLANES: Worka Pro y Worka Enterprise Pro ── */}
+      <section className="bg-canvas">
+        <div className={`${WRAP} ${SECTION}`}>
+          <h2 className="font-light text-[28px] leading-[36px] sm:text-[36px] sm:leading-[44px] tracking-[-0.015em] mb-2">
+            Más herramientas cuando las {vos ? "necesitás" : "necesitas"}
+          </h2>
+          <p className="text-[15px] text-muted mb-6 sm:mb-8">Lo esencial de Worka es gratis. Estos planes suman alcance e información.</p>
+          <PlansPromo country={country} settings={settings} />
+        </div>
+      </section>
 
       {/* ── CÓMO FUNCIONA ── */}
       <section id="como-funciona" className="bg-white">

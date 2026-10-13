@@ -14,7 +14,8 @@ import {
   Zap,
 } from "lucide-react";
 import HomeNav from "@/components/home/HomeNav";
-import { ENTERPRISE_BRAND, ENTERPRISE_PLANS, formatGs } from "@/lib/plans";
+import { ENTERPRISE_BRAND, ENTERPRISE_PLANS, formatMoney } from "@/lib/plans";
+import type { Money } from "@/lib/currency";
 import SiteFooter from "@/components/home/SiteFooter";
 
 // Landing "Para empresas", con el mismo sistema que el inicio: banda blanca
@@ -37,8 +38,8 @@ export default function ParaEmpresasLanding({
   currencyName?: string;
   taxIdLabel?: string;
   isPy?: boolean;
-  // Precio mensual en Gs. de cada plan pago (lo edita el admin).
-  prices?: Record<string, number>;
+  // Precio mensual de cada plan pago en la moneda del país.
+  prices?: Record<string, Money>;
 }) {
   const features = [
     { Icon: FileText, title: "Empezá gratis", text: "Hasta 3 vacantes publicadas a la vez, sin tarjeta. Con plantillas, una vacante sale en un par de minutos." },
@@ -245,13 +246,13 @@ export default function ParaEmpresasLanding({
           </p>
           <div className="plan-grid mt-8">
             {ENTERPRISE_PLANS.map((p) => {
-              const price = p.id === "gratis" ? 0 : prices[p.id] ?? p.defaultPriceGs;
+              const price: Money | null = p.id === "gratis" ? null : prices[p.id] ?? { amount: p.defaultPriceGs, currency: "PYG" };
               return (
                 <article key={p.id} className={`plan-card${p.id === "pro" ? " is-featured" : ""}`}>
                   {p.id === "pro" && <span className="plan-ribbon">Más elegido</span>}
                   <h3 className="text-lg font-semibold">{p.name}</h3>
                   <p className="text-sm text-muted">{p.tagline}</p>
-                  <p className="plan-price">{price === 0 ? "Gratis" : formatGs(price)}{price > 0 && <small> / mes</small>}</p>
+                  <p className="plan-price">{price ? formatMoney(price) : "Gratis"}{price && <small> / mes</small>}</p>
                   <ul className="plan-features">
                     {p.features.map((f) => (
                       <li key={f}><Check size={15} /> {f}</li>

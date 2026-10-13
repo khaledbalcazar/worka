@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import ParaEmpresasLanding from "@/components/ParaEmpresasLanding";
 import { getActiveCountry } from "@/lib/country-context";
 import { getSiteSettings } from "@/lib/data";
-import { monthlyPrice } from "@/lib/plans";
+import { localMonthlyPrice } from "@/lib/plans";
 
 export async function generateMetadata(): Promise<Metadata> {
   const c = await getActiveCountry();
@@ -22,7 +22,10 @@ export default async function ParaEmpresasPage() {
       currencyName={country.currencyName}
       taxIdLabel={country.taxIdLabel}
       isPy={country.code === "py"}
-      prices={{ pro: monthlyPrice("enterprise", "pro", settings), empresa: monthlyPrice("enterprise", "empresa", settings) }}
+      prices={{
+        pro: localMonthlyPrice("enterprise", "pro", country.code, settings),
+        empresa: localMonthlyPrice("enterprise", "empresa", country.code, settings),
+      }}
     />
   );
 }

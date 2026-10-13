@@ -34,6 +34,9 @@ const STATIC_PATHS = [
   "/blog",
   "/academia",
   ...COUNTRIES.map((c) => `/${c.slug}`),
+  "/worka-pro",
+  "/enterprise-pro",
+  ...COUNTRIES.flatMap((c) => [`/worka-pro/${c.slug}`, `/enterprise-pro/${c.slug}`]),
   "/terminos",
   "/privacidad",
 ];

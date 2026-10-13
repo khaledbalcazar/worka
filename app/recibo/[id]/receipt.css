@@ -1,0 +1,47 @@
+/* Recibo digital: hoja A4 con el formato de un KuDE. */
+.rcpt-page { min-height: 100vh; background: #f3efea; padding: 24px 16px 48px; color: #111; }
+.rcpt-actions { max-width: 800px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.rcpt { position: relative; max-width: 800px; margin: 0 auto; background: #fff; padding: 22px; border-radius: 10px; box-shadow: 0 4px 24px rgb(0 0 0 / 0.08); font-size: 13px; line-height: 1.45; overflow: hidden; }
+.rcpt b { font-weight: 700; }
+.rcpt-band { text-align: center; font-weight: 700; background: #e9e9e9; border: 1px solid #555; border-radius: 6px; padding: 4px; margin-bottom: 10px; }
+.rcpt-box { border: 1px solid #555; border-radius: 10px; padding: 10px 14px; }
+.rcpt-head { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.rcpt-issuer { display: flex; gap: 14px; align-items: center; text-align: left; }
+.rcpt-logo { flex-shrink: 0; padding: 0 12px; height: 56px; white-space: nowrap; border-radius: 14px; background: #004e99; color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 20px; letter-spacing: -0.03em; }
+.rcpt-logo span { color: #8cc3ff; }
+.rcpt-number { text-align: center; }
+.rcpt-doc { font-weight: 700; font-size: 15px; }
+.rcpt-num { font-weight: 800; font-size: 22px; letter-spacing: 0.02em; }
+.rcpt-nofiscal { display: inline-block; margin-top: 4px; padding: 2px 10px; border: 2px solid #b42318; color: #b42318; font-weight: 800; letter-spacing: 0.08em; border-radius: 4px; }
+.rcpt-customer { margin-top: 10px; display: grid; grid-template-columns: 1fr; gap: 2px 18px; }
+.rcpt-table { width: 100%; margin-top: 10px; border-collapse: separate; border-spacing: 0; border: 1px solid #555; border-radius: 10px; overflow: hidden; }
+.rcpt-table th { background: #f2f2f2; font-weight: 700; padding: 7px 10px; border-bottom: 1px solid #555; white-space: nowrap; }
+.rcpt-table td { padding: 7px 10px; vertical-align: top; }
+.rcpt-table tbody td { min-height: 60px; }
+.rcpt-table tbody tr:last-child td { padding-bottom: 40px; }
+.rcpt-table tfoot td { border-top: 1px solid #555; }
+.rcpt-verify { display: flex; gap: 16px; align-items: center; margin-top: 16px; flex-wrap: wrap; }
+.rcpt-qr { width: 132px; height: 132px; flex-shrink: 0; padding: 6px; border: 1px solid #ddd; border-radius: 8px; background: #fff; }
+.rcpt-qr svg { width: 100%; height: 100%; display: block; }
+.rcpt-url { font-family: ui-monospace, Menlo, monospace; }
+.rcpt-code { font-family: ui-monospace, Menlo, monospace; font-weight: 700; font-size: 15px; letter-spacing: 0.04em; word-break: break-all; }
+.rcpt-legal { margin-top: 16px; padding-top: 10px; border-top: 1px dashed #999; font-size: 11.5px; color: #333; display: grid; gap: 3px; }
+.rcpt-void { position: absolute; inset: 0; display: grid; place-items: center; font-size: 110px; font-weight: 900; color: rgb(180 35 24 / 0.14); transform: rotate(-24deg); pointer-events: none; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+
+@media (min-width: 640px) {
+  .rcpt { padding: 28px; }
+  .rcpt-head { grid-template-columns: 1.4fr 1fr; }
+  .rcpt-customer { grid-template-columns: 1fr 1fr; }
+}
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  .rcpt-page { background: #fff; padding: 0; min-height: 0; }
+  .rcpt { box-shadow: none; border-radius: 0; padding: 0; max-width: none; }
+  .rcpt-head { grid-template-columns: 1.4fr 1fr; }
+  .rcpt-customer { grid-template-columns: 1fr 1fr; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

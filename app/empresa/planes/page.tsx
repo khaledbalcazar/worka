@@ -7,8 +7,10 @@ import {
   ENTERPRISE_PLANS,
   daysLeft,
   enterprisePlan,
-  formatGs,
+  formatMoney,
+  localMonthlyPrice,
   monthlyPrice,
+  requestMoney,
   paymentLink,
 } from "@/lib/plans";
 import {
@@ -19,6 +21,9 @@ import {
   getPromotionUsage,
 } from "@/lib/subscriptions";
 import { formatDate } from "@/lib/format";
+import { countryByCode } from "@/lib/countries";
+import { listReceipts } from "@/lib/receipts-server";
+import ReceiptList from "@/components/plans/ReceiptList";
 
 export const metadata = { title: ENTERPRISE_BRAND };
 
@@ -43,11 +48,19 @@ export default async function CompanyPlansPage({ searchParams }: { searchParams:
   ]);
   const plan = enterprisePlan(planId);
   const limits = plan.limits;
-  const pending = requests.find((r) => r.status === "pendiente") ?? null;
+  const country = countryByCode(company.country ?? "py");
+  const receipts = await listReceipts(company.id);
+  const pendingRow = requests.find((r) => r.status === "pendiente") ?? null;
+  const pendingMoney = pendingRow ? requestMoney(pendingRow) : null;
+  const pending = pendingRow && pendingMoney
+    ? { plan: pendingRow.plan, months: pendingRow.months, amount: pendingMoney.amount, currency: pendingMoney.currency, created_at: pendingRow.created_at }
+    : null;
+  // Precios en la moneda del país de la empresa.
   const paid = ENTERPRISE_PLANS.filter((p) => p.id !== "gratis").map((p) => ({
     id: p.id,
     name: p.name,
-    monthly: monthlyPrice("enterprise", p.id, settings),
+    monthly: localMonthlyPrice("enterprise", p.id, country.code, settings).amount,
+    monthlyGs: monthlyPrice("enterprise", p.id, settings),
   }));
   const left = daysLeft(subscription?.ends_at ?? null);
 
@@ -101,14 +114,14 @@ export default async function CompanyPlansPage({ searchParams }: { searchParams:
 
       <section className="plan-grid" aria-label="Planes">
         {ENTERPRISE_PLANS.map((p) => {
-          const price = p.id === "gratis" ? 0 : monthlyPrice("enterprise", p.id, settings);
+          const price = p.id === "gratis" ? null : localMonthlyPrice("enterprise", p.id, country.code, settings);
           const current = p.id === plan.id;
           return (
             <article key={p.id} className={`plan-card${p.id === "pro" ? " is-featured" : ""}${current ? " is-current" : ""}`}>
               {p.id === "pro" && <span className="plan-ribbon">Más elegido</span>}
               <h2 className="text-lg font-semibold">{p.name}</h2>
               <p className="text-sm text-muted">{p.tagline}</p>
-              <p className="plan-price">{price === 0 ? "Gratis" : formatGs(price)}{price > 0 && <small> / mes</small>}</p>
+              <p className="plan-price">{!price ? "Gratis" : formatMoney(price)}{price && <small> / mes</small>}</p>
               <ul className="plan-features">
                 {p.features.map((f) => (
                   <li key={f}><Check size={15} /> {f}</li>
@@ -139,6 +152,8 @@ export default async function CompanyPlansPage({ searchParams }: { searchParams:
             initialPlan={wanted === "pro" || wanted === "empresa" ? wanted : plan.id === "gratis" ? "pro" : plan.id}
             paymentLink={paymentLink("enterprise", settings)}
             pending={pending}
+            currency={country.currencyCode}
+            billing={{ name: company.company_name, doc: company.ruc ?? "", docLabel: country.taxIdLabel }}
           />
         </div>
         <aside className="card p-5">
@@ -153,11 +168,12 @@ export default async function CompanyPlansPage({ searchParams }: { searchParams:
                     <span>{enterprisePlan(r.plan).name} · {r.months} {r.months === 1 ? "mes" : "meses"}</span>
                     <span className={`plan-status is-${r.status}`}>{r.status === "pendiente" ? "En revisión" : r.status === "aprobada" ? "Confirmado" : "Rechazado"}</span>
                   </div>
-                  <p className="text-xs text-muted">{formatGs(r.amount_gs)} · {formatDate(r.created_at)}{r.admin_note ? ` · ${r.admin_note}` : ""}</p>
+                  <p className="text-xs text-muted">{formatMoney(requestMoney(r))} · {formatDate(r.created_at)}{r.admin_note ? ` · ${r.admin_note}` : ""}</p>
                 </li>
               ))}
             </ul>
           )}
+          <ReceiptList receipts={receipts} />
         </aside>
       </section>
     </div>
