@@ -32,6 +32,11 @@ export type PaymentRequestRow = {
   plan: string;
   months: number;
   amount_gs: number;
+  // Moneda y monto en la moneda del país (migración 048).
+  currency?: string | null;
+  amount_local?: number | null;
+  billing_name?: string | null;
+  billing_doc?: string | null;
   reference: string | null;
   status: "pendiente" | "aprobada" | "rechazada";
   admin_note: string | null;
@@ -197,7 +202,7 @@ export function planErrorMessage(message: string | undefined): string | null {
 }
 
 // Admin: pagos recientes y planes vigentes.
-export async function getAdminPlansData(): Promise<{ payments: PaymentRequestRow[]; subscriptions: SubscriptionRow[] }> {
+export async function getAdminPlansData(): Promise<{ payments: PaymentRequestRow[]; subscriptions: SubscriptionRow[]; receipts: Record<string, string> }> {
   const supabase = await getServerClient();
   if (!supabase) {
     return {
@@ -205,6 +210,7 @@ export async function getAdminPlansData(): Promise<{ payments: PaymentRequestRow
         { id: "demo-pay", user_id: mock.companies[1]?.id ?? "c2", product: "enterprise", plan: "pro", months: 1, amount_gs: 250000, reference: "004512339", status: "pendiente", admin_note: null, created_at: new Date().toISOString(), resolved_at: null },
       ],
       subscriptions: [],
+      receipts: {},
     };
   }
   const [{ data: payments }, { data: subs }] = await Promise.all([
@@ -217,7 +223,14 @@ export async function getAdminPlansData(): Promise<{ payments: PaymentRequestRow
       .order("ends_at", { ascending: true })
       .limit(300),
   ]);
-  return { payments: (payments ?? []) as PaymentRequestRow[], subscriptions: (subs ?? []) as SubscriptionRow[] };
+  // Recibo emitido por cada pago confirmado (migración 048).
+  const ids = ((payments ?? []) as PaymentRequestRow[]).filter((p) => p.status === "aprobada").map((p) => p.id);
+  const receipts: Record<string, string> = {};
+  if (ids.length) {
+    const { data: rows } = await supabase.from("receipts").select("id, payment_request_id").in("payment_request_id", ids);
+    for (const r of (rows ?? []) as { id: string; payment_request_id: string }[]) receipts[r.payment_request_id] = r.id;
+  }
+  return { payments: (payments ?? []) as PaymentRequestRow[], subscriptions: (subs ?? []) as SubscriptionRow[], receipts };
 }
 
 export type ProfileViewer = {

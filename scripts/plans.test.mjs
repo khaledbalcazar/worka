@@ -5,12 +5,20 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
+// Carga un .ts de lib/ resolviendo los imports "@/lib/...".
+const cache = {};
 function load(path) {
+  const key = path.replace(/^\.\.\//, '').replace(/\.ts$/, '');
+  if (cache[key]) return cache[key];
   const mod = { exports: {} };
-  const source = fs.readFileSync(fileURLToPath(new URL(path, import.meta.url)), 'utf8');
-  new Function('exports', ts.transpileModule(source, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
-  }).outputText)(mod.exports);
+  cache[key] = mod.exports;
+  const source = fs.readFileSync(fileURLToPath(new URL(`../${key}.ts`, import.meta.url)), 'utf8');
+  const js = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
+  const req = (p) => {
+    if (!p.startsWith('@/')) throw new Error(`import no soportado: ${p}`);
+    return load(`../${p.slice(2)}.ts`);
+  };
+  new Function('exports', 'require', 'module', js)(mod.exports, req, mod);
   return mod.exports;
 }
 const P = load('../lib/plans.ts');

@@ -8,6 +8,8 @@
 // (site_settings) sin tocar código. El cobro es manual: link de pago +
 // aprobación del admin.
 
+import { formatMoney, fromGuaranies, type Money } from "@/lib/currency";
+
 export type Product = "enterprise" | "pro";
 export type EnterprisePlanId = "gratis" | "pro" | "empresa";
 export type ProPlanId = "pro";
@@ -227,4 +229,48 @@ export const PLAN_SETTING_KEYS = [
   ["price_worka_pro", `${PRO_BRAND} (Gs. por mes)`, String(WORKA_PRO.defaultPriceGs)],
   ["payment_link_enterprise", "Link de pago para empresas", "https://…"],
   ["payment_link_pro", `Link de pago para ${PRO_BRAND}`, "Vacío = usa el link de pago general"],
+  // Cotizaciones para mostrar los precios en la moneda de cada país.
+  ["fx_usd_pyg", "Cotización: guaraníes por 1 USD", "5700"],
+  ["fx_usd_ars", "Cotización: pesos argentinos por 1 USD", "1516"],
+  ["fx_usd_mxn", "Cotización: pesos mexicanos por 1 USD", "18.4"],
+  ["fx_usd_cop", "Cotización: pesos colombianos por 1 USD", "3190"],
+  ["fx_usd_clp", "Cotización: pesos chilenos por 1 USD", "978"],
+  ["fx_usd_bob", "Cotización: bolivianos por 1 USD", "11.7"],
 ] as const;
+
+// ── Precios en la moneda de cada país ──────────────────────────────────
+// Se convierte el precio mensual en guaraníes y el total se arma con ese
+// mensual redondeado, así 3 meses son exactamente 3 × el precio que se ve.
+
+export function localMonthlyPrice(product: Product, plan: string, countryCode: string, settings: Record<string, string | undefined>): Money {
+  return fromGuaranies(monthlyPrice(product, plan, settings), countryCode, settings);
+}
+
+export function localTotal(
+  product: Product,
+  plan: string,
+  months: number,
+  countryCode: string,
+  settings: Record<string, string | undefined>
+): { local: Money; gs: number } {
+  const option = BILLING_OPTIONS.find((o) => o.months === months);
+  if (!option || !isPaidPlan(product, plan)) return { local: { amount: 0, currency: "PYG" }, gs: 0 };
+  const monthly = localMonthlyPrice(product, plan, countryCode, settings);
+  return {
+    local: { amount: monthly.amount * option.paidMonths, currency: monthly.currency },
+    gs: totalPrice(product, plan, months, settings),
+  };
+}
+
+export { formatMoney };
+
+// Monto de un aviso de pago en su moneda (los anteriores a la 048 son en Gs).
+export function requestMoney(r: { amount_gs: number; amount_local?: number | null; currency?: string | null }): Money {
+  return r.currency && r.currency !== "PYG" && r.amount_local != null
+    ? { amount: Number(r.amount_local), currency: r.currency }
+    : { amount: r.amount_gs, currency: "PYG" };
+}
+
+export function planDisplayName(product: Product, plan: string): string {
+  return product === "pro" ? PRO_BRAND : `${ENTERPRISE_BRAND} · ${enterprisePlan(plan).name}`;
+}

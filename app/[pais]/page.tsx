@@ -9,6 +9,8 @@ import { CANONICAL_URL } from "@/lib/supabase/config";
 import Logo from "@/components/Logo";
 import ExternalJobCard from "@/components/ExternalJobCard";
 import RememberCountry from "@/components/RememberCountry";
+import PlansPromo from "@/components/plans/PlansPromo";
+import { getPublicSiteSettings } from "@/lib/public-settings";
 
 const BASE = CANONICAL_URL;
 
@@ -57,7 +59,7 @@ export default async function CountryLanding({
   const country = countryBySlug(pais);
   if (!country) notFound();
 
-  const jobs = await getExternalJobs(country.code);
+  const [jobs, settings] = await Promise.all([getExternalJobs(country.code), getPublicSiteSettings()]);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -183,6 +185,13 @@ export default async function CountryLanding({
       </section>
 
       {/* Contenido SEO único por país */}
+      {/* Planes con precio en la moneda del país */}
+      <section className="max-w-5xl mx-auto px-5 pb-14">
+        <h2 className="text-xl font-bold text-primary-dark mb-1">Planes en {country.name}</h2>
+        <p className="text-sm text-gray-500 mb-4">Precios en {country.currencyCode}. Lo esencial de Worka es gratis.</p>
+        <PlansPromo country={country} settings={settings} />
+      </section>
+
       <section className="bg-white border-t border-primary-dark/10 px-5 py-12">
         <div className="max-w-3xl mx-auto prose-sm">
           <h2 className="text-xl font-bold text-primary-dark mb-3">

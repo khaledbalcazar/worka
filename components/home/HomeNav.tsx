@@ -11,6 +11,7 @@ import {
   Users,
   Star,
   Building2,
+  Crown,
 } from "lucide-react";
 import Logo from "@/components/Logo";
 import CountrySelector from "@/components/CountrySelector";
@@ -24,9 +25,11 @@ const PRIMARY = [
   { label: "Freelancers", href: "/freelancers", Icon: Users },
   { label: "Opiniones", href: "/opiniones", Icon: Star },
   { label: "Para empresas", href: "/para-empresas", Icon: Building2 },
+  { label: "Worka Pro", href: "/worka-pro", Icon: Crown },
 ];
 
 const MORE: [string, string][] = [
+  ["Worka Enterprise Pro", "/enterprise-pro"],
   ["Panorama del mercado", "/panorama"],
   ["Academia", "/academia"],
   ["Blog", "/blog"],

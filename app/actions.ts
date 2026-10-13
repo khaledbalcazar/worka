@@ -1537,6 +1537,11 @@ export async function resolveBoost(
       })
       .eq("id", boost.job_id);
   }
+  if (approve) {
+    // Recibo digital del destaque (requiere la migración 048).
+    const { issueBoostReceipt } = await import("@/lib/receipts-server");
+    await issueBoostReceipt(boostId);
+  }
   revalidatePath("/admin");
   revalidatePath("/empleos");
   return { ok: true };

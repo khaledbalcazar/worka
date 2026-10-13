@@ -184,7 +184,7 @@ const PLAN_KEYS = new Set<string>(PLAN_SETTING_KEYS.map(([key]) => key));
 
 async function PanelPlanes() {
   const [data, adminUsers, settings] = await Promise.all([
-    seguro("getAdminPlansData", () => getAdminPlansData(), { payments: [], subscriptions: [] }),
+    seguro("getAdminPlansData", () => getAdminPlansData(), { payments: [], subscriptions: [], receipts: {} }),
     seguro("getAdminUsers", () => getAdminUsers(), { users: [], fullAccess: false }),
     seguro("getSiteSettings", () => getSiteSettings(), {} as Record<string, string>),
   ]);
@@ -192,6 +192,7 @@ async function PanelPlanes() {
     <PlansAdmin
       payments={data.payments}
       subscriptions={data.subscriptions}
+      receipts={data.receipts}
       users={adminUsers.users.map((u) => ({ id: u.id, email: u.email, role: u.role, name: u.name }))}
       settings={settings}
     />

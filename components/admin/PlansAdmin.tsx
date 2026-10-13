@@ -10,6 +10,8 @@ import {
   PRO_BRAND,
   enterprisePlan,
   formatGs,
+  formatMoney,
+  requestMoney,
   type Product,
 } from "@/lib/plans";
 import type { PaymentRequestRow, SubscriptionRow } from "@/lib/subscriptions";
@@ -25,7 +27,9 @@ export default function PlansAdmin({
   subscriptions,
   users,
   settings,
+  receipts = {},
 }: {
+  receipts?: Record<string, string>;
   payments: PaymentRequestRow[];
   subscriptions: SubscriptionRow[];
   users: PlanUser[];
@@ -92,8 +96,8 @@ export default function PlansAdmin({
             {pendingPays.map((p) => (
               <li key={p.id} className="py-3 flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium">{planName(p.product, p.plan)} · {p.months} {p.months === 1 ? "mes" : "meses"} · {formatGs(p.amount_gs)}</p>
-                  <p className="text-xs text-gray-500">{who(p.user_id)} · {new Date(p.created_at).toLocaleString("es-PY")}{p.reference ? ` · Ref: ${p.reference}` : " · sin referencia"}</p>
+                  <p className="font-medium">{planName(p.product, p.plan)} · {p.months} {p.months === 1 ? "mes" : "meses"} · {formatMoney(requestMoney(p))}{requestMoney(p).currency !== "PYG" ? ` (${formatGs(p.amount_gs)})` : ""}</p>
+                  <p className="text-xs text-gray-500">{p.billing_name ? `${p.billing_name}${p.billing_doc ? ` (${p.billing_doc})` : ""} · ` : ""}{who(p.user_id)} · {new Date(p.created_at).toLocaleString("es-PY")}{p.reference ? ` · Ref: ${p.reference}` : " · sin referencia"}</p>
                 </div>
                 <div className="flex gap-2">
                   <button className="btn-primary !min-h-9" disabled={pending} onClick={() => resolve(p.id, true)}><Check size={15} /> Confirmar pago</button>
@@ -199,7 +203,7 @@ export default function PlansAdmin({
       </div>
 
       <div>
-        <h3 className="font-semibold">Precios y links de pago</h3>
+        <h3 className="font-semibold">Precios, links de pago y cotizaciones</h3>
         <div className="grid lg:grid-cols-2 gap-3 mt-2">
           {PLAN_SETTING_KEYS.map(([key, label, placeholder]) => (
             <label key={key}>
@@ -213,7 +217,7 @@ export default function PlansAdmin({
             </label>
           ))}
         </div>
-        <p className="text-xs text-gray-500 mt-2">Precio vacío = el de lista. Link vacío = se usa el «Link de pago» general de la configuración del sitio.</p>
+        <p className="text-xs text-gray-500 mt-2">Precio vacío = el de lista. Link vacío = se usa el «Link de pago» general. Los precios de cada país salen del precio en guaraníes y estas cotizaciones (vacío = la cotización de octubre de 2026).</p>
         <button className="btn-primary mt-3" disabled={pending} onClick={() => run(() => saveSiteSettings(prices), "Precios y links guardados.")}>
           Guardar precios y links
         </button>
@@ -225,8 +229,11 @@ export default function PlansAdmin({
           <ul className="mt-2 text-sm divide-y divide-gray-100">
             {history.map((p) => (
               <li key={p.id} className="py-2 flex justify-between gap-3">
-                <span>{who(p.user_id)} · {planName(p.product, p.plan)} · {formatGs(p.amount_gs)}</span>
-                <span className={p.status === "aprobada" ? "text-green-700" : "text-red-600"}>{p.status === "aprobada" ? "Confirmado" : "Rechazado"}</span>
+                <span>{who(p.user_id)} · {planName(p.product, p.plan)} · {formatMoney(requestMoney(p))}</span>
+                <span className="flex gap-3 shrink-0">
+                  {receipts[p.id] && <a href={`/recibo/${receipts[p.id]}`} target="_blank" rel="noopener noreferrer" className="text-primary underline">Recibo</a>}
+                  <span className={p.status === "aprobada" ? "text-green-700" : "text-red-600"}>{p.status === "aprobada" ? "Confirmado" : "Rechazado"}</span>
+                </span>
               </li>
             ))}
           </ul>

@@ -18,8 +18,9 @@ import {
   enterprisePlan,
   extendedEnd,
   formatGs,
+  formatMoney,
   isPaidPlan,
-  totalPrice,
+  localTotal,
   type Product,
 } from "@/lib/plans";
 import {
@@ -63,6 +64,8 @@ export async function requestPlanPayment(input: {
   plan: string;
   months: number;
   reference: string;
+  billingName?: string;
+  billingDoc?: string;
 }): Promise<Result> {
   const supabase = await getServerClient();
   if (!supabase) return DEMO;
@@ -76,20 +79,30 @@ export async function requestPlanPayment(input: {
   // ¿A nombre de quién? La empresa paga por la empresa (el dueño o un
   // administrador del equipo); la persona, por sí misma.
   let payerId = user.id;
+  let country = "py";
+  let defaultName = "";
   if (product === "enterprise") {
     const access = await getCompanyAccess(supabase, user.id);
     if (!access) return { ok: false, error: "Tu cuenta no tiene una empresa asociada." };
     if (access.role !== "dueño" && access.role !== "administrador")
       return { ok: false, error: "Solo el dueño o un administrador del equipo puede contratar el plan." };
     payerId = access.companyId;
+    const { data: comp } = await supabase.from("companies").select("company_name, country").eq("id", payerId).maybeSingle();
+    country = comp?.country ?? "py";
+    defaultName = comp?.company_name ?? "";
   } else {
-    const { data: cand } = await supabase.from("candidates").select("id").eq("id", user.id).maybeSingle();
+    const { data: cand } = await supabase.from("candidates").select("id, full_name, country").eq("id", user.id).maybeSingle();
     if (!cand) return { ok: false, error: "Worka Pro es para cuentas de candidato." };
+    country = cand.country ?? "py";
+    defaultName = cand.full_name ?? "";
   }
 
+  // Precio en la moneda del país de quien paga (y su equivalente en Gs).
   const settings = await getSiteSettings();
-  const amount = totalPrice(product, input.plan, input.months, settings);
+  const { local, gs: amount } = localTotal(product, input.plan, input.months, country, settings);
   const reference = input.reference.trim().slice(0, 120);
+  const billingName = (input.billingName ?? "").trim().slice(0, 120) || defaultName;
+  const billingDoc = (input.billingDoc ?? "").trim().slice(0, 30);
 
   const db = getAdminClient() ?? supabase;
   const { data: pending } = await db
@@ -102,14 +115,23 @@ export async function requestPlanPayment(input: {
   if (pending && pending.length > 0)
     return { ok: false, error: "Ya tenés un pago en revisión. Te avisamos apenas lo confirmemos." };
 
-  const { error } = await db.from("payment_requests").insert({
+  const base = {
     user_id: payerId,
     product,
     plan: input.plan,
     months: input.months,
     amount_gs: amount,
     reference: reference || null,
+  };
+  let { error } = await db.from("payment_requests").insert({
+    ...base,
+    currency: local.currency,
+    amount_local: local.amount,
+    billing_name: billingName || null,
+    billing_doc: billingDoc || null,
   });
+  // Sin la migración 048 no existen las columnas nuevas: se guarda lo básico.
+  if (error && /column/i.test(error.message)) ({ error } = await db.from("payment_requests").insert(base));
   if (error) {
     console.error(`[worka:plans] payment_request insert failed: ${error.message}`);
     return { ok: false, error: "No pudimos registrar tu aviso de pago. ¿Ya corriste la migración 047?" };
@@ -123,7 +145,7 @@ export async function requestPlanPayment(input: {
       userId: id,
       icon: "💳",
       title: "Pago para confirmar",
-      body: `${planLabel(product, input.plan)} · ${input.months} ${input.months === 1 ? "mes" : "meses"} · ${formatGs(amount)}${reference ? ` · Ref: ${reference}` : ""}`,
+      body: `${planLabel(product, input.plan)} · ${input.months} ${input.months === 1 ? "mes" : "meses"} · ${formatMoney(local)}${local.currency !== "PYG" ? ` (${formatGs(amount)})` : ""}${reference ? ` · Ref: ${reference}` : ""}`,
       href: "/admin#pagos",
       cta: "Revisar pago",
     }));
@@ -146,10 +168,12 @@ export async function adminResolvePayment(id: string, approve: boolean, note = "
   if (req.status !== "pendiente") return { ok: false, error: "Ese pago ya se resolvió." };
 
   let endsAt: string | null = null;
+  let periodFrom: string | null = null;
   if (approve) {
     const result = await activatePlan(supabase, req.user_id, req.product, req.plan, req.months, req.id);
     if (!result.ok) return result;
     endsAt = result.endsAt;
+    periodFrom = result.from;
   }
 
   const { error } = await supabase
@@ -162,16 +186,24 @@ export async function adminResolvePayment(id: string, approve: boolean, note = "
     .eq("id", id);
   if (error) return { ok: false, error: "No pudimos actualizar el pago." };
 
-  const href = req.product === "pro" ? "/pro" : "/empresa/planes";
+  // Recibo digital (sin valor fiscal). Sin la migración 048 no se emite, pero
+  // el plan queda activo igual.
+  let receiptId: string | null = null;
+  if (approve && endsAt && periodFrom) {
+    const { issuePaymentReceipt } = await import("@/lib/receipts-server");
+    receiptId = await issuePaymentReceipt(id, { from: periodFrom, to: endsAt });
+  }
+
+  const href = approve && receiptId ? `/recibo/${receiptId}` : req.product === "pro" ? "/pro" : "/empresa/planes";
   await notify(
     approve
       ? {
           userId: req.user_id,
           icon: "✅",
           title: `${planLabel(req.product, req.plan)} activo`,
-          body: `Confirmamos tu pago. Tu plan está activo hasta el ${formatDay(endsAt!)}.`,
+          body: `Confirmamos tu pago. Tu plan está activo hasta el ${formatDay(endsAt!)}.${receiptId ? " Tu recibo ya está disponible." : ""}`,
           href,
-          cta: "Ver mi plan",
+          cta: receiptId ? "Ver mi recibo" : "Ver mi plan",
         }
       : {
           userId: req.user_id,
@@ -198,7 +230,7 @@ async function activatePlan(
   plan: string,
   months: number,
   paymentRequestId: string | null
-): Promise<Result & { endsAt: string }> {
+): Promise<Result & { endsAt: string; from: string }> {
   const nowIso = new Date().toISOString();
   const { data: current } = await supabase
     .from("subscriptions")
@@ -214,8 +246,8 @@ async function activatePlan(
   if (current && current.plan === plan) {
     const endsAt = extendedEnd(current.ends_at, months);
     const { error } = await supabase.from("subscriptions").update({ ends_at: endsAt }).eq("id", current.id);
-    if (error) return { ok: false, error: "No pudimos extender el plan.", endsAt };
-    return { ok: true, endsAt };
+    if (error) return { ok: false, error: "No pudimos extender el plan.", endsAt, from: current.ends_at };
+    return { ok: true, endsAt, from: current.ends_at };
   }
 
   // Cambio de plan (o primera vez): el anterior se cierra y arranca el nuevo hoy.
@@ -231,9 +263,9 @@ async function activatePlan(
   });
   if (error) {
     console.error(`[worka:plans] subscription insert failed: ${error.message}`);
-    return { ok: false, error: "No pudimos activar el plan. ¿Ya corriste la migración 047?", endsAt };
+    return { ok: false, error: "No pudimos activar el plan. ¿Ya corriste la migración 047?", endsAt, from: nowIso };
   }
-  return { ok: true, endsAt };
+  return { ok: true, endsAt, from: nowIso };
 }
 
 // Alta manual (cortesía, período de gracia, pago fuera del link).
