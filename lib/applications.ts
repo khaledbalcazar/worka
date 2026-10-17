@@ -1,3 +1,4 @@
+import { jobCity } from "@/lib/job-mapper";
 import type { Application, JobStatus, JobWithCompany } from "@/lib/types";
 
 // Arma lo que ve el candidato en Mis postulaciones y Mensajes a partir de las
@@ -89,7 +90,7 @@ export function buildApplicationViews(
           company_id: job.company.id,
           company_name: job.company.trade_name || job.company.company_name,
           company_logo_url: job.company.logo_url,
-          company_city: job.company.location_city,
+          company_city: jobCity(job),
           available: job.status === "Activo",
         },
       });

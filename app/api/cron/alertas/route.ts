@@ -56,7 +56,7 @@ export async function GET(request: Request) {
   const { data: workaJobs } = await supabase
     .from("jobs")
     .select(
-      "id,title,industry,modality,address,created_at,company:companies(country,location_city,company_name,trade_name)"
+      "id,title,city,industry,modality,address,created_at,company:companies(country,location_city,company_name,trade_name)"
     )
     .eq("status", "Activo")
     .gt("created_at", windowIso);
@@ -100,7 +100,7 @@ export async function GET(request: Request) {
       if (
         city &&
         !norm(j.address).includes(city) &&
-        !norm(company.location_city).includes(city)
+        !norm(j.city || company.location_city).includes(city)
       )
         continue;
       matches.push({

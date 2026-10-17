@@ -133,7 +133,7 @@ export async function enviarDigestDePrueba(to: string): Promise<Result> {
   const { data } = await admin
     .from("jobs")
     .select(
-      "id,title,modality,salary_range,urgent,company:companies!inner(trade_name,company_name,logo_url,location_city,is_verified)"
+      "id,title,city,modality,salary_range,urgent,company:companies!inner(trade_name,company_name,logo_url,location_city,is_verified)"
     )
     .eq("status", "Activo")
     // El filtro usa el alias del join ("company"), no el nombre de la tabla:
@@ -149,7 +149,7 @@ export async function enviarDigestDePrueba(to: string): Promise<Result> {
       title: j.title as string,
       company: (c.trade_name || c.company_name || "Empresa") as string,
       companyLogo: (c.logo_url ?? null) as string | null,
-      city: (c.location_city ?? "") as string,
+      city: (j.city || c.location_city || "") as string,
       modality: (j.modality ?? null) as string | null,
       salary: (j.salary_range ?? null) as string | null,
       href: `${base}/empleo/${j.id}`,

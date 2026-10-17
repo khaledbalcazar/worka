@@ -13,7 +13,7 @@ export async function notifyInstantAlerts(jobId: string): Promise<number> {
   try {
     const { data: job } = await admin
       .from("jobs")
-      .select("id, title, industry, modality, address, status, expires_at, company:companies(trade_name, company_name, country, location_city)")
+      .select("id, title, city, industry, modality, address, status, expires_at, company:companies(trade_name, company_name, country, location_city)")
       .eq("id", jobId)
       .maybeSingle();
     if (!job || job.status !== "Activo" || (job.expires_at && Date.parse(job.expires_at) <= Date.now())) return 0;
@@ -43,7 +43,7 @@ export async function notifyInstantAlerts(jobId: string): Promise<number> {
         modality: job.modality,
         address: job.address,
         companyCountry: company.country ?? "py",
-        companyCity: company.location_city ?? null,
+        companyCity: (job as { city?: string | null }).city || company.location_city || null,
       });
       if (!match) continue;
       notified.add(a.user_id);

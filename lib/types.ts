@@ -444,6 +444,9 @@ export interface Job {
   contract_type: ContractType | null;
   salary_range: string | null;
   schedule: string | null;
+  // Ciudad donde es el puesto (migración 050). Puede faltar en datos de
+  // ejemplo o filas viejas: leerla siempre con jobCity().
+  city?: string | null;
   address: string | null;
   nearby_transit: string | null;
   requirements: string[];

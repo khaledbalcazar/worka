@@ -15,6 +15,12 @@ type JobRow = Omit<JobWithCompany, "filter_questions" | "company"> & {
   company: CompanyRow;
 };
 
+// Ciudad de la vacante. Las anteriores a la migración 050 no tienen una
+// propia y se muestran con la de la empresa, como se veían hasta entonces.
+export function jobCity(job: { city?: string | null; company?: { location_city?: string | null } | null }): string {
+  return (job.city ?? "").trim() || job.company?.location_city || "";
+}
+
 export function mapJob(row: Record<string, unknown>): JobWithCompany {
   const job = row as unknown as JobRow;
   const questions: FilterQuestion[] = [...(job.filter_questions ?? [])]
@@ -22,6 +28,7 @@ export function mapJob(row: Record<string, unknown>): JobWithCompany {
     .map((q) => ({ id: q.id, question: q.question, knockout: q.knockout ?? false }));
   return {
     ...job,
+    city: jobCity(job),
     filter_questions: questions,
     company: mapCompany(job.company as unknown as Record<string, unknown>),
   };

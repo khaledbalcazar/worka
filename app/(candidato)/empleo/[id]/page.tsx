@@ -1,3 +1,4 @@
+import { jobCity } from "@/lib/job-mapper";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -46,7 +47,7 @@ export async function generateMetadata({
   const title =
     rawTitle.length > 60 ? `${rawTitle.slice(0, 57).trimEnd()}…` : rawTitle;
   // Descripción con el rubro y la ciudad para dar más contexto y palabras.
-  const description = `${job.title} en ${job.company.trade_name} · ${job.company.location_city}${job.salary_range ? ` · ${job.salary_range}` : ""}. Postulate gratis y sin comisiones en Worka.`.slice(
+  const description = `${job.title} en ${job.company.trade_name} · ${jobCity(job)}${job.salary_range ? ` · ${job.salary_range}` : ""}. Postulate gratis y sin comisiones en Worka.`.slice(
     0,
     158
   );
@@ -108,7 +109,7 @@ export default async function JobDetailPage({
   // Destino para las apps de mapas: dirección exacta o empresa + ciudad.
   // El origen lo resuelve la app con la ubicación del usuario.
   const destination = encodeURIComponent(
-    job.address ?? `${job.company.trade_name}, ${job.company.location_city}, Paraguay`
+    job.address ?? `${job.company.trade_name}, ${jobCity(job)}, Paraguay`
   );
   const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=transit`;
   const moovitUrl = `https://moovitapp.com/tripplan?dest_name=${destination}`;
@@ -180,8 +181,8 @@ export default async function JobDetailPage({
       address: {
         "@type": "PostalAddress",
         streetAddress: job.address ?? undefined,
-        addressLocality: job.company.location_city,
-        addressRegion: job.company.location_city,
+        addressLocality: jobCity(job),
+        addressRegion: jobCity(job),
         addressCountry: pais.code.toUpperCase(),
       },
     },
@@ -221,7 +222,7 @@ export default async function JobDetailPage({
             </Link>
             <h1 className="li-detail-title">{job.title}</h1>
             <p className="li-detail-meta">
-              <span>{job.company.location_city}</span>
+              <span>{jobCity(job)}</span>
               <span>Publicada {timeAgo(job.created_at)}</span>
               <span>{job.views_count} vistas</span>
             </p>
@@ -299,7 +300,7 @@ export default async function JobDetailPage({
                   {job.company.trade_name}
                   {job.company.is_verified && <BadgeCheck size={15} className="text-primary" />}
                 </p>
-                <p className="text-xs text-gray-500">{job.industry} · {job.company.location_city}</p>
+                <p className="text-xs text-gray-500">{job.industry} · {jobCity(job)}</p>
               </div>
             </div>
             {job.company.description && <p className="li-detail-text line-clamp-4 mt-3">{job.company.description}</p>}

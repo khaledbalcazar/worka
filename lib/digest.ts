@@ -133,7 +133,7 @@ export async function enviarDigest(
   const { data: jobsRaw } = await admin
     .from("jobs")
     .select(
-      "id,title,industry,modality,salary_range,urgent,requires_experience,featured,featured_until,created_at,expires_at,company:companies!inner(id,trade_name,company_name,logo_url,location_city,country,is_verified)"
+      "id,title,city,industry,modality,salary_range,urgent,requires_experience,featured,featured_until,created_at,expires_at,company:companies!inner(id,trade_name,company_name,logo_url,location_city,country,is_verified)"
     )
     .eq("status", "Activo")
     // El filtro usa el alias del join ("company"), no el nombre de la tabla:
@@ -168,8 +168,9 @@ export async function enviarDigest(
         salary: (j.salary_range ?? null) as string | null,
         urgent: !!j.urgent,
         requiereExperiencia: !!j.requires_experience,
-        ciudad: (c.location_city ?? "") as string,
-        ciudadNorm: norm(c.location_city),
+        // Ciudad de la vacante (migración 050); las viejas, la de la empresa.
+        ciudad: (j.city || c.location_city || "") as string,
+        ciudadNorm: norm(j.city || c.location_city),
         country: norm(c.country) || "py",
         company: (c.trade_name || c.company_name || "Empresa") as string,
         logo: (c.logo_url ?? null) as string | null,

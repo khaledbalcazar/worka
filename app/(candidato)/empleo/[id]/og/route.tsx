@@ -1,3 +1,4 @@
+import { jobCity } from "@/lib/job-mapper";
 import { ImageResponse } from "next/og";
 import { getJobById, getSiteSettings } from "@/lib/data";
 
@@ -78,7 +79,7 @@ export async function GET(
             }}
           >
             {job
-              ? `${job.company.trade_name} · ${job.company.location_city}`
+              ? `${job.company.trade_name} · ${jobCity(job)}`
               : "Vacantes verificadas, 100% gratis"}
           </div>
 

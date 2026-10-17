@@ -1,4 +1,5 @@
 "use client";
+import { jobCity } from "@/lib/job-mapper";
 import Link from "next/link";
 import { BadgeCheck, Check, Star, Zap } from "lucide-react";
 import type { JobWithCompany } from "@/lib/types";
@@ -26,7 +27,7 @@ export default function JobResultCard({ job, selected, saved, loggedIn, applied,
         {!linkOnly && <button className="hidden lg:inline text-left" onClick={onSelect} aria-current={selected ? "true" : undefined}>{job.title}</button>}
       </h3>
       <p className="li-item-company">{job.company.trade_name}{job.company.is_verified && <BadgeCheck size={14} aria-label="Empresa verificada" />}</p>
-      <p className="li-item-location">{job.company.location_city} ({job.modality})</p>
+      <p className="li-item-location">{jobCity(job)} ({job.modality})</p>
       {job.salary_range && <p className="li-item-salary">{job.salary_range}</p>}
       {(featured || applied || (match && match.percent >= 80) || job.urgent || !job.requires_experience) && <p className="li-item-tags">
         {featured && <span className="is-featured"><Star size={12} /> Destacada</span>}

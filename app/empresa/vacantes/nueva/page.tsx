@@ -2,7 +2,9 @@
 
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
-import { CITIES, CONTRACT_TYPES, INDUSTRIES } from "@/lib/mock-data";
+import { CONTRACT_TYPES, INDUSTRIES } from "@/lib/mock-data";
+import CityPicker from "@/components/CityPicker";
+import { useCountryCookie } from "@/lib/useCountryCookie";
 import type { ContractType, Modality } from "@/lib/types";
 import { createJob } from "@/app/actions";
 
@@ -62,22 +64,42 @@ const DESC_RECOMENDADA = 80;
 
 /* ── Piezas ─────────────────────────────────────────────────────────────── */
 
+// Marca de obligatorio u opcional. Antes solo había asteriscos sueltos en
+// algunos rótulos y la empresa no sabía qué podía dejar vacío; ahora cada
+// campo lo dice.
+function Marca({ requerido }: { requerido: boolean }) {
+  return requerido ? (
+    <span className="ml-1.5 text-[10px] font-bold uppercase tracking-[.06em] px-1.5 py-0.5 rounded bg-red-50 text-red-600 align-middle">
+      Obligatorio
+    </span>
+  ) : (
+    <span className="ml-1.5 text-[10px] font-semibold uppercase tracking-[.06em] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 align-middle">
+      Opcional
+    </span>
+  );
+}
+
 function Seccion({
   titulo,
   ayuda,
   extra,
+  requerido,
   children,
 }: {
   titulo: string;
   ayuda?: string;
   extra?: React.ReactNode;
+  requerido?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <section className="bg-white rounded-xl border border-slate-100 p-5 space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-bold text-slate-900">{titulo}</h2>
+          <h2 className="text-sm font-bold text-slate-900">
+            {titulo}
+            {requerido !== undefined && <Marca requerido={requerido} />}
+          </h2>
           {ayuda && <p className="text-xs text-slate-400 mt-0.5">{ayuda}</p>}
         </div>
         {extra}
@@ -90,16 +112,21 @@ function Seccion({
 function Campo({
   label,
   hint,
+  requerido = false,
+  htmlFor,
   children,
 }: {
   label: string;
   hint?: string;
+  requerido?: boolean;
+  htmlFor?: string;
   children: React.ReactNode;
 }) {
   return (
     <div>
-      <label className="text-xs font-semibold block mb-1.5 text-slate-500">
+      <label htmlFor={htmlFor} className="text-xs font-semibold block mb-1.5 text-slate-500">
         {label}
+        <Marca requerido={requerido} />
       </label>
       {children}
       {hint && <p className="text-xs mt-1 text-slate-400">{hint}</p>}
@@ -270,6 +297,7 @@ export default function NewJobPage() {
   const [published, setPublished] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const country = useCountryCookie();
 
   const scamHits = useMemo(() => {
     const text = `${title} ${description}`.toLowerCase();
@@ -277,14 +305,17 @@ export default function NewJobPage() {
   }, [title, description]);
 
   const transitRequired = modality === "Presencial";
-  const canPublish = !!(
-    title &&
-    industry &&
-    city &&
-    description &&
-    (!transitRequired || transit) &&
-    scamHits.length === 0
-  );
+  // Lo obligatorio, con el nombre que se le muestra a la empresa.
+  const required: [string, boolean][] = [
+    ["Título del puesto", !!title.trim()],
+    ["Rubro", !!industry.trim()],
+    ["Ciudad", !!city],
+    ["Modalidad", true],
+    ["Descripción del puesto", !!description.trim()],
+    ...(transitRequired ? [["Líneas de colectivo", !!transit.trim()] as [string, boolean]] : []),
+  ];
+  const missing = required.filter(([, ok]) => !ok).map(([label]) => label);
+  const canPublish = missing.length === 0 && scamHits.length === 0;
 
   // Calidad del aviso: guía a la empresa a publicar completo.
   const quality = useMemo(() => {
@@ -357,6 +388,7 @@ export default function NewJobPage() {
         contract_type: contractType || null,
         salary_range: salary || null,
         schedule: schedule || null,
+        city,
         address: address || null,
         nearby_transit: transit || null,
         requirements,
@@ -424,6 +456,10 @@ export default function NewJobPage() {
           <p className="text-sm text-slate-500">
             Cuanto más completo el aviso, más rápido llega el candidato correcto.
           </p>
+          <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+            Lo marcado como <Marca requerido /> hace falta para publicar. Lo
+            <Marca requerido={false} /> suma calidad, pero podés dejarlo vacío.
+          </p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <Link
@@ -444,12 +480,17 @@ export default function NewJobPage() {
             {pending ? "Publicando…" : "✓ Publicar vacante"}
           </button>
         </div>
+        {missing.length > 0 && (
+          <p className="w-full text-xs text-slate-500 lg:text-right" role="status">
+            Para publicar falta: <strong className="text-red-600">{missing.join(", ")}</strong>
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 items-start">
         {/* ── Formulario ────────────────────────────────────────────────── */}
         <div className="flex-1 space-y-4 min-w-0 w-full">
-          <Seccion titulo="Inicio rápido" ayuda="Cargá un aviso base y editalo">
+          <Seccion titulo="Inicio rápido" ayuda="Cargá un aviso base y editalo" requerido={false}>
             <div className="flex flex-wrap gap-2">
               {TEMPLATES.map((t) => (
                 <button
@@ -464,8 +505,9 @@ export default function NewJobPage() {
           </Seccion>
 
           <Seccion titulo="Datos principales">
-            <Campo label="Título del puesto *">
+            <Campo label="Título del puesto" requerido htmlFor="job-title">
               <input
+                id="job-title"
                 className="input"
                 placeholder="Ej: Cajero/a para sucursal centro"
                 value={title}
@@ -474,7 +516,7 @@ export default function NewJobPage() {
             </Campo>
 
             <div className="grid sm:grid-cols-2 gap-3">
-              <Campo label="Rubro *">
+              <Campo label="Rubro" requerido>
                 <select
                   className="input cursor-pointer"
                   value={customIndustryOpen ? "__otro" : industry}
@@ -510,22 +552,28 @@ export default function NewJobPage() {
                 )}
               </Campo>
 
-              <Campo label="Ciudad *">
-                <select
-                  className="input cursor-pointer"
+              <Campo
+                label="Ciudad"
+                requerido
+                htmlFor="job-city"
+                hint={
+                  modality === "Remoto"
+                    ? "Para remoto: la ciudad de referencia de la empresa"
+                    : "Donde se trabaja: así aparece en la búsqueda y en el mapa"
+                }
+              >
+                <CityPicker
+                  id="job-city"
                   value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                >
-                  <option value="">Elegí la ciudad</option>
-                  {CITIES.map((c) => (
-                    <option key={c}>{c}</option>
-                  ))}
-                </select>
+                  onChange={setCity}
+                  country={country.code}
+                  placeholder="Buscá la ciudad del puesto"
+                />
               </Campo>
             </div>
 
             <div className="grid sm:grid-cols-2 gap-3">
-              <Campo label="Modalidad *">
+              <Campo label="Modalidad" requerido>
                 {/* Tres botones y no un desplegable: son tres opciones fijas y
                     la modalidad decide si aparece la sección de ubicación, así
                     que conviene que se vea de un golpe cuál está elegida. */}
@@ -613,13 +661,14 @@ export default function NewJobPage() {
               <Campo label="Dirección del lugar de trabajo">
                 <input
                   className="input"
-                  placeholder="Ej: Palma 850 casi Ayolas, Asunción"
+                  placeholder={city ? `Ej: Calle y número, ${city}` : "Ej: Calle y número, barrio"}
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                 />
               </Campo>
               <Campo
-                label={`Líneas de colectivo cercanas ${transitRequired ? "*" : ""}`}
+                label="Líneas de colectivo cercanas"
+                requerido={transitRequired}
                 hint={
                   transitRequired
                     ? "Obligatorio para vacantes presenciales"
@@ -636,7 +685,7 @@ export default function NewJobPage() {
             </Seccion>
           )}
 
-          <Seccion titulo="Descripción del puesto *">
+          <Seccion titulo="Descripción del puesto" requerido>
             <textarea
               rows={6}
               className="input min-h-32 resize-none"
@@ -673,6 +722,7 @@ export default function NewJobPage() {
           <Seccion
             titulo="Requisitos y beneficios"
             ayuda="Cortos y concretos: se leen de un vistazo"
+            requerido={false}
           >
             <Campo label="Requisitos">
               <ListEditor
@@ -693,6 +743,7 @@ export default function NewJobPage() {
           <Seccion
             titulo="Preguntas de filtro"
             ayuda="El candidato responde Sí/No al postularse"
+            requerido={false}
             extra={
               <span className="font-mono-data text-xs font-bold px-2 py-1 rounded-lg bg-slate-100 text-slate-600 shrink-0">
                 {questions.length}/3
@@ -773,7 +824,7 @@ export default function NewJobPage() {
             )}
           </Seccion>
 
-          <Seccion titulo="Extras">
+          <Seccion titulo="Extras" requerido={false}>
             <Casilla
               on={urgent}
               onToggle={() => setUrgent((v) => !v)}
@@ -853,12 +904,22 @@ export default function NewJobPage() {
             </div>
           </div>
 
-          {transitRequired && !transit && title && (
-            <Aviso tono="ambar" titulo="⚠ Falta el transporte">
-              Las vacantes presenciales tienen que decir cómo se llega. Sin eso
-              no se puede publicar.
-            </Aviso>
-          )}
+          <div className="bg-white rounded-xl border border-slate-100 p-5">
+            <p className="text-[10px] font-bold uppercase tracking-[.08em] text-slate-400 mb-3">
+              Obligatorios para publicar
+            </p>
+            <ul className="space-y-2">
+              {required.map(([label, ok]) => (
+                <li
+                  key={label}
+                  className={`flex items-center gap-2 text-xs ${ok ? "text-slate-700" : "text-red-600 font-semibold"}`}
+                >
+                  <span aria-hidden className="w-4 text-center">{ok ? "✓" : "○"}</span>
+                  {label}
+                </li>
+              ))}
+            </ul>
+          </div>
 
           <Aviso tono="verde" titulo="💡 Tip">
             Los avisos completos (70% o más) reciben en promedio el doble de

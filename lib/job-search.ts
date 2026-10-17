@@ -1,3 +1,4 @@
+import { jobCity } from "@/lib/job-mapper";
 import type { ExternalJob, JobWithCompany } from "@/lib/types";
 
 export function normalizeSearch(value: string) {
@@ -14,7 +15,7 @@ export function matchesJob(job: JobWithCompany, filters: SearchFilters, applied:
     !(filters.onlyVerified && !job.company.is_verified) &&
     !(filters.withSalary && !job.salary_range?.trim()) &&
     !(filters.hideApplied && applied.has(job.id)) &&
-    (!filters.city || normalizeSearch(job.company.location_city) === normalizeSearch(filters.city)) &&
+    (!filters.city || normalizeSearch(jobCity(job)) === normalizeSearch(filters.city)) &&
     (!filters.industry || job.industry === filters.industry) &&
     (!filters.modality || job.modality === filters.modality) &&
     (!filters.contract || job.contract_type === filters.contract) &&

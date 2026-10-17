@@ -1,3 +1,4 @@
+import { jobCity } from "@/lib/job-mapper";
 import Link from "next/link";
 import {
   ArrowUpRight,
@@ -45,7 +46,7 @@ export default function JobPreview({ job, saved, applied, loggedIn, requiresEval
       </Link>
       <h2 className="li-detail-title"><Link href={`/empleo/${job.id}`}>{job.title}</Link></h2>
       <p className="li-detail-meta">
-        <span>{job.company.location_city}</span>
+        <span>{jobCity(job)}</span>
         <span>Publicado {timeAgo(job.created_at)}</span>
         {job.vacancies_count > 1 && <span>{job.vacancies_count} puestos</span>}
       </p>
@@ -81,7 +82,7 @@ export default function JobPreview({ job, saved, applied, loggedIn, requiresEval
         <EntityAvatar url={job.company.logo_url} name={job.company.trade_name} className="li-logo" />
         <div className="min-w-0">
           <p className="font-semibold flex items-center gap-1">{job.company.trade_name}{job.company.is_verified && <BadgeCheck size={15} className="text-primary" />}</p>
-          <p className="text-xs text-gray-500">{job.industry} · {job.company.location_city}</p>
+          <p className="text-xs text-gray-500">{job.industry} · {jobCity(job)}</p>
         </div>
       </div>
       {job.company.description && <p className="li-detail-text line-clamp-4 mt-3">{job.company.description}</p>}

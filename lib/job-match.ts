@@ -1,3 +1,4 @@
+import { jobCity } from "@/lib/job-mapper";
 import type { Candidate, Job } from "@/lib/types";
 
 // Compatibilidad entre el perfil del candidato y una vacante. Solo usa datos
@@ -23,6 +24,7 @@ export type MatchCandidate = Pick<
 };
 export type MatchJob = Pick<Job, "modality" | "industry" | "requires_experience"> & {
   requirements?: string[];
+  city?: string | null;
   company: { location_city: string };
 };
 
@@ -37,7 +39,7 @@ function same(a: string, b: string) {
 
 export function jobMatch(candidate: MatchCandidate, job: MatchJob) {
   const items: MatchItem[] = [];
-  const city = job.company.location_city;
+  const city = jobCity(job);
 
   if (job.modality === "Remoto") {
     items.push({ key: "ubicacion", status: "met", text: "Es remoto: no depende de tu ciudad" });

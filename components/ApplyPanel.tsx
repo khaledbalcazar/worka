@@ -1,5 +1,6 @@
 "use client";
 
+import { jobCity } from "@/lib/job-mapper";
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import MobileSheet from "@/components/MobileSheet";
@@ -232,7 +233,7 @@ export default function ApplyPanel({
                 {job.salary_range ?? job.title}
               </p>
               <p className="text-[11px] text-gray-400 truncate">
-                {job.company.trade_name} · {job.company.location_city}
+                {job.company.trade_name} · {jobCity(job)}
               </p>
             </div>
             {step === "done" ? (

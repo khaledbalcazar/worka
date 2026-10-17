@@ -1,3 +1,4 @@
+import { jobCity } from "@/lib/job-mapper";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -623,7 +624,7 @@ function JobRow({
           {job.company.is_verified && <BadgeCheck size={14} className="text-primary shrink-0" aria-label="Empresa verificada" />}
         </p>
         <p className="text-[14px] text-muted">
-          {job.company.location_city} ({job.modality})
+          {jobCity(job)} ({job.modality})
         </p>
         <p className="flex flex-wrap gap-x-3 text-[12px] text-muted mt-1">
           {job.salary_range && <span className="font-semibold text-success-ink">{job.salary_range}</span>}

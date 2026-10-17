@@ -7,6 +7,7 @@ import { Check, Crown, Gift, Mail } from "lucide-react";
 import { useCountryCookie } from "@/lib/useCountryCookie";
 import { registerCompany, signUpWithEmail } from "@/app/actions";
 import { validateRucFormat } from "@/lib/ruc";
+import CityPicker from "@/components/CityPicker";
 import { ENTERPRISE_BRAND } from "@/lib/plans";
 import { LAUNCH_PROMO, isPromoOpen, isValidPromoCode, normalizePromoCode } from "@/lib/promo";
 
@@ -172,17 +173,10 @@ export default function CompanyRegisterPage() {
               <label className="label">
                 Ciudad en {country.flag} {country.name} *
               </label>
-              <select
-                className="input"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-              >
-                <option value="">Elegí la ciudad</option>
-                {country.cities.map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
-                <option value="Otra">Otra ciudad</option>
-              </select>
+              <CityPicker value={city} onChange={setCity} country={country.code} placeholder="Buscá la ciudad de la empresa" />
+              <p className="text-xs text-muted mt-1">
+                Es la sede. En cada vacante elegís la ciudad donde se trabaja.
+              </p>
             </div>
             <div>
               <label className="label">Email de contacto *</label>

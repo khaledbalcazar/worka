@@ -1,3 +1,5 @@
+import { PY_REGION_COORDS, findCity } from "@/lib/cities";
+
 // Centro aproximado de cada ciudad donde opera Worka, para ubicar vacantes en
 // el mapa y estimar el viaje. Las vacantes no guardan coordenadas propias,
 // así que el mapa trabaja a nivel ciudad: nunca marca una dirección exacta.
@@ -28,6 +30,47 @@ const CITY_COORDS: Record<string, Record<string, Coords>> = {
     "Caaguazú": [-25.4667, -56.0167],
     "Villarrica": [-25.75, -56.4333],
     "Concepción": [-23.4064, -57.4344],
+    "Itá": [-25.5, -57.3667],
+    "Villeta": [-25.5, -57.5667],
+    "Ypacaraí": [-25.4, -57.2833],
+    "Ypané": [-25.45, -57.53],
+    "Guarambaré": [-25.49, -57.455],
+    "J. Augusto Saldívar": [-25.45, -57.45],
+    "Nueva Italia": [-25.61, -57.47],
+    "Minga Guazú": [-25.48, -54.81],
+    "Santa Rita": [-25.79, -55.09],
+    "Caacupé": [-25.3861, -57.1405],
+    "San Bernardino": [-25.31, -57.3],
+    "Piribebuy": [-25.46, -57.04],
+    "Paraguarí": [-25.6208, -57.1464],
+    "Carapeguá": [-25.8, -57.24],
+    "San Juan Bautista": [-26.6694, -57.1456],
+    "San Ignacio": [-26.89, -57.03],
+    "Ayolas": [-27.39, -56.9],
+    "Caazapá": [-26.1953, -56.3681],
+    "Pilar": [-26.8597, -58.3006],
+    "San Pedro de Ycuamandiyú": [-24.0917, -57.0833],
+    "San Estanislao": [-24.65, -56.43],
+    "Santa Rosa del Aguaray": [-23.82, -56.52],
+    "Horqueta": [-23.34, -57.06],
+    "Yby Yaú": [-22.97, -56.53],
+    "Capitán Bado": [-23.27, -55.53],
+    "Salto del Guairá": [-24.0633, -54.3069],
+    "Curuguaty": [-24.47, -55.69],
+    "Katueté": [-24.25, -54.76],
+    "Villa Hayes": [-25.0933, -57.5236],
+    "Benjamín Aceval": [-24.97, -57.57],
+    "Filadelfia": [-22.35, -60.0333],
+    "Loma Plata": [-22.38, -59.85],
+    "Mariscal Estigarribia": [-22.03, -60.62],
+    "Fuerte Olimpo": [-21.0417, -57.8731],
+    "Hohenau": [-27.08, -55.75],
+    "Obligado": [-27.05, -55.63],
+    "Bella Vista": [-27.05, -55.58],
+    "Cambyretá": [-27.3, -55.8],
+    "Capitán Miranda": [-27.25, -55.79],
+    "Coronel Bogado": [-27.17, -56.25],
+    "Natalio": [-26.73, -55.13],
   },
   ar: {
     "Buenos Aires": [-34.6037, -58.3816],
@@ -88,7 +131,13 @@ export function cityCoords(city: string | null | undefined, country = "py"): Coo
   if (!city) return null;
   const table = CITY_COORDS[country] ?? CITY_COORDS.py;
   const key = Object.keys(table).find((name) => norm(name) === norm(city));
-  return key ? table[key] : null;
+  if (key) return table[key];
+  // Distrito de Paraguay sin coordenadas propias: el centro de su departamento.
+  if ((country ?? "py") === "py") {
+    const entry = findCity("py", city);
+    if (entry) return PY_REGION_COORDS[entry.region] ?? null;
+  }
+  return null;
 }
 
 // Distancia en línea recta, en km.

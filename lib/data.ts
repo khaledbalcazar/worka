@@ -30,7 +30,7 @@ export function isLive(): boolean {
 }
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { mapCompany, mapJob } from "./job-mapper";
+import { jobCity, mapCompany, mapJob } from "./job-mapper";
 
 const JOB_SELECT =
   "*, company:companies(*), filter_questions:job_questions(*)";
@@ -160,7 +160,7 @@ export async function getMyApplications(): Promise<ApplicationWithJob[]> {
         company_id: job.company.id,
         company_name: job.company.trade_name,
         company_logo_url: job.company.logo_url,
-        company_city: job.company.location_city,
+        company_city: jobCity(job),
       }));
     return buildApplicationViews(rows, summaries, mapJob).views;
   }
@@ -1812,7 +1812,7 @@ export async function getMarketPanorama(
   // Vacantes de Worka activas (con país de la empresa)
   const { data: workaRows } = await supabase
     .from("jobs")
-    .select("industry,created_at,company:companies!inner(country,location_city)")
+    .select("industry,city,created_at,company:companies!inner(country,location_city)")
     .eq("status", "Activo")
     .gt("expires_at", nowIso)
     .limit(2000);
@@ -1835,7 +1835,7 @@ export async function getMarketPanorama(
   let newThisWeek = 0;
   for (const j of worka) {
     if (j.industry) indCount.set(j.industry, (indCount.get(j.industry) ?? 0) + 1);
-    const city = j.company?.location_city;
+    const city = j.city || j.company?.location_city;
     if (city) cityCount.set(city, (cityCount.get(city) ?? 0) + 1);
     if (j.created_at > weekAgo) newThisWeek++;
   }

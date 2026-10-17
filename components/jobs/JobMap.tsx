@@ -1,5 +1,6 @@
 "use client";
 
+import { jobCity } from "@/lib/job-mapper";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import type { Map as LeafletMap, LayerGroup } from "leaflet";
@@ -39,9 +40,9 @@ export default function JobMap({
     let unplaced = 0;
     for (const job of jobs) {
       if (job.modality === "Remoto") { remote++; continue; }
-      const coords = cityCoords(job.company.location_city, job.company.country ?? country);
+      const coords = cityCoords(jobCity(job), job.company.country ?? country);
       if (!coords) { unplaced++; continue; }
-      const key = job.company.location_city;
+      const key = jobCity(job);
       const group = byCity.get(key) ?? { city: key, coords, jobs: [] };
       group.jobs.push(job);
       byCity.set(key, group);

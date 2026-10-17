@@ -1053,6 +1053,7 @@ export async function createJob(input: {
   contract_type: ContractType | null;
   salary_range: string | null;
   schedule: string | null;
+  city: string;
   address: string | null;
   nearby_transit: string | null;
   requirements: string[];
@@ -1080,19 +1081,28 @@ export async function createJob(input: {
   const maxExpiry = Date.now() + jobValidityDays * 86400000;
 
   const { questions, expires_at, ...jobFields } = input;
+  // Obligatorios (el formulario ya los pide; acá se vuelve a cortar).
+  if (!input.title.trim()) return { ok: false, error: "El título del puesto es obligatorio." };
+  if (!input.industry.trim()) return { ok: false, error: "Elegí el rubro." };
+  if (!input.description.trim()) return { ok: false, error: "La descripción del puesto es obligatoria." };
+  if (input.modality === "Presencial" && !input.nearby_transit?.trim())
+    return { ok: false, error: "Para vacantes presenciales indicá las líneas de colectivo cercanas." };
+  const city = (input.city ?? "").trim().slice(0, 80);
+  if (!city) return { ok: false, error: "Elegí la ciudad donde es el puesto." };
   const requested = expires_at ? Date.parse(expires_at) : NaN;
   const expiry = Number.isFinite(requested) ? Math.min(requested, maxExpiry) : maxExpiry;
-  const { data: job, error } = await supabase
-    .from("jobs")
-    .insert({
-      ...jobFields,
-      company_id: companyId,
-      expires_at: new Date(expiry).toISOString(),
-    })
-    .select("id")
-    .single();
-  if (error)
-    return { ok: false, error: planErrorMessage(error.message) ?? "No pudimos publicar la vacante." };
+  const row = { ...jobFields, city, company_id: companyId, expires_at: new Date(expiry).toISOString() };
+  let { data: job, error } = await supabase.from("jobs").insert(row).select("id").single();
+  // Sin la migración 050 no existe jobs.city: se publica igual para no
+  // frenar a nadie, pero queda en el log porque la ciudad se pierde.
+  if (error && /city/i.test(error.message)) {
+    console.error("[worka:jobs] falta la migración 050 (jobs.city):", error.message);
+    const { city: _omit, ...withoutCity } = row;
+    void _omit;
+    ({ data: job, error } = await supabase.from("jobs").insert(withoutCity).select("id").single());
+  }
+  if (error || !job)
+    return { ok: false, error: planErrorMessage(error?.message) ?? "No pudimos publicar la vacante." };
 
   if (questions.length > 0) {
     await supabase.from("job_questions").insert(
@@ -1213,6 +1223,7 @@ export async function updateJob(
     schedule?: string | null;
     address?: string | null;
     nearby_transit?: string | null;
+    city?: string;
     requirements?: string[];
     benefits?: string[];
     vacancies_count?: number;
@@ -1224,12 +1235,21 @@ export async function updateJob(
   if (!supabase) return DEMO;
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Iniciá sesión como empresa." };
+  if (input.city !== undefined) {
+    input.city = input.city.trim().slice(0, 80);
+    if (!input.city) return { ok: false, error: "Elegí la ciudad donde es el puesto." };
+  }
+  if (input.title !== undefined && !input.title.trim()) return { ok: false, error: "El título es obligatorio." };
+  if (input.description !== undefined && !input.description.trim()) return { ok: false, error: "La descripción es obligatoria." };
   const { error } = await supabase
     .from("jobs")
     .update(input)
     .eq("id", jobId)
     .eq("company_id", user.id);
-  if (error) return { ok: false, error: "No pudimos guardar los cambios." };
+  if (error) {
+    if (/city/i.test(error.message)) console.error("[worka:jobs] falta la migración 050 (jobs.city):", error.message);
+    return { ok: false, error: "No pudimos guardar los cambios." };
+  }
 
   const { pingIndexNow, jobUrl } = await import("@/lib/indexnow");
   pingIndexNow(jobUrl(jobId));

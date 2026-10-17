@@ -303,7 +303,7 @@ export async function adminCancelSubscription(id: string): Promise<Result> {
 // ── Worka Enterprise Pro ────────────────────────────────────────────────
 
 async function companyForJob(jobId: string): Promise<
-  | { ok: true; companyId: string; job: { id: string; title: string; industry: string; status: string; expires_at: string; company_id: string } }
+  | { ok: true; companyId: string; job: { id: string; title: string; industry: string; status: string; expires_at: string; company_id: string; city?: string | null } }
   | { ok: false; error: string }
 > {
   const supabase = await getServerClient();
@@ -314,7 +314,7 @@ async function companyForJob(jobId: string): Promise<
   if (!access || access.role === "observador") return { ok: false, error: "No tenés permiso para hacer esto." };
   const { data: job } = await supabase
     .from("jobs")
-    .select("id, title, industry, status, expires_at, company_id")
+    .select("*")
     .eq("id", jobId)
     .eq("company_id", access.companyId)
     .maybeSingle();
@@ -375,7 +375,8 @@ export async function sendUrgentAlert(jobId: string): Promise<Result & { recipie
     .select("trade_name, company_name, location_city, country")
     .eq("id", ctx.companyId)
     .maybeSingle();
-  const city = (company?.location_city ?? "").trim();
+  // La ciudad de la vacante (migración 050); si no tiene, la de la empresa.
+  const city = (ctx.job.city || company?.location_city || "").trim();
   const country = company?.country ?? "py";
 
   const { data: people } = await admin

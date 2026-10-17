@@ -1,3 +1,4 @@
+import { jobCity } from "@/lib/job-mapper";
 import { getJobsWithEvaluation } from "@/lib/evaluar";
 import JobFeed from "@/components/JobFeed";
 import WhatsNewModal from "@/components/WhatsNewModal";
@@ -47,7 +48,15 @@ export default async function JobFeedPage() {
   const extra = (value: string | undefined) =>
     (value ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   const industries = [...new Set([...INDUSTRIES, ...extra(settings.custom_industries)])];
-  const cities = [...new Set([...country.cities, ...extra(settings.custom_cities)])];
+  // Más las ciudades donde hoy hay vacantes: una publicada en Hohenau tiene
+  // que poder filtrarse aunque Hohenau no esté en la lista corta del país.
+  const withJobs = [...jobs.map(jobCity), ...externalJobs.map((j) => j.city ?? "")].filter(Boolean);
+  const cities = [
+    ...country.cities,
+    ...[...new Set([...extra(settings.custom_cities), ...withJobs])]
+      .filter((c) => !country.cities.includes(c))
+      .sort((a, b) => a.localeCompare(b, "es")),
+  ];
 
   const loggedIn = isLive() ? !!(await getCurrentUser()) : true;
   const experienceCount = candidate ? await getExperienceCount(candidate.id) : 0;

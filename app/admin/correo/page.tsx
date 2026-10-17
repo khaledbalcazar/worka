@@ -42,7 +42,7 @@ export default async function AdminCorreoPage() {
     const { data } = await admin
       .from("jobs")
       .select(
-        "id,title,modality,salary_range,urgent,company:companies!inner(trade_name,company_name,logo_url,location_city,is_verified)"
+        "id,title,city,modality,salary_range,urgent,company:companies!inner(trade_name,company_name,logo_url,location_city,is_verified)"
       )
       .eq("status", "Activo")
       // El filtro usa el alias del join ("company"), no el nombre de la tabla:
@@ -59,7 +59,7 @@ export default async function AdminCorreoPage() {
         title: j.title,
         company: c.trade_name || c.company_name || "Empresa",
         companyLogo: c.logo_url ?? null,
-        city: c.location_city ?? "",
+        city: j.city || c.location_city || "",
         modality: j.modality ?? null,
         salary: j.salary_range ?? null,
         href: `${base}/empleo/${j.id}`,
@@ -81,7 +81,7 @@ export default async function AdminCorreoPage() {
         title: j.title,
         company: j.company.trade_name,
         companyLogo: j.company.logo_url,
-        city: j.company.location_city,
+        city: j.city || j.company.location_city,
         modality: j.modality,
         salary: j.salary_range,
         href: `${base}/empleo/${j.id}`,
