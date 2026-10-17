@@ -38,7 +38,7 @@ import {
   uploadSiteLogo,
   verifyCompany,
 } from "@/app/actions";
-import type { AdminUser, DetailedReport, GlobalStats } from "@/lib/data";
+import type { AdminUser, DetailedReport } from "@/lib/data";
 
 // Ajustes del CMS que se editan como texto multilínea
 const TEXTAREA_SETTINGS = new Set<string>([
@@ -62,43 +62,61 @@ const TEXTAREA_SETTINGS = new Set<string>([
   "seo_bo",
 ]);
 
+// Cada página del backoffice muestra solo sus bloques de este panel.
+export type AdminSection =
+  | "moderacion"
+  | "verificaciones"
+  | "vacantes"
+  | "usuarios"
+  | "empresas"
+  | "comunicacion"
+  | "ajustes";
+
 export type IdentityQueueItem = Candidate & {
   docs: { label: string; url: string }[];
 };
 
 export default function AdminPanel({
-  moderationQueue,
-  reports,
-  pendingCompanies,
-  allCompanies,
-  activeJobsCount,
+  section,
+  moderationQueue = [],
+  reports = [],
+  pendingCompanies = [],
+  allCompanies = [],
   identityQueue = [],
   references = [],
   boosts = [],
   settings = {},
   pendingIndustries = [],
   adminUsers = { users: [], fullAccess: false },
-  globalStats,
   detailedReports = [],
   allJobs = [],
   customBadges = [],
+  initialUserQuery = "",
 }: {
-  moderationQueue: JobWithCompany[];
-  reports: Report[];
-  pendingCompanies: Company[];
-  allCompanies: Company[];
-  activeJobsCount: number;
+  section: AdminSection;
+  moderationQueue?: JobWithCompany[];
+  reports?: Report[];
+  pendingCompanies?: Company[];
+  allCompanies?: Company[];
   identityQueue?: IdentityQueueItem[];
   references?: (WorkReference & { candidate_name?: string })[];
   boosts?: (BoostRequest & { job_title?: string; company_name?: string })[];
   settings?: Record<string, string>;
   pendingIndustries?: string[];
   adminUsers?: { users: AdminUser[]; fullAccess: boolean };
-  globalStats?: GlobalStats;
   detailedReports?: DetailedReport[];
   allJobs?: JobWithCompany[];
   customBadges?: CustomBadge[];
+  // Búsqueda que llega desde el buscador del encabezado (/admin/usuarios?q=).
+  initialUserQuery?: string;
 }) {
+  const show = (s: AdminSection) => s === section;
+  const [userQuery, setUserQuery] = useState(initialUserQuery);
+  const [userRole, setUserRole] = useState<"todos" | "candidate" | "company" | "admin">("todos");
+  const [userLimit, setUserLimit] = useState(50);
+  const [userError, setUserError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [broadcastError, setBroadcastError] = useState<string | null>(null);
   const [resolved, setResolved] = useState<
     Record<string, "aprobada" | "eliminada">
   >({});
@@ -192,32 +210,63 @@ export default function AdminPanel({
     action: "ocultar" | "advertir" | "descartar"
   ) {
     startTransition(async () => {
+      setActionError(null);
+      // Antes se marcaba como hecho aunque la acción fallara.
       if (action === "descartar") {
-        await dismissReport(report.id);
+        const r = await dismissReport(report.id);
+        if (!r.ok) return setActionError(r.error ?? "No pudimos descartar la denuncia.");
         setDismissedReports((s) => ({ ...s, [report.id]: true }));
       } else if (action === "ocultar") {
-        await hideJobForReview(report.job_id);
+        const r = await hideJobForReview(report.job_id);
+        if (!r.ok) return setActionError(r.error ?? "No pudimos ocultar la vacante.");
         setReportActionDone((s) => ({ ...s, [report.id]: "🚫 Vacante oculta" }));
       } else {
-        await warnCompany(report.company_id, report.job_title);
+        const r = await warnCompany(report.company_id, report.job_title);
+        if (!r.ok) return setActionError(r.error ?? "No pudimos advertir a la empresa.");
         setReportActionDone((s) => ({ ...s, [report.id]: "⚠️ Empresa advertida" }));
       }
     });
   }
 
+  // Antes se marcaba «✓ Enviada» antes de saber si había salido.
   function handleRecovery(email: string, key: string) {
-    setRecoverySent((s) => ({ ...s, [key]: true }));
+    setUserError(null);
     startTransition(async () => {
-      await adminSendRecovery(email);
+      const result = await adminSendRecovery(email);
+      if (result.ok) setRecoverySent((s) => ({ ...s, [key]: true }));
+      else setUserError(result.error ?? `No pudimos enviar la recuperación a ${email}.`);
     });
   }
 
+  // Antes la fila desaparecía aunque la base no la hubiera borrado.
   function handleDeleteUser(user: AdminUser) {
     setConfirmUserDelete(null);
-    setDeletedUsers((s) => ({ ...s, [user.id]: true }));
+    setUserError(null);
     startTransition(async () => {
-      await adminDeleteUser(user.id);
+      const result = await adminDeleteUser(user.id);
+      if (result.ok) setDeletedUsers((s) => ({ ...s, [user.id]: true }));
+      else setUserError(result.error ?? `No pudimos eliminar la cuenta de ${user.name}.`);
     });
+  }
+
+  const normalize = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const filteredUsers = adminUsers.users.filter((u) => {
+    if (deletedUsers[u.id]) return false;
+    if (userRole !== "todos" && u.role !== userRole) return false;
+    const q = normalize(userQuery.trim());
+    return !q || normalize(`${u.name} ${u.email ?? ""} ${u.id}`).includes(q);
+  });
+
+  // Exporta lo filtrado a CSV (se abre en Excel con tildes gracias al BOM).
+  function exportUsers() {
+    const rows = [["Nombre", "Email", "Rol", "Alta", "ID"], ...filteredUsers.map((u) => [u.name, u.email ?? "", u.role, u.created_at, u.id])];
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\r\n");
+    const url = URL.createObjectURL(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `worka-usuarios-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
   const [badgeState, setBadgeState] = useState<Record<string, string[]>>(
     Object.fromEntries(allCompanies.map((c) => [c.id, c.badges]))
@@ -354,103 +403,14 @@ export default function AdminPanel({
   }
 
   return (
-    <main className="max-w-6xl mx-auto p-4 lg:p-8 space-y-8">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: "Vacantes en moderación", value: moderationQueue.length },
-          { label: "Denuncias registradas", value: reports.length },
-          { label: "Empresas por verificar", value: visiblePending.length },
-          { label: "Vacantes activas", value: activeJobsCount },
-        ].map((s) => (
-          <div key={s.label} className="card p-5">
-            <p className="text-2xl font-bold text-primary-dark">{s.value}</p>
-            <p className="text-sm text-gray-500 mt-0.5">{s.label}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Estadísticas globales del negocio */}
-      {globalStats && (
-        <section className="space-y-3">
-          <h2 className="font-bold text-primary-dark text-lg">
-            📊 Estadísticas globales
-          </h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { label: "Candidatos", value: globalStats.candidates, icon: "👤" },
-              { label: "Empresas", value: globalStats.companies, icon: "🏢" },
-              {
-                label: "Vacantes activas",
-                value: `${globalStats.activeJobs}/${globalStats.totalJobs}`,
-                icon: "💼",
-              },
-              {
-                label: "Postulaciones",
-                value: globalStats.applications,
-                icon: "📨",
-              },
-              {
-                label: "Postulaciones (7 días)",
-                value: globalStats.applicationsThisWeek,
-                icon: "🗓️",
-              },
-              {
-                label: "% que llega a Contactado",
-                value: `${globalStats.contactedRate}%`,
-                icon: "✅",
-                highlight: true,
-              },
-            ].map((s) => (
-              <div key={s.label} className="card p-5">
-                <p className="text-2xl font-bold text-primary-dark">
-                  {s.icon} {s.value}
-                </p>
-                <p
-                  className={`text-sm mt-0.5 ${s.highlight ? "text-emerald-600 font-medium" : "text-gray-500"}`}
-                >
-                  {s.label}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          {/* Registros por día (últimos 14) */}
-          <div className="card p-5">
-            <h3 className="font-semibold text-primary-dark text-sm mb-4">
-              Registros por día (últimos 14)
-            </h3>
-            <div className="flex items-end gap-1.5 h-32">
-              {globalStats.signupsByDay.map((d) => {
-                const max = Math.max(
-                  ...globalStats.signupsByDay.map((x) => x.count),
-                  1
-                );
-                return (
-                  <div
-                    key={d.day}
-                    className="flex-1 flex flex-col items-center gap-1 group"
-                  >
-                    <span className="text-[10px] text-gray-400 opacity-0 group-hover:opacity-100">
-                      {d.count}
-                    </span>
-                    <div
-                      className="w-full bg-primary rounded-t transition-all hover:bg-primary-dark"
-                      style={{
-                        height: `${Math.max((d.count / max) * 100, d.count > 0 ? 8 : 2)}%`,
-                      }}
-                      title={`${d.day}: ${d.count}`}
-                    />
-                    <span className="text-[9px] text-gray-400 rotate-45 origin-left whitespace-nowrap mt-1">
-                      {d.day}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+    <div className="space-y-8">
+      {actionError && (
+        <p className="text-sm text-danger bg-red-50 rounded-xl px-4 py-3 flex justify-between gap-3" role="alert">
+          {actionError}
+          <button className="underline shrink-0" onClick={() => setActionError(null)}>Cerrar</button>
+        </p>
       )}
-
+      {show("comunicacion") && (<>
       {/* Notificación masiva */}
       <section className="card p-5 space-y-3">
         <h2 className="font-bold text-primary-dark text-lg">
@@ -533,7 +493,13 @@ export default function AdminPanel({
               <button
                 className="btn-primary"
                 disabled={pending || !broadcastTitle || !broadcastBody}
-                onClick={() =>
+                onClick={() => {
+                  // Va a la campanita de cientos de personas y no se puede
+                  // retirar: se confirma antes.
+                  const quien =
+                    broadcastAudience === "all" ? "todos los usuarios" : broadcastAudience === "candidates" ? "todos los candidatos" : "todas las empresas";
+                  if (!window.confirm(`¿Enviar «${broadcastTitle}» a ${quien}? No se puede deshacer.`)) return;
+                  setBroadcastError(null);
                   startTransition(async () => {
                     const result = await broadcastNotification({
                       audience: broadcastAudience,
@@ -543,16 +509,28 @@ export default function AdminPanel({
                       icon: broadcastIcon || undefined,
                     });
                     if (result.ok) setBroadcastSent(result.sent ?? 0);
-                  })
-                }
+                    else setBroadcastError(result.error ?? "No pudimos enviar la notificación.");
+                  });
+                }}
               >
-                {pending ? "Enviando…" : "📢 Enviar a todos"}
+                {pending
+                  ? "Enviando…"
+                  : broadcastAudience === "all"
+                    ? "📢 Enviar a todos"
+                    : broadcastAudience === "candidates"
+                      ? "📢 Enviar a candidatos"
+                      : "📢 Enviar a empresas"}
               </button>
             </div>
+            {broadcastError && (
+              <p className="lg:col-span-2 text-sm text-danger bg-red-50 rounded-xl px-4 py-3">{broadcastError}</p>
+            )}
           </div>
         )}
       </section>
+      </>)}
 
+      {show("moderacion") && (<>
       <section className="space-y-3">
         <h2 className="font-bold text-primary-dark text-lg">
           🚩 Cola de moderación
@@ -634,7 +612,9 @@ export default function AdminPanel({
           );
         })}
       </section>
+      </>)}
 
+      {show("verificaciones") && (<>
       <section className="space-y-3">
         <h2 className="font-bold text-primary-dark text-lg">
           🏢 Verificación de empresas
@@ -680,9 +660,11 @@ export default function AdminPanel({
           </div>
         ))}
       </section>
+      </>)}
 
+      {show("verificaciones") && (<>
       {/* Verificación de identidad (cédulas) */}
-      <section className="space-y-3">
+      <section id="identidad" className="space-y-3 scroll-mt-20">
         <h2 className="font-bold text-primary-dark text-lg">
           🪪 Verificación de identidad
         </h2>
@@ -769,7 +751,9 @@ export default function AdminPanel({
           );
         })}
       </section>
+      </>)}
 
+      {show("verificaciones") && (<>
       {/* Referencias laborales */}
       <section className="space-y-3">
         <h2 className="font-bold text-primary-dark text-lg">
@@ -824,9 +808,11 @@ export default function AdminPanel({
           </div>
         )}
       </section>
+      </>)}
 
+      {show("vacantes") && (<>
       {/* Potenciar empleo (pagos) */}
-      <section className="space-y-3">
+      <section id="potenciadas" className="space-y-3 scroll-mt-20">
         <h2 className="font-bold text-primary-dark text-lg">
           ⚡ Vacantes potenciadas
         </h2>
@@ -888,7 +874,9 @@ export default function AdminPanel({
           );
         })}
       </section>
+      </>)}
 
+      {show("ajustes") && (<>
       {/* Configuración del sitio */}
       <section className="space-y-3">
         <h2 className="font-bold text-primary-dark text-lg">
@@ -1060,7 +1048,9 @@ export default function AdminPanel({
           </div>
         </div>
       </section>
+      </>)}
 
+      {show("vacantes") && (<>
       {/* SEO / IndexNow */}
       <section className="space-y-3">
         <h2 className="font-bold text-primary-dark text-lg">
@@ -1089,7 +1079,9 @@ export default function AdminPanel({
           </button>
         </div>
       </section>
+      </>)}
 
+      {show("vacantes") && (<>
       {/* Gestión de vacantes */}
       <section className="space-y-3">
         <h2 className="font-bold text-primary-dark text-lg">
@@ -1221,9 +1213,11 @@ export default function AdminPanel({
           </table>
         </div>
       </section>
+      </>)}
 
+      {show("moderacion") && (<>
       {/* Bandeja de denuncias */}
-      <section className="space-y-3">
+      <section id="denuncias" className="space-y-3 scroll-mt-20">
         <h2 className="font-bold text-primary-dark text-lg">
           🗂️ Bandeja de denuncias
         </h2>
@@ -1290,7 +1284,9 @@ export default function AdminPanel({
             </div>
           ))}
       </section>
+      </>)}
 
+      {show("usuarios") && (<>
       {/* Gestión de usuarios */}
       <section className="space-y-3">
         <h2 className="font-bold text-primary-dark text-lg">👥 Usuarios</h2>
@@ -1319,16 +1315,52 @@ export default function AdminPanel({
             }}
           />
           <button
-            className={recoveryEmailSent ? "btn-success" : "btn-primary"}
+            className={recoverySent.__manual && recoveryEmailSent ? "btn-success" : "btn-primary"}
             disabled={!recoveryEmail || pending}
             onClick={() => {
+              setRecoverySent((s) => ({ ...s, __manual: false }));
               handleRecovery(recoveryEmail, "__manual");
               setRecoveryEmailSent(true);
             }}
           >
-            {recoveryEmailSent ? "✓ Enviado" : "Enviar"}
+            {recoverySent.__manual && recoveryEmailSent ? "✓ Enviado" : "Enviar"}
           </button>
         </div>
+
+        {userError && <p className="text-sm text-danger bg-red-50 rounded-xl px-4 py-3">{userError}</p>}
+
+        {/* Buscar, filtrar y exportar */}
+        <div className="card p-3 flex flex-col md:flex-row gap-2 md:items-center">
+          <input
+            className="input flex-1"
+            type="search"
+            placeholder="Buscar por nombre, email o ID"
+            value={userQuery}
+            onChange={(e) => {
+              setUserQuery(e.target.value);
+              setUserLimit(50);
+            }}
+          />
+          <select
+            className="input md:w-44"
+            value={userRole}
+            onChange={(e) => {
+              setUserRole(e.target.value as typeof userRole);
+              setUserLimit(50);
+            }}
+          >
+            <option value="todos">Todos los roles</option>
+            <option value="candidate">Candidatos</option>
+            <option value="company">Empresas</option>
+            <option value="admin">Admins</option>
+          </select>
+          <button className="btn-secondary shrink-0" onClick={exportUsers} disabled={filteredUsers.length === 0}>
+            ⬇ Exportar CSV
+          </button>
+        </div>
+        <p className="text-xs text-gray-500 -mt-1">
+          {filteredUsers.length.toLocaleString("es-PY")} de {adminUsers.users.length.toLocaleString("es-PY")} cuentas
+        </p>
 
         {adminUsers.users.length > 0 && (
           <div className="card overflow-x-auto">
@@ -1343,8 +1375,8 @@ export default function AdminPanel({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {adminUsers.users
-                  .filter((u) => !deletedUsers[u.id])
+                {filteredUsers
+                  .slice(0, userLimit)
                   .map((u) => (
                     <tr key={u.id} className="hover:bg-surface/60">
                       <td className="px-4 py-2.5 font-medium text-gray-700">
@@ -1363,7 +1395,7 @@ export default function AdminPanel({
                                 : "bg-surface text-gray-600"
                           }`}
                         >
-                          {u.role}
+                          {({ candidate: "Candidato", company: "Empresa", admin: "Admin" } as Record<string, string>)[u.role] ?? u.role}
                         </span>
                       </td>
                       <td className="px-4 py-2.5 text-gray-500">
@@ -1393,10 +1425,20 @@ export default function AdminPanel({
                   ))}
               </tbody>
             </table>
+            {filteredUsers.length > userLimit && (
+              <div className="p-3 border-t border-gray-100 text-center">
+                <button className="text-sm font-semibold text-primary hover:underline" onClick={() => setUserLimit((l) => l + 100)}>
+                  Ver 100 más ({(filteredUsers.length - userLimit).toLocaleString("es-PY")} restantes)
+                </button>
+              </div>
+            )}
+            {filteredUsers.length === 0 && <p className="p-6 text-center text-sm text-gray-500">Ninguna cuenta coincide con la búsqueda.</p>}
           </div>
         )}
       </section>
+      </>)}
 
+      {show("moderacion") && (<>
       {/* Rubros propuestos por empresas */}
       <section className="space-y-3">
         <h2 className="font-bold text-primary-dark text-lg">
@@ -1442,7 +1484,9 @@ export default function AdminPanel({
           ))}
         </div>
       </section>
+      </>)}
 
+      {show("empresas") && (<>
       {/* Crear insignias personalizadas */}
       <section className="space-y-3">
         <h2 className="font-bold text-primary-dark text-lg">
@@ -1514,7 +1558,9 @@ export default function AdminPanel({
           </div>
         )}
       </section>
+      </>)}
 
+      {show("empresas") && (<>
       {/* Insignias por empresa */}
       <section className="space-y-3">
         <h2 className="font-bold text-primary-dark text-lg">
@@ -1578,6 +1624,7 @@ export default function AdminPanel({
           );
         })}
       </section>
+      </>)}
       {/* Confirmación de eliminación de cuenta */}
       {confirmUserDelete && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
@@ -1606,6 +1653,6 @@ export default function AdminPanel({
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }

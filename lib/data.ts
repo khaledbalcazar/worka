@@ -883,7 +883,9 @@ export async function getPendingIndustryTags(): Promise<string[]> {
       ...(settings.custom_industries ?? "").split(",").map((s) => s.trim()),
     ].filter(Boolean)
   );
-  const { data } = await supabase.from("jobs").select("industry").limit(500);
+  // Las más recientes primero: sin orden, el límite tomaba 500 vacantes
+  // cualquiera y un rubro nuevo podía no aparecer nunca.
+  const { data } = await supabase.from("jobs").select("industry").order("created_at", { ascending: false }).limit(3000);
   const pending = new Set<string>();
   for (const row of data ?? []) {
     const ind = (row.industry ?? "").trim();
@@ -1132,13 +1134,25 @@ export async function getAdminUsers(): Promise<{
   const { getAdminClient } = await import("./supabase/admin");
   const admin = getAdminClient();
 
-  // Nombres visibles desde las tablas de la app
-  const [{ data: candidates }, { data: companies }, { data: profiles }] =
-    await Promise.all([
-      supabase.from("candidates").select("id, full_name"),
-      supabase.from("companies").select("id, trade_name"),
-      supabase.from("profiles").select("id, role, created_at"),
-    ]);
+  // Nombres visibles desde las tablas de la app. La API corta cada consulta
+  // en 1000 filas: sin paginar, pasadas las mil cuentas los nombres salían
+  // «—» y faltaban perfiles.
+  const db = admin ?? supabase;
+  const all = async (table: string, columns: string) => {
+    const out: any[] = [];
+    for (let from = 0; from < 50_000; from += 1000) {
+      const { data, error } = await db.from(table).select(columns).range(from, from + 999);
+      if (error || !data?.length) break;
+      out.push(...data);
+      if (data.length < 1000) break;
+    }
+    return out;
+  };
+  const [candidates, companies, profiles] = await Promise.all([
+    all("candidates", "id, full_name"),
+    all("companies", "id, trade_name"),
+    all("profiles", "id, role, created_at"),
+  ]);
   const names = new Map<string, string>();
   for (const c of candidates ?? []) names.set(c.id, c.full_name);
   for (const c of companies ?? []) names.set(c.id, c.trade_name);
@@ -1157,12 +1171,18 @@ export async function getAdminUsers(): Promise<{
     // es exactamente lo que aporta el cliente administrativo, pero el resto
     // del panel sigue en pie.
     try {
-      const { data, error } = await admin.auth.admin.listUsers({
-        perPage: 200,
-      });
-      if (error) throw error;
+      // Antes se pedía una sola página de 200: con más cuentas, el resto no
+      // aparecía en el backoffice. Ahora se recorren todas las páginas.
+      const authUsers: { id: string; email?: string; created_at: string }[] = [];
+      for (let page = 1; page <= 50; page++) {
+        const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+        if (error) throw error;
+        const batch = data?.users ?? [];
+        authUsers.push(...batch);
+        if (batch.length < 1000) break;
+      }
       return {
-        users: (data?.users ?? []).map((u) => ({
+        users: authUsers.map((u) => ({
           id: u.id,
           email: u.email ?? null,
           role: roles.get(u.id)?.role ?? "sin perfil",

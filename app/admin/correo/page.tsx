@@ -1,6 +1,5 @@
-import { redirect } from "next/navigation";
-import Link from "next/link";
-import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
+import AdminPageHead from "@/components/admin/AdminPageHead";
+import { requireAdmin } from "@/lib/admin-stats";
 import { digestHtml, type DigestJob } from "@/lib/email-digest";
 import { SITE_URL } from "@/lib/supabase/config";
 import { getAdminClient } from "@/lib/supabase/admin";
@@ -21,17 +20,7 @@ export const metadata = {
  * ve acá y no en la bandeja de dos mil personas.
  */
 export default async function AdminCorreoPage() {
-  const supabase = await getServerClient();
-  if (supabase) {
-    const user = await getCurrentUser();
-    if (!user) redirect("/ingresar?next=/admin/correo");
-    const { data } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle();
-    if ((data as { role?: string } | null)?.role !== "admin") redirect("/");
-  }
+  await requireAdmin("/admin/correo");
 
   const base = SITE_URL.replace(/\/$/, "");
   const admin = getAdminClient();
@@ -103,19 +92,11 @@ export default async function AdminCorreoPage() {
   });
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-5">
-      <div>
-        <Link href="/admin" className="text-sm text-primary font-medium">
-          ← Volver al backoffice
-        </Link>
-        <h1 className="text-2xl font-bold text-primary-dark mt-1">
-          Correo de vacantes nuevas
-        </h1>
-        <p className="text-sm text-gray-500">
-          Sale una vez por semana a cada candidato con alertas activas. Corre
-          todos los días a las 10:00 y manda una tanda por vez.
-        </p>
-      </div>
+    <div className="max-w-5xl space-y-5">
+      <AdminPageHead
+        title="Correo semanal de vacantes"
+        description="Sale una vez por semana a cada candidato con alertas activas. Corre todos los días a las 10:00 y manda una tanda por vez."
+      />
 
       {!hay && (
         <div className="card p-5 bg-amber-50 border-amber-200">

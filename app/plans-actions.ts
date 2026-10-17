@@ -476,6 +476,22 @@ export async function saveCompanyBranding(input: {
 
 // ── Worka Pro ───────────────────────────────────────────────────────────
 
+// Prueba real de las claves de la IA de Worka Pro (backoffice).
+export async function testProAiKeys(): Promise<Result & { detalle?: string }> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  if (!(await isAdmin())) return SOLO_ADMIN;
+  const { askText } = await import("@/lib/ai-server");
+  try {
+    const text = await askText("Respondé con una sola palabra.", "Decí: funciona", 16);
+    revalidatePath("/admin/ajustes");
+    return { ok: true, detalle: `La IA de Worka Pro respondió: "${text.trim().slice(0, 60)}"` };
+  } catch (e) {
+    revalidatePath("/admin/ajustes");
+    return { ok: false, error: aiError(e) };
+  }
+}
+
 // Una empresa miró a un candidato. La empresa sale de la sesión dentro de la
 // función de la base; si quien llama no es una empresa, no se registra nada.
 export async function recordProfileView(candidateId: string, source: "postulacion" | "cv" | "talento" | "perfil", jobId?: string): Promise<void> {

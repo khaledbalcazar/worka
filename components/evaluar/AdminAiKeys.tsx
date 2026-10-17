@@ -11,7 +11,17 @@ import {
   setAiKeyModel,
   testAiKeys,
 } from "@/app/evaluar/actions";
+import { testProAiKeys } from "@/app/plans-actions";
 import { MODELOS_SUGERIDOS } from "@/lib/evaluar/modelos";
+
+// Proveedores para la IA de Worka Pro (Evaluar usa solo Groq).
+const PRO_PROVIDERS = [
+  { id: "anthropic", label: "Anthropic (Claude)", placeholder: "sk-ant-…", where: "console.anthropic.com → API Keys", models: ["claude-opus-5-5", "claude-sonnet-5-5", "claude-haiku-5-5"] },
+  { id: "openai", label: "OpenAI", placeholder: "sk-…", where: "platform.openai.com → API keys", models: ["gpt-4o", "gpt-4o-mini"] },
+  { id: "gemini", label: "Google Gemini", placeholder: "AIza…", where: "aistudio.google.com → Get API key", models: ["gemini-2.0-flash", "gemini-2.5-pro"] },
+  { id: "groq", label: "Groq", placeholder: "gsk_…", where: "console.groq.com → API Keys", models: MODELOS_SUGERIDOS },
+];
+const PRO_PREFIX = "workapro:";
 
 // Claves de IA del asistente de Worka Evaluar.
 //
@@ -23,12 +33,19 @@ import { MODELOS_SUGERIDOS } from "@/lib/evaluar/modelos";
 //
 // La clave se muestra enmascarada: acá hay que poder distinguir cuál es cuál,
 // no volver a leerla entera.
-export default function AdminAiKeys({ keys }: { keys: AiKeyRow[] }) {
+//
+// Con scope="pro" administra las de la IA de Worka Pro (revisión de CV y
+// simulador de entrevistas), que aceptan varios proveedores.
+export default function AdminAiKeys({ keys, scope = "evaluar" }: { keys: AiKeyRow[]; scope?: "evaluar" | "pro" }) {
   const router = useRouter();
+  const pro = scope === "pro";
   const [abierto, setAbierto] = useState(false);
   const [label, setLabel] = useState("");
   const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState(MODELOS_SUGERIDOS[0]);
+  const [providerId, setProviderId] = useState(pro ? "anthropic" : "groq");
+  const provider = PRO_PROVIDERS.find((p) => p.id === providerId) ?? PRO_PROVIDERS[3];
+  const [model, setModel] = useState(pro ? PRO_PROVIDERS[0].models[0] : MODELOS_SUGERIDOS[0]);
+  const listId = "modelos-" + scope;
   const [aviso, setAviso] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -56,8 +73,8 @@ export default function AdminAiKeys({ keys }: { keys: AiKeyRow[] }) {
     <div className="card p-5 space-y-4">
       {/* Fuera del formulario de alta: las filas de abajo tambien lo usan, y
           ahi adentro solo existia con el formulario abierto. */}
-      <datalist id="modelos-groq">
-        {MODELOS_SUGERIDOS.map((m) => (
+      <datalist id={listId}>
+        {(pro ? PRO_PROVIDERS.flatMap((p) => p.models) : MODELOS_SUGERIDOS).map((m) => (
           <option key={m} value={m} />
         ))}
       </datalist>
@@ -65,18 +82,22 @@ export default function AdminAiKeys({ keys }: { keys: AiKeyRow[] }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-semibold text-primary-dark flex items-center gap-2">
-            <Bot size={18} /> Asistente de IA
+            <Bot size={18} /> {pro ? "IA de Worka Pro" : "Asistente de IA de Worka Evaluar"}
           </h2>
           <p className="text-xs text-slate-500 mt-1">
-            {keys.length === 0
-              ? "Sin claves cargadas: el asistente está apagado para todas las empresas."
-              : `${activas} de ${keys.length} claves activas. Se usa siempre la que hace más rato que no se toca.`}
+            {pro
+              ? keys.length === 0
+                ? "Sin claves cargadas: la revisión de CV y el simulador de entrevistas usan la variable de entorno del servidor, si existe."
+                : `${activas} de ${keys.length} claves activas para la revisión de CV y el simulador de entrevistas. Se prueban en orden y la variable de entorno queda de respaldo.`
+              : keys.length === 0
+                ? "Sin claves cargadas: el asistente está apagado para todas las empresas."
+                : `${activas} de ${keys.length} claves activas. Se usa siempre la que hace más rato que no se toca.`}
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
           {keys.length > 0 && (
             <button
-              onClick={() => run(testAiKeys)}
+              onClick={() => run(pro ? testProAiKeys : testAiKeys)}
               disabled={pending}
               className="btn-secondary press text-sm disabled:opacity-50"
               title="Hace una consulta real contra la API"
@@ -106,26 +127,45 @@ export default function AdminAiKeys({ keys }: { keys: AiKeyRow[] }) {
 
       {abierto && (
         <div className="border border-slate-200 rounded-2xl p-4 space-y-3 animate-rise">
+          {pro && (
+            <div>
+              <label className="label">Proveedor</label>
+              <select
+                className="input"
+                value={providerId}
+                onChange={(e) => {
+                  const p = PRO_PROVIDERS.find((x) => x.id === e.target.value) ?? PRO_PROVIDERS[0];
+                  setProviderId(p.id);
+                  setModel(p.models[0]);
+                }}
+              >
+                {PRO_PROVIDERS.map((p) => (
+                  <option key={p.id} value={p.id}>{p.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="label">Nombre para reconocerla</label>
             <input
               className="input"
-              placeholder="Ej: Groq cuenta 1"
+              placeholder={pro ? "Ej: " + provider.label + " principal" : "Ej: Groq cuenta 1"}
               value={label}
               onChange={(e) => setLabel(e.target.value)}
             />
           </div>
           <div>
-            <label className="label">Clave de Groq</label>
+            <label className="label">Clave de {pro ? provider.label : "Groq"}</label>
             <input
               type="password"
               className="input font-mono"
-              placeholder="gsk_…"
+              placeholder={pro ? provider.placeholder : "gsk_…"}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
+              autoComplete="off"
             />
             <p className="text-xs text-slate-500 mt-1.5">
-              Se saca de console.groq.com → API Keys. Queda guardada en la base
+              Se saca de {pro ? provider.where : "console.groq.com → API Keys"}. Queda guardada en la base
               y solo la lee el servidor: nunca viaja al navegador de nadie.
             </p>
           </div>
@@ -133,8 +173,8 @@ export default function AdminAiKeys({ keys }: { keys: AiKeyRow[] }) {
             <label className="label">Modelo</label>
             <input
               className="input font-mono text-sm"
-              list="modelos-groq"
-              placeholder="llama-3.3-70b-versatile"
+              list={listId}
+              placeholder={pro ? provider.models[0] : "llama-3.3-70b-versatile"}
               value={model}
               onChange={(e) => setModel(e.target.value)}
             />
@@ -155,7 +195,7 @@ export default function AdminAiKeys({ keys }: { keys: AiKeyRow[] }) {
             <button
               onClick={() => {
                 run(
-                  () => addAiKey({ provider: "groq", label, apiKey, model }),
+                  () => addAiKey({ provider: pro ? PRO_PREFIX + providerId : "groq", label, apiKey, model }),
                   "Clave guardada."
                 );
                 setLabel("");
@@ -182,6 +222,11 @@ export default function AdminAiKeys({ keys }: { keys: AiKeyRow[] }) {
             >
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-primary-dark truncate">
+                  {pro && (
+                    <span className="chip bg-blue-50 text-primary mr-1.5 align-middle">
+                      {PRO_PROVIDERS.find((p) => PRO_PREFIX + p.id === k.provider)?.label ?? k.provider.replace(PRO_PREFIX, "")}
+                    </span>
+                  )}
                   {k.label || "Sin nombre"}{" "}
                   <span className="font-mono text-xs text-slate-400">
                     {k.masked}
@@ -191,7 +236,7 @@ export default function AdminAiKeys({ keys }: { keys: AiKeyRow[] }) {
                   <label className="text-[11px] text-slate-500">Modelo</label>
                   <input
                     className="input py-0.5 text-[11px] font-mono w-auto flex-1 min-w-0"
-                    list="modelos-groq"
+                    list={listId}
                     defaultValue={k.model}
                     disabled={pending}
                     onBlur={(e) => {

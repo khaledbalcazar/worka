@@ -661,14 +661,15 @@ export type AiKeyRow = {
   created_at: string;
 };
 
-export async function getAiKeys(): Promise<AiKeyRow[]> {
+// Las claves de Worka Pro viven en la misma tabla con el proveedor marcado
+// «workapro:…» (ver lib/ai-server.ts); cada editor ve solo las suyas.
+export async function getAiKeys(scope: "evaluar" | "pro" = "evaluar"): Promise<AiKeyRow[]> {
   const supabase = await getServerClient();
   if (!supabase) return [];
 
-  const { data } = await supabase
-    .from("evaluar_ai_keys")
-    .select("*")
-    .order("created_at", { ascending: false });
+  let q = supabase.from("evaluar_ai_keys").select("*");
+  q = scope === "pro" ? q.like("provider", "workapro:%") : q.not("provider", "like", "workapro:%");
+  const { data } = await q.order("created_at", { ascending: false });
 
   return ((data ?? []) as (AiKeyRow & { api_key: string })[]).map((k) => ({
     id: k.id,
