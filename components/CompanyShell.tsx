@@ -7,6 +7,7 @@ import {
   BarChart3,
   Building2,
   ChevronDown,
+  Compass,
   Crown,
   LayoutDashboard,
   LogOut,
@@ -18,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import NotificationBell from "@/components/NotificationBell";
+import CompanyTour, { startCompanyTour } from "@/components/CompanyTour";
 import { signOut } from "@/app/actions";
 import type { Company, Notification } from "@/lib/types";
 
@@ -26,10 +28,10 @@ import type { Company, Notification } from "@/lib/types";
 // mensajes, métricas) va siempre a la vista; equipo y perfil de empresa, que
 // se tocan de vez en cuando, viven en el menú de la cuenta.
 const NAV = [
-  { href: "/empresa", label: "Panel", Icon: LayoutDashboard, exact: true },
-  { href: "/empresa/talento", label: "Talento", Icon: Search },
-  { href: "/empresa/mensajes", label: "Mensajes", Icon: MessageCircle },
-  { href: "/empresa/metricas", label: "Métricas", Icon: BarChart3 },
+  { href: "/empresa", label: "Panel", Icon: LayoutDashboard, exact: true, tour: undefined },
+  { href: "/empresa/talento", label: "Talento", Icon: Search, tour: "talento" },
+  { href: "/empresa/mensajes", label: "Mensajes", Icon: MessageCircle, tour: "mensajes" },
+  { href: "/empresa/metricas", label: "Métricas", Icon: BarChart3, tour: "metricas" },
 ];
 const ACCOUNT = [
   { href: "/empresa/planes", label: "Worka Enterprise Pro", Icon: Crown },
@@ -110,8 +112,8 @@ export default function CompanyShell({
 
           {!bare && (
             <nav className="co-nav" aria-label="Panel de empresa">
-              {NAV.map(({ href, label, Icon, exact }) => (
-                <Link key={href} href={href} aria-current={isActive(href, exact) ? "page" : undefined}>
+              {NAV.map(({ href, label, Icon, exact, tour }) => (
+                <Link key={href} href={href} data-tour={tour} aria-current={isActive(href, exact) ? "page" : undefined}>
                   <Icon size={20} strokeWidth={1.7} />
                   <span>{label}</span>
                 </Link>
@@ -121,8 +123,14 @@ export default function CompanyShell({
 
           {!bare && (
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <NotificationBell notifications={notifications} />
-              <Link href="/empresa/vacantes/nueva" className="co-publish">
+              <button type="button" className="tour-chip" data-tour="guia" onClick={startCompanyTour} aria-label="Guía del panel">
+                <Compass size={16} />
+                <span className="hidden sm:inline">Guía</span>
+              </button>
+              <span className="inline-flex" data-tour="avisos">
+                <NotificationBell notifications={notifications} />
+              </span>
+              <Link href="/empresa/vacantes/nueva" className="co-publish" data-tour="publicar">
                 <Plus size={16} strokeWidth={2.4} />
                 <span className="hidden sm:inline">Publicar vacante</span>
               </Link>
@@ -130,6 +138,7 @@ export default function CompanyShell({
                 <button
                   type="button"
                   className="co-account"
+                  data-tour="cuenta"
                   aria-label="Menú de la empresa"
                   aria-expanded={menu}
                   onClick={() => setMenu((v) => !v)}
@@ -193,28 +202,30 @@ export default function CompanyShell({
       {/* Navegación inferior en celular: lo de todos los días a un dedo. */}
       {!bare && (
         <nav className="co-bottom print:hidden" aria-label="Panel de empresa">
-          {NAV.slice(0, 2).map(({ href, label, Icon, exact }) => (
-            <Link key={href} href={href} aria-current={isActive(href, exact) ? "page" : undefined}>
+          {NAV.slice(0, 2).map(({ href, label, Icon, exact, tour }) => (
+            <Link key={href} href={href} data-tour={tour} aria-current={isActive(href, exact) ? "page" : undefined}>
               <Icon size={21} strokeWidth={1.7} />
               {label}
             </Link>
           ))}
-          <Link href="/empresa/vacantes/nueva" aria-current={isActive("/empresa/vacantes/nueva") ? "page" : undefined}>
+          <Link href="/empresa/vacantes/nueva" data-tour="publicar" aria-current={isActive("/empresa/vacantes/nueva") ? "page" : undefined}>
             <span className="co-bottom-plus"><Plus size={18} strokeWidth={2.4} /></span>
             Publicar
           </Link>
-          {NAV.slice(2, 3).map(({ href, label, Icon }) => (
-            <Link key={href} href={href} aria-current={isActive(href) ? "page" : undefined}>
+          {NAV.slice(2, 3).map(({ href, label, Icon, tour }) => (
+            <Link key={href} href={href} data-tour={tour} aria-current={isActive(href) ? "page" : undefined}>
               <Icon size={21} strokeWidth={1.7} />
               {label}
             </Link>
           ))}
-          <button type="button" data-co-menu-toggle onClick={() => setMenu((v) => !v)} aria-expanded={menu}>
+          <button type="button" data-co-menu-toggle data-tour="cuenta" onClick={() => setMenu((v) => !v)} aria-expanded={menu}>
             {menu ? <X size={21} /> : <Menu size={21} strokeWidth={1.7} />}
             Más
           </button>
         </nav>
       )}
+
+      {!bare && <CompanyTour />}
     </div>
   );
 }

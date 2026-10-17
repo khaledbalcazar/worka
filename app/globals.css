@@ -750,3 +750,65 @@ html {
     .plan-meters { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   }
 }
+
+/* ── Promoción de lanzamiento: popup y chip (/para-empresas) ───────────── */
+.promo-backdrop { position: fixed; inset: 0; z-index: 80; display: grid; place-items: end center; background: rgb(17 24 39 / 0.55); padding: 0; animation: promo-fade .2s ease-out both; }
+.promo-dialog { position: relative; width: 100%; max-width: 440px; max-height: 100dvh; overflow-y: auto; background: #fff; border-radius: 16px 16px 0 0; box-shadow: 0 24px 64px rgb(0 0 0 / .28); animation: promo-rise .28s cubic-bezier(.2,.8,.2,1) both; }
+.promo-close { position: absolute; top: 12px; right: 12px; z-index: 1; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; color: #fff; background: rgb(255 255 255 / .14); }
+.promo-close:hover { background: rgb(255 255 255 / .26); }
+.promo-hero { padding: 28px 24px 22px; color: #fff; background: radial-gradient(120% 140% at 100% 0%, #2f8ae0 0%, #0a66c2 45%, #004182 100%); }
+.promo-eyebrow { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; background: rgb(255 255 255 / .16); font-size: 12px; font-weight: 600; }
+.promo-hero h2 { margin-top: 14px; font-size: 28px; line-height: 1.15; font-weight: 300; letter-spacing: -.02em; }
+.promo-hero h2 span { font-weight: 650; }
+.promo-sub { margin-top: 10px; font-size: 14px; line-height: 1.5; color: rgb(255 255 255 / .85); }
+.promo-body { display: flex; flex-direction: column; gap: 12px; padding: 20px 24px 22px; }
+.promo-code { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: -4px; padding: 10px 10px 10px 16px; border: 2px dashed #0a66c2; border-radius: 10px; background: #f3f8fd; }
+.promo-code span { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 22px; font-weight: 700; letter-spacing: .12em; color: #004182; }
+.promo-code button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 999px; background: #fff; border: 1px solid #c9d9ea; font-size: 13px; font-weight: 600; color: #0a66c2; }
+.promo-code button:hover { background: #e8f1fa; }
+.promo-perks { display: grid; gap: 6px; font-size: 14px; color: #333; }
+.promo-perks li { display: flex; align-items: center; gap: 8px; }
+.promo-perks svg { color: #057642; flex-shrink: 0; }
+.promo-later { align-self: center; min-height: 36px; padding: 0 12px; font-size: 14px; font-weight: 600; color: #666; }
+.promo-later:hover { color: #1d2226; }
+.promo-fine { font-size: 12px; text-align: center; color: #767676; }
+.promo-fine strong { color: #b24020; }
+.promo-chip { position: fixed; left: 16px; bottom: 16px; z-index: 70; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: 999px; background: #0a66c2; color: #fff; font-size: 14px; font-weight: 600; box-shadow: 0 8px 24px rgb(10 102 194 / .35); animation: promo-rise .3s ease-out both; }
+.promo-chip:hover { background: #004182; }
+@media (min-width: 640px) {
+  .promo-backdrop { place-items: center; padding: 16px; }
+  .promo-dialog { border-radius: 16px; max-height: calc(100dvh - 32px); }
+  .promo-hero { padding: 32px 28px 24px; }
+  .promo-hero h2 { font-size: 32px; }
+  .promo-body { padding: 22px 28px 24px; }
+}
+@keyframes promo-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes promo-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+
+/* ── Guía del panel de empresa ─────────────────────────────────────────── */
+.tour-spot { position: fixed; z-index: 90; pointer-events: none; border-radius: 10px; box-shadow: 0 0 0 4px #fff, 0 0 0 7px #0a66c2, 0 0 0 9999px rgb(17 24 39 / .5); transition: top .25s ease, left .25s ease, width .25s ease, height .25s ease; }
+.tour-pop { position: fixed; z-index: 91; width: min(320px, calc(100vw - 24px)); padding: 16px 18px 14px; border-radius: 8px; background: #0a66c2; color: #fff; box-shadow: 0 12px 32px rgb(0 0 0 / .3); animation: promo-fade .2s ease-out both; }
+.tour-pop::before { content: ""; position: absolute; left: var(--arrow-x, 50%); width: 16px; height: 16px; background: #0a66c2; transform: translateX(-50%) rotate(45deg); border-radius: 2px; }
+.tour-pop[data-side="bottom"]::before { top: -7px; }
+.tour-pop[data-side="top"]::before { bottom: -7px; }
+.tour-pop:focus { outline: none; }
+.tour-pop h3 { font-size: 16px; font-weight: 700; padding-right: 28px; }
+.tour-pop p { margin-top: 4px; font-size: 14px; line-height: 1.45; color: rgb(255 255 255 / .92); }
+.tour-pop p strong { color: #fff; }
+.tour-x { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; color: #fff; }
+.tour-x:hover { background: rgb(255 255 255 / .16); }
+.tour-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 14px; }
+.tour-dots { display: flex; gap: 4px; }
+.tour-dots span { width: 6px; height: 6px; border-radius: 999px; background: rgb(255 255 255 / .35); }
+.tour-dots span.is-on { width: 16px; background: #fff; }
+.tour-btn { min-height: 34px; padding: 0 14px; border-radius: 999px; font-size: 13px; font-weight: 700; }
+.tour-btn.is-ghost { color: #fff; }
+.tour-btn.is-ghost:hover { background: rgb(255 255 255 / .14); }
+.tour-btn.is-solid { background: #fff; color: #0a66c2; }
+.tour-btn.is-solid:hover { background: #e8f1fa; }
+.tour-chip { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid #c9d9ea; background: #f3f8fd; color: #0a66c2; font-size: 13px; font-weight: 600; }
+.tour-chip:hover { background: #e8f1fa; }
+@media (prefers-reduced-motion: reduce) {
+  .promo-backdrop, .promo-dialog, .promo-chip, .tour-pop { animation: none; }
+  .tour-spot { transition: none; }
+}

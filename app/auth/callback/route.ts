@@ -51,6 +51,18 @@ export async function GET(request: Request) {
       const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (!error) {
         const home = await getRoleHome();
+        // Empresa nueva que se registró con el código de la promoción: se
+        // activa el plan acá y llega al panel con la bienvenida y la guía.
+        if (home === "/empresa") {
+          const { data: { user } } = await supabase.auth.getUser();
+          const { redeemSignupPromo } = await import("@/lib/promo-server");
+          const promo = await redeemSignupPromo(user);
+          if (promo.redeemed) {
+            const response = NextResponse.redirect(`${origin}/empresa?bienvenida=promo`);
+            response.cookies.delete("worka_next");
+            return response;
+          }
+        }
         // Cuenta recién creada: el alta va primero, pero se lleva el destino
         // para devolver a la persona a la vacante apenas termine.
         const target =

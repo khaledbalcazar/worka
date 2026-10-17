@@ -23,6 +23,8 @@ export type SubscriptionRow = {
   starts_at: string;
   ends_at: string;
   created_at: string;
+  // Código de la promoción con que se activó (migración 049).
+  promo_code?: string | null;
 };
 
 export type PaymentRequestRow = {
@@ -101,7 +103,26 @@ export async function getCurrentSubscription(userId: string, product: Product): 
 // usa el cliente de servicio después de saber de qué empresa es la persona.
 export async function getCompanySubscription(companyId: string): Promise<SubscriptionRow | null> {
   const admin = getAdminClient();
-  if (!admin) return getCurrentSubscription(companyId, "enterprise");
+  if (!admin) {
+    // Demo: el plan de ejemplo se muestra como activado con la promoción.
+    if (!(await getServerClient()) && mock.demoPlans.enterprise !== "gratis") {
+      const start = new Date(Date.now() - 2 * 86400000);
+      const end = new Date(start);
+      end.setUTCMonth(end.getUTCMonth() + 3);
+      return {
+        id: "demo-sub",
+        user_id: companyId,
+        product: "enterprise",
+        plan: mock.demoPlans.enterprise,
+        status: "activa",
+        starts_at: start.toISOString(),
+        ends_at: end.toISOString(),
+        created_at: start.toISOString(),
+        promo_code: "WORKA3PRO",
+      };
+    }
+    return getCurrentSubscription(companyId, "enterprise");
+  }
   const { data } = await admin
     .from("subscriptions")
     .select("*")

@@ -10,11 +10,14 @@ import {
 } from "@/lib/data";
 import { enterprisePlan, paymentLink } from "@/lib/plans";
 import { getCompanySubscription, getEnterprisePlanId, getPromotionUsage } from "@/lib/subscriptions";
+import { getCurrentUser } from "@/lib/supabase/server";
+import { redeemSignupPromo } from "@/lib/promo-server";
+import PromoWelcome from "@/components/plans/PromoWelcome";
 
 export const metadata = { title: "Panel de empresa" };
 
-export default async function CompanyDashboardPage() {
-  const company = await getCurrentCompany();
+export default async function CompanyDashboardPage({ searchParams }: { searchParams: Promise<{ bienvenida?: string }> }) {
+  const [{ bienvenida }, company] = await Promise.all([searchParams, getCurrentCompany()]);
 
   if (!company) {
     return (
@@ -33,6 +36,11 @@ export default async function CompanyDashboardPage() {
     );
   }
 
+  // Red de seguridad del canje de la promoción: si el callback no llegó a
+  // activarla (por ejemplo, ingresó con contraseña sin pasar por el link),
+  // se activa en la primera visita al panel.
+  const promo = await redeemSignupPromo(await getCurrentUser());
+
   const [jobs, settings, stats, activity, planId, subscription, usage] = await Promise.all([
     getJobsByCompany(company.id),
     getSiteSettings(),
@@ -47,6 +55,14 @@ export default async function CompanyDashboardPage() {
     <div className="space-y-4">
       {/* Puerta de entrada a Worka Evaluar desde donde la empresa ya trabaja:
           si vive solo en su propio dominio, nadie se entera de que existe. */}
+      {(promo.redeemed || bienvenida === "promo") && subscription && (
+        <PromoWelcome
+          company={company.trade_name || company.company_name}
+          code={subscription.promo_code ?? promo.code ?? null}
+          endsAt={subscription.ends_at}
+          hasJobs={jobs.length > 0}
+        />
+      )}
       <EvaluarPromo />
       <CompanyDashboard
         company={company}

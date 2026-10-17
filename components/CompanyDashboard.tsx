@@ -554,7 +554,7 @@ export default function CompanyDashboard({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm">
+      <div data-tour="plan" className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl bg-white border border-slate-200 text-sm">
         <span>
           {plan.id === "gratis" ? (
             <>
@@ -586,7 +586,7 @@ export default function CompanyDashboard({
       )}
 
       {/* ── Indicadores ───────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+      <div data-tour="indicadores" className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
         {tarjetas.map((c) => (
           <Tarjeta key={c.label} className="p-4 lg:p-5 space-y-3">
             {/* Alto mínimo en el rótulo: "Postulaciones esta semana" ocupa dos
@@ -778,7 +778,7 @@ export default function CompanyDashboard({
           )}
         </Tarjeta>
 
-        <div className="rounded-xl p-5 text-white bg-gradient-to-br from-blue-800 to-blue-600">
+        <div data-tour="visibilidad" className="rounded-xl p-5 text-white bg-gradient-to-br from-blue-800 to-blue-600">
           <p className="text-[10px] font-bold tracking-[.08em] uppercase text-white/70">
             Más visibilidad
           </p>
@@ -807,7 +807,7 @@ export default function CompanyDashboard({
 
       {/* ── Vacantes ──────────────────────────────────────────────────── */}
       <Tarjeta className="overflow-hidden">
-        <div className="px-4 lg:px-6 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-50">
+        <div data-tour="vacantes" className="px-4 lg:px-6 py-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-50">
           <div className="flex items-center gap-3">
             <h2 className="text-sm font-bold text-slate-900">Mis vacantes</h2>
             <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-slate-100 text-slate-600">

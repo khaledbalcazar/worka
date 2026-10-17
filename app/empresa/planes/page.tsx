@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check, Crown } from "lucide-react";
+import { Check, Crown, Gift } from "lucide-react";
 import PlanCheckout from "@/components/plans/PlanCheckout";
 import { getCurrentCompany, getSiteSettings } from "@/lib/data";
 import {
@@ -63,6 +63,8 @@ export default async function CompanyPlansPage({ searchParams }: { searchParams:
     monthlyGs: monthlyPrice("enterprise", p.id, settings),
   }));
   const left = daysLeft(subscription?.ends_at ?? null);
+  // Plan activado con un código (promoción de lanzamiento, migración 049).
+  const promoCode = subscription?.promo_code ?? null;
 
   const meters = [
     {
@@ -94,8 +96,35 @@ export default async function CompanyPlansPage({ searchParams }: { searchParams:
               </p>
             )}
           </div>
-          {plan.id !== "gratis" && <span className="plan-badge"><Crown size={13} /> {plan.name}</span>}
+          <div className="flex flex-wrap gap-2">
+            {subscription && <span className="plan-status is-aprobada">Suscripción activa</span>}
+            {plan.id !== "gratis" && <span className="plan-badge"><Crown size={13} /> {plan.name}</span>}
+          </div>
         </div>
+        {promoCode && subscription && (
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-lg border border-[#c9d9ea] bg-[#f3f8fd] p-3.5">
+            <span className="w-10 h-10 rounded-full bg-primary text-white grid place-items-center shrink-0">
+              <Gift size={18} />
+            </span>
+            <div className="min-w-0 flex-1 text-sm">
+              <p className="font-semibold">Promoción de bienvenida · {ENTERPRISE_BRAND} sin costo</p>
+              <p className="text-muted mt-0.5">
+                Del {formatDate(subscription.starts_at)} al {formatDate(subscription.ends_at)}. No se renueva sola ni genera cobros.
+              </p>
+              <p className="mt-1">
+                Incluye{" "}
+                <Link href="/evaluar/app" className="font-semibold text-primary hover:underline">Worka Evaluar · Profesional</Link>{" "}
+                por el mismo plazo.
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[11px] text-muted">Código de descuento</p>
+              <p className="font-mono font-bold tracking-[.1em] text-[#004182] border-2 border-dashed border-primary rounded-md px-2.5 py-0.5 bg-white">
+                {promoCode}
+              </p>
+            </div>
+          </div>
+        )}
         <div className="plan-meters">
           {meters.map((m) => (
             <div key={m.label}>
@@ -158,6 +187,15 @@ export default async function CompanyPlansPage({ searchParams }: { searchParams:
         </div>
         <aside className="card p-5">
           <h2 className="font-semibold">Tus pagos</h2>
+          {promoCode && subscription && (
+            <div className="mt-3 text-sm pb-3 border-b border-line">
+              <div className="flex justify-between gap-2">
+                <span>{plan.name} · promoción {promoCode}</span>
+                <span className="plan-status is-aprobada">Activa</span>
+              </div>
+              <p className="text-xs text-muted">Sin costo · desde el {formatDate(subscription.starts_at)}</p>
+            </div>
+          )}
           {requests.length === 0 ? (
             <p className="text-sm text-muted mt-2">Todavía no registraste pagos.</p>
           ) : (

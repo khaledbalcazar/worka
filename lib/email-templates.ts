@@ -129,6 +129,41 @@ ${BOTON}
 <p style="color:#6b7280;font-size:13px">Si ya cubriste el puesto, no hace falta que hagas nada.</p>`,
   },
   {
+    key: "empresa_bienvenida_promo",
+    name: "Bienvenida con Enterprise Pro y Evaluar de regalo (empresa)",
+    when: "Cuando una empresa nueva se registra con el código de la promoción de lanzamiento.",
+    audience: "empresa",
+    vars: [
+      V.empresa,
+      { key: "codigo", label: "Código canjeado", sample: "WORKA3PRO" },
+      { key: "vence", label: "Fin del plan de regalo", sample: "17 de enero de 2027" },
+      V.enlace,
+      V.cta,
+    ],
+    subject: "Bienvenidos a Worka: Enterprise Pro y Evaluar ya están activos",
+    body: `<p>Hola, equipo de {{empresa}}:</p>
+<p>¡Bienvenidos a Worka! Canjeaste el código <strong>{{codigo}}</strong> y tu empresa ya tiene <strong>Worka Enterprise Pro · Pro</strong> y <strong>Worka Evaluar · Profesional</strong> activos, sin costo, hasta el <strong>{{vence}}</strong>.</p>
+<p style="margin:20px 0 8px;font-weight:600">Esto es lo que tenés incluido:</p>
+<ul style="padding-left:20px;margin:0;line-height:1.7">
+<li>Vacantes publicadas <strong>sin límite</strong>, con 60 días de vigencia y renovación automática.</li>
+<li><strong>2 vacantes destacadas por mes</strong>: aparecen primero en la búsqueda durante 7 días.</li>
+<li><strong>2 alertas urgentes por mes</strong>: avisamos al instante a los candidatos compatibles.</li>
+<li><strong>Búsqueda de talento</strong>: encontrá perfiles antes de que se postulen.</li>
+<li><strong>Prioridad en el correo semanal</strong> que reciben miles de candidatos.</li>
+<li>Tablero de candidatos, preguntas de filtro y mensajes directos.</li>
+</ul>
+<p style="margin:20px 0 8px;font-weight:600">Y con Worka Evaluar · Profesional:</p>
+<ul style="padding-left:20px;margin:0;line-height:1.7">
+<li>Procesos de evaluación <strong>sin límite</strong>, enlazados con tus vacantes.</li>
+<li>Pruebas a medida del puesto armadas con <strong>IA</strong>.</li>
+<li><strong>Informe por candidato</strong> y exportación a Excel.</li>
+<li>Invitación masiva de hasta 200 candidatos y tu equipo en cada proceso.</li>
+</ul>
+<p style="margin-top:20px">El mejor momento para aprovecharlo es hoy: publicá tu primera vacante en un par de minutos y empezá a recibir postulaciones.</p>
+${BOTON}
+<p style="color:#6b7280;font-size:13px">Cuando entres al panel te mostramos un recorrido corto por cada sección. Podés repetirlo cuando quieras desde el botón «Guía».</p>`,
+  },
+  {
     key: "aviso_general",
     name: "Aviso general",
     when: "Respaldo: cualquier aviso que todavía no tenga plantilla propia.",

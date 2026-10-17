@@ -55,6 +55,8 @@ export type ActionResult = {
   demo?: boolean;
   token?: string;
   id?: string;
+  // Alta de empresa: se canjeó el código de la promoción de lanzamiento.
+  promo?: boolean;
 };
 
 const DEMO: ActionResult = { ok: true, demo: true };
@@ -1469,7 +1471,11 @@ export async function registerCompany(input: {
       return { ok: false, error: "Ese RUC ya está registrado en Worka." };
     return { ok: false, error: "No pudimos registrar la empresa." };
   }
-  return { ok: true };
+  // Alta con sesión inmediata (confirmación de email apagada): la promoción
+  // de lanzamiento se canjea ya, sin esperar al callback.
+  const { redeemSignupPromo } = await import("@/lib/promo-server");
+  const promo = await redeemSignupPromo(user);
+  return { ok: true, promo: promo.redeemed };
 }
 
 // Potenciar empleo: la empresa solicita el destaque, el admin confirma el pago.

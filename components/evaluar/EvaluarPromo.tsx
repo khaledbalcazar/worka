@@ -14,6 +14,7 @@ export default async function EvaluarPromo() {
   return (
     <Link
       href={href}
+      data-tour="evaluar"
       className="card press block p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200"
     >
       <div className="flex items-start gap-3">
@@ -28,6 +29,13 @@ export default async function EvaluarPromo() {
                 {" "}
                 · {access.daysLeft}{" "}
                 {access.daysLeft === 1 ? "día" : "días"} de prueba
+              </span>
+            )}
+            {yaLoUsa && !access.inTrial && access.active && (
+              <span className="font-normal text-slate-500">
+                {" "}
+                · {access.account?.plan === "profesional" ? "Profesional" : "activo"} · {access.daysLeft}{" "}
+                {access.daysLeft === 1 ? "día" : "días"} restantes
               </span>
             )}
           </p>
