@@ -2349,6 +2349,102 @@ export async function toggleLessonComplete(
   return { ok: true };
 }
 
+// ── Academia: quiz con puntaje, práctica y proyecto final (migración 051) ──
+//
+// La lección se da por completa cuando tiene el quiz hecho (cualquier
+// puntaje: la nota cuenta para el certificado, no para avanzar) y la
+// práctica con todo el checklist tildado. Se decide acá, con la lección
+// leída de la base, y no con lo que diga el navegador.
+
+type LessonReq = { id: string; course_id: string; quiz: unknown[]; practice: { checklist?: string[] } | null };
+
+async function lessonFor(supabase: NonNullable<Awaited<ReturnType<typeof getServerClient>>>, lessonId: string): Promise<LessonReq | null> {
+  const { data } = await supabase.from("lessons").select("id, course_id, quiz, practice").eq("id", lessonId).maybeSingle();
+  return (data as LessonReq | null) ?? null;
+}
+
+async function syncLessonCompletion(
+  supabase: NonNullable<Awaited<ReturnType<typeof getServerClient>>>,
+  userId: string,
+  lesson: LessonReq
+): Promise<boolean> {
+  const { data: p } = await supabase
+    .from("lesson_progress")
+    .select("quiz_score, practice_done")
+    .eq("user_id", userId)
+    .eq("lesson_id", lesson.id)
+    .maybeSingle();
+  const quizOk = !lesson.quiz?.length || (p?.quiz_score ?? null) !== null;
+  const practiceOk = !lesson.practice?.checklist?.length || !!p?.practice_done;
+  if (!quizOk || !practiceOk) return false;
+  await supabase.from("lesson_completions").upsert({ user_id: userId, lesson_id: lesson.id, course_id: lesson.course_id });
+  return true;
+}
+
+export async function saveQuizResult(lessonId: string, score: number): Promise<ActionResult & { completed?: boolean; best?: number }> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión para guardar tu avance." };
+  const lesson = await lessonFor(supabase, lessonId);
+  if (!lesson) return { ok: false, error: "No encontramos la lección." };
+  const total = lesson.quiz?.length ?? 0;
+  const clean = Math.max(0, Math.min(total, Math.round(Number(score) || 0)));
+  // Se guarda el mejor intento: repetir el ejercicio nunca baja la nota.
+  const { data: prev } = await supabase.from("lesson_progress").select("quiz_score").eq("user_id", user.id).eq("lesson_id", lessonId).maybeSingle();
+  const best = Math.max(clean, prev?.quiz_score ?? 0);
+  const { error } = await supabase.from("lesson_progress").upsert(
+    { user_id: user.id, lesson_id: lessonId, course_id: lesson.course_id, quiz_score: best, quiz_total: total, updated_at: new Date().toISOString() },
+    { onConflict: "user_id,lesson_id" }
+  );
+  if (error) return { ok: false, error: "No pudimos guardar tu resultado. ¿Ya se corrió la migración 051?" };
+  return { ok: true, best, completed: await syncLessonCompletion(supabase, user.id, lesson) };
+}
+
+export async function saveLessonPractice(lessonId: string, text: string, checks: number[]): Promise<ActionResult & { completed?: boolean; done?: boolean }> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión para guardar tu avance." };
+  const lesson = await lessonFor(supabase, lessonId);
+  if (!lesson) return { ok: false, error: "No encontramos la lección." };
+  const items = lesson.practice?.checklist?.length ?? 0;
+  const valid = [...new Set(checks.map(Number).filter((i) => Number.isInteger(i) && i >= 0 && i < items))];
+  const done = items > 0 && valid.length === items;
+  const { error } = await supabase.from("lesson_progress").upsert(
+    {
+      user_id: user.id,
+      lesson_id: lessonId,
+      course_id: lesson.course_id,
+      practice_text: text.slice(0, 10000),
+      practice_checks: valid,
+      practice_done: done,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: "user_id,lesson_id" }
+  );
+  if (error) return { ok: false, error: "No pudimos guardar tu práctica. ¿Ya se corrió la migración 051?" };
+  return { ok: true, done, completed: await syncLessonCompletion(supabase, user.id, lesson) };
+}
+
+export async function saveCourseProject(courseId: string, answer: string, checks: number[]): Promise<ActionResult & { done?: boolean }> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión para guardar tu avance." };
+  const { data: course } = await supabase.from("courses").select("final_project").eq("id", courseId).maybeSingle();
+  const items = ((course?.final_project as { checklist?: string[] } | null)?.checklist ?? []).length;
+  if (!items) return { ok: false, error: "Este curso no tiene proyecto final." };
+  const valid = [...new Set(checks.map(Number).filter((i) => Number.isInteger(i) && i >= 0 && i < items))];
+  const done = valid.length === items;
+  const { error } = await supabase.from("course_project_progress").upsert(
+    { user_id: user.id, course_id: courseId, answer: answer.slice(0, 10000), checks: valid, done, updated_at: new Date().toISOString() },
+    { onConflict: "user_id,course_id" }
+  );
+  if (error) return { ok: false, error: "No pudimos guardar tu proyecto. ¿Ya se corrió la migración 051?" };
+  return { ok: true, done };
+}
+
 // Lecciones de un curso, para el editor del admin (server action).
 export async function getCourseLessonsClient(
   courseId: string

@@ -1389,7 +1389,7 @@ export async function getPublishedCourses(): Promise<
   import("./types").Course[]
 > {
   const supabase = await getServerClient();
-  if (!supabase) return mock.courses;
+  if (!supabase) return (await import("@/lib/academia/demo")).demoCourses;
   const { data } = await supabase
     .from("courses")
     .select("*")
@@ -1403,8 +1403,9 @@ export async function getCourse(
 ): Promise<import("./types").CourseWithLessons | null> {
   const supabase = await getServerClient();
   if (!supabase) {
-    const c = mock.courses.find((x) => x.slug === slug);
-    return c ? { ...c, lessons: mock.lessonsFor(c.id) } : null;
+    const demo = await import("@/lib/academia/demo");
+    const c = demo.demoCourses.find((x) => x.slug === slug);
+    return c ? { ...c, lessons: demo.demoLessonsFor(c.id) } : null;
   }
   const { data: course } = await supabase
     .from("courses")
@@ -1437,10 +1438,40 @@ export async function getMyCompletions(courseId: string): Promise<Set<string>> {
   return new Set((data ?? []).map((r) => r.lesson_id as string));
 }
 
+// Progreso fino de la persona en un curso (migración 051): puntaje de cada
+// quiz, su práctica y el proyecto final. Sin la migración, vacío.
+export async function getMyCourseProgress(courseId: string): Promise<import("./types").CourseProgress> {
+  const empty = { lessons: {}, project: null };
+  const supabase = await getServerClient();
+  if (!supabase) return empty;
+  const user = await getCurrentUser();
+  if (!user) return empty;
+  const [{ data: rows, error }, { data: project }] = await Promise.all([
+    supabase.from("lesson_progress").select("*").eq("user_id", user.id).eq("course_id", courseId),
+    supabase.from("course_project_progress").select("*").eq("user_id", user.id).eq("course_id", courseId).maybeSingle(),
+  ]);
+  if (error) return empty;
+  const lessons: import("./types").CourseProgress["lessons"] = {};
+  for (const r of (rows ?? []) as any[]) {
+    lessons[r.lesson_id] = {
+      quiz_score: r.quiz_score,
+      quiz_total: r.quiz_total,
+      practice_text: r.practice_text ?? "",
+      practice_checks: Array.isArray(r.practice_checks) ? r.practice_checks : [],
+      practice_done: !!r.practice_done,
+    };
+  }
+  const pr = project as any;
+  return {
+    lessons,
+    project: pr ? { answer: pr.answer ?? "", checks: Array.isArray(pr.checks) ? pr.checks : [], done: !!pr.done } : null,
+  };
+}
+
 // Para el admin: todos los cursos, incluidos los borradores.
 export async function getAllCourses(): Promise<import("./types").Course[]> {
   const supabase = await getServerClient();
-  if (!supabase) return mock.courses;
+  if (!supabase) return (await import("@/lib/academia/demo")).demoCourses;
   const { data } = await supabase
     .from("courses")
     .select("*")
@@ -1452,7 +1483,7 @@ export async function getCourseLessons(
   courseId: string
 ): Promise<import("./types").Lesson[]> {
   const supabase = await getServerClient();
-  if (!supabase) return mock.lessonsFor(courseId);
+  if (!supabase) return (await import("@/lib/academia/demo")).demoLessonsFor(courseId);
   const { data } = await supabase
     .from("lessons")
     .select("*")

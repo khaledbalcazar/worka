@@ -1,5 +1,5 @@
 import { redirect, notFound } from "next/navigation";
-import { getCourse, getMyCompletions, getCurrentCandidate } from "@/lib/data";
+import { getCourse, getMyCompletions, getMyCourseProgress, getCurrentCandidate } from "@/lib/data";
 import { getCurrentUser } from "@/lib/supabase/server";
 import Certificate from "@/components/Certificate";
 import { issueCertificate } from "@/app/plans-actions";
@@ -30,6 +30,18 @@ export default async function CertificatePage({
   }
 
   if (course.premium && !(await isCurrentUserPro())) redirect(`/academia/${slug}`);
+
+  // Cursos nuevos: además, promedio mínimo de ejercicios y proyecto final.
+  // La base lo vuelve a controlar al emitir (migración 051).
+  if (course.cert_min_quiz != null || course.cert_requires_project) {
+    const progress = await getMyCourseProgress(course.id);
+    const withQuiz = course.lessons.filter((l) => l.quiz.length > 0);
+    const avg = withQuiz.length
+      ? (withQuiz.reduce((s, l) => s + (progress.lessons[l.id]?.quiz_score ?? 0) / l.quiz.length, 0) / withQuiz.length) * 100
+      : 100;
+    const projectOk = !course.cert_requires_project || !course.final_project || !!progress.project?.done;
+    if ((course.cert_min_quiz != null && avg < course.cert_min_quiz) || !projectOk) redirect(`/academia/${slug}`);
+  }
 
   // Código verificable (migración 047). Sin la migración, el certificado
   // se muestra igual, sin código.

@@ -26,11 +26,19 @@ const CAT_COLORS: Record<string, string> = {
   Habilidades: "#7C5CFC",
   Empleo: "#10B981",
   General: "#F59E0B",
+  CV: "#0A66C2",
+  "Marca personal": "#B24020",
+  Seguridad: "#DC2626",
+  Derechos: "#057642",
 };
 
-export default async function AcademiaPage() {
-  const courses = await getPublishedCourses();
-  const categories = [...new Set(courses.map((c) => c.category))];
+export default async function AcademiaPage({ searchParams }: { searchParams: Promise<{ categoria?: string }> }) {
+  const [{ categoria }, allCourses] = await Promise.all([searchParams, getPublishedCourses()]);
+  const categories = [...new Set(allCourses.map((c) => c.category))];
+  // Filtro por categoría (?categoria=CV). Antes las categorías se mostraban
+  // pero no filtraban nada.
+  const active = categoria && categories.includes(categoria) ? categoria : null;
+  const courses = active ? allCourses.filter((c) => c.category === active) : allCourses;
 
   return (
     <main className="flex-1 bg-surface min-h-screen flex flex-col">
@@ -72,20 +80,31 @@ export default async function AcademiaPage() {
       <div className="max-w-5xl mx-auto w-full px-4 sm:px-6 pb-16 -mt-2">
         {/* Filtros por categoría */}
         {categories.length > 1 && (
-          <div className="flex flex-wrap gap-2 justify-center mb-7">
+          <nav aria-label="Filtrar por categoría" className="flex flex-wrap gap-2 justify-center mb-7">
+            <Link
+              href="/academia"
+              aria-current={!active ? "page" : undefined}
+              className={`chip min-h-9 px-3.5 border ${!active ? "bg-primary text-white border-primary" : "bg-white text-gray-600 border-line hover:border-primary"}`}
+            >
+              Todas ({allCourses.length})
+            </Link>
             {categories.map((cat) => {
               const color = CAT_COLORS[cat] ?? CAT_COLORS.General;
+              const on = active === cat;
+              const count = allCourses.filter((c) => c.category === cat).length;
               return (
-                <span
+                <Link
                   key={cat}
-                  className="chip"
-                  style={{ background: `${color}18`, color }}
+                  href={`/academia?categoria=${encodeURIComponent(cat)}`}
+                  aria-current={on ? "page" : undefined}
+                  className="chip min-h-9 px-3.5 border"
+                  style={on ? { background: color, color: "white", borderColor: color } : { background: `${color}18`, color, borderColor: "transparent" }}
                 >
-                  {cat}
-                </span>
+                  {cat} ({count})
+                </Link>
               );
             })}
-          </div>
+          </nav>
         )}
 
         {courses.length === 0 ? (
@@ -135,6 +154,11 @@ export default async function AcademiaPage() {
                     <div className="flex items-center justify-between mt-4">
                       <span className="flex items-center gap-1.5">
                         <span className="chip bg-surface text-gray-500">{c.level}</span>
+                        {c.duration_label && (
+                          <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+                            <Clock size={12} /> {c.duration_label}
+                          </span>
+                        )}
                         {c.premium && <span className="pro-chip">Pro</span>}
                       </span>
                       <span className="inline-flex items-center gap-1 text-xs text-primary font-semibold">

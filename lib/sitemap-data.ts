@@ -127,7 +127,7 @@ export async function getSitemapUrls(base = CANONICAL_URL): Promise<SitemapResul
           ...mock.getActiveJobs().filter((j) => Date.parse(j.expires_at) > now).map((j) => ({ loc: `${base}/empleo/${j.id}`, lastmod: j.created_at })),
           ...mock.companies.filter((c) => c.is_verified).map((c) => ({ loc: `${base}/empresas/${c.id}` })),
           ...mock.blogPosts.filter((p) => p.status === "publicado").map((p) => ({ loc: `${base}/blog/${p.slug}`, lastmod: p.updated_at ?? p.published_at })),
-          ...mock.courses.filter((c) => c.status === "publicado").map((c) => ({ loc: `${base}/academia/${c.slug}`, lastmod: c.updated_at })),
+          ...(await import("@/lib/academia/demo")).demoCourses.filter((c) => c.status === "publicado").map((c) => ({ loc: `${base}/academia/${c.slug}`, lastmod: c.updated_at })),
         ],
         base
       ),

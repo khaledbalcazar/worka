@@ -54,6 +54,45 @@ export interface Course {
   sort: number;
   created_at: string;
   updated_at: string;
+  // Migración 051 (todos opcionales: los cursos viejos no los tienen).
+  duration_label?: string | null;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  outcomes?: string[];
+  suggested_course?: string | null;
+  legal_notice?: string | null;
+  review_before?: string | null;
+  final_project?: FinalProject | null;
+  // Nota mínima (0-100) del promedio de ejercicios para el certificado.
+  cert_min_quiz?: number | null;
+  cert_requires_project?: boolean;
+}
+
+export interface FinalProject {
+  title: string;
+  prompt: string;
+  suggested_questions: string[];
+  checklist: string[];
+}
+
+export interface LessonVideo {
+  youtube_id: string;
+  title: string;
+  channel: string;
+  why: string;
+}
+
+export interface LessonPractice {
+  title: string;
+  type: "texto" | "checklist";
+  prompt: string;
+  checklist: string[];
+}
+
+// Progreso fino de una persona en un curso (migración 051). Privado.
+export interface CourseProgress {
+  lessons: Record<string, { quiz_score: number | null; quiz_total: number | null; practice_text: string; practice_checks: number[]; practice_done: boolean }>;
+  project: { answer: string; checks: number[]; done: boolean } | null;
 }
 
 // Una pregunta de opción múltiple. answer = índice de la opción correcta.
@@ -61,6 +100,8 @@ export interface QuizQuestion {
   q: string;
   options: string[];
   answer: number;
+  // Por qué es la correcta (cursos de la 051 en adelante).
+  explanation?: string | null;
 }
 
 export interface Lesson {
@@ -74,6 +115,13 @@ export interface Lesson {
   quiz: QuizQuestion[];
   sort: number;
   created_at: string;
+  // Migración 051 (opcionales).
+  slug?: string | null;
+  key_points?: string[];
+  videos?: LessonVideo[];
+  resources?: { title: string; url: string }[];
+  practice?: LessonPractice | null;
+  review_before?: string | null;
 }
 
 export interface CourseWithLessons extends Course {
