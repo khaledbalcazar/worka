@@ -26,11 +26,11 @@
 **Recomendación:** (a) ya, porque es chico y ya existe `duplicateProcess`; (b) junto con I-7.
 **Estado:** (a) implementada en la 2ª sesión (C-18). Falta verificarla en staging (pasos 10–12 de 05-correcciones). Como la vacante enlazada no se copia al duplicar, para pasarla a la versión nueva primero hay que desenlazarla del original desde Ajustes.
 
-**D-2 · Escala likert (EV-21).**
+**D-2 · Escala likert (EV-21).** — **Decidido: (b).** Implementado en la 054 (sin aplicar).
 (a) Dejarla como está y documentar el piso de 20%. (b) Pasar a `(v−1)/4` solo para participantes nuevos, con una marca de versión de cálculo. (c) Recalcular el histórico.
 **Recomendación:** (b), recalibrando las bandas de integridad con datos reales. Nunca (c) sin avisar a las empresas.
 
-**D-3 · Clave «integridad» compartida (EV-20).**
+**D-3 · Clave «integridad» compartida (EV-20).** — **Decidido: (a).** Implementado.
 (a) Renombrar a `integridad_sjt` en el SJT y en el filtro de cajero, solo para etapas nuevas. (b) Migrar el histórico.
 **Recomendación:** (a).
 
@@ -39,6 +39,7 @@
 **Recomendación:** (a) primero, porque no pierde datos del candidato, y medir cuánto pasa antes de endurecer.
 
 **D-5 · Exportación (EV-15).** Ver las opciones en el hallazgo. **Recomendación:** CSV en todos los planes; datos de contacto solo para la dueña.
+**Decidido:** solo desde Profesional. Implementado. Queda abierto si el equipo (no la dueña) puede exportar emails y teléfonos.
 
 **D-6 · Terminología.**
 Propuesta de glosario: **proceso** = la búsqueda completa; **etapa** = cada parte; **prueba** = el instrumento del catálogo; **evaluación** = lo que vive el candidato. «Concurso» queda solo para sector público, como opción de la cuenta.

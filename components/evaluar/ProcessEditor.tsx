@@ -825,7 +825,12 @@ function QuestionForm({
           onChange={(e) => setKind(e.target.value as typeof kind)}
         >
           <option value="unica">Opción única</option>
-          <option value="multiple">Opción múltiple</option>
+          {/* "Opción múltiple" ya no se ofrece: solo dejaba marcar una
+              correcta y el candidato elegía una sola, así que era una opción
+              única con otro nombre. Se muestra solo al editar una vieja. */}
+          {initial?.kind === "multiple" && (
+            <option value="multiple">Opción única (creada como «múltiple»)</option>
+          )}
           <option value="texto">Respuesta escrita</option>
           <option value="escala">Escala 1 a 5</option>
           <option value="numero">Número</option>

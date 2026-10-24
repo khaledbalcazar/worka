@@ -224,7 +224,7 @@ export default async function InformePage({
         {/* Integridad. Va antes del perfil general porque se lee distinto:
             aca no hay rasgos mejores ni peores sino factores que piden o no
             una repregunta en la entrevista. */}
-        <IntegrityReport profile={c.profile} />
+        <IntegrityReport profile={c.profile} version={c.scoring_version ?? 1} />
 
         {/* Perfil por rasgo */}
         {dims.length > 0 && (
@@ -264,7 +264,7 @@ export default async function InformePage({
                       />
                     </div>
                     <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                      {d.pct >= 60 ? d.high : d.low}
+                      {d.alto ? d.high : d.low}
                     </p>
                     {d.percentile === null && (
                       <p className="text-[11px] text-slate-400 mt-1">

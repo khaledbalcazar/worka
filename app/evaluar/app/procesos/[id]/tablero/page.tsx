@@ -3,7 +3,8 @@ import { notFound, redirect } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { isLive } from "@/lib/data";
-import { getBoardData } from "@/lib/evaluar";
+import { getBoardData, getMyEvaluarAccess } from "@/lib/evaluar";
+import { planOf } from "@/lib/evaluar-plans";
 import DecisionBoard from "@/components/evaluar/DecisionBoard";
 
 export const metadata = { title: "Tablero de decisión" };
@@ -21,8 +22,12 @@ export default async function BoardPage({
       redirect(`/ingresar?next=%2Fevaluar%2Fapp%2Fprocesos%2F${id}%2Ftablero`);
   }
 
-  const board = await getBoardData(id);
+  const [board, access] = await Promise.all([
+    getBoardData(id),
+    getMyEvaluarAccess(),
+  ]);
   if (!board) notFound();
+  const plan = planOf(access);
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-4">
@@ -32,7 +37,11 @@ export default async function BoardPage({
       >
         <ChevronLeft size={16} /> {board.process.title}
       </Link>
-      <DecisionBoard board={board} />
+      <DecisionBoard
+        board={board}
+        puedeExportar={plan.reports}
+        planLabel={plan.label}
+      />
     </div>
   );
 }

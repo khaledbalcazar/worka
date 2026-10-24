@@ -1,7 +1,12 @@
 import "server-only";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
-import { ALL_DIMENSIONS, LIKERT_LABELS } from "@/lib/evaluar/templates";
+import {
+  ALL_DIMENSIONS,
+  LIKERT_DIMENSIONS,
+  LIKERT_LABELS,
+} from "@/lib/evaluar/templates";
+import { aEscalaV2, pctParaCortes, versionDe } from "@/lib/evaluar/puntaje";
 
 // Informe por candidato: el puntaje solo no alcanza.
 //
@@ -19,8 +24,10 @@ export type NormedDimension = {
   label: string;
   high: string;
   low: string;
-  /** Puntaje propio, 0-100. */
+  /** Puntaje propio, 0-100, en la escala con la que se corrigió. */
   pct: number;
+  /** Lectura alta del rasgo (texto `high`), con el corte llevado a su escala. */
+  alto: boolean;
   /** Posición contra la población. null si la muestra es chica. */
   percentile: number | null;
   /** Cuánta gente hay en el baremo de este rasgo. */
@@ -71,19 +78,43 @@ export async function getNorms(): Promise<Norms> {
 
   const norms: Norms = {};
   const PAGINA = 1000;
+  // Antes solo entraban los "completado": a quien pasaban a finalista o
+  // contratado lo sacaban del baremo justo por ser de los mejores, y la
+  // muestra quedaba corrida hacia abajo. Los descartados también entran: un
+  // excluyente no cambia lo que la persona contestó en el resto.
+  const ESTADOS = ["completado", "finalista", "contratado", "descartado"];
+  // scoring_version llega con la 054. Sin la columna, la consulta falla
+  // entera, así que se reintenta sin ella (todo es escala 1).
+  let columnas = "profile, scoring_version";
   for (let desde = 0; ; desde += PAGINA) {
-    const { data, error } = await admin
+    let { data, error } = await admin
       .from("evaluar_participants")
-      .select("profile")
-      .eq("status", "completado")
+      .select(columnas)
+      .in("status", ESTADOS)
       .not("profile", "is", null)
       .range(desde, desde + PAGINA - 1);
+    if (error && columnas !== "profile") {
+      columnas = "profile";
+      ({ data, error } = await admin
+        .from("evaluar_participants")
+        .select(columnas)
+        .in("status", ESTADOS)
+        .not("profile", "is", null)
+        .range(desde, desde + PAGINA - 1));
+    }
     if (error || !data || data.length === 0) break;
 
-    for (const fila of data as { profile: Record<string, DimensionScore> }[]) {
+    for (const fila of data as unknown as {
+      profile: Record<string, DimensionScore>;
+      scoring_version?: number;
+    }[]) {
+      const version = versionDe(fila.scoring_version);
       for (const [key, v] of Object.entries(fila.profile ?? {})) {
         if (!v || v.max <= 0) continue;
-        (norms[key] ??= []).push((v.raw / v.max) * 100);
+        // Todo el baremo en la escala 2, para que v1 y v2 se comparen.
+        const c = aEscalaV2(v, LIKERT_DIMENSIONS.has(key), version);
+        if (c.max <= 0) continue;
+        (norms[key] ??= []).push(Math.round((c.raw / c.max) * 100));
       }
     }
     if (data.length < PAGINA) break;
@@ -111,12 +142,19 @@ export function percentileOf(value: number, sorted: number[]): number | null {
 
 export function normDimensions(
   profile: Record<string, DimensionScore>,
-  norms: Norms
+  norms: Norms,
+  /** Escala con la que se corrigió este participante (1 o 2). */
+  version = 1
 ): NormedDimension[] {
   return Object.entries(profile ?? {})
     .filter(([, v]) => v && v.max > 0)
     .map(([key, v]) => {
       const pct = Math.round((v.raw / v.max) * 100);
+      // El percentil se busca en la escala del baremo (la 2), y redondeado
+      // igual que el baremo: comparar un valor redondeado contra valores sin
+      // redondear corría los empates para un lado.
+      const comun = aEscalaV2(v, LIKERT_DIMENSIONS.has(key), version);
+      const pctComun = comun.max > 0 ? Math.round((comun.raw / comun.max) * 100) : pct;
       const dist = norms[key] ?? [];
       const meta = ALL_DIMENSIONS[key];
       return {
@@ -125,7 +163,9 @@ export function normDimensions(
         high: meta?.high ?? "",
         low: meta?.low ?? "",
         pct,
-        percentile: percentileOf(pct, dist),
+        alto:
+          pctParaCortes(pct, LIKERT_DIMENSIONS.has(key) ? version : 1) >= 60,
+        percentile: percentileOf(pctComun, dist),
         sample: dist.length,
       };
     })
@@ -273,9 +313,11 @@ export async function getCandidateReport(
 
   // La política de evaluar_participants ya corta por empresa dueña: si el
   // participante no es de un proceso suyo, esto vuelve vacío.
+  // "*" y no la lista de columnas: scoring_version recién existe con la 054,
+  // y pedirla por nombre antes de eso haría fallar el informe entero.
   const { data: participant } = await supabase
     .from("evaluar_participants")
-    .select("id, profile, stage_times")
+    .select("*")
     .eq("id", participantId)
     .maybeSingle();
   if (!participant) return null;
@@ -298,7 +340,8 @@ export async function getCandidateReport(
   return {
     dimensions: normDimensions(
       (participant as { profile: Record<string, DimensionScore> }).profile ?? {},
-      norms
+      norms,
+      versionDe((participant as { scoring_version?: number }).scoring_version)
     ),
     quality: qualityFlags(filas, tiemposEtapa),
     videos: filas

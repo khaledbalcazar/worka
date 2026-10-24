@@ -52,9 +52,10 @@ cambian) y las de los `.ts/.tsx` **después** de esta sesión.
 - **Evidencia:** la policy de update de participantes es solo para la dueña (`migration-022.sql:237`, `migration-025.sql:101` es solo de lectura). Con RLS, el update sin permiso afecta 0 filas y no da error.
 - **Solución:** `.select("id")` después del update. Con 0 filas, la acción devuelve un error explícito.
 
-### EV-15 · Plan y rol en la exportación — medio · confianza alta · **propuesto**
+### EV-15 · Plan y rol en la exportación — medio · confianza alta · **corregido el plan** (decisión: solo Profesional) / rol pendiente
 - **Evidencia:** `lib/evaluar-plans.ts` define `reports: «Informe por candidato y exportación a Excel»` solo desde Profesional, pero la ruta de exportación no chequea el plan. Tampoco distingue entre la dueña y el equipo, que puede descargar emails y teléfonos.
-- **Opciones:** (a) aplicar el plan en la ruta y ocultar el botón en Esencial; (b) dejar el CSV en todos los planes y corregir la promesa de precios; (c) exportar los datos de contacto solo para la dueña. **Recomendación:** (b) y (c). El CSV es portabilidad de datos y conviene que siga abierto, pero el contacto es dato personal y no necesita salir con el equipo.
+- **Opciones:** (a) aplicar el plan en la ruta y ocultar el botón en Esencial; (b) dejar el CSV en todos los planes y corregir la promesa de precios; (c) exportar los datos de contacto solo para la dueña. **Recomendación:** (b) y (c).
+- **Decisión del usuario (3ª sesión):** (a), solo desde Profesional. La ruta responde 403 con el motivo cuando el plan no lo incluye (se cuenta el plan de quien exporta, igual que en el informe), y en Esencial el botón dice «Excel · Profesional» y lleva a precios. Durante la prueba gratuita se puede exportar, porque la prueba abre el plan Profesional. **Pendiente:** (c), que no se decidió.
 
 ### EV-16 · `findUserIdByEmail` recorre hasta 4.000 usuarios con la service role — bajo · confianza alta · **pendiente**
 - `lib/evaluar.ts:697`. Es costoso y, aunque está detrás de una cuenta activa, sirve como oráculo de existencia de correos. Conviene una función SQL acotada o un índice en una tabla espejo.
@@ -108,17 +109,20 @@ cambian) y las de los `.ts/.tsx` **después** de esta sesión.
 - **Hecho (2ª sesión, D-1 a):** con al menos una persona en un estado distinto de `invitado`, el servidor rechaza agregar, borrar o mover etapas; agregar o borrar preguntas; aplicar plantillas o la IA; cambiar opciones, correcta, puntaje o excluyente; y cambiar minutos o cronómetro. Se puede seguir corrigiendo el enunciado, el nombre, la descripción y la explicación de cada etapa. El proceso real se lee de la base (`processOfStage` / `processOfQuestion`), no del id que manda el navegador. El editor oculta esos controles, muestra el aviso y ofrece «Duplicar como versión nueva». `duplicateProcess` ahora copia también la explicación, el ejemplo, el tope de video y los datos de la unidad, y renumera las posiciones. Reglas en `iniciados`, `mensajeBloqueo` y `cambioDeCorreccion` (`lib/evaluar/puntaje.ts`), con 3 pruebas.
 - **Queda:** `setIdealProfile` sigue cambiando el ajuste retroactivamente. Es una lente de lectura y no un resultado guardado, así que se dejó libre a propósito. El versionado de verdad (D-1 b) llega con I-7.
 
-### EV-19 · «Opción múltiple» es en realidad opción única — medio · confianza alta · **propuesto**
+### EV-19 · «Opción múltiple» es en realidad opción única — medio · confianza alta · **corregido** (opción a)
 - **Evidencia:** el editor ofrece «Opción múltiple» (`ProcessEditor.tsx:762`), pero solo deja marcar una correcta. El runner trata `multiple` igual que `unica` y guarda un solo valor (`CandidateRunner.tsx:515`). La base compara igualdad de JSON.
 - **Opciones:** (a) renombrar a «Opción única (lista larga)» o quitarla; (b) implementar la selección múltiple de verdad, con un arreglo ordenado y crédito parcial. **Recomendación:** (a) ahora y (b) solo si hay demanda.
+- **Hecho:** ya no se ofrece al crear. Las existentes se rotulan «Opción única» (y en edición, «creada como múltiple»), y `addQuestion` guarda `unica` si alguien manda `multiple`. Las respuestas ya dadas no cambian.
 
-### EV-20 · «integridad» es el nombre de tres rasgos distintos — medio · confianza alta · **parcial**
+### EV-20 · «integridad» es el nombre de tres rasgos distintos — medio · confianza alta · **corregido para etapas nuevas** (D-3 a)
 - **Evidencia:** `dimension: "integridad"` en el juicio situacional (`templates.ts:298`, `:366`), en el filtro del cajero (`:538`) y en el instrumento de integridad. El perfil los suma en un solo rasgo, `ALL_DIMENSIONS` toma la etiqueta del último y los baremos mezclan instrumentos.
 - **Hecho:** `IntegrityReport` ya no se dibuja si solo existe «integridad», porque eso indica que vino del SJT o del filtro y no del instrumento.
-- **Propuesto:** renombrar la clave en las plantillas nuevas (`integridad_sjt`) sin tocar el histórico (D-3).
+- **Hecho (D-3 a):** el SJT y el filtro de cajero usan `integridad_sjt` («Integridad (juicio situacional)») en las etapas que se creen desde ahora. Las ya creadas conservan `integridad`; el histórico no se toca.
 
-### EV-21 · Escala likert con piso de 20% — medio · confianza alta · **propuesto**
+### EV-21 · Escala likert con piso de 20% — medio · confianza alta · **corregido para candidatos nuevos** (D-2 b, migración 054 sin aplicar)
 - `raw/max` con ítems de 1 a 5 hace que la respuesta mínima dé 20% y la neutral 60%. Las bandas de integridad (70/45) y el umbral de lectura (`>= 60`) se calibraron sobre esa escala: respondiendo «ni acuerdo ni desacuerdo» a todo, cada factor queda en «Conviene repreguntar». Pasar a `(v−1)/4` cambia todos los números históricos (D-2).
+- **Hecho (D-2 b):** `supabase/migration-054.sql` agrega `scoring_version`: las filas existentes quedan en 1 y las nuevas nacen en 2, donde el ítem vale de 0 a 4 sobre 4 (inverso = 5 − v). Cada número se muestra en su escala; el baremo y el promedio del grupo se llevan a la escala 2 (`aEscalaV2`). Las bandas de integridad y la lectura alta usan el equivalente en la escala 1 (`pctParaCortes`: p1 = 0,8·p2 + 20), así que la misma respuesta cae en la misma banda. En el tablero, a los de la escala vieja se los marca «Escala anterior» cuando el proceso mezcla las dos, y el Excel agrega la columna «Escala de rasgos». Pruebas: 4 en `tests/evaluar` y `supabase/tests/evaluar-054.sql`.
+- **Límite conocido:** la conversión v1 → v2 es exacta para rasgos totalmente respondidos. Con ítems v1 sin responder es aproximada (se recorta en 0). Solo afecta al baremo, no a ningún número mostrado.
 
 ### EV-22 · Sin responder: likert penaliza y SJT no cuenta — medio · confianza alta · **propuesto**
 - Un likert vacío suma 0 de 5, peor que contestar «1». Un ítem SJT vacío directamente no entra al máximo. La asimetría está fijada en las pruebas (`likert con ítem inverso…` y `juicio situacional…`). Hoy el impacto es acotado porque el runner no deja avanzar sin responder, salvo cuando el reloj vence. Recomendación: excluir del máximo los ítems sin responder y registrar cuántos faltaron.
@@ -127,8 +131,9 @@ cambian) y las de los `.ts/.tsx` **después** de esta sesión.
 - `fitScore` usa solo los rasgos rendidos. Alguien con 1 de 3 rasgos queda ordenado junto a quien rindió los 3, y alguien descartado por un excluyente podía aparecer primero con el trofeo.
 - **Hecho:** el tablero muestra «rindió X de Y» y no da el trofeo a un descartado. **Propuesto:** separar «en curso» de «completos» en el orden.
 
-### EV-24 · Los baremos solo usan `completado` — medio · confianza alta · **propuesto**
+### EV-24 · Los baremos solo usan `completado` — medio · confianza alta · **corregido**
 - `lib/evaluar/report.ts:78`. Cuando a alguien lo pasan a finalista o contratado sale del baremo, que queda sesgado hacia abajo (los mejores salen primero). Además, el percentil compara un valor redondeado con valores sin redondear (`percentileOf`). Recomendación: incluir `finalista` y `contratado` y redondear igual en los dos lados.
+- **Hecho:** entran `completado`, `finalista`, `contratado` y `descartado` (un excluyente no cambia lo que la persona contestó en el resto), todo en la escala 2 y redondeado igual que el valor del candidato. La muestra (`n`) ya se mostraba al lado del percentil. **Efecto esperado:** los percentiles ya mostrados se mueven un poco, porque la muestra crece y deja de estar sesgada.
 
 ### EV-25 · Etapa sin preguntas bloquea al candidato — alto · confianza alta · **corregido**
 - `canPublish` solo pedía que hubiera al menos una pregunta en todo el proceso, y el servidor no validaba nada. Ahora el panel y `updateProcess` exigen que todas las etapas tengan preguntas.
@@ -155,4 +160,4 @@ cambian) y las de los `.ts/.tsx` **después** de esta sesión.
 | EV-37 | Corrección manual: no hay dónde poner nota a una respuesta escrita o a un video; solo la nota libre del equipo | medio | propuesto (innovación I-2) |
 | EV-38 | `submitStage` devuelve `error.message` de la base al navegador | bajo | pendiente |
 | EV-40 | Editar el enunciado de un ítem likert de plantilla le borraba la escala (`updateQuestion` guardaba `options = []` en todo lo que no fuera de opciones), y el candidato veía la frase sin nada para elegir | alto | **corregido** (se conservan las opciones, la correcta, el peso y el excluyente que tenía) |
-| EV-39 | Accesibilidad: opciones del runner sin `role="radio"` ni `aria-checked`, y escala 1–5 sin etiqueta textual; no se midió contraste | medio | pendiente (confianza media) |
+| EV-39 | Accesibilidad: opciones del runner sin `role="radio"` ni `aria-checked`, y escala 1–5 sin etiqueta textual; no se midió contraste | medio | **corregido** (radiogroup/radio con `aria-checked`, foco visible, foco al enunciado en cada pregunta, reloj con `role="timer"` y aviso al minuto, barra de progreso con valores, extremos de la escala rotulados, errores con `role="alert"`). **Sin probar** con lector de pantalla ni medición de contraste |

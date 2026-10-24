@@ -66,6 +66,47 @@ export function fitCoverage(
   };
 }
 
+// ── Versión de la escala likert ────────────────────────────────
+//
+// v1 (todo lo rendido antes de la migración 054): cada ítem vale de 1 a 5
+// sobre 5, así que la respuesta más baja ya da 20% y la del medio 60%.
+// v2: vale de 0 a 4 sobre 4; la más baja es 0% y la del medio 50%.
+//
+// Cada participante queda con la versión con la que se lo invitó
+// (evaluar_participants.scoring_version) y sus números no se recalculan. Lo
+// que sí se lleva a una escala común es lo que compara a unos con otros: el
+// baremo y las bandas de integridad.
+export const ESCALA_ACTUAL = 2;
+
+export function versionDe(v: number | null | undefined): number {
+  return typeof v === "number" && v >= 1 ? v : 1;
+}
+
+/**
+ * Lleva un rasgo likert de v1 a v2, solo para comparar. Cada ítem de v1
+ * pesa 5 en el máximo, así que n = max / 5 ítems, y en v2 cada uno vale uno
+ * menos: raw − n sobre max − n. Un ítem v1 sin responder (0 de 5) queda en
+ * −1 y se recorta en cero el total: es una aproximación, no una recorrección.
+ */
+export function aEscalaV2(
+  v: { raw: number; max: number },
+  esLikert: boolean,
+  version: number
+): { raw: number; max: number } {
+  if (version >= 2 || !esLikert || v.max <= 0) return v;
+  const n = v.max / 5;
+  return { raw: Math.max(0, v.raw - n), max: v.max - n };
+}
+
+/**
+ * Un porcentaje de rasgo llevado a la escala v1, para usar los cortes que se
+ * calibraron sobre ella (bandas de integridad 70/45, lectura alta desde 60).
+ * Con v2, p1 = 0,8 · p2 + 20: la misma respuesta cae en la misma banda.
+ */
+export function pctParaCortes(pct: number, version: number): number {
+  return version >= 2 ? 0.8 * pct + 20 : pct;
+}
+
 // ── Exportación ────────────────────────────────────────────────
 
 // Una celda de CSV para Excel en español (separador punto y coma).
@@ -130,7 +171,8 @@ export function mensajeParaEmpresa(
 
 export const KIND_LABEL: Record<string, string> = {
   unica: "Opción única",
-  multiple: "Opción múltiple",
+  // Se corrige y se responde igual que "unica" (una sola elegida).
+  multiple: "Opción única",
   texto: "Respuesta escrita",
   escala: "Escala 1 a 5",
   numero: "Número",
@@ -198,7 +240,9 @@ export function likertValido(v: unknown): number | null {
 export function corregirEtapa(
   preguntas: PreguntaRef[],
   respuestas: Record<string, unknown>,
-  perfilPrevio: DimensionScores = {}
+  perfilPrevio: DimensionScores = {},
+  /** Versión de la escala likert del participante (1 o 2, ver arriba). */
+  version = 1
 ): EtapaCorregida {
   const profile: DimensionScores = Object.fromEntries(
     Object.entries(perfilPrevio).map(([k, v]) => [k, { ...v }])
@@ -218,8 +262,13 @@ export function corregirEtapa(
       continue;
     } else if (q.kind === "likert") {
       const n = likertValido(value);
-      if (n !== null) points = q.reverse ? 6 - n : n;
-      itemMax = 5;
+      if (version >= 2) {
+        if (n !== null) points = q.reverse ? 5 - n : n - 1;
+        itemMax = 4;
+      } else {
+        if (n !== null) points = q.reverse ? 6 - n : n;
+        itemMax = 5;
+      }
     } else if (q.option_scores && value !== undefined && value !== null) {
       points = q.option_scores[String(value)] ?? 0;
       itemMax = Math.max(0, ...Object.values(q.option_scores));

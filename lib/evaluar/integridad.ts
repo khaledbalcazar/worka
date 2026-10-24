@@ -1,5 +1,6 @@
 import type { Template } from "./templates";
 import { LIKERT_LABELS } from "./likert";
+import { pctParaCortes } from "./puntaje";
 
 // Worka Confianza · Evaluación de integridad laboral
 //
@@ -342,7 +343,9 @@ export const TEXTO_BANDA: Record<BandaRiesgo, string> = {
 
 /** Los factores de integridad que hay en un perfil, ya leídos. */
 export function leerIntegridad(
-  profile: Record<string, { raw: number; max: number }> | undefined
+  profile: Record<string, { raw: number; max: number }> | undefined,
+  /** Escala likert del participante. Los cortes se calibraron en la 1. */
+  version = 1
 ): { validez: FactorIntegridad[]; riesgo: FactorIntegridad[] } | null {
   if (!profile) return null;
 
@@ -359,13 +362,16 @@ export function leerIntegridad(
     const v = profile[d.key];
     if (!v || v.max <= 0) continue;
     const pct = Math.round((v.raw / v.max) * 100);
+    // La barra muestra el número de su escala; la banda y la lectura usan el
+    // equivalente en la escala 1, así una misma respuesta da la misma banda.
+    const corte = pctParaCortes(pct, version);
     factores.push({
       key: d.key,
       label: d.label,
       pct,
-      banda: bandaDe(pct),
+      banda: bandaDe(corte),
       validez: "validez" in d && d.validez === true,
-      lectura: pct >= 60 ? d.high : d.low,
+      lectura: corte >= 60 ? d.high : d.low,
     });
   }
 

@@ -1,4 +1,5 @@
-import { getBoardData } from "@/lib/evaluar";
+import { getBoardData, getMyEvaluarAccess } from "@/lib/evaluar";
+import { planOf, upgradeMessage } from "@/lib/evaluar-plans";
 import { ALL_DIMENSIONS } from "@/lib/evaluar/templates";
 import { csvCell } from "@/lib/evaluar/puntaje";
 
@@ -17,6 +18,18 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+
+  // La exportación a Excel es del plan Profesional para arriba (decisión
+  // D-5, igual que el informe por candidato). Se corta acá y no solo
+  // escondiendo el botón: la URL se arma sola.
+  const plan = planOf(await getMyEvaluarAccess());
+  if (!plan.reports) {
+    return new Response(upgradeMessage("La exportación a Excel", plan), {
+      status: 403,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+
   const board = await getBoardData(id);
   if (!board) {
     return new Response("No encontrado", { status: 404 });
@@ -39,6 +52,8 @@ export async function GET(
     "Etapa",
     "Invitado",
     "Completado",
+    // Con la 054 conviven dos escalas de rasgos: 1 (1-5) y 2 (0-4).
+    "Escala de rasgos",
     ...dims.map((d) => ALL_DIMENSIONS[d]?.label ?? d),
     "Notas del equipo",
   ];
@@ -55,6 +70,7 @@ export async function GET(
     `${Math.min(c.stage_index + 1, board.stages.length || 1)} de ${board.stages.length}`,
     new Date(c.created_at).toLocaleDateString("es-PY"),
     c.completed_at ? new Date(c.completed_at).toLocaleDateString("es-PY") : "",
+    (c.scoring_version ?? 1) >= 2 ? "0 a 4" : "1 a 5",
     ...dims.map((d) => {
       const v = c.profile[d];
       return v && v.max > 0 ? `${Math.round((v.raw / v.max) * 100)}%` : "";

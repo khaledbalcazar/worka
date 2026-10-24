@@ -249,7 +249,10 @@ const sjt: Template = {
   source: "Escenarios originales de Worka.",
   dimensions: [
     { key: "servicio", label: "Servicio al cliente", high: "Resuelve sin perder al cliente.", low: "Se apega al reglamento aunque pierda la venta." },
-    { key: "integridad", label: "Integridad", high: "Actúa bien incluso sin control.", low: "Puede transar según la conveniencia." },
+    // Antes la clave era "integridad", la misma que el factor del instrumento
+    // de integridad laboral: el perfil sumaba las dos pruebas en un solo
+    // rasgo. Las etapas ya creadas conservan la clave vieja (D-3).
+    { key: "integridad_sjt", label: "Integridad (juicio situacional)", high: "Actúa bien incluso sin control.", low: "Puede transar según la conveniencia." },
     { key: "resolucion", label: "Resolución de problemas", high: "Encuentra la salida práctica.", low: "Deriva o espera instrucciones." },
     { key: "equipo_sjt", label: "Compañerismo", high: "Sostiene al equipo en el apuro.", low: "Se enfoca solo en su parte." },
   ],
@@ -295,7 +298,7 @@ const sjt: Template = {
     {
       text: "Cerrando la caja te das cuenta de que te sobran Gs. 50.000 y nadie lo notó. ¿Qué hacés?",
       kind: "unica",
-      dimension: "integridad",
+      dimension: "integridad_sjt",
       options: [
         "Lo informo y lo dejo asentado en el cierre.",
         "Lo guardo por si mañana falta y así se compensa.",
@@ -363,7 +366,7 @@ const sjt: Template = {
     {
       text: "Ves que un compañero le cobra de menos a un conocido suyo. ¿Qué hacés?",
       kind: "unica",
-      dimension: "integridad",
+      dimension: "integridad_sjt",
       options: [
         "Hablo con él primero y, si sigue, lo informo.",
         "No me meto, es su problema.",
@@ -486,6 +489,16 @@ export const ALL_DIMENSIONS: Record<string, TemplateDimension> =
     TEMPLATES.flatMap((t) => t.dimensions).map((d) => [d.key, d])
   );
 
+// Rasgos que se miden con ítems likert. Hacen falta para llevar la escala v1
+// (1-5) a la v2 (0-4) al comparar; ver aEscalaV2 en lib/evaluar/puntaje.ts.
+// "integridad" entra aunque en etapas viejas también la usaba el juicio
+// situacional: la mayoría de sus ítems son del instrumento de integridad.
+export const LIKERT_DIMENSIONS: ReadonlySet<string> = new Set(
+  TEMPLATES.flatMap((t) =>
+    t.questions.filter((q) => q.kind === "likert" && q.dimension).map((q) => q.dimension as string)
+  )
+);
+
 // ── Plantillas por rubro ───────────────────────────────────────
 //
 // Un proceso entero ya armado para los puestos que más se buscan en Paraguay.
@@ -535,7 +548,7 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
         {
           text: "Si al cerrar la caja te falta dinero, ¿qué hacés?",
           kind: "unica",
-          dimension: "integridad",
+          dimension: "integridad_sjt",
           options: [
             "Lo informo enseguida y reviso los movimientos del día.",
             "Pongo la diferencia de mi bolsillo y no digo nada.",

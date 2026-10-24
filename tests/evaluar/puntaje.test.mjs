@@ -8,6 +8,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  aEscalaV2,
   cambioDeCorreccion,
   corregirEtapa,
   iniciados,
@@ -20,8 +21,10 @@ import {
   likertValido,
   mensajeParaEmpresa,
   modoCorreccion,
+  pctParaCortes,
   percentOf,
   validarEntrega,
+  versionDe,
 } from "../../lib/evaluar/puntaje.ts";
 
 // ── Porcentajes ────────────────────────────────────────────────
@@ -248,4 +251,46 @@ test("cambioDeCorreccion: solo el enunciado se puede tocar", () => {
   // Una abierta sin correcta: null y undefined son lo mismo.
   const abierta = { options: [], correct: null, weight: 1, knockout: false };
   assert.equal(cambioDeCorreccion(abierta, { ...abierta, correct: undefined }), null);
+});
+
+// ── Escala likert v2 (D-2) ─────────────────────────────────────
+
+test("likert v2: 0 a 4 sobre 4, inverso = 5 − v", () => {
+  const preguntas = [
+    { id: "a", kind: "likert", dimension: "teson" },
+    { id: "b", kind: "likert", dimension: "teson", reverse: true },
+    { id: "c", kind: "likert", dimension: "teson" },
+  ];
+  // a = 4 → 3 ; b inverso 2 → 5 − 2 = 3 ; c sin responder = 0 de 4.
+  const r = corregirEtapa(preguntas, { a: 4, b: 2 }, {}, 2);
+  assert.deepEqual(r.profile.teson, { raw: 6, max: 12 });
+  assert.equal(dimensionPct(r.profile.teson), 50);
+  // La respuesta más baja ahora es 0%, no 20%.
+  const minimo = corregirEtapa([preguntas[0]], { a: 1 }, {}, 2);
+  assert.equal(dimensionPct(minimo.profile.teson), 0);
+  const minimoV1 = corregirEtapa([preguntas[0]], { a: 1 }, {}, 1);
+  assert.equal(dimensionPct(minimoV1.profile.teson), 20);
+});
+
+test("aEscalaV2: convierte un rasgo v1 completo al valor exacto de v2", () => {
+  // v1: respuestas 4 y 4 → 8 / 10. En v2 serían 3 y 3 → 6 / 8.
+  assert.deepEqual(aEscalaV2({ raw: 8, max: 10 }, true, 1), { raw: 6, max: 8 });
+  // Ya en v2, o rasgo que no es likert: no se toca.
+  assert.deepEqual(aEscalaV2({ raw: 6, max: 8 }, true, 2), { raw: 6, max: 8 });
+  assert.deepEqual(aEscalaV2({ raw: 1, max: 2 }, false, 1), { raw: 1, max: 2 });
+});
+
+test("pctParaCortes: la misma respuesta cae en la misma banda en v1 y v2", () => {
+  // Todo "ni acuerdo ni desacuerdo": v1 = 60%, v2 = 50% → 60 para los cortes.
+  assert.equal(pctParaCortes(50, 2), 60);
+  // Todo "muy en desacuerdo": v1 = 20%, v2 = 0% → 20.
+  assert.equal(pctParaCortes(0, 2), 20);
+  assert.equal(pctParaCortes(100, 2), 100);
+  assert.equal(pctParaCortes(73, 1), 73);
+});
+
+test("versionDe: sin columna o sin dato es la escala 1", () => {
+  assert.equal(versionDe(undefined), 1);
+  assert.equal(versionDe(null), 1);
+  assert.equal(versionDe(2), 2);
 });

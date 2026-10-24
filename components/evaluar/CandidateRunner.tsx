@@ -139,6 +139,14 @@ export default function CandidateRunner({
   const esUltima = stage ? qIndex >= stage.questions.length - 1 : false;
 
 
+  // Al pasar de pregunta el foco va al enunciado: con lector de pantalla, si
+  // no, el botón "Siguiente" queda con el foco y la pregunta nueva no se lee.
+  const preguntaRef = useRef<HTMLParagraphElement | null>(null);
+  const preguntaId = question?.id;
+  useEffect(() => {
+    if (preguntaId) preguntaRef.current?.focus();
+  }, [preguntaId]);
+
   const startedAtRef = useRef<number | null>(null);
   const [left, setLeft] = useState<number | null>(null);
   const enviarRef = useRef<(() => void) | null>(null);
@@ -469,17 +477,26 @@ export default function CandidateRunner({
                   </div>
                   {left !== null && (
                     <span
+                      role="timer"
+                      aria-label={`Tiempo restante: ${Math.floor(left / 60)} minutos y ${left % 60} segundos`}
                       className={`chip shrink-0 font-mono font-semibold ${
                         left <= 60
                           ? "bg-red-50 text-danger animate-beat"
                           : "bg-slate-100 text-slate-600"
                       }`}
                     >
-                      <TimerReset size={13} />
+                      <TimerReset size={13} aria-hidden />
                       {String(Math.floor(left / 60)).padStart(2, "0")}:
                       {String(left % 60).padStart(2, "0")}
                     </span>
                   )}
+                  {/* El reloj no se anuncia cada segundo (sería ruido); sí
+                      cuando falta un minuto. */}
+                  <span className="sr-only" aria-live="assertive">
+                    {left !== null && left <= 60 && left > 55
+                      ? "Queda un minuto para terminar la etapa."
+                      : ""}
+                  </span>
                 </div>
 
                 {/* Progreso dentro de la etapa */}
@@ -493,7 +510,14 @@ export default function CandidateRunner({
                       %
                     </span>
                   </div>
-                  <div className="h-1.5 rounded-full bg-slate-200/70 overflow-hidden">
+                  <div
+                    className="h-1.5 rounded-full bg-slate-200/70 overflow-hidden"
+                    role="progressbar"
+                    aria-label="Avance de la etapa"
+                    aria-valuemin={1}
+                    aria-valuemax={stage.questions.length}
+                    aria-valuenow={qIndex + 1}
+                  >
                     <div
                       className="h-full rounded-full transition-all duration-300"
                       style={{
@@ -506,14 +530,23 @@ export default function CandidateRunner({
 
                 {question && (
                   <div key={question.id} className="mt-5 animate-rise">
-                    <p className={`text-base font-medium ${theme.heading}`}>
+                    <p
+                      ref={preguntaRef}
+                      tabIndex={-1}
+                      id={`q-${question.id}`}
+                      className={`text-base font-medium outline-none ${theme.heading}`}
+                    >
                       {question.text}
                     </p>
 
                     {(question.kind === "likert" ||
                       question.kind === "unica" ||
                       question.kind === "multiple") && (
-                      <div className="space-y-2 mt-3">
+                      <div
+                        className="space-y-2 mt-3"
+                        role="radiogroup"
+                        aria-labelledby={`q-${question.id}`}
+                      >
                         {question.options.map((o, oi) => {
                           const valor =
                             question.kind === "likert" ? oi + 1 : o;
@@ -521,8 +554,10 @@ export default function CandidateRunner({
                           return (
                             <button
                               key={o}
+                              role="radio"
+                              aria-checked={elegido}
                               onClick={() => responder(valor)}
-                              className="w-full text-left text-sm px-4 py-3 rounded-xl border press transition-colors flex items-center gap-3"
+                              className="w-full text-left text-sm px-4 py-3 rounded-xl border press transition-colors flex items-center gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                               style={
                                 elegido
                                   ? {
@@ -534,6 +569,7 @@ export default function CandidateRunner({
                               }
                             >
                               <span
+                                aria-hidden
                                 className="w-5 h-5 rounded-full border-2 shrink-0"
                                 style={{
                                   borderColor: elegido ? onAccent : "#cbd5e1",
@@ -552,6 +588,7 @@ export default function CandidateRunner({
                     {question.kind === "texto" && (
                       <textarea
                         className="input min-h-28 mt-3"
+                        aria-labelledby={`q-${question.id}`}
                         placeholder="Escribí tu respuesta"
                         value={(answers[question.id] as string) ?? ""}
                         onChange={(e) => responder(e.target.value)}
@@ -559,14 +596,22 @@ export default function CandidateRunner({
                     )}
 
                     {question.kind === "escala" && (
-                      <div className="flex gap-2 mt-3">
+                      <>
+                      <div
+                        className="flex gap-2 mt-3"
+                        role="radiogroup"
+                        aria-labelledby={`q-${question.id}`}
+                      >
                         {[1, 2, 3, 4, 5].map((n) => {
                           const elegido = answers[question.id] === n;
                           return (
                             <button
                               key={n}
+                              role="radio"
+                              aria-checked={elegido}
+                              aria-label={`${n} de 5`}
                               onClick={() => responder(n)}
-                              className="flex-1 min-h-12 rounded-xl border font-semibold press"
+                              className="flex-1 min-h-12 rounded-xl border font-semibold press focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
                               style={
                                 elegido
                                   ? {
@@ -582,11 +627,19 @@ export default function CandidateRunner({
                           );
                         })}
                       </div>
+                      {/* Sin esto, "1" y "5" no dicen cuál punta es cuál. */}
+                      <div className={`flex justify-between text-xs mt-1.5 ${theme.muted}`}>
+                        <span>1 = lo mínimo</span>
+                        <span>5 = lo máximo</span>
+                      </div>
+                      </>
                     )}
 
                     {question.kind === "numero" && (
                       <input
                         type="number"
+                        inputMode="decimal"
+                        aria-labelledby={`q-${question.id}`}
                         className="input mt-3"
                         value={(answers[question.id] as number) ?? ""}
                         onChange={(e) => responder(Number(e.target.value))}
@@ -627,7 +680,10 @@ export default function CandidateRunner({
                 )}
 
                 {error && (
-                  <p className="text-sm text-danger bg-red-50 rounded-xl px-4 py-3 mt-4">
+                  <p
+                    role="alert"
+                    className="text-sm text-danger bg-red-50 rounded-xl px-4 py-3 mt-4"
+                  >
                     {error}
                   </p>
                 )}

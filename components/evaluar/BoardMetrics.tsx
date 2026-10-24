@@ -1,7 +1,8 @@
 "use client";
 
 import type { BoardData } from "@/lib/evaluar";
-import { ALL_DIMENSIONS } from "@/lib/evaluar/templates";
+import { ALL_DIMENSIONS, LIKERT_DIMENSIONS } from "@/lib/evaluar/templates";
+import { aEscalaV2, versionDe } from "@/lib/evaluar/puntaje";
 import { DIMENSIONES_INTEGRIDAD } from "@/lib/evaluar/integridad";
 
 // Métricas del grupo, no de una persona.
@@ -41,8 +42,12 @@ export default function BoardMetrics({ board }: { board: BoardData }) {
   for (const c of board.candidates) {
     for (const [key, v] of Object.entries(c.profile ?? {})) {
       if (clavesIntegridad.has(key) || !v || v.max <= 0) continue;
+      // El promedio mezcla gente corregida con la escala vieja (1-5) y la
+      // nueva (0-4): se promedia todo en la nueva.
+      const comun = aEscalaV2(v, LIKERT_DIMENSIONS.has(key), versionDe(c.scoring_version));
+      if (comun.max <= 0) continue;
       const lista = acumulado.get(key) ?? [];
-      lista.push(Math.round((v.raw / v.max) * 100));
+      lista.push(Math.round((comun.raw / comun.max) * 100));
       acumulado.set(key, lista);
     }
   }

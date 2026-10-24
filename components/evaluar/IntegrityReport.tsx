@@ -51,10 +51,13 @@ function Factor({ f }: { f: FactorIntegridad }) {
 
 export default function IntegrityReport({
   profile,
+  version = 1,
 }: {
   profile: Record<string, { raw: number; max: number }> | undefined;
+  /** Escala likert del participante (054). */
+  version?: number;
 }) {
-  const datos = leerIntegridad(profile);
+  const datos = leerIntegridad(profile, version);
   if (!datos) return null;
 
   const confiable = perfilConfiable(datos.validez);

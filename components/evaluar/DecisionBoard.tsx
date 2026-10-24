@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -27,7 +28,16 @@ import { StatusChip } from "./ProcessEditor";
 // sistemas hay que abrir una ficha por persona y recordar lo anterior de
 // memoria. Acá se ven juntos, con el puntaje por etapa y las notas del equipo,
 // y cada decisión deja registrado por qué.
-export default function DecisionBoard({ board }: { board: BoardData }) {
+export default function DecisionBoard({
+  board,
+  puedeExportar,
+  planLabel,
+}: {
+  board: BoardData;
+  /** La exportación a Excel es del plan Profesional (D-5). */
+  puedeExportar: boolean;
+  planLabel: string;
+}) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [noteFor, setNoteFor] = useState<string | null>(null);
@@ -57,6 +67,12 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
   }
 
   const rendidos = board.candidates.filter((c) => c.percent !== null);
+  // Con la 054 los nuevos se corrigen en la escala 0-4. Si el proceso tiene
+  // gente de las dos, se marca a los de la escala vieja: sus barras de rasgo
+  // y su ajuste no se leen igual que los de los nuevos.
+  const escalaMixta =
+    board.candidates.some((c) => (c.scoring_version ?? 1) >= 2) &&
+    board.candidates.some((c) => (c.scoring_version ?? 1) < 2 && Object.keys(c.profile).length > 0);
 
   // Conteo de motivos, del más frecuente al menos. Solo cuenta a los que
   // tienen motivo cargado: los descartados de antes de esta pantalla no lo
@@ -129,12 +145,24 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
             {blind ? <EyeOff size={14} /> : <Eye size={14} />}
             {blind ? "Ciego" : "Cribado ciego"}
           </button>
-          <a
-            href={`/evaluar/app/procesos/${board.process.id}/export`}
-            className="btn-secondary press text-xs"
-          >
-            <Download size={14} /> Excel
-          </a>
+          {puedeExportar ? (
+            <a
+              href={`/evaluar/app/procesos/${board.process.id}/export`}
+              className="btn-secondary press text-xs"
+            >
+              <Download size={14} /> Excel
+            </a>
+          ) : (
+            // Se muestra igual, con el motivo: un botón que desaparece no
+            // dice que existe ni qué plan lo trae.
+            <Link
+              href="/evaluar/precios"
+              className="btn-secondary press text-xs opacity-70"
+              title={`La exportación a Excel viene con el plan Profesional. Tu plan actual es ${planLabel}.`}
+            >
+              <Download size={14} /> Excel · Profesional
+            </Link>
+          )}
         </div>
       </div>
 
@@ -226,6 +254,14 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
                     <p className="text-[11px] text-slate-400">
                       {c.source === "worka" ? "Desde Worka" : "Invitado"}
                     </p>
+                    {escalaMixta && (c.scoring_version ?? 1) < 2 && (
+                      <p
+                        className="text-[11px] text-amber-700 mt-0.5"
+                        title="Se corrigió con la escala 1 a 5, donde la respuesta más baja da 20%. Los invitados desde la actualización usan 0 a 4: sus rasgos y su ajuste salen algo más bajos para las mismas respuestas."
+                      >
+                        Escala anterior
+                      </p>
+                    )}
                     {/* En comparación a ciegas no va: el CV lleva nombre,
                         edad y foto, que es justo lo que se está tapando. */}
                     {c.cv_url && !blind && (

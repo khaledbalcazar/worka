@@ -652,7 +652,8 @@ export async function addQuestion(
   const { error } = await supabase.from("evaluar_questions").insert({
     stage_id: stageId,
     position: qCount ?? 0,
-    kind: input.kind,
+    // "multiple" ya no se ofrece (era una única con otro nombre, EV-19).
+    kind: input.kind === "multiple" ? "unica" : input.kind,
     text: input.text.trim(),
     options,
     correct,

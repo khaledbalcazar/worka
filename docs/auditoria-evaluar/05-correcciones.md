@@ -44,6 +44,12 @@ recorridos bloqueados > UX > consistencia. **Nada está commiteado.**
 | C-16 | EV-20, 33, 34 | `lib/evaluar/integridad.ts`, `IntegrityReport.tsx` | No se muestra integridad si solo hay el rasgo compartido; demo neutra; lenguaje de señal | tsc/eslint |
 | C-18 | EV-18 (D-1 a) | `app/evaluar/actions.ts` (`structureLock`, `processOfStage`, `processOfQuestion` en 10 acciones; `duplicateProcess`), `components/evaluar/ProcessEditor.tsx`, `lib/evaluar/puntaje.ts` | Estructura fija con candidatos iniciados, en el servidor y en el editor; «Duplicar como versión nueva»; duplicado completo | 3 pruebas nuevas (22/22), tsc/eslint. Sin recorrido en el navegador (en demo no hay procesos) |
 | C-19 | EV-40 | `actions.ts` (`updateQuestion`) | Las preguntas sin opciones conservan las que tenían | tsc/eslint |
+| C-20 | EV-15 (D-5) | `export/route.ts`, `tablero/page.tsx`, `DecisionBoard.tsx` | Excel solo desde Profesional: 403 en la ruta; botón «Excel · Profesional» hacia precios | tsc/eslint |
+| C-21 | EV-20 (D-3) | `lib/evaluar/templates.ts` | `integridad_sjt` en etapas nuevas del SJT y del filtro de cajero | tsc/eslint |
+| C-22 | EV-21 (D-2) | `supabase/migration-054.sql` (nueva), `puntaje.ts`, `report.ts`, `integridad.ts`, `IntegrityReport.tsx`, informe, `BoardMetrics.tsx`, `DecisionBoard.tsx`, export, `templates.ts` (`LIKERT_DIMENSIONS`) | Escala 0–4 para candidatos nuevos; lectura con dos escalas | 4 pruebas (26/26); `supabase/tests/evaluar-054.sql` **sin correr** |
+| C-23 | EV-24 | `lib/evaluar/report.ts` | Baremo con finalistas, contratados y descartados, en escala común y con el mismo redondeo; funciona antes de la 054 (reintenta sin la columna) | tsc/eslint |
+| C-24 | EV-19 | `ProcessEditor.tsx`, `puntaje.ts`, `actions.ts` | «Opción múltiple» fuera del editor | tsc/eslint |
+| C-25 | EV-39 | `CandidateRunner.tsx` | Accesibilidad de la evaluación | tsc/eslint; sin lector de pantalla |
 | C-17 | EV-32 | `app/evaluar/precios/page.tsx` | «Las cinco pruebas del catálogo» | lectura |
 
 ## Compatibilidad del despliegue
@@ -70,3 +76,7 @@ El código funciona **antes y después** de aplicar la 053:
 11. En ese proceso, corregir el enunciado de una pregunta → se guarda. Cambiar el puntaje → error «No se puede cambiar el puntaje…».
 12. «Duplicar como versión nueva» → abre un borrador con las mismas etapas, la explicación, el ejemplo y el tope de video, sin candidatos ni vacante.
 13. Editar el enunciado de un ítem likert de plantilla → el candidato sigue viendo las 5 opciones.
+14. Aplicar la 054 y correr `supabase/tests/evaluar-054.sql` → «A OK» a «C OK».
+15. Cuenta Esencial (fuera de la prueba): el botón dice «Excel · Profesional» y `/export` responde 403. En Profesional descarga, con la columna «Escala de rasgos».
+16. Proceso con candidatos de las dos escalas → los viejos muestran «Escala anterior»; el informe de integridad da la misma banda para las mismas respuestas.
+17. Recorrer la evaluación solo con teclado y con NVDA (Windows) o VoiceOver: se anuncian la pregunta, las opciones y cuál está elegida, y el aviso del último minuto.

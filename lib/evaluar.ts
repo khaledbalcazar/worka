@@ -116,6 +116,8 @@ export type EvaluarParticipant = {
   created_at: string;
   /** Acumulado por rasgo. Lo llena la corrección del lado de la base. */
   profile?: Record<string, { raw: number; max: number }>;
+  /** Escala likert con la que se corrige (054): 1 = 1-5, 2 = 0-4. */
+  scoring_version?: number;
 };
 
 // ── Suscripción ────────────────────────────────────────────────
