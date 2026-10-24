@@ -125,9 +125,9 @@ export default function DecisionBoard({
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-primary-dark">
-            Tablero de decisión
-          </h1>
+          <h2 className="text-lg font-semibold text-primary-dark">
+            Comparar y decidir
+          </h2>
           <p className="text-sm text-slate-500">
             {rendidos.length} de {board.candidates.length} rindieron. Ordenados
             por {board.candidates.some((c) => c.fit !== null) ? "ajuste al puesto" : "desempeño"}.
@@ -231,8 +231,8 @@ export default function DecisionBoard({
       )}
 
       {/* Comparativa lado a lado: se desplaza de costado en celular. */}
-      <div className="overflow-x-auto scroll-thin -mx-4 px-4">
-        <div className="flex gap-3 min-w-min pb-2">
+      <div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {board.candidates.map((c, i) => {
             // Un descartado por excluyente puede tener el mejor número y
             // aun así no está en carrera: no se lo marca como el primero.
@@ -241,7 +241,7 @@ export default function DecisionBoard({
             return (
               <div
                 key={c.id}
-                className={`card p-4 w-72 shrink-0 flex flex-col ${
+                className={`card p-4 flex flex-col ${
                   lider ? "border-emerald-300 ring-1 ring-emerald-200" : ""
                 }`}
               >
@@ -279,16 +279,16 @@ export default function DecisionBoard({
                 {/* Ajuste al perfil del puesto: cuando la empresa dijo que
                     importa, es el numero que manda y por el que se ordena. */}
                 {c.fit !== null && (
-                  <div className="mt-3 rounded-2xl bg-indigo-50 px-3 py-2">
-                    <p className="text-[11px] text-indigo-700 font-semibold uppercase tracking-wide">
+                  <div className="mt-3 rounded-2xl bg-[#edf3f8] px-3 py-2">
+                    <p className="text-[11px] text-[#0a66c2] font-semibold uppercase tracking-wide">
                       Ajuste al puesto
                     </p>
-                    <p className="text-2xl font-bold text-indigo-900 leading-none mt-0.5">
+                    <p className="text-2xl font-bold text-[#004182] leading-none mt-0.5">
                       {c.fit}%
                     </p>
                     {/* De dónde sale: sin esto, 32% de ajuste al lado de 45%
                         de puntaje parecían dos versiones del mismo número. */}
-                    <p className="text-[11px] text-indigo-700/80 mt-1 leading-snug">
+                    <p className="text-[11px] text-[#404040] mt-1 leading-snug">
                       Promedio de los rasgos que marcaste en el perfil ideal
                       {c.fitCoverage.pedidos > 0 &&
                         ` (rindió ${c.fitCoverage.rendidos} de ${c.fitCoverage.pedidos})`}
@@ -395,7 +395,7 @@ export default function DecisionBoard({
                           </div>
                           <div className="h-1 rounded-full bg-slate-100 overflow-hidden">
                             <div
-                              className="h-full rounded-full bg-indigo-400 animate-fill"
+                              className="h-full rounded-full bg-[#2a78d6] animate-fill"
                               style={{ width: `${pct}%` }}
                             />
                           </div>

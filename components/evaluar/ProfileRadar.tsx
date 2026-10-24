@@ -108,8 +108,8 @@ export default function ProfileRadar({
         {/* Perfil del candidato */}
         <polygon
           points={poligono(valores)}
-          fill="#6366f130"
-          stroke="#6366f1"
+          fill="#2a78d630"
+          stroke="#2a78d6"
           strokeWidth={1.8}
         />
         {valores.map((v, i) => {
@@ -120,7 +120,7 @@ export default function ProfileRadar({
               cx={p.x}
               cy={p.y}
               r={2.6}
-              fill="#6366f1"
+              fill="#2a78d6"
             />
           );
         })}
@@ -153,7 +153,7 @@ export default function ProfileRadar({
 
       <figcaption className="flex justify-center gap-4 text-[11px] text-slate-500 mt-1">
         <span className="flex items-center gap-1.5">
-          <span className="w-3 h-0.5 bg-indigo-500 inline-block" />
+          <span className="w-3 h-0.5 bg-[#2a78d6] inline-block" />
           Este candidato
         </span>
         {idealValores && (

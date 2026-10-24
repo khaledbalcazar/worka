@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { BarChart3, ChevronLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { isLive } from "@/lib/data";
 import {
@@ -15,10 +15,12 @@ export const metadata = { title: "Proceso" };
 
 export default async function ProcessPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
-  const { id } = await params;
+  const [{ id }, { tab }] = await Promise.all([params, searchParams]);
 
   if (isLive()) {
     const user = await getCurrentUser();
@@ -33,23 +35,12 @@ export default async function ProcessPage({
   if (!detail) notFound();
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <Link
-          href="/evaluar/app"
-          className="text-sm text-primary font-medium flex items-center gap-1"
-        >
-          <ChevronLeft size={16} /> Mis procesos
-        </Link>
-        <Link
-          href={`/evaluar/app/procesos/${id}/tablero`}
-          className="btn-secondary press text-sm"
-        >
-          <BarChart3 size={16} /> Tablero de decisión
-        </Link>
-      </div>
+    <div className="space-y-4">
+      <Link href="/evaluar/app" className="text-sm text-primary font-medium inline-flex items-center gap-1">
+        <ChevronLeft size={16} /> Mis procesos
+      </Link>
 
-      <ProcessEditor detail={detail} jobs={jobs} plan={planOf(access)} />
+      <ProcessEditor detail={detail} jobs={jobs} plan={planOf(access)} initialTab={tab} />
     </div>
   );
 }

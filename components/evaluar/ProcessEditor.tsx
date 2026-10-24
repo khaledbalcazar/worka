@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import Link from "next/link";
+import ProcessNav from "./ProcessNav";
+import ProcessSummary from "./ProcessSummary";
 import { useRouter } from "next/navigation";
 import {
   Check,
@@ -55,24 +58,50 @@ import {
   updateStage,
 } from "@/app/evaluar/actions";
 
-type Tab = "etapas" | "candidatos" | "ajustes";
+type Tab = "resumen" | "etapas" | "candidatos" | "ajustes";
+
+function ProcessStatusChip({ status }: { status: string }) {
+  const map: Record<string, { label: string; cls: string; dot: string }> = {
+    activo: { label: "Publicado", cls: "bg-emerald-50 text-emerald-800", dot: "bg-emerald-500" },
+    borrador: { label: "Borrador", cls: "bg-amber-50 text-amber-800", dot: "bg-amber-500" },
+    cerrado: { label: "Cerrado", cls: "bg-slate-100 text-slate-600", dot: "bg-slate-400" },
+  };
+  const s = map[status] ?? map.cerrado;
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${s.cls}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+      {s.label}
+    </span>
+  );
+}
 
 export default function ProcessEditor({
   detail,
   jobs,
   plan,
+  initialTab,
 }: {
   detail: ProcessDetail;
   jobs: { id: string; title: string; linked: boolean }[];
   plan: PlanLimits;
+  // Pestaña pedida por la URL (?tab=), para volver desde «Comparar y decidir».
+  initialTab?: string;
 }) {
   const router = useRouter();
   const { process, stages, participants, esDueno } = detail;
-  const [tab, setTab] = useState<Tab>(
-    process.status !== "borrador" && participants.length > 0
-      ? "candidatos"
-      : "etapas"
+  const [tab, setTabState] = useState<Tab>(
+    initialTab === "resumen" || initialTab === "etapas" || initialTab === "candidatos" || (initialTab === "ajustes" && esDueno)
+      ? (initialTab as Tab)
+      : process.status !== "borrador" && participants.length > 0
+        ? "resumen"
+        : "etapas"
   );
+  // La pestaña queda en la URL: recargar o compartir el enlace no te
+  // devuelve a otra sección.
+  function setTab(next: Tab) {
+    setTabState(next);
+    window.history.replaceState(null, "", `/evaluar/app/procesos/${process.id}?tab=${next}`);
+  }
   const [vista, setVista] = useState<"lista" | "tablero">("lista");
   const [aviso, setAviso] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -113,13 +142,13 @@ export default function ProcessEditor({
   // los que ya terminaron y nadie miro todavia.
   const esperando = participants.filter((p) => p.status === "completado").length;
   const embudo = [
-    { v: participants.length, l: "invitados", ac: false },
+    { v: participants.length, l: "candidatos", ac: false },
     {
       v: participants.filter((p) => p.status === "en_curso").length,
       l: "rindiendo",
       ac: false,
     },
-    { v: esperando, l: "te esperan", ac: esperando > 0 },
+    { v: esperando, l: "esperan tu decisión", ac: esperando > 0 },
     {
       v: participants.filter((p) =>
         ["finalista", "contratado"].includes(p.status)
@@ -189,17 +218,7 @@ export default function ProcessEditor({
             )}
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span
-              className={`chip ${
-                process.status === "activo"
-                  ? "bg-emerald-50 text-emerald-700"
-                  : process.status === "cerrado"
-                    ? "bg-slate-100 text-slate-500"
-                    : "bg-amber-50 text-amber-700"
-              }`}
-            >
-              {process.status}
-            </span>
+            <ProcessStatusChip status={process.status} />
             {!esDueno ? (
               <span className="chip bg-slate-100 text-slate-600">
                 Te sumaron a este proceso
@@ -246,28 +265,14 @@ export default function ProcessEditor({
         {/* Donde esta parada la gente. Es lo primero que se pregunta quien
             entra a un proceso ya publicado, y estaba a dos clics. */}
         {participants.length > 0 && (
-          <div
-            className="grid grid-cols-2 sm:grid-cols-4 gap-px rounded-xl overflow-hidden mt-4"
-            style={{
-              background: "var(--nk-line, #e2e8f0)",
-              border: "1px solid var(--nk-line, #e2e8f0)",
-            }}
-          >
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
             {embudo.map((e) => (
               <div
                 key={e.l}
-                className="px-4 py-3"
-                style={{ background: "var(--nk-deep, #f8fafc)" }}
+                className={`rounded-lg border px-4 py-3 ${e.ac ? "bg-[#f3f8fd] border-[#c9d9ea]" : "bg-[#f6f4f1] border-[#e0dfdc]"}`}
               >
-                <p
-                  className="text-xl font-medium leading-none m-0"
-                  style={{ color: e.ac ? "var(--nk-300)" : undefined }}
-                >
-                  {e.v}
-                </p>
-                <p className="nk-mono mt-1.5" style={{ color: "#767676" }}>
-                  {e.l}
-                </p>
+                <p className={`text-xl font-semibold leading-none tabular-nums ${e.ac ? "text-[#0a66c2]" : "text-primary-dark"}`}>{e.v}</p>
+                <p className="ev-label mt-1.5 !normal-case !tracking-normal !text-xs !font-medium">{e.l}</p>
               </div>
             ))}
           </div>
@@ -288,46 +293,37 @@ export default function ProcessEditor({
         </p>
       )}
 
-      {/* Pestañas */}
-      <div className="flex gap-1 border-b border-slate-200">
-        {(
-          [
-            ["etapas", `Etapas (${stages.length})`],
-            ["candidatos", `Candidatos (${participants.length})`],
-            ...(esDueno ? ([["ajustes", "Ajustes"]] as [Tab, string][]) : []),
-          ] as [Tab, string][]
-        ).map(([key, label]) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              tab === key
-                ? "border-primary text-primary"
-                : "border-transparent text-slate-500"
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-        {tab === "candidatos" && (
-          <div className="ml-auto flex items-center gap-1 pb-1.5">
-            {(["lista", "tablero"] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => setVista(v)}
-                className={`chip press ${
-                  vista === v
-                    ? "bg-primary text-white"
-                    : "bg-slate-100 text-slate-500"
-                }`}
-              >
-                {v === "lista" ? <List size={13} /> : <Columns3 size={13} />}
-                {v === "lista" ? "Lista" : "Tablero"}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Pestañas: las mismas que en «Comparar y decidir». */}
+      <ProcessNav
+        processId={process.id}
+        current={tab}
+        counts={{ candidatos: participants.length, etapas: stages.length }}
+        esDueno={esDueno}
+        onSelect={setTab}
+      />
+
+      {/* Dos formas de ver a la misma gente: la lista (invitar y contactar)
+          y por etapa (dónde está cada uno). Antes la segunda se llamaba
+          «Tablero» y se confundía con el tablero de decisión. */}
+      {tab === "candidatos" && participants.length > 0 && (
+        <div className="flex items-center gap-1" role="group" aria-label="Cómo ver a los candidatos">
+          {(["lista", "tablero"] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setVista(v)}
+              aria-pressed={vista === v}
+              className={`chip press min-h-8 px-3 border ${
+                vista === v ? "bg-primary text-white border-primary" : "bg-white text-slate-600 border-slate-200"
+              }`}
+            >
+              {v === "lista" ? <List size={13} /> : <Columns3 size={13} />}
+              {v === "lista" ? "Lista" : "Por etapa"}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {tab === "resumen" && <ProcessSummary detail={detail} />}
 
       {tab === "etapas" && (
         <StagesTab
@@ -1031,8 +1027,15 @@ function CandidatesTab({
   const [list, setList] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
 
+  // El origen se lee después de montar: en el servidor no existe window y
+  // leerlo durante el render tiraba la página entera (500) apenas el
+  // proceso tenía candidatos.
+  const [origin, setOrigin] = useState("");
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- window solo existe después de montar
+  useEffect(() => setOrigin(window.location.origin), []);
+
   function linkFor(token: string) {
-    return `${window.location.origin}/evaluar/e/${token}`;
+    return `${origin || "https://worka.click"}/evaluar/e/${token}`;
   }
 
   function copyLink(token: string) {
@@ -1164,10 +1167,18 @@ function CandidatesTab({
                   {p.full_name || "Sin nombre"}
                 </p>
                 <p className="text-xs text-slate-500">
-                  {p.source === "worka" ? "Desde Worka Empleos" : "Invitado"}
+                  {p.source === "worka" ? "Postuló desde Worka Empleos" : "Invitado por la empresa"}
                   {p.score !== null && p.max_score
-                    ? ` · ${p.score}/${p.max_score} puntos`
+                    ? ` · puntaje ${Math.round((p.score / p.max_score) * 100)} %`
                     : ""}
+                  {p.score !== null && p.max_score && (
+                    <>
+                      {" · "}
+                      <Link href={`/evaluar/app/procesos/${detail.process.id}/informe/${p.id}`} className="text-primary font-medium hover:underline">
+                        Ver informe
+                      </Link>
+                    </>
+                  )}
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -1207,18 +1218,23 @@ function CandidatesTab({
   );
 }
 
+// Estado de cada candidato, con la palabra que usa la empresa y no la de la
+// base («completado» no decía que falta una decisión tuya).
+const PARTICIPANT_STATUS: Record<string, { label: string; cls: string; dot: string }> = {
+  invitado: { label: "Invitado", cls: "bg-slate-100 text-slate-700", dot: "bg-slate-400" },
+  en_curso: { label: "Rindiendo", cls: "bg-[#edf3f8] text-[#004182]", dot: "bg-[#0a66c2]" },
+  completado: { label: "Para revisar", cls: "bg-amber-50 text-amber-800", dot: "bg-amber-500" },
+  finalista: { label: "Finalista", cls: "bg-emerald-50 text-emerald-800", dot: "bg-emerald-500" },
+  contratado: { label: "Contratado", cls: "bg-emerald-600 text-white", dot: "bg-white" },
+  descartado: { label: "Descartado", cls: "bg-red-50 text-red-700", dot: "bg-red-500" },
+};
+
 export function StatusChip({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    invitado: "bg-slate-100 text-slate-600",
-    en_curso: "bg-blue-50 text-primary",
-    completado: "bg-indigo-50 text-indigo-700",
-    finalista: "bg-emerald-50 text-emerald-700",
-    contratado: "bg-emerald-600 text-white",
-    descartado: "bg-red-50 text-danger",
-  };
+  const s = PARTICIPANT_STATUS[status] ?? { label: status.replace("_", " "), cls: "bg-slate-100 text-slate-700", dot: "bg-slate-400" };
   return (
-    <span className={`chip ${map[status] ?? "bg-slate-100 text-slate-600"}`}>
-      {status.replace("_", " ")}
+    <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold shrink-0 ${s.cls}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+      {s.label}
     </span>
   );
 }

@@ -1354,6 +1354,19 @@ export async function updateCompanyProfile(input: {
   return { ok: true };
 }
 
+// Correos de Worka para la empresa (migración 027). Apagarlos no corta la
+// campanita: los avisos siguen llegando dentro de la app.
+export async function setCompanyEmailNotifications(on: boolean): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  if (!supabase) return DEMO;
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Sesión no válida." };
+  const { error } = await supabase.from("companies").update({ email_notifications: !!on }).eq("id", user.id);
+  if (error) return { ok: false, error: "No pudimos guardar la preferencia." };
+  revalidatePath("/evaluar/app/ajustes");
+  return { ok: true };
+}
+
 export async function createCompanyPost(
   content: string
 ): Promise<ActionResult> {

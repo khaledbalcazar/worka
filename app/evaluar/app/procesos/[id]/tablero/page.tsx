@@ -6,8 +6,9 @@ import { isLive } from "@/lib/data";
 import { getBoardData, getMyEvaluarAccess } from "@/lib/evaluar";
 import { planOf } from "@/lib/evaluar-plans";
 import DecisionBoard from "@/components/evaluar/DecisionBoard";
+import ProcessNav from "@/components/evaluar/ProcessNav";
 
-export const metadata = { title: "Tablero de decisión" };
+export const metadata = { title: "Comparar y decidir" };
 
 export default async function BoardPage({
   params,
@@ -30,13 +31,17 @@ export default async function BoardPage({
   const plan = planOf(access);
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 space-y-4">
-      <Link
-        href={`/evaluar/app/procesos/${id}`}
-        className="text-sm text-primary font-medium flex items-center gap-1"
-      >
-        <ChevronLeft size={16} /> {board.process.title}
+    <div className="space-y-4">
+      <Link href="/evaluar/app" className="text-sm text-primary font-medium inline-flex items-center gap-1">
+        <ChevronLeft size={16} /> Mis procesos
       </Link>
+      <h1 className="text-xl font-bold text-primary-dark">{board.process.title}</h1>
+      <ProcessNav
+        processId={id}
+        current="decidir"
+        counts={{ candidatos: board.candidates.length, etapas: board.stages.length }}
+        esDueno={board.esDueno}
+      />
       <DecisionBoard
         board={board}
         puedeExportar={plan.reports}

@@ -9,8 +9,11 @@ import { createProcess } from "@/app/evaluar/actions";
 // el diferencial: dejarlo para "configuración avanzada" sería esconderlo.
 export default function NewProcess({
   jobs,
+  triggerClassName = "btn-primary press",
 }: {
   jobs: { id: string; title: string; linked: boolean }[];
+  // La barra lateral lo muestra como su acción principal, más grande.
+  triggerClassName?: string;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -39,7 +42,7 @@ export default function NewProcess({
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="btn-primary press">
+      <button onClick={() => setOpen(true)} className={triggerClassName}>
         <Plus size={16} /> Nuevo proceso
       </button>
     );

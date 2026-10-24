@@ -17,6 +17,8 @@ import {
 export { TRIAL_DAYS, resolveAccess };
 export type { AccessState, EvaluarAccount, EvaluarStatus };
 
+import { buildPanelCharts, type PanelCharts, type PanelPerson } from "@/lib/evaluar/panel-charts";
+
 // Capa de datos de Worka Evaluar. Igual que lib/data.ts, las páginas solo
 // importan de acá.
 
@@ -173,7 +175,8 @@ export type ProcessRow = EvaluarProcess & {
 
 export async function getMyProcesses(): Promise<ProcessRow[]> {
   const supabase = await getServerClient();
-  if (!supabase) return [];
+  // Modo demo: un proceso de ejemplo con candidatos y un borrador.
+  if (!supabase) return (await import("@/lib/evaluar/demo")).demoProcessRows();
   const user = await getCurrentUser();
   if (!user) return [];
 
@@ -218,7 +221,7 @@ export async function getProcessDetail(
   id: string
 ): Promise<ProcessDetail | null> {
   const supabase = await getServerClient();
-  if (!supabase) return null;
+  if (!supabase) return (await import("@/lib/evaluar/demo")).demoProcessDetail(id);
   const user = await getCurrentUser();
   if (!user) return null;
 
@@ -324,6 +327,8 @@ export type PanelData = {
   alerts: PanelAlert[];
   activity: PanelActivity[];
   stats: { activos: number; enCurso: number; completados: number };
+  /** Gráficas del inicio (lib/evaluar/panel-charts.ts). */
+  charts: PanelCharts;
 };
 
 // Todo lo del panel en una sola pasada. La pregunta que la empresa se hace al
@@ -336,10 +341,11 @@ export async function getPanelData(): Promise<PanelData> {
     alerts: [],
     activity: [],
     stats: { activos: 0, enCurso: 0, completados: 0 },
+    charts: buildPanelCharts([], []),
   };
 
   const supabase = await getServerClient();
-  if (!supabase) return vacio;
+  if (!supabase) return demoPanelData();
   const user = await getCurrentUser();
   if (!user) return vacio;
 
@@ -353,7 +359,7 @@ export async function getPanelData(): Promise<PanelData> {
   const [{ data: participants }, { data: events }] = await Promise.all([
     supabase
       .from("evaluar_participants")
-      .select("id, process_id, status, full_name, completed_at")
+      .select("id, process_id, status, full_name, created_at, started_at, completed_at, score, max_score")
       .in("process_id", ids),
     supabase
       .from("evaluar_events")
@@ -364,13 +370,7 @@ export async function getPanelData(): Promise<PanelData> {
       .limit(15),
   ]);
 
-  const gente = (participants ?? []) as {
-    id: string;
-    process_id: string;
-    status: string;
-    full_name: string;
-    completed_at: string | null;
-  }[];
+  const gente = (participants ?? []) as (PanelPerson & { id: string; full_name: string })[];
 
   const alerts: PanelAlert[] = [];
 
@@ -452,6 +452,44 @@ export async function getPanelData(): Promise<PanelData> {
         ["completado", "finalista", "contratado"].includes(g.status)
       ).length,
     },
+    charts: buildPanelCharts(gente, visibles),
+  };
+}
+
+// El panel en modo demo: las mismas reglas de alertas sobre el ejemplo.
+async function demoPanelData(): Promise<PanelData> {
+  const demo = await import("@/lib/evaluar/demo");
+  const processes = demo.demoProcessRows();
+  const gente = processes.flatMap((p) => demo.demoProcessDetail(p.id)?.participants ?? []);
+  const alerts: PanelAlert[] = [];
+  for (const p of processes) {
+    const esperando = gente.filter((g) => g.process_id === p.id && g.status === "completado").length;
+    if (esperando > 0)
+      alerts.push({
+        kind: "revisar",
+        processId: p.id,
+        processTitle: p.title,
+        count: esperando,
+        detail: esperando === 1 ? "1 persona terminó y espera tu decisión" : `${esperando} personas terminaron y esperan tu decisión`,
+      });
+    if (p.status === "borrador" && p.stage_count > 0)
+      alerts.push({ kind: "borrador", processId: p.id, processTitle: p.title, count: 1, detail: "Está armado pero sin publicar: nadie puede rendirlo todavía" });
+    if (p.deadline_at && p.status === "activo") {
+      const dias = Math.ceil((Date.parse(p.deadline_at) - Date.now()) / 86_400_000);
+      if (dias > 0 && dias <= 7)
+        alerts.push({ kind: "plazo", processId: p.id, processTitle: p.title, count: dias, detail: dias === 1 ? "Cierra mañana" : `Cierra en ${dias} días` });
+    }
+  }
+  return {
+    processes,
+    alerts,
+    charts: buildPanelCharts(gente, processes),
+    activity: demo.demoActivity(),
+    stats: {
+      activos: processes.filter((p) => p.status === "activo").length,
+      enCurso: gente.filter((g) => g.status === "en_curso").length,
+      completados: gente.filter((g) => ["completado", "finalista", "contratado"].includes(g.status)).length,
+    },
   };
 }
 
@@ -509,17 +547,17 @@ export async function getBoardData(processId: string): Promise<BoardData | null>
   if (!detail) return null;
 
   const supabase = await getServerClient();
-  if (!supabase) return null;
+  const demoNotes = supabase ? null : (await import("@/lib/evaluar/demo")).demoBoardNotes();
 
-  const ids = detail.participants.map((p) => p.id);
+  const ids = supabase ? detail.participants.map((p) => p.id) : [];
   const [{ data: answers }, { data: notes }] = await Promise.all([
-    ids.length
+    ids.length && supabase
       ? supabase
           .from("evaluar_answers")
           .select("participant_id, question_id, value, score")
           .in("participant_id", ids)
       : Promise.resolve({ data: [] }),
-    ids.length
+    ids.length && supabase
       ? supabase
           .from("evaluar_notes")
           .select("id, participant_id, body, rating, created_at")
@@ -558,7 +596,7 @@ export async function getBoardData(processId: string): Promise<BoardData | null>
       // con alguien que hizo una sobre la misma base sería injusto.
       percent: percentOf(p.score, p.max_score),
       answers: answerMap.get(p.id) ?? [],
-      notes: noteMap.get(p.id) ?? [],
+      notes: demoNotes?.[p.id] ?? noteMap.get(p.id) ?? [],
       fit: fitScore(
         (p.profile ?? {}) as DimensionScores,
         detail.process.ideal_profile

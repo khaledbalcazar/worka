@@ -150,7 +150,7 @@ export default function BoardMetrics({ board }: { board: BoardData }) {
                 </div>
                 <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mt-1">
                   <div
-                    className="h-full rounded-full bg-indigo-400"
+                    className="h-full rounded-full bg-[#2a78d6]"
                     style={{ width: `${r.promedio}%` }}
                   />
                 </div>
