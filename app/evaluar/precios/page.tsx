@@ -49,7 +49,9 @@ export default async function PreciosPage() {
       para: "Para el comercio o la pyme que contrata cada tanto.",
       incluye: [
         "Hasta 3 procesos activos",
-        "Los cuatro tests listos para usar",
+        // Son cinco: la integridad laboral se sumó al catálogo después y
+        // ningún plan la limita (ver TEMPLATES en lib/evaluar/templates.ts).
+        "Las cinco pruebas del catálogo, listas para usar",
         "Enlace con tus vacantes de Worka",
         "Tablero de decisión",
         "Devolución automática al candidato",

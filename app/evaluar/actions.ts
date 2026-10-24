@@ -17,6 +17,7 @@ import {
   motivoEsCompartible,
 } from "@/lib/evaluar/motivos";
 import { emailEnabled, emailLayout, sendEmail } from "@/lib/email";
+import { escapeHtml } from "@/lib/evaluar/puntaje";
 import { evaluarUrl } from "@/lib/supabase/config";
 import {
   PLANS,
@@ -80,6 +81,26 @@ async function countActiveProcesses(
   if (exceptId) q = q.neq("id", exceptId);
   const { count } = await q;
   return count ?? 0;
+}
+
+// Próxima posición libre para una etapa nueva.
+//
+// Antes se usaba la cantidad de etapas: con 0, 1 y 2, borrar la del medio y
+// agregar otra dejaba dos etapas en la posición 2, y con el empate el orden
+// que veía el candidato podía no ser el mismo que corregía la base.
+async function nextStagePosition(
+  supabase: NonNullable<Awaited<ReturnType<typeof getServerClient>>>,
+  processId: string
+): Promise<number> {
+  const { data } = await supabase
+    .from("evaluar_stages")
+    .select("position")
+    .eq("process_id", processId)
+    .order("position", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const ultima = (data as { position?: number } | null)?.position;
+  return typeof ultima === "number" ? ultima + 1 : 0;
 }
 
 // ── Cuenta y prueba ────────────────────────────────────────────
@@ -293,6 +314,26 @@ export async function updateProcess(
   // al crear, porque un borrador todavía no ocupa lugar, y cerrar una
   // búsqueda tiene que liberarlo.
   if (input.status === "activo") {
+    // Lo mismo que dice el botón, pero acá: cada etapa necesita al menos una
+    // pregunta. Una etapa vacía deja al candidato frente a un botón que nunca
+    // se habilita, sin forma de seguir ni de terminar.
+    const { data: etapas } = await supabase
+      .from("evaluar_stages")
+      .select("id, title, evaluar_questions(count)")
+      .eq("process_id", id);
+    const lista = (etapas ?? []) as unknown as {
+      title: string;
+      evaluar_questions: { count: number }[];
+    }[];
+    if (lista.length === 0)
+      return { ok: false, error: "Agregá al menos una etapa antes de publicar." };
+    const vacia = lista.find((e) => (e.evaluar_questions?.[0]?.count ?? 0) === 0);
+    if (vacia)
+      return {
+        ok: false,
+        error: `La etapa «${vacia.title}» no tiene preguntas. Cargale al menos una o borrala antes de publicar.`,
+      };
+
     const plan = await planNow();
     if (plan.activeProcesses !== null) {
       const activos = await countActiveProcesses(supabase, user.id, id);
@@ -451,11 +492,6 @@ export async function addStage(
   if (!input.title.trim())
     return { ok: false, error: "La etapa necesita un nombre." };
 
-  const { count } = await supabase
-    .from("evaluar_stages")
-    .select("id", { count: "exact", head: true })
-    .eq("process_id", processId);
-
   const { data, error } = await supabase
     .from("evaluar_stages")
     .insert({
@@ -463,7 +499,7 @@ export async function addStage(
       title: input.title.trim(),
       description: input.description?.trim() ?? "",
       minutes: input.minutes ?? 5,
-      position: count ?? 0,
+      position: await nextStagePosition(supabase, processId),
     })
     .select("id")
     .single();
@@ -578,11 +614,6 @@ export async function applyTemplate(
   const template = getTemplate(templateKey);
   if (!template) return { ok: false, error: "Esa plantilla no existe." };
 
-  const { count } = await supabase
-    .from("evaluar_stages")
-    .select("id", { count: "exact", head: true })
-    .eq("process_id", processId);
-
   const { data: stage, error: stageError } = await supabase
     .from("evaluar_stages")
     .insert({
@@ -590,7 +621,7 @@ export async function applyTemplate(
       title: template.name,
       description: template.summary,
       minutes: template.minutes,
-      position: count ?? 0,
+      position: await nextStagePosition(supabase, processId),
       template_key: template.key,
       // Qué es la prueba y un ejemplo resuelto. Sin esto el candidato entra a
       // una etapa llamada "Los Cinco Grandes" sin saber si es un examen ni si
@@ -788,11 +819,7 @@ export async function applyRoleTemplate(
   const role = getRoleTemplate(roleKey);
   if (!role) return { ok: false, error: "Ese rubro no existe." };
 
-  const { count } = await supabase
-    .from("evaluar_stages")
-    .select("id", { count: "exact", head: true })
-    .eq("process_id", processId);
-  let position = count ?? 0;
+  let position = await nextStagePosition(supabase, processId);
 
   // 1) Etapa de filtro, con las preguntas propias del puesto.
   const { data: stage, error: stageError } = await supabase
@@ -1109,13 +1136,13 @@ async function notifyTeamMember(
     html: emailLayout(`
       <p>Hola,</p>
       <p>Te sumaron como evaluador del concurso de
-      <strong>${proc.title}</strong>${donde ? ` — ${donde}` : ""}.</p>
+      <strong>${escapeHtml(proc.title)}</strong>${donde ? ` — ${escapeHtml(donde)}` : ""}.</p>
       ${
         processId
           ? `<p>Vas a poder ver a los candidatos, sus resultados y dejar tus
              notas para el resto del equipo.</p>`
           : `<p>Para poder entrar necesitás una cuenta de Worka con
-             <strong>${email}</strong>. Creala desde el enlace y avisale a
+             <strong>${escapeHtml(email)}</strong>. Creala desde el enlace y avisale a
              quien te sumó para que te dé acceso.</p>`
       }
       <p style="margin:24px 0">
@@ -1316,6 +1343,10 @@ async function notifyParticipants(
       .maybeSingle();
     companyName = (data as { trade_name?: string } | null)?.trade_name ?? companyName;
   }
+  // Nombre, empresa y título los escribe una persona: van escapados para que
+  // no se cuele HTML (un enlace falso, por ejemplo) en el correo.
+  const empresaHtml = escapeHtml(companyName);
+  const tituloHtml = escapeHtml(processTitle);
 
   const base = evaluarUrl();
   let sent = 0;
@@ -1326,9 +1357,9 @@ async function notifyParticipants(
       to: p.email,
       subject: `${companyName} te invita a una evaluación`,
       html: emailLayout(`
-        <p>Hola${p.full_name ? ` ${p.full_name}` : ""},</p>
-        <p><strong>${companyName}</strong> te invita a completar la evaluación
-        de <strong>${processTitle}</strong>.</p>
+        <p>Hola${p.full_name ? ` ${escapeHtml(p.full_name)}` : ""},</p>
+        <p><strong>${empresaHtml}</strong> te invita a completar la evaluación
+        de <strong>${tituloHtml}</strong>.</p>
         <p>No necesitás crear ninguna cuenta: entrá desde este enlace, que es
         tuyo y personal.</p>
         <p style="margin:24px 0">
@@ -1353,7 +1384,7 @@ export async function setParticipantStatus(
   /** Motivo tipificado. Solo tiene sentido al descartar. */
   reason?: string
 ): Promise<Result> {
-  const { supabase } = await requireCompany();
+  const { supabase, user } = await requireCompany();
   if (!supabase) return DEMO;
   const blocked = await requireActiveAccount();
   if (blocked) return { ok: false, error: blocked };
@@ -1366,17 +1397,40 @@ export async function setParticipantStatus(
       return { ok: false, error: "Elegí por qué se descarta a esta persona." };
   }
 
-  const { error } = await supabase
+  const detalle = note?.trim() || "";
+
+  // El detalle del descarte es interno. La pantalla lo pide como "contá qué
+  // pasó" y se guardaba en outcome_note, que es justo el texto que el
+  // candidato ve al abrir su enlace: lo que se escribía para el equipo le
+  // llegaba a la persona descartada. Ahora va a las notas del equipo y el
+  // candidato recibe el mensaje estándar.
+  const { data: actualizado, error } = await supabase
     .from("evaluar_participants")
     .update({
       status,
-      outcome_note: note?.trim() || null,
+      outcome_note: status === "descartado" ? null : detalle || null,
       // Al reactivar o avanzar se limpia: un motivo de descarte colgado de
       // alguien que sigue en carrera ensucia el reporte.
       reject_reason: status === "descartado" ? reason : null,
     })
-    .eq("id", participantId);
+    .eq("id", participantId)
+    .select("id");
   if (error) return { ok: false, error: "No pudimos actualizar el estado." };
+  // Con RLS, un update sin permiso no falla: actualiza cero filas. Le pasaba a
+  // la gente del equipo, que veía "listo" y el estado no cambiaba.
+  if (!actualizado || actualizado.length === 0)
+    return {
+      ok: false,
+      error: "Solo la empresa dueña del proceso puede cambiar el estado de un candidato.",
+    };
+
+  if (status === "descartado" && detalle && user) {
+    await supabase.from("evaluar_notes").insert({
+      participant_id: participantId,
+      author_id: user.id,
+      body: `Descarte: ${detalle}`,
+    });
+  }
 
   // La decisión queda en la línea de tiempo que el candidato ve: el objetivo
   // es que nadie se quede sin saber en qué terminó.
@@ -1391,16 +1445,20 @@ export async function setParticipantStatus(
   // dicen nada en su contra. "No cumple un requisito" sin contexto, mandado
   // por un sistema, hace más daño que el silencio.
   const paraElCandidato =
-    note?.trim() ||
-    (status === "descartado" && motivoEsCompartible(reason)
-      ? `${mensajes.descartado} Motivo: ${MOTIVOS_POR_KEY[reason!].label.toLowerCase()}.`
-      : mensajes[status]);
+    status === "descartado"
+      ? motivoEsCompartible(reason)
+        ? `${mensajes.descartado} Motivo: ${MOTIVOS_POR_KEY[reason!].label.toLowerCase()}.`
+        : mensajes.descartado
+      : detalle || mensajes[status];
 
-  await supabase.from("evaluar_events").insert({
+  // Sin la policy de la 053 la base rechaza este insert. Antes el error se
+  // ignoraba y nadie se enteraba de que el candidato no recibía la decisión.
+  const { error: eventoError } = await supabase.from("evaluar_events").insert({
     participant_id: participantId,
     kind: status,
     message: paraElCandidato,
   });
+  if (eventoError) console.error("setParticipantStatus evento:", eventoError);
 
   revalidatePath(`/evaluar/app/procesos/${processId}`);
   return { ok: true };
@@ -1464,7 +1522,26 @@ export async function joinProcessFromJob(processId: string): Promise<Result> {
       error: "Completá tu perfil (nombre y ciudad) para empezar la evaluación.",
     };
 
-  const { data, error } = await supabase
+  // El alta va con la service role. La policy de evaluar_participants solo
+  // deja insertar a la empresa dueña, así que con la sesión del candidato
+  // este insert lo rechazaba siempre la base: la vacante ofrecía "empezar la
+  // evaluación" y el botón terminaba en "no pudimos abrir tu evaluación".
+  // Lo que la policy cuidaba se chequea acá: que el proceso esté publicado y
+  // enlazado a una vacante, y que quien entra sea el candidato de la sesión.
+  const { getAdminClient } = await import("@/lib/supabase/admin");
+  const admin = getAdminClient();
+  if (!admin) return { ok: false, error: "No pudimos abrir tu evaluación." };
+
+  const { data: proceso } = await admin
+    .from("evaluar_processes")
+    .select("id, status, job_id")
+    .eq("id", processId)
+    .maybeSingle();
+  const pr = proceso as { status: string; job_id: string | null } | null;
+  if (!pr || pr.status !== "activo" || !pr.job_id)
+    return { ok: false, error: "Esta evaluación no está abierta." };
+
+  const { data, error } = await admin
     .from("evaluar_participants")
     .insert({
       process_id: processId,
@@ -1477,6 +1554,17 @@ export async function joinProcessFromJob(processId: string): Promise<Result> {
     .single();
 
   if (error) {
+    // Dos clics a la vez: el segundo choca con unique (process_id,
+    // candidate_id) y la fila ya está.
+    if (error.code === "23505") {
+      const { data: ya } = await admin
+        .from("evaluar_participants")
+        .select("token")
+        .eq("process_id", processId)
+        .eq("candidate_id", user.id)
+        .maybeSingle();
+      if (ya) return { ok: true, token: (ya as { token: string }).token };
+    }
     console.error("joinProcessFromJob:", error);
     return { ok: false, error: "No pudimos abrir tu evaluación." };
   }
@@ -1506,6 +1594,33 @@ export async function startEvaluation(token: string): Promise<Result> {
   return { ok: true };
 }
 
+// Arranca el reloj de la etapa del lado del servidor (migración 053). Si la
+// etapa ya había empezado devuelve la hora original, así recargar la página
+// no reinicia el tiempo.
+//
+// `fallback` avisa que la base todavía no tiene la función: hasta que se
+// aplique la 053 el navegador sigue midiendo como antes, en vez de dejar al
+// candidato trabado.
+export async function beginStage(
+  token: string,
+  stageId: string
+): Promise<Result & { startedAt?: string; serverNow?: string; fallback?: boolean }> {
+  const supabase = await getServerClient();
+  if (!supabase) return { ok: true, fallback: true };
+  const { data, error } = await supabase.rpc("evaluar_begin_stage", {
+    p_token: token,
+    p_stage_id: stageId,
+  });
+  if (error) {
+    if (error.code === "PGRST202" || error.code === "42883")
+      return { ok: true, fallback: true };
+    console.error("evaluar_begin_stage:", error);
+    return { ok: false, error: error.message };
+  }
+  const r = data as { started_at: string; server_now: string } | null;
+  return { ok: true, startedAt: r?.started_at, serverNow: r?.server_now };
+}
+
 export async function submitStage(
   token: string,
   stageId: string,
@@ -1526,10 +1641,12 @@ export async function submitStage(
     return { ok: false, error: error.message };
   }
   const status = (data as { status: string } | null)?.status;
+  const repetida = (data as { repeated?: boolean } | null)?.repeated === true;
 
   // Alguien terminó: avisarle a la empresa en el momento es lo que evita que
-  // un buen candidato espere tres días a que alguien entre al panel.
-  if (status === "completado") {
+  // un buen candidato espere tres días a que alguien entre al panel. Una
+  // entrega repetida no vuelve a avisar.
+  if (status === "completado" && !repetida) {
     void notifyCompanyOfCompletion(token);
   }
 
@@ -1582,8 +1699,8 @@ async function notifyCompanyOfCompletion(token: string) {
       to,
       subject: `${p.full_name || "Un candidato"} completó tu evaluación`,
       html: emailLayout(`
-        <p><strong>${p.full_name || "Un candidato"}</strong> terminó la
-        evaluación de <strong>${p.process.title}</strong>.${pct}</p>
+        <p><strong>${escapeHtml(p.full_name || "Un candidato")}</strong> terminó la
+        evaluación de <strong>${escapeHtml(p.process.title)}</strong>.${pct}</p>
         <p style="margin:24px 0">
           <a href="${base}/app/procesos/${p.process.id}/tablero" style="background:#2563eb;color:#fff;padding:12px 20px;border-radius:12px;text-decoration:none;font-weight:600">
             Ver en el tablero de decisión
@@ -1636,14 +1753,46 @@ export async function uploadVideoAnswer(
       error: "La entrevista en video no está habilitada en este momento.",
     };
 
+  // Con la service role no hay RLS que frene nada, así que lo que la base no
+  // controla se controla acá: el token tiene que ser de alguien que sigue
+  // rindiendo un proceso publicado, y la pregunta tiene que ser de video y de
+  // ese mismo proceso. Antes alcanzaba un token cualquiera para escribir una
+  // respuesta en cualquier pregunta, o reemplazar el video después de
+  // terminar la evaluación.
+  if (!/^[0-9a-f-]{36}$/i.test(questionId))
+    return { ok: false, error: "Pregunta inválida." };
+
   const { data: participant } = await admin
     .from("evaluar_participants")
-    .select("id")
+    .select("id, status, process_id, process:evaluar_processes(status)")
     .eq("token", token)
     .maybeSingle();
   if (!participant) return { ok: false, error: "Enlace inválido." };
 
-  const pid = (participant as { id: string }).id;
+  const part = participant as unknown as {
+    id: string;
+    status: string;
+    process_id: string;
+    process: { status: string } | null;
+  };
+  if (["descartado", "completado", "contratado"].includes(part.status))
+    return { ok: false, error: "Esta evaluación ya está cerrada." };
+  if (part.process?.status !== "activo")
+    return { ok: false, error: "Esta evaluación no está abierta." };
+
+  const { data: pregunta } = await admin
+    .from("evaluar_questions")
+    .select("id, kind, stage:evaluar_stages(process_id)")
+    .eq("id", questionId)
+    .maybeSingle();
+  const preg = pregunta as unknown as {
+    kind: string;
+    stage: { process_id: string } | null;
+  } | null;
+  if (!preg || preg.kind !== "video" || preg.stage?.process_id !== part.process_id)
+    return { ok: false, error: "Pregunta inválida." };
+
+  const pid = part.id;
   const ext = file.type === "video/mp4" ? "mp4" : "webm";
   // La primera carpeta es el id del participante: la política de lectura del
   // bucket se apoya en eso para cortar por empresa dueña.
@@ -1819,11 +1968,6 @@ export async function generateStageWithAi(
       error: "El asistente no logró armar preguntas válidas. Probá de nuevo.",
     };
 
-  const { count } = await supabase
-    .from("evaluar_stages")
-    .select("id", { count: "exact", head: true })
-    .eq("process_id", processId);
-
   const { data: stage, error: stageError } = await supabase
     .from("evaluar_stages")
     .insert({
@@ -1833,7 +1977,7 @@ export async function generateStageWithAi(
       intro: (plan_.intro ?? "").trim(),
       minutes: Math.min(60, Math.max(1, plan_.minutes ?? 8)),
       timed: plan_.timed !== false,
-      position: count ?? 0,
+      position: await nextStagePosition(supabase, processId),
     })
     .select("id")
     .single();

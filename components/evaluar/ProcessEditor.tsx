@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import type { EvaluarQuestion, ProcessDetail } from "@/lib/evaluar";
 import type { PlanLimits } from "@/lib/evaluar-plans";
+import { KIND_LABEL, modoCorreccion } from "@/lib/evaluar/puntaje";
 import TemplatePicker from "./TemplatePicker";
 import AiStageGenerator from "./AiStageGenerator";
 import CandidateBoard from "./CandidateBoard";
@@ -81,8 +82,11 @@ export default function ProcessEditor({
   const totalQuestions = stages.reduce((a, s) => a + s.questions.length, 0);
   const minutosTotales = stages.reduce((a, s) => a + (s.minutes || 0), 0);
   // Un proceso sin etapas no se puede publicar: el candidato entraría a una
-  // evaluación vacía.
-  const canPublish = stages.length > 0 && totalQuestions > 0;
+  // evaluación vacía. Y tampoco con UNA etapa vacía: el candidato llegaba a
+  // ella y quedaba frente a un botón que nunca se habilita. El servidor
+  // vuelve a chequearlo al publicar.
+  const etapaVacia = stages.find((s) => s.questions.length === 0);
+  const canPublish = stages.length > 0 && totalQuestions > 0 && !etapaVacia;
 
   // El embudo, calculado una vez. "Esperando" es el numero que importa: son
   // los que ya terminaron y nadie miro todavia.
@@ -185,7 +189,9 @@ export default function ProcessEditor({
                 title={
                   canPublish
                     ? undefined
-                    : "Agregá al menos una etapa con preguntas"
+                    : etapaVacia
+                      ? `La etapa «${etapaVacia.title}» no tiene preguntas`
+                      : "Agregá al menos una etapa con preguntas"
                 }
                 onClick={() =>
                   run(() => updateProcess(process.id, { status: "activo" }))
@@ -248,8 +254,9 @@ export default function ProcessEditor({
 
         {!canPublish && process.status !== "activo" && (
           <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2 mt-3">
-            Para publicar necesitás al menos una etapa con una pregunta. Así
-            nadie entra a una evaluación vacía.
+            {etapaVacia
+              ? `La etapa «${etapaVacia.title}» no tiene preguntas: cargale al menos una o borrala para poder publicar.`
+              : "Para publicar necesitás al menos una etapa con una pregunta. Así nadie entra a una evaluación vacía."}
           </p>
         )}
       </div>
@@ -508,7 +515,15 @@ function StagesTab({
                 <Pencil size={15} />
               </button>
               <button
-                onClick={() => onDeleteStage(stage.id)}
+                onClick={() => {
+                  // Borrar una etapa borra en cascada las respuestas que ya
+                  // dieron los candidatos: un toque de más no puede costar eso.
+                  const aviso =
+                    detail.participants.length > 0
+                      ? `¿Borrar la etapa «${stage.title}»? Se pierden también las respuestas que ya dieron los candidatos en ella, y no se puede deshacer.`
+                      : `¿Borrar la etapa «${stage.title}»?`;
+                  if (window.confirm(aviso)) onDeleteStage(stage.id);
+                }}
                 disabled={pending}
                 aria-label="Borrar etapa"
                 className="w-8 h-8 grid place-items-center rounded-full text-slate-300 hover:text-danger press"
@@ -573,18 +588,31 @@ function StagesTab({
                   <p className="text-sm text-slate-800">{q.text}</p>
                   <div className="flex flex-wrap gap-1.5 mt-1">
                     <span className="chip bg-white text-slate-500 border border-slate-200">
-                      {q.kind}
+                      {KIND_LABEL[q.kind] ?? q.kind}
                     </span>
-                    {q.correct !== null && (
-                      <span className="chip bg-emerald-50 text-emerald-700">
-                        vale {q.weight}
-                      </span>
-                    )}
-                    {q.correct === null && (
-                      <span className="chip bg-slate-100 text-slate-500">
-                        la juzga el evaluador
-                      </span>
-                    )}
+                    {(() => {
+                      // Cómo se corrige. Antes todo lo que no tenía respuesta
+                      // correcta decía "la juzga el evaluador", incluidos los
+                      // ítems de plantilla, que se corrigen solos.
+                      const modo = modoCorreccion(q);
+                      return modo === "correcta" ? (
+                        <span className="chip bg-emerald-50 text-emerald-700">
+                          {q.weight === 1 ? "Vale 1 punto" : `Vale ${q.weight} puntos`}
+                        </span>
+                      ) : modo === "por_opcion" ? (
+                        <span className="chip bg-emerald-50 text-emerald-700">
+                          Puntos por opción
+                        </span>
+                      ) : modo === "rasgo" ? (
+                        <span className="chip bg-indigo-50 text-indigo-700">
+                          Suma al perfil
+                        </span>
+                      ) : (
+                        <span className="chip bg-slate-100 text-slate-500">
+                          Sin corrección automática
+                        </span>
+                      );
+                    })()}
                     {q.knockout && (
                       <span className="chip bg-red-50 text-danger">
                         excluyente
@@ -601,7 +629,13 @@ function StagesTab({
                   <Pencil size={14} />
                 </button>
                 <button
-                  onClick={() => onDeleteQuestion(q.id)}
+                  onClick={() => {
+                    const aviso =
+                      detail.participants.length > 0
+                        ? "¿Borrar esta pregunta? Se pierden las respuestas que ya le dieron los candidatos y no se puede deshacer."
+                        : "¿Borrar esta pregunta?";
+                    if (window.confirm(aviso)) onDeleteQuestion(q.id);
+                  }}
                   disabled={pending}
                   aria-label="Borrar pregunta"
                   className="w-8 h-8 grid place-items-center rounded-full text-slate-300 hover:text-danger press shrink-0"

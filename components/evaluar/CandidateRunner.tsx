@@ -13,6 +13,7 @@ import {
   XCircle,
 } from "lucide-react";
 import {
+  beginStage,
   saveDraft,
   saveParticipantProfile,
   startEvaluation,
@@ -39,7 +40,12 @@ export type Evaluation = {
     draft: Record<string, unknown> | null;
     outcome_note: string | null;
     completed_at: string | null;
+    /** Cuándo empezó la etapa en curso según el servidor (053). */
+    stage_started_at?: string | null;
+    stage_started_for?: string | null;
   };
+  /** Hora del servidor al armar la página, para corregir el reloj local. */
+  server_now?: string;
   process: {
     id: string;
     title: string;
@@ -117,6 +123,9 @@ export default function CandidateRunner({
     participant.status === "descartado" ||
     participant.status === "completado" ||
     participant.status === "contratado";
+  // El panel dice que sin publicar nadie puede rendir, y acá se dejaba rendir
+  // igual: la etapa se mostraba con el proceso en borrador o ya cerrado.
+  const abierto = process.status === "activo";
   const stage = stages[participant.stage_index];
 
   // Una pregunta por pantalla: en el celular una lista de 25 ítems desalienta
@@ -133,27 +142,52 @@ export default function CandidateRunner({
   const startedAtRef = useRef<number | null>(null);
   const [left, setLeft] = useState<number | null>(null);
   const enviarRef = useRef<(() => void) | null>(null);
+  // Una entrega por vez. El reloj que vence y el toque en "Terminar" podían
+  // disparar dos envíos de la misma etapa; la base de la 053 ya no suma dos
+  // veces, pero no hace falta mandarle el segundo.
+  const enviandoRef = useRef(false);
 
-  // Explicación de la etapa. Se muestra una vez por etapa, no una vez por
-  // evaluación: la segunda prueba no se parece en nada a la primera, y quien
-  // ya entendió los Cinco Grandes no sabe todavía qué es un dominó.
+  // Momento de inicio de la etapa, en el reloj de este navegador. Sale del
+  // servidor (evaluar_begin_stage) para que recargar no reinicie el tiempo.
+  const [inicio, setInicio] = useState<number | null>(null);
+  const yaEmpezadaEnServidor =
+    !!stage && participant.stage_started_for === stage.id;
+
+  // Explicación de la etapa, una vez por etapa y SIEMPRE antes de que corra
+  // el reloj. Antes solo aparecía si la etapa tenía texto de introducción: al
+  // terminar una etapa, la siguiente prueba cronometrada arrancaba sola, sin
+  // que la persona confirmara que estaba lista.
   const [briefingListo, setBriefingListo] = useState<string | null>(null);
   const verBriefing =
-    started && !!stage && !!stage.intro && briefingListo !== stage.id;
+    started && !!stage && briefingListo !== stage.id && !yaEmpezadaEnServidor;
+
+  const stageId = stage?.id;
+  const stageTimed = !!stage?.timed;
+  const stageMinutes = stage?.minutes ?? 0;
+
+  // Retomar: si el servidor dice que esta etapa ya había empezado, el reloj
+  // sigue desde esa hora y no desde que se abrió la página.
+  useEffect(() => {
+    if (!yaEmpezadaEnServidor || !participant.stage_started_at || !data.server_now)
+      return;
+    const desfase = Date.parse(data.server_now) - Date.now();
+    const base = Date.parse(participant.stage_started_at) - desfase;
+    queueMicrotask(() => setInicio(base));
+  }, [yaEmpezadaEnServidor, participant.stage_started_at, data.server_now]);
 
   useEffect(() => {
     // El cronómetro arranca recién cuando se cerró la explicación. Si no,
     // leer las instrucciones sale del tiempo de la prueba, que es exactamente
     // el apuro que la explicación venía a sacar.
-    if (!started || !stage || verBriefing) return;
-    const inicio = Date.now();
+    if (!started || !stageId || verBriefing || inicio === null) return;
     startedAtRef.current = inicio;
-    if (!stage.timed) return;
+    if (!stageTimed) return;
 
-    const total = stage.minutes * 60;
-    queueMicrotask(() => setLeft(total));
+    const total = stageMinutes * 60;
+    const restante = () => total - Math.round((Date.now() - inicio) / 1000);
+    queueMicrotask(() => setLeft(Math.max(0, restante())));
     const id = setInterval(() => {
-      const queda = total - Math.round((Date.now() - inicio) / 1000);
+      const queda = restante();
       if (queda <= 0) {
         clearInterval(id);
         setLeft(0);
@@ -163,7 +197,27 @@ export default function CandidateRunner({
       }
     }, 1000);
     return () => clearInterval(id);
-  }, [started, stage, verBriefing]);
+  }, [started, stageId, stageTimed, stageMinutes, verBriefing, inicio]);
+
+  // "Entendí, empezar": el servidor anota la hora y desde ahí se cuenta.
+  function empezarEtapa() {
+    if (!stage) return;
+    const id = stage.id;
+    setError(null);
+    startTransition(async () => {
+      const r = await beginStage(token, id);
+      if (!r.ok) {
+        setError(r.error ?? "No pudimos empezar la etapa.");
+        return;
+      }
+      const base =
+        r.startedAt && r.serverNow
+          ? Date.parse(r.startedAt) - (Date.parse(r.serverNow) - Date.now())
+          : Date.now();
+      setInicio(base);
+      setBriefingListo(id);
+    });
+  }
 
   function responder(value: unknown) {
     if (!question) return;
@@ -175,27 +229,36 @@ export default function CandidateRunner({
   }
 
   function comenzar() {
+    setError(null);
     startTransition(async () => {
-      await startEvaluation(token);
+      const r = await startEvaluation(token);
+      if (!r.ok) {
+        setError(r.error ?? "No pudimos abrir la evaluación.");
+        return;
+      }
       setStarted(true);
       router.refresh();
     });
   }
 
   function enviar() {
-    if (!stage) return;
+    if (!stage || enviandoRef.current) return;
+    enviandoRef.current = true;
     setError(null);
     const seconds = startedAtRef.current
       ? Math.round((Date.now() - startedAtRef.current) / 1000)
       : undefined;
     startTransition(async () => {
       const result = await submitStage(token, stage.id, answers, seconds);
+      enviandoRef.current = false;
       if (!result.ok) {
         setError(result.error ?? "No pudimos guardar tus respuestas.");
         return;
       }
       setAnswers({});
       setQIndex(0);
+      setInicio(null);
+      setLeft(null);
       if (result.status === "completado") celebrate();
       router.refresh();
     });
@@ -325,14 +388,31 @@ export default function CandidateRunner({
           </div>
         )}
 
+        {/* Proceso sin publicar o cerrado: se explica en vez de dejar rendir. */}
+        {!cerrado && !abierto && (
+          <div className={`${theme.card} p-6 text-center`}>
+            <CalendarClock size={28} className="text-slate-400 mx-auto" />
+            <p className={`font-bold mt-2 ${theme.heading}`}>
+              {process.status === "cerrado"
+                ? "Esta evaluación ya cerró"
+                : "Esta evaluación todavía no está abierta"}
+            </p>
+            <p className={`text-sm mt-1.5 ${theme.muted}`}>
+              {process.status === "cerrado"
+                ? "La empresa ya no recibe respuestas para esta búsqueda."
+                : "La empresa la está terminando de preparar. Guardá este enlace y volvé a entrar más tarde."}
+            </p>
+          </div>
+        )}
+
         {/* Datos y CV: el invitado no tiene cuenta de Worka, así que sus datos
             no salen de ningún lado si no se los pedimos. */}
-        {!cerrado && started && (
+        {!cerrado && abierto && started && (
           <CandidateData token={token} participant={participant} theme={theme} />
         )}
 
         {/* Etapa en curso */}
-        {!cerrado && stage && !vencido && (
+        {!cerrado && abierto && stage && !vencido && (
           <div className={`${theme.card} p-5`}>
             {!started ? (
               <div className="text-center py-2">
@@ -352,17 +432,30 @@ export default function CandidateRunner({
                 >
                   {pending ? "Abriendo…" : "Empezar evaluación"}
                 </button>
+                {error && (
+                  <p className="text-sm text-danger bg-red-50 rounded-xl px-4 py-3 mt-3">
+                    {error}
+                  </p>
+                )}
               </div>
-            ) : verBriefing && stage.intro ? (
-              <StageBriefing
-                stage={stage}
-                numero={participant.stage_index + 1}
-                total={stages.length}
-                theme={theme}
-                accent={accent}
-                onAccent={onAccent}
-                onListo={() => setBriefingListo(stage.id)}
-              />
+            ) : verBriefing ? (
+              <>
+                <StageBriefing
+                  stage={stage}
+                  numero={participant.stage_index + 1}
+                  total={stages.length}
+                  theme={theme}
+                  accent={accent}
+                  onAccent={onAccent}
+                  pending={pending}
+                  onListo={empezarEtapa}
+                />
+                {error && (
+                  <p className="text-sm text-danger bg-red-50 rounded-xl px-4 py-3 mt-3">
+                    {error}
+                  </p>
+                )}
+              </>
             ) : (
               <>
                 <div className="flex items-start justify-between gap-3">
@@ -750,6 +843,7 @@ function StageBriefing({
   theme,
   accent,
   onAccent,
+  pending,
   onListo,
 }: {
   stage: Evaluation["stages"][number];
@@ -758,6 +852,7 @@ function StageBriefing({
   theme: ReturnType<typeof getTheme>;
   accent: string;
   onAccent: string;
+  pending: boolean;
   onListo: () => void;
 }) {
   const demo = stage.demo;
@@ -803,7 +898,9 @@ function StageBriefing({
       </div>
 
       <p className={`text-sm mt-4 leading-relaxed ${theme.muted}`}>
-        {stage.intro}
+        {stage.intro?.trim() ||
+          stage.description?.trim() ||
+          "Cuando estés listo, empezá la etapa. Podés tomarte un momento antes: nada corre hasta que toques el botón."}
       </p>
 
       {demo && (
@@ -846,10 +943,11 @@ function StageBriefing({
 
       <button
         onClick={onListo}
-        className="w-full mt-5 text-base py-3 rounded-xl font-semibold press"
+        disabled={pending}
+        className="w-full mt-5 text-base py-3 rounded-xl font-semibold press disabled:opacity-60"
         style={{ background: accent, color: onAccent }}
       >
-        Entendí, empezar
+        {pending ? "Abriendo…" : "Entendí, empezar"}
       </button>
 
       {stage.timed && (

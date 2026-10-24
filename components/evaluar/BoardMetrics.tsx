@@ -55,6 +55,12 @@ export default function BoardMetrics({ board }: { board: BoardData }) {
     }))
     .sort((a, b) => b.promedio - a.promedio);
 
+  // Con una sola persona no hay grupo: el "promedio de la camada" sería su
+  // propio número repetido. Recién con dos se dibuja.
+  const rendidos = board.candidates.filter(
+    (c) => c.percent !== null || Object.keys(c.profile ?? {}).length > 0
+  ).length;
+  if (rendidos < 2) return null;
   if (conPuntaje.length === 0 && rasgos.length === 0) return null;
 
   const min = conPuntaje.length ? Math.min(...conPuntaje) : 0;

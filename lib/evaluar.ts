@@ -7,6 +7,12 @@ import {
   type EvaluarAccount,
   type EvaluarStatus,
 } from "@/lib/evaluar-access";
+import {
+  fitCoverage,
+  fitScore,
+  mensajeParaEmpresa,
+  percentOf,
+} from "@/lib/evaluar/puntaje";
 
 export { TRIAL_DAYS, resolveAccess };
 export type { AccessState, EvaluarAccount, EvaluarStatus };
@@ -72,6 +78,9 @@ export type EvaluarQuestion = {
   weight: number;
   knockout: boolean;
   dimension?: string | null;
+  /** Puntos por opción (juicio situacional). Null en el resto. */
+  option_scores?: Record<string, number> | null;
+  reverse?: boolean;
   /** Tope de grabacion, solo para las preguntas de video. */
   max_seconds?: number;
 };
@@ -220,7 +229,11 @@ export async function getProcessDetail(
       .from("evaluar_stages")
       .select("*, evaluar_questions(*)")
       .eq("process_id", id)
-      .order("position"),
+      // Mismo desempate que la base (053): con dos etapas en la misma
+      // posición, el panel y el candidato tienen que ver el mismo orden.
+      .order("position")
+      .order("created_at")
+      .order("id"),
     supabase
       .from("evaluar_participants")
       .select("*")
@@ -336,7 +349,9 @@ export async function getPanelData(): Promise<PanelData> {
       .in("process_id", ids),
     supabase
       .from("evaluar_events")
-      .select("kind, message, created_at, participant:evaluar_participants(process_id)")
+      .select(
+        "kind, message, created_at, participant:evaluar_participants(process_id, full_name)"
+      )
       .order("created_at", { ascending: false })
       .limit(15),
   ]);
@@ -403,15 +418,18 @@ export async function getPanelData(): Promise<PanelData> {
 
   const activity: PanelActivity[] = (
     (events ?? []) as unknown as {
+      kind: string;
       message: string;
       created_at: string;
-      participant: { process_id: string } | null;
+      participant: { process_id: string; full_name: string } | null;
     }[]
   )
     .filter((e) => e.participant && titulo.has(e.participant.process_id))
     .map((e) => ({
       at: e.created_at,
-      message: e.message,
+      // Las filas están escritas para el candidato ("Completaste la etapa");
+      // acá las lee la empresa y tienen que contar qué hizo otra persona.
+      message: mensajeParaEmpresa(e.kind, e.message, e.participant!.full_name),
       processTitle: titulo.get(e.participant!.process_id) ?? "",
     }));
 
@@ -459,6 +477,8 @@ export type BoardCandidate = EvaluarParticipant & {
   percent: number | null;
   /** Ajuste al perfil ideal del puesto, 0-100. Null si no se definio. */
   fit: number | null;
+  /** Cuántos de los rasgos del perfil ideal rindió: el ajuste sale solo de esos. */
+  fitCoverage: { rendidos: number; pedidos: number };
   profile: DimensionScores;
   answers: { question_id: string; value: unknown; score: number }[];
   notes: { id: string; body: string; rating: number | null; created_at: string }[];
@@ -470,33 +490,9 @@ export type BoardData = {
   candidates: BoardCandidate[];
 };
 
-// Ajuste al perfil ideal: promedio de los rasgos que importan, ponderado por
-// cuánto importa cada uno.
-//
-// Ordenar por puntaje bruto trata igual a un cajero y a un supervisor. Acá la
-// empresa dice qué pesa para ESE puesto y el orden lo refleja. Se calcula solo
-// sobre los rasgos que la persona efectivamente rindió: penalizar por una
-// etapa que todavía no hizo la dejaría última sin motivo.
-export function fitScore(
-  profile: DimensionScores,
-  ideal: Record<string, number> | undefined
-): number | null {
-  if (!ideal) return null;
-  const claves = Object.keys(ideal).filter((k) => (ideal[k] ?? 0) > 0);
-  if (claves.length === 0) return null;
-
-  let suma = 0;
-  let pesos = 0;
-  for (const k of claves) {
-    const v = profile[k];
-    if (!v || v.max <= 0) continue;
-    const peso = ideal[k];
-    suma += (v.raw / v.max) * peso;
-    pesos += peso;
-  }
-  if (pesos === 0) return null;
-  return Math.round((suma / pesos) * 100);
-}
+// El ajuste al perfil ideal y el porcentaje viven en lib/evaluar/puntaje.ts,
+// que no importa nada y así se prueba con node --test.
+export { fitScore };
 
 export async function getBoardData(processId: string): Promise<BoardData | null> {
   const detail = await getProcessDetail(processId);
@@ -550,13 +546,14 @@ export async function getBoardData(processId: string): Promise<BoardData | null>
       // El porcentaje se calcula sobre lo que la persona efectivamente rindió,
       // no sobre el total del proceso: comparar a alguien que hizo dos etapas
       // con alguien que hizo una sobre la misma base sería injusto.
-      percent:
-        p.max_score && p.max_score > 0
-          ? Math.round(((p.score ?? 0) / p.max_score) * 100)
-          : null,
+      percent: percentOf(p.score, p.max_score),
       answers: answerMap.get(p.id) ?? [],
       notes: noteMap.get(p.id) ?? [],
       fit: fitScore(
+        (p.profile ?? {}) as DimensionScores,
+        detail.process.ideal_profile
+      ),
+      fitCoverage: fitCoverage(
         (p.profile ?? {}) as DimensionScores,
         detail.process.ideal_profile
       ),

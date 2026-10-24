@@ -1,16 +1,16 @@
 import { getBoardData } from "@/lib/evaluar";
 import { ALL_DIMENSIONS } from "@/lib/evaluar/templates";
+import { csvCell } from "@/lib/evaluar/puntaje";
 
 // Exportación del proceso a CSV. RRHH trabaja en planillas: pelear contra eso
 // es perder, así que se les da el archivo que van a usar igual.
 //
-// getBoardData ya filtra por empresa dueña, así que nadie puede exportar un
-// proceso ajeno cambiando el id en la URL.
-function csvCell(value: unknown): string {
-  const s = value === null || value === undefined ? "" : String(value);
-  // Excel en español separa por punto y coma; se escapan comillas duplicando.
-  return `"${s.replace(/"/g, '""')}"`;
-}
+// getBoardData lee con la sesión y la RLS corta: exporta la empresa dueña y
+// también quien fue sumado al equipo del proceso (ver hallazgo EV-15 en
+// docs/auditoria-evaluar). Nadie ajeno exporta cambiando el id en la URL.
+//
+// La celda (comillas, punto y coma y fórmulas neutralizadas) sale de
+// lib/evaluar/puntaje.ts, que tiene sus pruebas.
 
 export async function GET(
   _request: Request,

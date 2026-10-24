@@ -161,8 +161,6 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
         ))}
       </div>
 
-      <BoardMetrics board={board} />
-
       {/* Por qué se cae la gente.
           El embudo de arriba dice cuántos se pierden; esto dice por qué, que
           es lo único que se puede accionar. Si la mitad se cae por "no
@@ -207,7 +205,10 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
       <div className="overflow-x-auto scroll-thin -mx-4 px-4">
         <div className="flex gap-3 min-w-min pb-2">
           {board.candidates.map((c, i) => {
-            const lider = i === 0 && c.percent !== null;
+            // Un descartado por excluyente puede tener el mejor número y
+            // aun así no está en carrera: no se lo marca como el primero.
+            const lider =
+              i === 0 && c.percent !== null && c.status !== "descartado";
             return (
               <div
                 key={c.id}
@@ -248,6 +249,14 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
                     <p className="text-2xl font-bold text-indigo-900 leading-none mt-0.5">
                       {c.fit}%
                     </p>
+                    {/* De dónde sale: sin esto, 32% de ajuste al lado de 45%
+                        de puntaje parecían dos versiones del mismo número. */}
+                    <p className="text-[11px] text-indigo-700/80 mt-1 leading-snug">
+                      Promedio de los rasgos que marcaste en el perfil ideal
+                      {c.fitCoverage.pedidos > 0 &&
+                        ` (rindió ${c.fitCoverage.rendidos} de ${c.fitCoverage.pedidos})`}
+                      . No usa el puntaje de abajo.
+                    </p>
                   </div>
                 )}
 
@@ -260,7 +269,7 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
                           <span className="text-base">%</span>
                         </span>
                         <span className="text-xs text-slate-400">
-                          {c.score}/{c.max_score} pts
+                          {c.score} de {c.max_score} puntos
                         </span>
                       </div>
                       <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mt-2">
@@ -275,6 +284,10 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
                           style={{ width: `${c.percent}%` }}
                         />
                       </div>
+                      <p className="text-[11px] text-slate-400 mt-1 leading-snug">
+                        Puntaje de las preguntas que se corrigen solas, sobre
+                        lo que rindió hasta ahora.
+                      </p>
                     </>
                   ) : (
                     <p className="text-sm text-slate-400">Sin rendir todavía</p>
@@ -473,11 +486,16 @@ export default function DecisionBoard({ board }: { board: BoardData }) {
         </div>
       </div>
 
+      {/* Las métricas del grupo van después de las personas: con uno o dos
+          candidatos, un "promedio de la camada" arriba de todo no dice nada
+          y empuja la comparación hacia abajo. */}
+      <BoardMetrics board={board} />
+
       <div className="text-xs text-slate-400 space-y-1.5">
         <p>
           Cada decisión que tomás acá le llega al candidato en su línea de
-          tiempo, con el motivo que escribas. Nadie queda esperando sin
-          respuesta.
+          tiempo con un mensaje estándar. El detalle que escribas al descartar
+          queda como nota interna del equipo: el candidato no lo ve.
         </p>
         {/* Los tests de personalidad describen estilos, no capacidad. Decirlo
             en la pantalla donde se decide es lo único que evita que el
@@ -551,8 +569,8 @@ function MotivoDescarteForm({
         className="input text-xs min-h-14 mt-2"
         placeholder={
           elegido?.pideDetalle
-            ? "Contá brevemente qué pasó (recomendado para este motivo)"
-            : "Detalle, si querés dejarlo asentado"
+            ? "Contá brevemente qué pasó (recomendado). Queda como nota interna."
+            : "Detalle interno, si querés dejarlo asentado. El candidato no lo ve."
         }
         value={nota}
         onChange={(e) => setNota(e.target.value)}

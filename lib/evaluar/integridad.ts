@@ -118,14 +118,16 @@ export const INTEGRIDAD: Template = {
     "cada una. No te preguntamos nada sobre tu vida privada ni sobre tu salud. " +
     "Contestá lo que realmente pensás: las respuestas armadas se notan y juegan " +
     "en contra.",
+  // El ejemplo es neutro a propósito. El anterior era un ítem del propio
+  // instrumento (llevarse materiales) con la respuesta "deseable" marcada en
+  // verde: le enseñaba al candidato qué contestar en el factor que se mide.
   demo: {
-    text: "Ejemplo: «Si un compañero se lleva materiales de la empresa, no es asunto mío.»",
+    text: "Ejemplo: «Prefiero saber con anticipación qué tareas me tocan en la semana.»",
     options: LIKERT_LABELS,
-    answer: "En desacuerdo",
+    answer: "De acuerdo",
     explain:
-      "No hay una única respuesta correcta, pero fijate que la frase mezcla dos " +
-      "cosas: lo que hizo el otro y qué te toca a vos. Marcá lo que de verdad " +
-      "harías, no lo que suena mejor.",
+      "Es solo para ver el formato: esta frase no cuenta. En la prueba no hay " +
+      "respuestas correctas; marcá cuánto coincidís de verdad con cada frase.",
   },
   dimensions: DIMENSIONES_INTEGRIDAD.map((d) => ({
     key: d.key,
@@ -343,6 +345,14 @@ export function leerIntegridad(
   profile: Record<string, { raw: number; max: number }> | undefined
 ): { validez: FactorIntegridad[]; riesgo: FactorIntegridad[] } | null {
   if (!profile) return null;
+
+  // "integridad" es también un rasgo del juicio situacional y del filtro de
+  // cajero, así que su sola presencia no prueba que se haya rendido este
+  // instrumento. Sin ninguno de los otros ocho factores, lo que hay en el
+  // perfil vino de otra prueba y leerlo con estas bandas sería inventar un
+  // resultado de integridad que nadie tomó.
+  const propias = DIMENSIONES_INTEGRIDAD.filter((d) => d.key !== "integridad");
+  if (!propias.some((d) => (profile[d.key]?.max ?? 0) > 0)) return null;
 
   const factores: FactorIntegridad[] = [];
   for (const d of DIMENSIONES_INTEGRIDAD) {

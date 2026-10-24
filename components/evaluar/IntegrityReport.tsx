@@ -80,13 +80,13 @@ export default function IntegrityReport({
         >
           <p className="text-sm font-semibold text-primary-dark">
             {confiable
-              ? "Las respuestas parecen sinceras"
-              : "Cuidado: las respuestas parecen armadas"}
+              ? "Sin señales de respuesta complaciente"
+              : "Patrón de respuesta muy favorable"}
           </p>
           <p className="text-xs text-slate-600 mt-1 leading-relaxed">
             {confiable
-              ? "Admitió faltas menores que casi todo el mundo tiene, que es lo que se espera de alguien contestando de verdad."
-              : "Se muestra impecable incluso en cosas que casi nadie cumple. Cuando eso pasa, los factores de abajo describen la imagen que quiso dar y no a la persona: conviene tomarlos con pinzas o volver a tomar la prueba."}
+              ? "Admitió faltas menores que casi todo el mundo tiene. Es una señal, no una prueba de sinceridad."
+              : "Se mostró impecable incluso en cosas que casi nadie cumple. Puede ser deseo de causar buena impresión, nervios o una lectura literal de las frases; no es una acusación. Tomá los factores de abajo con cautela y, si importa, repreguntá en la entrevista."}
           </p>
           <div className="grid sm:grid-cols-2 gap-3 mt-3">
             {datos.validez.map((f) => (
