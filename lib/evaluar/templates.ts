@@ -12,10 +12,30 @@
 
 import { LIKERT_LABELS } from "./likert";
 import { INTEGRIDAD } from "./integridad";
+import {
+  MATRICES_FIGURALES,
+  SERIES_FIGURALES,
+  codificar,
+  type FiguraSpec,
+} from "./figuras";
+import { ATENCION, NUMERICO } from "./bancos/generados";
+import {
+  BIG5_EXTRA,
+  COMPETENCIAS,
+  COMPETENCIAS_DIMENSIONES,
+} from "./bancos/personalidad";
+import {
+  CONDUCTUAL,
+  SJT_DIMENSIONES_EXTRA,
+  SJT_EXTRA,
+} from "./bancos/situacional";
 
 export type TemplateQuestion = {
   text: string;
-  kind: "likert" | "unica";
+  /** "figura": la consigna y las opciones son dibujos (ver figuras.ts). */
+  kind: "likert" | "unica" | "texto" | "figura";
+  /** Casillas de la matriz o de la serie, solo en las de tipo "figura". */
+  figure?: FiguraSpec;
   options?: string[];
   /** Respuesta correcta (solo instrumentos con vara objetiva). */
   correct?: string;
@@ -51,6 +71,15 @@ export type Template = {
   intro: string;
   /** Ejemplo resuelto, para ver el formato sin que corra el reloj. */
   demo: TemplateDemo;
+  /**
+   * Banco: cuántas preguntas recibe cada candidato, sorteadas y repartidas
+   * por rasgo (ver evaluar_begin_stage, migración 056). Sin esto, todas.
+   */
+  draw?: number;
+  /** Cada candidato ve las preguntas en otro orden. */
+  shuffleQuestions?: boolean;
+  /** Cada candidato ve las opciones en otro orden (nunca en las escalas). */
+  shuffleOptions?: boolean;
 };
 
 export type TemplateDemo = {
@@ -58,6 +87,8 @@ export type TemplateDemo = {
   options: string[];
   answer: string;
   explain: string;
+  /** Ejemplo en figuras: las opciones y la respuesta son códigos de figura. */
+  figure?: FiguraSpec;
 };
 
 // Se reexporta para no romper los imports que ya la traen de aca.
@@ -468,14 +499,284 @@ const reasoning: Template = {
   ],
 };
 
+// ── Bancos (sorteo por candidato) ──────────────────────────────
+//
+// Estas pruebas tienen muchas más preguntas de las que rinde cada persona: a
+// cada candidato se le sortea una muestra repartida por rasgo, en otro orden
+// y con las opciones mezcladas. Dos postulantes del mismo proceso ven
+// pruebas distintas, y pasarse las respuestas deja de servir.
+
+const figural = (dim: string) => (it: (typeof MATRICES_FIGURALES)[number]): TemplateQuestion => ({
+  text:
+    it.figure.tipo === "matriz"
+      ? "¿Qué figura completa la casilla vacía?"
+      : "¿Qué figura sigue en la serie?",
+  kind: "figura",
+  figure: it.figure,
+  options: it.options,
+  correct: it.correct,
+  dimension: dim,
+});
+
+// Ejemplo de matriz: forma por fila (círculo, cuadrado, triángulo) y relleno
+// por columna (blanco, negro, rayado). Falta el triángulo rayado.
+const DEMO_MATRIZ = (() => {
+  const c = (forma: "circulo" | "cuadrado" | "triangulo", relleno: "vacio" | "lleno" | "rayado") =>
+    codificar({ forma, relleno, giro: 0, cantidad: 1, marca: "ninguna", pos: "sd", tam: "g" });
+  const formas = ["circulo", "cuadrado", "triangulo"] as const;
+  const rellenos = ["vacio", "lleno", "rayado"] as const;
+  const celdas = formas.flatMap((f) => rellenos.map((r) => c(f, r))).slice(0, 8);
+  return {
+    figure: { tipo: "matriz" as const, celdas },
+    options: [c("triangulo", "lleno"), c("triangulo", "rayado"), c("cuadrado", "rayado"), c("circulo", "rayado")],
+    answer: c("triangulo", "rayado"),
+  };
+})();
+
+const DEMO_SERIE = (() => {
+  const c = (giro: number) =>
+    codificar({ forma: "linea", relleno: "vacio", giro, cantidad: 1, marca: "ninguna", pos: "sd", tam: "g" });
+  return {
+    figure: { tipo: "serie" as const, celdas: [c(0), c(45), c(90), c(135)] },
+    options: [c(0), c(45), c(90), c(135)],
+    answer: c(0),
+  };
+})();
+
+const matrices: Template = {
+  key: "matrices",
+  name: "Razonamiento abstracto con figuras (matrices)",
+  family: "cognitivo",
+  summary:
+    "Matrices de 3×3 con una casilla vacía: hay que descubrir la regla y elegir la figura que la completa.",
+  measures:
+    "Razonamiento abstracto sin depender del idioma ni de la lectura. Cada candidato recibe 12 de 120 matrices, de una a tres reglas simultáneas.",
+  minutes: 12,
+  scored: "correcto",
+  source: "Ítems figurales originales de Worka, generados por regla.",
+  dimensions: [
+    { key: "figural", label: "Razonamiento abstracto (figuras)", high: "Descubre reglas nuevas en poco tiempo.", low: "Necesita ejemplos antes de encontrar la regla." },
+  ],
+  intro:
+    "Vas a ver cuadros de nueve casillas con figuras. En cada fila y cada " +
+    "columna las figuras cambian siguiendo una regla, y la última casilla está " +
+    "vacía. Elegí la figura que la completa. Tiene tiempo: si una no te sale, " +
+    "pasá a la siguiente.",
+  demo: {
+    text: "Ejemplo: ¿qué figura completa la casilla vacía?",
+    options: DEMO_MATRIZ.options,
+    answer: DEMO_MATRIZ.answer,
+    figure: DEMO_MATRIZ.figure,
+    explain:
+      "Cada fila tiene una forma (círculo, cuadrado, triángulo) y cada columna " +
+      "un relleno (blanco, negro, rayado). A la última casilla le toca el " +
+      "triángulo rayado.",
+  },
+  questions: MATRICES_FIGURALES.map(figural("figural")),
+  draw: 12,
+  shuffleQuestions: true,
+  shuffleOptions: true,
+};
+
+const seriesFiguras: Template = {
+  key: "series_figuras",
+  name: "Series de figuras",
+  family: "cognitivo",
+  summary: "Cuatro figuras en fila que cambian siguiendo una regla: hay que elegir la quinta.",
+  measures:
+    "Razonamiento secuencial con figuras. Cada candidato recibe 10 de 60 series.",
+  minutes: 8,
+  scored: "correcto",
+  source: "Ítems figurales originales de Worka, generados por regla.",
+  dimensions: [
+    { key: "secuencias", label: "Razonamiento secuencial (figuras)", high: "Sigue varias reglas a la vez sin perderse.", low: "Se pierde cuando cambian dos cosas juntas." },
+  ],
+  intro:
+    "Vas a ver cuatro figuras en fila. De una a la siguiente cambia algo: la " +
+    "forma, el relleno, cuántas son, hacia dónde apuntan o dónde está la marca. " +
+    "Elegí la que sigue. Tiene tiempo.",
+  demo: {
+    text: "Ejemplo: ¿qué figura sigue en la serie?",
+    options: DEMO_SERIE.options,
+    answer: DEMO_SERIE.answer,
+    figure: DEMO_SERIE.figure,
+    explain:
+      "La línea gira un octavo de vuelta en cada paso. Después de la inclinada " +
+      "hacia la izquierda vuelve a quedar horizontal.",
+  },
+  questions: SERIES_FIGURALES.map(figural("secuencias")),
+  draw: 10,
+  shuffleQuestions: true,
+  shuffleOptions: true,
+};
+
+const numericoBanco: Template = {
+  key: "numerico_banco",
+  name: "Razonamiento numérico",
+  family: "cognitivo",
+  summary:
+    "Series de números, descuentos y reglas de tres con precios en guaraníes.",
+  measures:
+    "Cálculo aplicado y detección de patrones numéricos. Cada candidato recibe 12 de 60 ejercicios.",
+  minutes: 12,
+  scored: "correcto",
+  source: "Ítems originales de Worka, generados por regla (la respuesta sale de la cuenta).",
+  dimensions: [
+    { key: "numerico", label: "Razonamiento numérico", high: "Detecta patrones en números.", low: "Le cuesta el cálculo abstracto." },
+  ],
+  intro:
+    "Son ejercicios con números: series, descuentos y cuentas del día a día. " +
+    "Podés usar papel, pero no calculadora. Tiene tiempo: si uno se te traba, " +
+    "pasá al siguiente.",
+  demo: {
+    text: "Ejemplo: una remera cuesta 80.000 Gs. y tiene 25% de descuento. ¿Cuánto se paga?",
+    options: ["20.000 Gs.", "55.000 Gs.", "60.000 Gs.", "75.000 Gs."],
+    answer: "60.000 Gs.",
+    explain: "El 25% de 80.000 es 20.000. Se paga 80.000 − 20.000 = 60.000.",
+  },
+  questions: NUMERICO,
+  draw: 12,
+  shuffleQuestions: true,
+  shuffleOptions: true,
+};
+
+const atencion: Template = {
+  key: "atencion_detalle",
+  name: "Atención y precisión",
+  family: "cognitivo",
+  summary:
+    "Facturas, RUC, chapas y nombres casi iguales: hay que encontrar el que coincide exactamente.",
+  measures:
+    "Precisión al copiar y verificar datos, clave en caja, depósito y administración. Cada candidato recibe 15 de 60.",
+  minutes: 6,
+  scored: "correcto",
+  source: "Ítems originales de Worka, generados por regla.",
+  dimensions: [
+    { key: "atencion", label: "Atención y precisión", high: "Detecta diferencias mínimas en datos.", low: "Se le escapan errores chicos al copiar." },
+  ],
+  intro:
+    "Vas a ver un dato (una factura, un RUC, una chapa o un nombre) y cuatro " +
+    "opciones muy parecidas. Solo una es exactamente igual. Es rápido y tiene " +
+    "tiempo: mirá con cuidado cada carácter.",
+  demo: {
+    text: "Ejemplo: ¿cuál es exactamente igual a este RUC?  4512367-8",
+    options: ["4512367-8", "4513267-8", "4512367-3", "451267-8"],
+    answer: "4512367-8",
+    explain: "Las otras tienen dos números invertidos, el último dígito cambiado o un número de menos.",
+  },
+  questions: ATENCION,
+  draw: 15,
+  shuffleQuestions: true,
+  shuffleOptions: true,
+};
+
+const big5Banco: Template = {
+  ...bigFive,
+  key: "big5_banco",
+  name: "Cinco Grandes (versión ampliada)",
+  summary:
+    "Los cinco rasgos de personalidad con un banco de 85 frases: cada candidato recibe 40, ocho por rasgo.",
+  measures: bigFive.measures,
+  minutes: 9,
+  source:
+    "25 ítems basados en el IPIP (dominio público) y 60 originales de Worka. Sin baremo ni validación propios todavía.",
+  questions: [...bigFive.questions, ...BIG5_EXTRA],
+  draw: 40,
+  shuffleQuestions: true,
+};
+
+const competencias: Template = {
+  key: "competencias",
+  name: "Competencias conductuales",
+  family: "laboral",
+  summary:
+    "Seis competencias de trabajo: resultados, responsabilidad, comunicación, aprendizaje, autocontrol e iniciativa.",
+  measures:
+    "Cómo dice actuar la persona en el día a día. Cada candidato recibe 36 de 60 frases, seis por competencia.",
+  minutes: 8,
+  scored: "dimension",
+  source: "Ítems originales de Worka. Describe estilos; no tiene validación propia todavía.",
+  dimensions: COMPETENCIAS_DIMENSIONES,
+  intro:
+    "No es un examen. Son frases sobre cómo trabajás; marcá cuánto se parecen " +
+    "a vos. No hay respuestas buenas ni malas, y contestar lo que suena mejor " +
+    "se nota: algunas frases dicen lo mismo al revés.",
+  demo: {
+    text: "Ejemplo: «Prefiero terminar una tarea antes de empezar otra.»",
+    options: LIKERT_LABELS,
+    answer: "De acuerdo",
+    explain: "Es solo para ver el formato: esta frase no cuenta. Marcá cuánto coincidís de verdad.",
+  },
+  questions: COMPETENCIAS,
+  draw: 36,
+  shuffleQuestions: true,
+};
+
+const sjtBanco: Template = {
+  ...sjt,
+  key: "sjt_banco",
+  name: "Juicio situacional (versión ampliada)",
+  summary:
+    "48 situaciones de caja, salón, depósito, oficina y supervisión: cada candidato recibe 12.",
+  measures:
+    "Qué haría la persona ante situaciones reales: servicio, resolución, compañerismo, integridad y conducción.",
+  minutes: 12,
+  dimensions: [...sjt.dimensions, ...SJT_DIMENSIONES_EXTRA],
+  questions: [...sjt.questions, ...SJT_EXTRA],
+  draw: 12,
+  shuffleQuestions: true,
+  shuffleOptions: true,
+};
+
+const entrevista: Template = {
+  key: "entrevista_conductual",
+  name: "Entrevista por competencias (escrita)",
+  family: "laboral",
+  summary:
+    "Preguntas abiertas del tipo «contame una vez que…». Cada candidato recibe 4 de 40.",
+  measures:
+    "Experiencias concretas que respaldan lo que la persona dice de sí misma. Las lee el evaluador.",
+  minutes: 15,
+  scored: "dimension",
+  source: "Preguntas originales de Worka, con el formato situación-acción-resultado.",
+  dimensions: [],
+  intro:
+    "Vas a responder unas pocas preguntas sobre situaciones que viviste en el " +
+    "trabajo, el estudio o la vida diaria. Contá qué pasó, qué hiciste vos y " +
+    "cómo terminó. No hay respuestas correctas: importa que sea un caso real.",
+  demo: {
+    text: "Ejemplo: «Contanos una vez que resolviste un problema sin ayuda.»",
+    options: ["Qué pasó", "Qué hiciste vos", "Cómo terminó"],
+    answer: "Qué hiciste vos",
+    explain:
+      "Una buena respuesta cuenta las tres cosas, y sobre todo qué hiciste vos. " +
+      "Unas pocas líneas alcanzan.",
+  },
+  questions: CONDUCTUAL,
+  draw: 4,
+  shuffleQuestions: true,
+};
+
 // La integridad vive en su propio archivo: son 27 items con mucho contexto
 // escrito al lado, y mezclarlos aca haria ilegible el resto del catalogo.
+//
+// Las cinco primeras ahora también mezclan el orden al aplicarse (las etapas
+// ya creadas no cambian). Las escalas nunca mezclan sus opciones: el orden
+// de "muy en desacuerdo" a "muy de acuerdo" es parte de la pregunta.
 export const TEMPLATES: Template[] = [
-  bigFive,
-  workStyle,
-  sjt,
-  reasoning,
-  INTEGRIDAD,
+  { ...bigFive, shuffleQuestions: true },
+  { ...workStyle, shuffleQuestions: true },
+  { ...sjt, shuffleQuestions: true, shuffleOptions: true },
+  { ...reasoning, shuffleQuestions: true, shuffleOptions: true },
+  { ...INTEGRIDAD, shuffleQuestions: true },
+  matrices,
+  seriesFiguras,
+  numericoBanco,
+  atencion,
+  big5Banco,
+  competencias,
+  sjtBanco,
+  entrevista,
 ];
 
 export function getTemplate(key: string): Template | undefined {

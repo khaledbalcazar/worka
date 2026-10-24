@@ -22,6 +22,7 @@ datos y devuelven 404. Ver [09-pendientes.md](09-pendientes.md).
 | [08-roadmap.md](08-roadmap.md) | Orden propuesto de trabajo |
 | [09-pendientes.md](09-pendientes.md) | Pendientes, bloqueos y decisiones de producto abiertas |
 | [10-glosario.md](10-glosario.md) | Terminología del producto (decisión D-6) |
+| [11-azar-y-bancos.md](11-azar-y-bancos.md) | Formulario propio por candidato, ítems con figuras y 500 ítems nuevos |
 
 ## Resumen ejecutivo
 

@@ -24,6 +24,14 @@ const FAMILY_LABEL = {
 
 // Catálogo de tests listos. Cada uno se agrega como una etapa más del proceso,
 // con sus preguntas ya cargadas: la empresa no tiene que redactar nada.
+// Con banco (draw), lo que importa es cuántas recibe cada uno y de cuántas
+// salen: "12 de 120" dice a la vez el largo y que no todos ven lo mismo.
+function cuantas(t: Template): string {
+  return t.draw && t.draw < t.questions.length
+    ? `${t.draw} preguntas por candidato, de un banco de ${t.questions.length}`
+    : `${t.questions.length} preguntas`;
+}
+
 export default function TemplatePicker({
   pending,
   onPick,
@@ -86,9 +94,7 @@ export default function TemplatePicker({
 
               <div className="text-xs text-slate-500 space-y-1">
                 <p>
-                  <strong className="text-slate-700">
-                    {detail.questions.length} preguntas
-                  </strong>{" "}
+                  <strong className="text-slate-700">{cuantas(detail)}</strong>{" "}
                   · unos {detail.minutes} minutos ·{" "}
                   {detail.scored === "correcto"
                     ? "con respuestas correctas"
@@ -97,7 +103,12 @@ export default function TemplatePicker({
                 <p>{detail.source}</p>
               </div>
 
-              {detail.scored === "dimension" && (
+              {detail.questions.every((q) => q.kind === "texto") ? (
+                <p className="text-xs text-amber-800 bg-amber-50 rounded-xl px-3 py-2">
+                  Son preguntas abiertas: no se puntúan solas. Las respuestas
+                  las lee una persona del equipo.
+                </p>
+              ) : detail.scored === "dimension" && (
                 <p className="text-xs text-amber-800 bg-amber-50 rounded-xl px-3 py-2">
                   Este test describe estilos, no capacidad: no hay perfiles
                   buenos ni malos. Usalo como una entrada más de la decisión,
@@ -179,7 +190,7 @@ export default function TemplatePicker({
                         {t.summary}
                       </span>
                       <span className="block text-[11px] text-slate-400 mt-1">
-                        {t.questions.length} preguntas · {t.minutes} min
+                        {cuantas(t)} · {t.minutes} min
                       </span>
                     </span>
                   </button>

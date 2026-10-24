@@ -53,6 +53,9 @@ recorridos bloqueados > UX > consistencia. **Nada está commiteado.**
 | C-26 | EV-15 (D-5 c) | `lib/evaluar.ts` (`BoardData.esDueno`), `export/route.ts` | El Excel del equipo sale sin email ni teléfono | tsc/eslint |
 | C-27 | EV-22 (D-7) | `supabase/migration-055.sql` (nueva), `puntaje.ts` (escala 3, `contarRespondidas`), `report.ts`, `DecisionBoard.tsx`, informe | Likert sin responder fuera del máximo para participantes nuevos; «respondió X de Y» | 3 pruebas (29/29); `supabase/tests/evaluar-055.sql` **sin correr** |
 | C-28 | EV-36 (D-6) | `actions.ts`, `cierre/page.tsx`, `PanelHome.tsx`, `ProcessEditor.tsx`, `ProcessSettings.tsx`, `lib/evaluar.ts`, `10-glosario.md` | «Concurso» → «proceso» en los textos visibles; glosario | grep sin apariciones visibles |
+| C-29 | I-7 (pedido) | `supabase/migration-056.sql` (nueva), `actions.ts`, `ProcessEditor.tsx`, `CandidateRunner.tsx`, `lib/evaluar.ts`, `puntaje.ts` (`sortearFormulario`) | Formulario propio por candidato: orden, opciones y sorteo estratificado del banco; el banco no viaja al navegador | 4 pruebas del sorteo; `supabase/tests/evaluar-056.sql` **sin correr** |
+| C-30 | Pedido (figuras) | `lib/evaluar/figuras.ts`, `components/evaluar/Figura.tsx`, runner y demo | Tipo «figura»: matrices 3×3 y series dibujadas en SVG, con descripción para lector de pantalla | Revisado en el navegador con una página temporal (borrada); pruebas de bancos |
+| C-31 | Pedido (bancos) | `lib/evaluar/bancos/*.ts`, `templates.ts`, `TemplatePicker.tsx`, landing, precios | 500 ítems nuevos en 8 pruebas; catálogo de 13; cifras contadas del catálogo | 8 pruebas de calidad de bancos (41/41 en total) |
 | C-17 | EV-32 | `app/evaluar/precios/page.tsx` | «Las cinco pruebas del catálogo» | lectura |
 
 ## Compatibilidad del despliegue
@@ -85,4 +88,7 @@ El código funciona **antes y después** de aplicar la 053:
 18. Aplicar la 055 y correr `supabase/tests/evaluar-055.sql` → «A OK» a «D OK».
 19. Un miembro del equipo con plan Profesional exporta → el archivo no trae email ni teléfono. La dueña sí los recibe.
 20. Candidato nuevo deja una etapa con un likert sin responder por fin del reloj → el tablero dice «respondió X de Y» y el rasgo no baja por el vacío.
+21. Aplicar la 056 y correr `supabase/tests/evaluar-056.sql` → «A OK» a «F OK».
+22. Aplicar «Razonamiento abstracto con figuras» a un proceso, invitar a dos candidatos ficticios y comparar: reciben matrices distintas, en otro orden y con las opciones en otro lugar.
+23. Recargar en medio de esa etapa → mismas preguntas, mismo orden y el reloj sigue.
 17. Recorrer la evaluación solo con teclado y con NVDA (Windows) o VoiceOver: se anuncian la pregunta, las opciones y cuál está elegida, y el aviso del último minuto.

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import MarketingShell from "@/components/evaluar/MarketingShell";
 import { getSiteSettings } from "@/lib/data";
+import { TEMPLATES } from "@/lib/evaluar/templates";
 import { TRIAL_DAYS } from "@/lib/evaluar-config";
 import VentasCta from "@/components/evaluar/VentasCta";
 import { evaluarMetadata, jsonLdMigas } from "@/lib/evaluar/seo";
@@ -49,9 +50,9 @@ export default async function PreciosPage() {
       para: "Para el comercio o la pyme que contrata cada tanto.",
       incluye: [
         "Hasta 3 procesos activos",
-        // Son cinco: la integridad laboral se sumó al catálogo después y
-        // ningún plan la limita (ver TEMPLATES en lib/evaluar/templates.ts).
-        "Las cinco pruebas del catálogo, listas para usar",
+        // Se cuenta del catálogo: ningún plan lo limita, y escrito a mano
+        // quedaba viejo con cada prueba nueva.
+        `Las ${TEMPLATES.length} pruebas del catálogo, listas para usar`,
         "Enlace con tus vacantes de Worka",
         "Tablero de decisión",
         "Devolución automática al candidato",

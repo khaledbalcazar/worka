@@ -24,6 +24,7 @@ import {
   modoCorreccion,
   pctParaCortes,
   percentOf,
+  sortearFormulario,
   validarEntrega,
   versionDe,
 } from "../../lib/evaluar/puntaje.ts";
@@ -342,4 +343,52 @@ test("contarRespondidas: las filas vacías son entregadas pero no respondidas", 
     { respondidas: 3, total: 5 }
   );
   assert.deepEqual(contarRespondidas([]), { respondidas: 0, total: 0 });
+});
+
+// ── Sorteo del formulario (056) ────────────────────────────────
+
+function azarFijo(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a * 1664525 + 1013904223) >>> 0;
+    return a / 4294967296;
+  };
+}
+
+test("sorteo: reparte en proporción al tamaño de cada rasgo", () => {
+  // 40 de apertura y 20 de tesón; se sortean 12 → 8 y 4 (40:20 = 2:1).
+  const banco = [
+    ...Array.from({ length: 40 }, (_, i) => ({ id: `a${i}`, dimension: "apertura" })),
+    ...Array.from({ length: 20 }, (_, i) => ({ id: `t${i}`, dimension: "teson" })),
+  ];
+  for (const seed of [1, 2, 3, 42, 999]) {
+    const ids = sortearFormulario(banco, 12, azarFijo(seed));
+    assert.equal(ids.length, 12);
+    assert.equal(new Set(ids).size, 12);
+    assert.equal(ids.filter((x) => x.startsWith("a")).length, 8);
+    assert.equal(ids.filter((x) => x.startsWith("t")).length, 4);
+  }
+});
+
+test("sorteo: dos candidatos reciben formularios distintos", () => {
+  const banco = Array.from({ length: 60 }, (_, i) => ({ id: `q${i}`, dimension: "x" }));
+  const a = sortearFormulario(banco, 12, azarFijo(7)).sort();
+  const b = sortearFormulario(banco, 12, azarFijo(8)).sort();
+  assert.notDeepEqual(a, b);
+});
+
+test("sorteo: la excluyente entra siempre", () => {
+  const banco = [
+    { id: "filtro", dimension: "req", knockout: true },
+    ...Array.from({ length: 30 }, (_, i) => ({ id: `q${i}`, dimension: "x" })),
+  ];
+  for (const seed of [1, 5, 9, 13]) {
+    assert.ok(sortearFormulario(banco, 3, azarFijo(seed)).includes("filtro"));
+  }
+});
+
+test("sorteo: sin cantidad o con una mayor al banco, van todas", () => {
+  const banco = Array.from({ length: 5 }, (_, i) => ({ id: `q${i}` }));
+  assert.equal(sortearFormulario(banco, null, azarFijo(1)).length, 5);
+  assert.equal(sortearFormulario(banco, 50, azarFijo(1)).length, 5);
 });

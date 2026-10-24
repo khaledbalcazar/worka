@@ -22,6 +22,8 @@ import {
   uploadVideoAnswer,
 } from "@/app/evaluar/actions";
 import VideoAnswer from "./VideoAnswer";
+import { ConsignaFigural, Figura } from "./Figura";
+import { describir, type FiguraSpec } from "@/lib/evaluar/figuras";
 import { celebrate } from "@/lib/celebrate";
 import { getTheme, readableOn } from "@/lib/evaluar/themes";
 
@@ -64,6 +66,8 @@ export type Evaluation = {
     description: string;
     kind: string;
     minutes: number;
+    /** Cuántas preguntas le tocan (056). Con azar, la lista llega recién al empezar. */
+    question_count?: number;
     timed?: boolean;
     /** Que es esta etapa y que se espera, en criollo. */
     intro?: string;
@@ -73,6 +77,8 @@ export type Evaluation = {
       options: string[];
       answer: string;
       explain: string;
+      /** Ejemplo con figuras: las opciones son códigos de dibujo. */
+      figure?: FiguraSpec;
     } | null;
     questions: {
       id: string;
@@ -83,7 +89,10 @@ export type Evaluation = {
         | "escala"
         | "numero"
         | "likert"
-        | "video";
+        | "video"
+        | "figura";
+      /** Consigna dibujada, solo en las de tipo "figura". */
+      figure?: FiguraSpec | null;
       /** Tope de grabacion, solo para las de video. */
       max_seconds?: number;
       text: string;
@@ -224,6 +233,9 @@ export default function CandidateRunner({
           : Date.now();
       setInicio(base);
       setBriefingListo(id);
+      // Con azar, las preguntas de esta persona se arman recién ahora:
+      // se vuelve a pedir la página para traerlas.
+      router.refresh();
     });
   }
 
@@ -363,8 +375,8 @@ export default function CandidateRunner({
                       {s.title}
                     </p>
                     <p className={`text-xs flex items-center gap-1 ${theme.muted}`}>
-                      <Clock size={11} /> {s.minutes} min · {s.questions.length}{" "}
-                      {s.questions.length === 1 ? "pregunta" : "preguntas"}
+                      <Clock size={11} /> {s.minutes} min · {cantidadDe(s)}{" "}
+                      {cantidadDe(s) === 1 ? "pregunta" : "preguntas"}
                     </p>
                   </div>
                 </li>
@@ -464,6 +476,13 @@ export default function CandidateRunner({
                   </p>
                 )}
               </>
+            ) : stage.questions.length === 0 ? (
+              <p
+                className={`text-sm text-center py-6 ${theme.muted}`}
+                role="status"
+              >
+                Preparando tus preguntas…
+              </p>
             ) : (
               <>
                 <div className="flex items-start justify-between gap-3">
@@ -651,6 +670,45 @@ export default function CandidateRunner({
                         megas en el estado de la etapa y mandarlo recién al
                         enviar sería jugarse toda la respuesta a que la
                         conexión aguante ese último tirón. */}
+                    {/* Figuras: la consigna dibujada y cuatro opciones
+                        dibujadas, con letra para poder nombrarlas. */}
+                    {question.kind === "figura" && question.figure && (
+                      <div className="mt-4 space-y-4">
+                        <ConsignaFigural spec={question.figure} />
+                        <div
+                          className="grid grid-cols-2 sm:grid-cols-4 gap-2.5"
+                          role="radiogroup"
+                          aria-labelledby={`q-${question.id}`}
+                        >
+                          {question.options.map((o, oi) => {
+                            const elegido = answers[question.id] === o;
+                            return (
+                              <button
+                                key={o}
+                                role="radio"
+                                aria-checked={elegido}
+                                aria-label={`Opción ${"abcd"[oi] ?? oi + 1}: ${describir(o)}`}
+                                onClick={() => responder(o)}
+                                className="rounded-xl border-2 p-2 press focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                                style={
+                                  elegido
+                                    ? { borderColor: accent, boxShadow: `0 0 0 2px ${accent}` }
+                                    : { borderColor: "#e2e8f0" }
+                                }
+                              >
+                                <span className="block text-xs font-semibold text-left opacity-70">
+                                  {"abcd"[oi] ?? oi + 1}
+                                </span>
+                                <span className="block aspect-square">
+                                  <Figura codigo={o} etiqueta={false} />
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
                     {question.kind === "video" && (
                       <div className="mt-3">
                         <VideoAnswer
@@ -762,6 +820,12 @@ export default function CandidateRunner({
       </div>
     </div>
   );
+}
+
+// Cuántas preguntas tiene una etapa para esta persona. Con azar (056) la
+// lista de preguntas llega recién al empezar la etapa; antes, solo el número.
+function cantidadDe(s: Evaluation["stages"][number]): number {
+  return s.questions.length || s.question_count || 0;
 }
 
 // ── Datos de contacto y CV ─────────────────────────────────────
@@ -929,8 +993,8 @@ function StageBriefing({
           <Clock size={13} /> {stage.minutes} min aprox.
         </span>
         <span className="chip bg-slate-100 text-slate-600">
-          {stage.questions.length}{" "}
-          {stage.questions.length === 1 ? "pregunta" : "preguntas"}
+          {cantidadDe(stage)}{" "}
+          {cantidadDe(stage) === 1 ? "pregunta" : "preguntas"}
         </span>
         {/* Que haya o no reloj cambia por completo cómo se encara la prueba,
             así que se dice antes y no cuando ya está corriendo. */}
@@ -968,6 +1032,32 @@ function StageBriefing({
             {demo.text}
           </p>
 
+          {demo.figure ? (
+            <div className="mt-3 space-y-3 text-slate-800">
+              <ConsignaFigural spec={demo.figure} />
+              <div className="grid grid-cols-4 gap-2">
+                {demo.options.map((o, oi) => {
+                  const correcta = o === demo.answer;
+                  return (
+                    <div
+                      key={o}
+                      aria-label={`${"abcd"[oi]}: ${describir(o)}${correcta ? " (es la correcta)" : ""}`}
+                      className={`rounded-xl border-2 p-1.5 ${
+                        correcta ? "border-emerald-400 bg-emerald-50" : "border-slate-200 bg-white"
+                      }`}
+                    >
+                      <span className="block text-[11px] font-semibold">
+                        {"abcd"[oi]} {correcta && "✓"}
+                      </span>
+                      <span className="block aspect-square">
+                        <Figura codigo={o} etiqueta={false} />
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
           <div className="space-y-1.5 mt-3">
             {demo.options.map((o) => {
               const correcta = o === demo.answer;
@@ -990,6 +1080,7 @@ function StageBriefing({
               );
             })}
           </div>
+          )}
 
           <p className="text-xs text-slate-600 mt-3 leading-relaxed">
             <strong className="font-semibold">Por qué:</strong> {demo.explain}

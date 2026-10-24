@@ -107,6 +107,27 @@ async function nextStagePosition(
   return typeof ultima === "number" ? ultima + 1 : 0;
 }
 
+// Columnas que llegan con la migración 056 (azar por candidato y figuras).
+// Si la base todavía no las tiene, el insert o el update falla entero; se
+// reintenta sin ellas para que crear y editar etapas siga funcionando antes
+// de aplicar la migración (sin azar, como hasta ahora).
+const COLUMNAS_056 = ["shuffle_questions", "shuffle_options", "draw_count", "figure"];
+
+function sin056<T extends Record<string, unknown>>(row: T): T {
+  const copia: Record<string, unknown> = { ...row };
+  for (const c of COLUMNAS_056) delete copia[c];
+  return copia as T;
+}
+
+function faltaColumna056(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return (
+    error.code === "PGRST204" ||
+    error.code === "42703" ||
+    COLUMNAS_056.some((c) => (error.message ?? "").includes(c))
+  );
+}
+
 // ¿La estructura del proceso está fija? Con alguien que ya empezó a rendir,
 // tocar etapas o corrección deja a dos candidatos medidos con reglas
 // distintas (ver cambioDeCorreccion en lib/evaluar/puntaje.ts). Devuelve el
@@ -494,6 +515,10 @@ export async function duplicateProcess(id: string): Promise<Result> {
         // cada etapa, y las de video volvían al tope por defecto.
         intro: s.intro ?? "",
         demo: s.demo ?? null,
+        // Solo existen con la 056; si no, quedan undefined y no se mandan.
+        shuffle_questions: s.shuffle_questions,
+        shuffle_options: s.shuffle_options,
+        draw_count: s.draw_count,
       })
       .select("id")
       .single();
@@ -516,6 +541,7 @@ export async function duplicateProcess(id: string): Promise<Result> {
         weight: q.weight ?? 1,
         knockout: q.knockout ?? false,
         max_seconds: q.max_seconds ?? 90,
+        figure: q.figure,
       }))
     );
   }
@@ -690,26 +716,39 @@ export async function applyTemplate(
   const lock = await structureLock(supabase, processId);
   if (lock) return { ok: false, error: lock };
 
-  const { data: stage, error: stageError } = await supabase
+  const fila = {
+    process_id: processId,
+    title: template.name,
+    description: template.summary,
+    minutes: template.minutes,
+    position: await nextStagePosition(supabase, processId),
+    template_key: template.key,
+    // Qué es la prueba y un ejemplo resuelto. Sin esto el candidato entra a
+    // una etapa llamada "Los Cinco Grandes" sin saber si es un examen ni si
+    // se puede equivocar, y eso mide ansiedad, no lo que se quiere medir.
+    intro: template.intro,
+    demo: template.demo,
+    // Los tests con respuesta correcta van cronometrados: sin tiempo límite
+    // dejan de medir razonamiento y pasan a medir paciencia.
+    timed: template.scored === "correcto",
+    // Azar por candidato (056): cada uno ve otro orden, otras opciones y,
+    // en los bancos, otra muestra de preguntas.
+    shuffle_questions: template.shuffleQuestions ?? false,
+    shuffle_options: template.shuffleOptions ?? false,
+    draw_count: template.draw ?? null,
+  };
+  let { data: stage, error: stageError } = await supabase
     .from("evaluar_stages")
-    .insert({
-      process_id: processId,
-      title: template.name,
-      description: template.summary,
-      minutes: template.minutes,
-      position: await nextStagePosition(supabase, processId),
-      template_key: template.key,
-      // Qué es la prueba y un ejemplo resuelto. Sin esto el candidato entra a
-      // una etapa llamada "Los Cinco Grandes" sin saber si es un examen ni si
-      // se puede equivocar, y eso mide ansiedad, no lo que se quiere medir.
-      intro: template.intro,
-      demo: template.demo,
-      // Los tests con respuesta correcta van cronometrados: sin tiempo límite
-      // dejan de medir razonamiento y pasan a medir paciencia.
-      timed: template.scored === "correcto",
-    })
+    .insert(fila)
     .select("id")
     .single();
+  if (faltaColumna056(stageError)) {
+    ({ data: stage, error: stageError } = await supabase
+      .from("evaluar_stages")
+      .insert(sin056(fila))
+      .select("id")
+      .single());
+  }
 
   if (stageError || !stage) {
     console.error("applyTemplate stage:", stageError);
@@ -729,17 +768,28 @@ export async function applyTemplate(
     reverse: q.reverse ?? false,
     weight: q.weight ?? 1,
     knockout: false,
+    ...(q.figure ? { figure: q.figure } : {}),
   }));
 
-  const { error: qError } = await supabase
+  const conFiguras = template.questions.some((q) => q.kind === "figura");
+  let { error: qError } = await supabase
     .from("evaluar_questions")
     .insert(rows);
+  if (faltaColumna056(qError) && !conFiguras) {
+    ({ error: qError } = await supabase.from("evaluar_questions").insert(rows.map(sin056)));
+  }
 
   if (qError) {
     console.error("applyTemplate questions:", qError);
     // Sin preguntas la etapa no sirve para nada y dejaría al candidato ante
     // una pantalla vacía: se deshace.
     await supabase.from("evaluar_stages").delete().eq("id", stageId);
+    // Las pruebas con figuras necesitan la columna y el tipo de la 056.
+    if (conFiguras && (faltaColumna056(qError) || qError.code === "23514"))
+      return {
+        ok: false,
+        error: "Esta prueba usa figuras y todavía no está habilitada en la base (falta la migración 056).",
+      };
     return { ok: false, error: "No pudimos cargar las preguntas." };
   }
 
@@ -845,6 +895,10 @@ export async function updateStage(
     minutes: number;
     timed: boolean;
     intro?: string;
+    /** Azar por candidato (056). Sin estos campos, no se tocan. */
+    shuffleQuestions?: boolean;
+    shuffleOptions?: boolean;
+    drawCount?: number | null;
   }
 ): Promise<Result> {
   const { supabase } = await requireCompany();
@@ -859,27 +913,60 @@ export async function updateStage(
   // prueba a mitad de camino.
   const { data: actual } = await supabase
     .from("evaluar_stages")
-    .select("process_id, minutes, timed")
+    .select("*, evaluar_questions(count)")
     .eq("id", stageId)
     .maybeSingle();
   if (!actual) return { ok: false, error: "Esa etapa ya no existe." };
-  const a = actual as { process_id: string; minutes: number; timed: boolean };
-  if (a.minutes !== Math.max(1, input.minutes) || !!a.timed !== input.timed) {
-    const lock = await structureLock(supabase, a.process_id);
-    if (lock)
-      return { ok: false, error: `No se pueden cambiar el tiempo ni el cronómetro: ${lock}` };
+  const a = actual as unknown as {
+    process_id: string;
+    minutes: number;
+    timed: boolean;
+    draw_count?: number | null;
+    evaluar_questions: { count: number }[];
+  };
+  const preguntas = a.evaluar_questions?.[0]?.count ?? 0;
+
+  // Cuántas preguntas sortear: entre 1 y el total. Igual o mayor que el
+  // total es lo mismo que no sortear.
+  let draw: number | null | undefined = undefined;
+  if (input.drawCount !== undefined) {
+    const n = input.drawCount === null ? null : Math.round(Number(input.drawCount));
+    if (n !== null && (!Number.isFinite(n) || n < 1))
+      return { ok: false, error: "La cantidad a sortear tiene que ser al menos 1." };
+    draw = n !== null && n < preguntas ? n : null;
   }
 
-  const { error } = await supabase
-    .from("evaluar_stages")
-    .update({
-      title: input.title.trim(),
-      description: input.description?.trim() ?? "",
-      minutes: Math.max(1, input.minutes),
-      timed: input.timed,
-      intro: input.intro?.trim() ?? "",
-    })
-    .eq("id", stageId);
+  // El tiempo, el cronómetro y cuántas preguntas recibe cada uno quedan
+  // fijos con gente rindiendo: cambiarían la prueba a mitad de camino. El
+  // orden y la mezcla de opciones sí se pueden tocar: cada formulario ya
+  // armado queda guardado y no cambia.
+  if (
+    a.minutes !== Math.max(1, input.minutes) ||
+    !!a.timed !== input.timed ||
+    (draw !== undefined && (a.draw_count ?? null) !== draw)
+  ) {
+    const lock = await structureLock(supabase, a.process_id);
+    if (lock)
+      return {
+        ok: false,
+        error: `No se pueden cambiar el tiempo, el cronómetro ni la cantidad sorteada: ${lock}`,
+      };
+  }
+
+  const cambios = {
+    title: input.title.trim(),
+    description: input.description?.trim() ?? "",
+    minutes: Math.max(1, input.minutes),
+    timed: input.timed,
+    intro: input.intro?.trim() ?? "",
+    ...(input.shuffleQuestions !== undefined ? { shuffle_questions: input.shuffleQuestions } : {}),
+    ...(input.shuffleOptions !== undefined ? { shuffle_options: input.shuffleOptions } : {}),
+    ...(draw !== undefined ? { draw_count: draw } : {}),
+  };
+  let { error } = await supabase.from("evaluar_stages").update(cambios).eq("id", stageId);
+  if (faltaColumna056(error)) {
+    ({ error } = await supabase.from("evaluar_stages").update(sin056(cambios)).eq("id", stageId));
+  }
 
   if (error) return { ok: false, error: "No pudimos guardar la etapa." };
   revalidatePath(`/evaluar/app/procesos/${processId}`);

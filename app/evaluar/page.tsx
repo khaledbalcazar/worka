@@ -10,6 +10,13 @@ import {
   jsonLdProducto,
 } from "@/lib/evaluar/seo";
 import { getSiteSettings } from "@/lib/data";
+import { ROLE_TEMPLATES, TEMPLATES } from "@/lib/evaluar/templates";
+
+// Las cifras del catálogo salen del catálogo: escritas a mano quedaban
+// viejas cada vez que se sumaba una prueba ("cinco pruebas", "96 preguntas").
+const PRUEBAS = TEMPLATES.length;
+const PROCESOS = ROLE_TEMPLATES.length;
+const ITEMS = TEMPLATES.reduce((n, t) => n + t.questions.length, 0);
 
 // El título lleva las palabras con las que alguien busca esto en Paraguay:
 // "software de selección de personal" y "evaluación de candidatos". El nombre
@@ -44,7 +51,7 @@ const DIFERENCIALES = [
   {
     n: "04",
     t: "Ya está todo escrito",
-    d: "No tenés que inventar una sola pregunta. Cinco pruebas listas y cinco procesos completos por puesto: elegís, publicás y listo.",
+    d: `No tenés que inventar una sola pregunta. ${PRUEBAS} pruebas listas y ${PROCESOS} procesos completos por puesto: elegís, publicás y listo.`,
   },
 ];
 
@@ -143,11 +150,11 @@ const INFORME = [
   },
 ];
 
-// Los números son del producto, no inventados: cinco instrumentos en el
-// catálogo, cinco procesos por puesto, y el total real de ítems redactados.
+// Los números son del producto, no inventados: el total real de ítems del
+// catálogo, contado del catálogo.
 const CIFRAS = [
   { v: "5 min", l: "y tenés el proceso online" },
-  { v: "96", l: "preguntas ya escritas" },
+  { v: ITEMS.toLocaleString("es-PY"), l: "preguntas ya escritas" },
   { v: "0", l: "cuentas que crear el candidato" },
   { v: "24/7", l: "rinden cuando pueden" },
 ];

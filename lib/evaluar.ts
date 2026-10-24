@@ -58,6 +58,10 @@ export type EvaluarStage = {
   intro?: string;
   /** Pregunta de ejemplo resuelta, para ver el formato sin presion. */
   demo?: StageDemo | null;
+  /** Azar por candidato (056): orden, opciones y sorteo del banco. */
+  shuffle_questions?: boolean;
+  shuffle_options?: boolean;
+  draw_count?: number | null;
 };
 
 export type StageDemo = {
@@ -71,7 +75,7 @@ export type EvaluarQuestion = {
   id: string;
   stage_id: string;
   position: number;
-  kind: "unica" | "multiple" | "texto" | "escala" | "numero";
+  kind: "unica" | "multiple" | "texto" | "escala" | "numero" | "likert" | "video" | "figura";
   text: string;
   options: string[];
   correct: unknown;
@@ -83,6 +87,8 @@ export type EvaluarQuestion = {
   reverse?: boolean;
   /** Tope de grabacion, solo para las preguntas de video. */
   max_seconds?: number;
+  /** Casillas de la consigna, solo en las preguntas de tipo "figura". */
+  figure?: unknown;
 };
 
 export type ParticipantStatus =

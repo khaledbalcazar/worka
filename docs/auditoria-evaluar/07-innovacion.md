@@ -69,7 +69,7 @@ lo resuelve. Esfuerzo: S (≤1 semana), M (2–4), L (>1 mes).
 - **Dependencias:** la cuenta de Meta y el costo por conversación. **Riesgos:** suplantación (el token pasa a ser el número). **Esfuerzo:** L.
 - **Experimento:** una empresa de alto volumen (call center). **Métrica:** tasa de finalización frente al enlace web. **Abandono:** si no supera al enlace en +20 pp.
 
-### I-7 · Banco de preguntas con versión y aleatorización
+### I-7 · Banco de preguntas con versión y aleatorización — **implementado** (ver [11-azar-y-bancos.md](11-azar-y-bancos.md))
 - **Usuario y problema:** los candidatos se pasan las respuestas, y editar rompe la comparabilidad (EV-18).
 - **Ejemplo:** cada etapa sortea 10 de 30 preguntas equivalentes; el proceso publicado congela una «versión 3».
 - **Diferencia:** ClassMarker sortea desde un banco (CM3); Worka sumaría el versionado visible en el informe.

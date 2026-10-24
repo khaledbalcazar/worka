@@ -466,7 +466,15 @@ function StagesTab({
   onMoveStage: (id: string, dir: "arriba" | "abajo") => void;
   onUpdateStage: (
     id: string,
-    i: { title: string; description: string; minutes: number; timed: boolean }
+    i: {
+      title: string;
+      description: string;
+      minutes: number;
+      timed: boolean;
+      shuffleQuestions?: boolean;
+      shuffleOptions?: boolean;
+      drawCount?: number | null;
+    }
   ) => void;
   onUpdateQuestion: (
     questionId: string,
@@ -525,6 +533,24 @@ function StagesTab({
               <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
                 Etapa {i + 1} · {stage.minutes} min
               </p>
+              {/* Lo que cambia entre un candidato y otro. Sin esto no hay
+                  forma de saber, mirando el proceso, que cada uno recibe
+                  12 de 120 y no las 120. */}
+              {(stage.draw_count || stage.shuffle_questions || stage.shuffle_options) && (
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {!!stage.draw_count && stage.draw_count < stage.questions.length && (
+                    <span className="chip bg-indigo-50 text-indigo-700">
+                      Cada uno recibe {stage.draw_count} de {stage.questions.length}
+                    </span>
+                  )}
+                  {stage.shuffle_questions && (
+                    <span className="chip bg-slate-100 text-slate-600">Orden al azar</span>
+                  )}
+                  {stage.shuffle_options && (
+                    <span className="chip bg-slate-100 text-slate-600">Opciones mezcladas</span>
+                  )}
+                </div>
+              )}
               <h3 className="font-semibold text-primary-dark">{stage.title}</h3>
               {stage.description && (
                 <p className="text-sm text-slate-500 mt-0.5">
@@ -673,6 +699,9 @@ function StagesTab({
                     )}
                   </div>
                 </div>
+                {/* Las de figuras no se editan a mano: sus opciones son
+                    códigos de dibujo y tocarlos rompe la figura y la clave. */}
+                {q.kind !== "figura" && (
                 <button
                   onClick={() => setEditQ(q.id)}
                   disabled={pending}
@@ -681,6 +710,7 @@ function StagesTab({
                 >
                   <Pencil size={14} />
                 </button>
+                )}
                 {!fija && (
                 <button
                   onClick={() => {
@@ -1306,9 +1336,23 @@ function StageForm({
     minutes: number;
     timed: boolean;
     intro: string;
+    shuffleQuestions: boolean;
+    shuffleOptions: boolean;
+    drawCount: number | null;
   }) => void;
 }) {
   const [title, setTitle] = useState(stage.title);
+  const [mezclarOrden, setMezclarOrden] = useState(!!stage.shuffle_questions);
+  const [mezclarOpciones, setMezclarOpciones] = useState(!!stage.shuffle_options);
+  const total = stage.questions.length;
+  const [sortear, setSortear] = useState(
+    !!stage.draw_count && stage.draw_count < total
+  );
+  const [cuantas, setCuantas] = useState(
+    stage.draw_count && stage.draw_count < total ? stage.draw_count : Math.max(1, Math.ceil(total / 2))
+  );
+  const soloEscalas =
+    total > 0 && stage.questions.every((q) => q.kind === "likert" || q.kind === "escala");
   const [description, setDescription] = useState(stage.description);
   const [minutes, setMinutes] = useState(stage.minutes);
   const [timed, setTimed] = useState(!!stage.timed);
@@ -1364,6 +1408,63 @@ function StageForm({
         </p>
       )}
 
+      {/* Que cada candidato vea una prueba distinta. Es lo que hace inútil
+          pasarse las respuestas: la 7 de uno no es la 7 del otro, y con un
+          banco grande ni siquiera es la misma pregunta. */}
+      <fieldset className="rounded-2xl border border-slate-200 p-3.5 space-y-2.5">
+        <legend className="text-sm font-semibold text-primary-dark px-1">
+          Para que no se copien
+        </legend>
+        <label className="text-sm text-slate-700 flex items-center gap-2">
+          <input
+            type="checkbox"
+            className="w-5 h-5 accent-primary"
+            checked={mezclarOrden}
+            onChange={(e) => setMezclarOrden(e.target.checked)}
+          />
+          Cada candidato ve las preguntas en otro orden
+        </label>
+        <label className={`text-sm flex items-center gap-2 ${soloEscalas ? "text-slate-400" : "text-slate-700"}`}>
+          <input
+            type="checkbox"
+            className="w-5 h-5 accent-primary"
+            disabled={soloEscalas}
+            checked={mezclarOpciones && !soloEscalas}
+            onChange={(e) => setMezclarOpciones(e.target.checked)}
+          />
+          Mezclar el orden de las opciones
+          {soloEscalas && " (no aplica a escalas de acuerdo)"}
+        </label>
+        <label className="text-sm text-slate-700 flex flex-wrap items-center gap-2">
+          <input
+            type="checkbox"
+            className="w-5 h-5 accent-primary"
+            disabled={soloTextos || total < 2}
+            checked={sortear}
+            onChange={(e) => setSortear(e.target.checked)}
+          />
+          Sortear
+          <input
+            type="number"
+            min={1}
+            max={Math.max(1, total - 1)}
+            disabled={soloTextos || !sortear}
+            aria-label="Cuántas preguntas sortear"
+            className="input w-20 disabled:opacity-60"
+            value={cuantas}
+            onChange={(e) => setCuantas(Number(e.target.value))}
+          />
+          de las {total} preguntas para cada candidato
+        </label>
+        {sortear && (
+          <p className="text-xs text-slate-500">
+            El sorteo se reparte en proporción entre los rasgos que mide la
+            etapa, y las preguntas excluyentes entran siempre. Cada uno queda
+            con su formulario aunque recargue la página.
+          </p>
+        )}
+      </fieldset>
+
       <div>
         <label className="label">Qué le explicamos al candidato</label>
         <textarea
@@ -1383,7 +1484,18 @@ function StageForm({
           Cancelar
         </button>
         <button
-          onClick={() => onSave({ title, description, minutes, timed, intro })}
+          onClick={() =>
+            onSave({
+              title,
+              description,
+              minutes,
+              timed,
+              intro,
+              shuffleQuestions: mezclarOrden,
+              shuffleOptions: mezclarOpciones && !soloEscalas,
+              drawCount: sortear ? cuantas : null,
+            })
+          }
           disabled={pending || !title.trim()}
           className="btn-primary press flex-[2] disabled:opacity-40"
         >
@@ -1489,8 +1601,9 @@ function AddStagePanel({
                 preguntas desde cero es lo que hace que nadie termine de
                 armar el proceso. */}
             <p className="text-xs text-slate-500 mb-3">
-              Cinco Grandes, estilo laboral, juicio situacional y razonamiento.
-              Se corrigen y se puntúan solos.
+              Personalidad, competencias, juicio situacional, razonamiento con
+              figuras y números, atención al detalle e integridad. Se corrigen
+              solos, y en los bancos cada candidato recibe preguntas distintas.
             </p>
             <TemplatePicker
               pending={pending}

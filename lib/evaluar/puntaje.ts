@@ -184,6 +184,7 @@ export const KIND_LABEL: Record<string, string> = {
   numero: "Número",
   likert: "Escala de acuerdo",
   video: "Video",
+  figura: "Figuras",
 };
 
 export type ModoCorreccion = "correcta" | "por_opcion" | "rasgo" | "manual";
@@ -351,6 +352,51 @@ export function cambioDeCorreccion(
   if ((actual.weight ?? 1) !== (nueva.weight ?? 1)) return "el puntaje";
   if (!!actual.knockout !== !!nueva.knockout) return "si es excluyente";
   return null;
+}
+
+// ── Formulario por candidato (056) ─────────────────────────────
+//
+// Copia en TypeScript de cómo evaluar_begin_stage elige las preguntas de
+// cada persona: dentro de cada rasgo se ordenan al azar y se toman por
+// (posición − 0,5) / tamaño del rasgo, así cada rasgo aporta en proporción a
+// su tamaño en el banco; las excluyentes van siempre. No corre en
+// producción: está para fijar con pruebas que el reparto sea parejo.
+
+export type PreguntaSorteo = {
+  id: string;
+  dimension?: string | null;
+  knockout?: boolean;
+  position?: number;
+};
+
+export function sortearFormulario(
+  preguntas: PreguntaSorteo[],
+  draw: number | null | undefined,
+  azar: () => number
+): string[] {
+  const grupos = new Map<string, PreguntaSorteo[]>();
+  for (const q of preguntas) {
+    const k = q.dimension ?? "";
+    grupos.set(k, [...(grupos.get(k) ?? []), q]);
+  }
+  const conRango: { q: PreguntaSorteo; clave: number; desempate: number }[] = [];
+  for (const lista of grupos.values()) {
+    const orden = lista
+      .map((q) => ({ q, r: azar() }))
+      .sort((a, b) => a.r - b.r)
+      .map((x) => x.q);
+    orden.forEach((q, i) =>
+      conRango.push({ q, clave: (i + 1 - 0.5) / orden.length, desempate: azar() })
+    );
+  }
+  conRango.sort(
+    (a, b) =>
+      Number(!!b.q.knockout) - Number(!!a.q.knockout) ||
+      a.clave - b.clave ||
+      a.desempate - b.desempate
+  );
+  const n = draw && draw > 0 ? Math.min(draw, conRango.length) : conRango.length;
+  return conRango.slice(0, n).map((x) => x.q.id);
 }
 
 // ── Respondidas ────────────────────────────────────────────────

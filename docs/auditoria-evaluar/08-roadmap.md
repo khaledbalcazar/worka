@@ -18,7 +18,7 @@
 ## Trimestre
 12. Apuesta I-3 (prueba en la vacante).
 13. Apuesta I-2 (rúbricas), que también resuelve EV-37.
-14. Aleatorización y banco con versiones (I-7), que resuelve EV-18 de raíz.
+14. ~~Aleatorización y bancos (I-7)~~: hecho, en la 056 sin aplicar. Queda estratificar también por dificultad.
 15. Analítica de ítems (I-5).
 
 ## Después
