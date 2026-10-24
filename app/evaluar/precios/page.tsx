@@ -182,6 +182,14 @@ export default async function PreciosPage() {
                 Empezar gratis
               </Link>
               )}
+              {p.nombre !== "Corporativo" && (
+                <Link
+                  href={`/evaluar/app/plan?plan=${p.nombre === "Profesional" ? "profesional" : "esencial"}`}
+                  className="block text-center text-xs mt-2.5 text-[rgba(233,233,237,.55)] underline"
+                >
+                  o contratalo ya con tarjeta
+                </Link>
+              )}
             </div>
           ))}
         </div>
@@ -191,9 +199,11 @@ export default async function PreciosPage() {
             Cómo se paga
           </h2>
           <p className="text-sm text-[rgba(233,233,237,.58)] mt-2 leading-relaxed">
-            Por transferencia bancaria o link de pago. Nos avisás, activamos tu
-            plan y seguís donde estabas: no se pierde ningún proceso ni ninguna
-            evaluación en curso.
+            Con tarjeta internacional, PayPal, Apple Pay o Google Pay: se cobra
+            en dólares, el plan se activa al instante y se renueva solo hasta que
+            lo canceles. También por transferencia bancaria o link de pago: nos
+            avisás y lo activamos en el día. En los dos casos seguís donde
+            estabas: no se pierde ningún proceso ni ninguna evaluación en curso.
           </p>
           <VentasCta
             className="mt-5"

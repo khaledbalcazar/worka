@@ -52,7 +52,7 @@ export default function AiStageGenerator({
           para revisar. Viene con el plan Profesional; el tuyo es {planLabel}.
         </p>
         <Link
-          href="/evaluar/precios"
+          href="/evaluar/app/plan?plan=profesional"
           className="btn-secondary press text-sm mt-3 inline-flex"
         >
           Ver planes

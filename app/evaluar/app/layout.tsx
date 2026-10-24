@@ -54,11 +54,11 @@ export default function EvaluarAppLayout({
 
           <div className="flex items-center gap-2.5 shrink-0">
             <Link
-              href="/evaluar/precios"
+              href="/evaluar/app/plan"
               className="nk-ghost hidden sm:inline-flex"
               style={{ padding: "7px 13px", fontSize: 12.5 }}
             >
-              Planes
+              Mi plan
             </Link>
             {/* Cerrar sesión va como formulario y no como botón de cliente
                 porque signOut ya es una acción de servidor: así funciona
@@ -92,10 +92,10 @@ export default function EvaluarAppLayout({
             Desempeño
           </Link>
           <Link
-            href="/evaluar/precios"
+            href="/evaluar/app/plan"
             style={{ color: "rgba(233,233,237,.5)" }}
           >
-            Planes
+            Mi plan
           </Link>
         </nav>
       </header>

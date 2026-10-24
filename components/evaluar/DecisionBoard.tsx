@@ -157,7 +157,7 @@ export default function DecisionBoard({
             // Se muestra igual, con el motivo: un botón que desaparece no
             // dice que existe ni qué plan lo trae.
             <Link
-              href="/evaluar/precios"
+              href="/evaluar/app/plan?plan=profesional"
               className="btn-secondary press text-xs opacity-70"
               title={`La exportación a Excel viene con el plan Profesional. Tu plan actual es ${planLabel}.`}
             >

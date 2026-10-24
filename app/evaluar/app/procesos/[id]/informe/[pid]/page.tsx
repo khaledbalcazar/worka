@@ -48,7 +48,7 @@ export default async function InformePage({
           Incluye el perfil comparado contra el resto de los evaluados y el
           control de calidad de la respuesta. Tu plan actual es {plan.label}.
         </p>
-        <Link href="/evaluar/precios" className="btn-primary press inline-flex mt-5">
+        <Link href="/evaluar/app/plan?plan=profesional" className="btn-primary press inline-flex mt-5">
           Ver planes
         </Link>
         <p className="mt-4">

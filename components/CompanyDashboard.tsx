@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import type { Company, JobStatus, JobWithCompany } from "@/lib/types";
 import type { CompanyActivity } from "@/lib/data";
 import { BOOST_PLANS } from "@/lib/types";
+import { PagarConTarjeta } from "@/components/plans/CardCheckout";
 import { isJobListed } from "@/lib/job-visibility";
 import { ENTERPRISE_BRAND, type EnterpriseLimits } from "@/lib/plans";
 import { sendUrgentAlert, setJobAutoRenew, applyIncludedBoost } from "@/app/plans-actions";
@@ -329,6 +330,7 @@ export default function CompanyDashboard({
   company,
   jobs: initialJobs,
   paymentLink = "",
+  destacadosTarjeta = null,
   stats: realStats,
   activity = [],
   plan: initialPlan = FREE_PLAN,
@@ -336,6 +338,8 @@ export default function CompanyDashboard({
   company: Company;
   jobs: JobWithCompany[];
   paymentLink?: string;
+  /** Destacados que se pueden pagar con tarjeta: días → centavos de dólar. */
+  destacadosTarjeta?: Record<string, number> | null;
   stats?: DashStats;
   activity?: CompanyActivity[];
   plan?: DashboardPlan;
@@ -1042,6 +1046,27 @@ export default function CompanyDashboard({
                   <strong>3× más vistas</strong>.
                 </p>
               </div>
+              {/* Con tarjeta se activa sola apenas entra el pago. El pedido
+                  manual (link de pago + confirmación) queda abajo. */}
+              {destacadosTarjeta && (
+                <div className="space-y-2 mb-4">
+                  {BOOST_PLANS.filter((p) => destacadosTarjeta[String(p.days)]).map((p) => (
+                    <PagarConTarjeta
+                      key={p.plan}
+                      product="boost"
+                      plan={String(p.days)}
+                      jobId={boosting.id}
+                      centavos={destacadosTarjeta[String(p.days)]}
+                      renueva={false}
+                      className="btn-primary w-full justify-between"
+                      etiqueta={`${p.plan} · pagar con tarjeta`}
+                    />
+                  ))}
+                  <p className="text-xs text-slate-400 text-center pt-1">
+                    ¿Sin tarjeta internacional? Pedilo y pagás con el link:
+                  </p>
+                </div>
+              )}
               <div className="space-y-2">
                 {BOOST_PLANS.map((p) => (
                   <button

@@ -51,6 +51,8 @@ export default async function CompanyDashboardPage({ searchParams }: { searchPar
     getPromotionUsage(company.id),
   ]);
   const plan = enterprisePlan(planId);
+  const { ofertaDestacados } = await import("@/lib/billing/ofertas");
+  const destacadosTarjeta = ofertaDestacados(settings);
   return (
     <div className="space-y-4">
       {/* Puerta de entrada a Worka Evaluar desde donde la empresa ya trabaja:
@@ -68,6 +70,7 @@ export default async function CompanyDashboardPage({ searchParams }: { searchPar
         company={company}
         jobs={jobs}
         paymentLink={paymentLink("enterprise", settings) ?? ""}
+        destacadosTarjeta={destacadosTarjeta}
         plan={{ id: plan.id, name: plan.name, endsAt: subscription?.ends_at ?? null, limits: plan.limits, usage }}
         stats={stats}
         activity={activity}

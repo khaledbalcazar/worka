@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { Check, Clock, ExternalLink, Info } from "lucide-react";
 import { requestPlanPayment } from "@/app/plans-actions";
 import { BILLING_OPTIONS, formatGs, formatMoney, type Product } from "@/lib/plans";
+import type { OfertaTarjeta } from "@/lib/billing/ofertas";
+import { GestionarSuscripcion, PagarConTarjeta } from "./CardCheckout";
 
 // monthly: precio mensual en la moneda del país; monthlyGs: el mismo en guaraníes.
 export type CheckoutPlan = { id: string; name: string; monthly: number; monthlyGs: number };
@@ -21,6 +23,7 @@ export default function PlanCheckout({
   cannotPayReason,
   currency = "PYG",
   billing,
+  tarjeta = null,
 }: {
   product: Product;
   plans: CheckoutPlan[];
@@ -32,6 +35,8 @@ export default function PlanCheckout({
   pending: PendingPayment;
   canPay?: boolean;
   cannotPayReason?: string;
+  /** Pago con tarjeta (Lemon Squeezy). Null si no está configurado. */
+  tarjeta?: OfertaTarjeta | null;
 }) {
   const [plan, setPlan] = useState(initialPlan && plans.some((p) => p.id === initialPlan) ? initialPlan : plans[0]?.id);
   const [months, setMonths] = useState<number>(1);
@@ -121,6 +126,31 @@ export default function PlanCheckout({
           El link de pago cobra el equivalente en guaraníes: {formatGs(totalGs)}. Tu banco o tarjeta hace la conversión.
         </p>
       )}
+
+      {/* Tarjeta primero: se activa sola en segundos. El cobro manual queda
+          abajo para quien no tiene tarjeta internacional. */}
+      {canPay && tarjeta?.suscripcion ? (
+        <div className="mb-4">
+          <GestionarSuscripcion
+            product={product}
+            hasta={tarjeta.suscripcion.hasta}
+            renueva={tarjeta.suscripcion.renueva}
+            tarjeta={tarjeta.suscripcion.tarjeta}
+          />
+        </div>
+      ) : canPay && selected && tarjeta?.disponible[`${selected.id}:${months}`] ? (
+        <div className="mb-4">
+          <PagarConTarjeta
+            product={product}
+            plan={selected.id}
+            months={months}
+            centavos={tarjeta.usd[`${selected.id}:${months}`]}
+          />
+          <p className="text-xs text-muted text-center mt-4">
+            ¿Sin tarjeta internacional? Pagá con el link de pago y avisanos:
+          </p>
+        </div>
+      ) : null}
 
       {!canPay ? (
         <p className="plan-note"><Info size={15} /> {cannotPayReason}</p>

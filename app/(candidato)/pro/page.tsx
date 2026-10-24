@@ -28,6 +28,8 @@ import {
   isCurrentUserPro,
 } from "@/lib/subscriptions";
 import { formatDate, timeAgo } from "@/lib/format";
+import { ofertaTarjeta } from "@/lib/billing/ofertas";
+import { GestionarSuscripcion } from "@/components/plans/CardCheckout";
 
 export const metadata = { title: PRO_BRAND };
 
@@ -64,7 +66,10 @@ export default async function WorkaProPage() {
   const country = countryByCode(candidate.country ?? "py");
   const localPrice = localMonthlyPrice("pro", "pro", country.code, settings);
   const priceLabel = formatMoney(localPrice);
-  const receipts = await listReceipts(userId);
+  const [receipts, tarjeta] = await Promise.all([
+    listReceipts(userId),
+    isLive() ? ofertaTarjeta("pro", userId, settings) : Promise.resolve(null),
+  ]);
   const pendingRow = requests.find((r) => r.status === "pendiente") ?? null;
   const pendingMoney = pendingRow ? requestMoney(pendingRow) : null;
   const pending = pendingRow && pendingMoney
@@ -174,6 +179,19 @@ export default async function WorkaProPage() {
         </div>
       </section>
 
+      {/* Con el plan activo por tarjeta, desde acá se cambia la tarjeta o se
+          cancela (el formulario de compra no se muestra a quien ya es Pro). */}
+      {pro && tarjeta?.suscripcion && (
+        <section className="card p-5 max-w-md">
+          <GestionarSuscripcion
+            product="pro"
+            hasta={tarjeta.suscripcion.hasta}
+            renueva={tarjeta.suscripcion.renueva}
+            tarjeta={tarjeta.suscripcion.tarjeta}
+          />
+        </section>
+      )}
+
       {receipts.length > 0 && (
         <section className="card p-5">
           <h2 className="font-semibold text-lg">Tus pagos</h2>
@@ -185,7 +203,12 @@ export default async function WorkaProPage() {
         <section className="grid lg:grid-cols-[1fr_340px] gap-6 items-start">
           <div className="card p-5">
             <h2 className="font-semibold text-lg">Activá {PRO_BRAND}</h2>
-            <p className="text-sm text-muted mb-4">{priceLabel} por mes. Pagás con el link de pago, nos avisás y lo activamos en el día.</p>
+            <p className="text-sm text-muted mb-4">
+              {priceLabel} por mes.{" "}
+              {tarjeta
+                ? "Con tarjeta se activa al instante y se renueva solo; con el link de pago nos avisás y lo activamos en el día."
+                : "Pagás con el link de pago, nos avisás y lo activamos en el día."}
+            </p>
             <PlanCheckout
               product="pro"
               plans={[{ id: "pro", name: PRO_BRAND, monthly: localPrice.amount, monthlyGs: monthlyPrice("pro", "pro", settings) }]}
@@ -193,6 +216,7 @@ export default async function WorkaProPage() {
               billing={{ name: candidate.full_name, doc: "", docLabel: country.taxIdLabel }}
               paymentLink={paymentLink("pro", settings)}
               pending={pending}
+              tarjeta={tarjeta}
             />
           </div>
           <aside className="card p-5">

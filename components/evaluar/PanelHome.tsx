@@ -122,7 +122,7 @@ export default function PanelHome({
               {activos >= plan.activeProcesses && (
                 <>
                   {" — "}
-                  <Link href="/evaluar/precios" className="underline hover:text-primary">
+                  <Link href="/evaluar/app/plan?plan=profesional" className="underline hover:text-primary">
                     ampliar plan
                   </Link>
                 </>

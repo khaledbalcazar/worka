@@ -133,7 +133,7 @@ export default async function DesempenoPage() {
               de cada persona período a período.
             </p>
             <Link
-              href="/evaluar/precios"
+              href="/evaluar/app/plan?plan=profesional"
               className="btn-primary press inline-flex mt-4"
             >
               Ver planes
