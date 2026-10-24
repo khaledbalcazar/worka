@@ -36,7 +36,7 @@ export type EvaluarProcess = {
   deadline_at?: string | null;
   archived?: boolean;
   ideal_profile?: Record<string, number>;
-  /** Para que unidad y departamento se llama el concurso. */
+  /** Para qué unidad y departamento es el proceso. */
   org_unit?: string;
   department?: string;
   manager_name?: string;
@@ -161,7 +161,7 @@ export type ProcessRow = EvaluarProcess & {
   job: { id: string; title: string } | null;
   stage_count: number;
   participant_count: number;
-  /** false cuando me sumaron al concurso pero la cuenta es de otra empresa. */
+  /** false cuando me sumaron al proceso pero la cuenta es de otra empresa. */
   esDueno: boolean;
 };
 
@@ -488,6 +488,8 @@ export type BoardCandidate = EvaluarParticipant & {
 
 export type BoardData = {
   process: EvaluarProcess;
+  /** false para la gente del equipo: no exporta datos de contacto (D-5). */
+  esDueno: boolean;
   stages: (EvaluarStage & { questions: EvaluarQuestion[] })[];
   candidates: BoardCandidate[];
 };
@@ -568,7 +570,12 @@ export async function getBoardData(processId: string): Promise<BoardData | null>
         : (b.percent ?? -1) - (a.percent ?? -1)
     );
 
-  return { process: detail.process, stages: detail.stages, candidates };
+  return {
+    process: detail.process,
+    esDueno: detail.esDueno,
+    stages: detail.stages,
+    candidates,
+  };
 }
 
 // ── Enlace con Worka Empleos ───────────────────────────────────

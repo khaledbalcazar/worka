@@ -90,7 +90,7 @@ export default async function CierrePage({
         <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
             <p className="text-xs text-slate-400 uppercase tracking-wide">
-              Acta de cierre del concurso
+              Acta de cierre del proceso
             </p>
             <h1 className="text-2xl font-bold text-primary-dark mt-0.5">
               {process.title}
@@ -142,7 +142,7 @@ export default async function CierrePage({
             </div>
           ) : (
             <p className="text-sm text-slate-600 mt-1">
-              El concurso se cierra sin contratación.{" "}
+              El proceso se cierra sin contratación.{" "}
               {finalistas.length > 0
                 ? `Quedaron ${finalistas.length} finalistas sin resolver.`
                 : "No hubo finalistas."}
@@ -188,7 +188,7 @@ export default async function CierrePage({
             <p className="text-sm text-slate-500">
               Ordenado por{" "}
               {porAjuste ? "ajuste al perfil del puesto" : "desempeño en las pruebas"}
-              , que es el criterio que se definió al armar el concurso.
+              , que es el criterio que se definió al armar el proceso.
             </p>
             <table className="w-full text-sm mt-3">
               <thead>
@@ -313,7 +313,7 @@ export default async function CierrePage({
           )}
 
         <p className="text-xs text-slate-400 mt-8 border-t border-slate-200 pt-3 leading-relaxed">
-          Los resultados de este concurso son una entrada más del proceso de
+          Los resultados de esta evaluación son una entrada más de la
           selección y no fueron el único criterio de decisión. Los rasgos de
           personalidad describen estilos de trabajo, no aptitud, y ningún
           resultado por sí solo descalifica a una persona. Documento generado

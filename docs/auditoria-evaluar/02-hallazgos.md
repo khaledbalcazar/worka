@@ -52,10 +52,10 @@ cambian) y las de los `.ts/.tsx` **después** de esta sesión.
 - **Evidencia:** la policy de update de participantes es solo para la dueña (`migration-022.sql:237`, `migration-025.sql:101` es solo de lectura). Con RLS, el update sin permiso afecta 0 filas y no da error.
 - **Solución:** `.select("id")` después del update. Con 0 filas, la acción devuelve un error explícito.
 
-### EV-15 · Plan y rol en la exportación — medio · confianza alta · **corregido el plan** (decisión: solo Profesional) / rol pendiente
+### EV-15 · Plan y rol en la exportación — medio · confianza alta · **corregido** (solo Profesional; contacto solo para la dueña)
 - **Evidencia:** `lib/evaluar-plans.ts` define `reports: «Informe por candidato y exportación a Excel»` solo desde Profesional, pero la ruta de exportación no chequea el plan. Tampoco distingue entre la dueña y el equipo, que puede descargar emails y teléfonos.
 - **Opciones:** (a) aplicar el plan en la ruta y ocultar el botón en Esencial; (b) dejar el CSV en todos los planes y corregir la promesa de precios; (c) exportar los datos de contacto solo para la dueña. **Recomendación:** (b) y (c).
-- **Decisión del usuario (3ª sesión):** (a), solo desde Profesional. La ruta responde 403 con el motivo cuando el plan no lo incluye (se cuenta el plan de quien exporta, igual que en el informe), y en Esencial el botón dice «Excel · Profesional» y lleva a precios. Durante la prueba gratuita se puede exportar, porque la prueba abre el plan Profesional. **Pendiente:** (c), que no se decidió.
+- **Decisión del usuario (3ª sesión):** (a), solo desde Profesional. La ruta responde 403 con el motivo cuando el plan no lo incluye (se cuenta el plan de quien exporta, igual que en el informe), y en Esencial el botón dice «Excel · Profesional» y lleva a precios. Durante la prueba gratuita se puede exportar, porque la prueba abre el plan Profesional. **Decisión (4ª sesión):** también (c). Si quien exporta no es la empresa dueña, el archivo sale sin las columnas de email y teléfono (`BoardData.esDueno`).
 
 ### EV-16 · `findUserIdByEmail` recorre hasta 4.000 usuarios con la service role — bajo · confianza alta · **pendiente**
 - `lib/evaluar.ts:697`. Es costoso y, aunque está detrás de una cuenta activa, sirve como oráculo de existencia de correos. Conviene una función SQL acotada o un índice en una tabla espejo.
@@ -124,8 +124,9 @@ cambian) y las de los `.ts/.tsx` **después** de esta sesión.
 - **Hecho (D-2 b):** `supabase/migration-054.sql` agrega `scoring_version`: las filas existentes quedan en 1 y las nuevas nacen en 2, donde el ítem vale de 0 a 4 sobre 4 (inverso = 5 − v). Cada número se muestra en su escala; el baremo y el promedio del grupo se llevan a la escala 2 (`aEscalaV2`). Las bandas de integridad y la lectura alta usan el equivalente en la escala 1 (`pctParaCortes`: p1 = 0,8·p2 + 20), así que la misma respuesta cae en la misma banda. En el tablero, a los de la escala vieja se los marca «Escala anterior» cuando el proceso mezcla las dos, y el Excel agrega la columna «Escala de rasgos». Pruebas: 4 en `tests/evaluar` y `supabase/tests/evaluar-054.sql`.
 - **Límite conocido:** la conversión v1 → v2 es exacta para rasgos totalmente respondidos. Con ítems v1 sin responder es aproximada (se recorta en 0). Solo afecta al baremo, no a ningún número mostrado.
 
-### EV-22 · Sin responder: likert penaliza y SJT no cuenta — medio · confianza alta · **propuesto**
+### EV-22 · Sin responder: likert penaliza y SJT no cuenta — medio · confianza alta · **corregido para candidatos nuevos** (D-7, migración 055 sin aplicar)
 - Un likert vacío suma 0 de 5, peor que contestar «1». Un ítem SJT vacío directamente no entra al máximo. La asimetría está fijada en las pruebas (`likert con ítem inverso…` y `juicio situacional…`). Hoy el impacto es acotado porque el runner no deja avanzar sin responder, salvo cuando el reloj vence. Recomendación: excluir del máximo los ítems sin responder y registrar cuántos faltaron.
+- **Hecho (D-7):** `supabase/migration-055.sql` pasa el default a la escala 3, donde un likert sin responder (o fuera de rango) no suma al máximo del rasgo, igual que el SJT. **Alcance deliberado:** las preguntas con respuesta correcta sin contestar siguen contando como incorrectas, porque si no, alcanzaría con contestar solo las fáciles para sacar 100%. El excluyente sin responder sigue descartando. El tablero muestra «respondió X de Y» y el informe «Respondió X de Y preguntas» para todos (`contarRespondidas`, que solo cuenta y no cambia ningún puntaje). Pruebas: 3 en `tests/evaluar` y `supabase/tests/evaluar-055.sql`.
 
 ### EV-23 · El ajuste compara bases distintas — medio · confianza alta · **parcial**
 - `fitScore` usa solo los rasgos rendidos. Alguien con 1 de 3 rasgos queda ordenado junto a quien rindió los 3, y alguien descartado por un excluyente podía aparecer primero con el trofeo.
@@ -156,7 +157,7 @@ cambian) y las de los `.ts/.tsx` **después** de esta sesión.
 | EV-33 | La demo de integridad marcaba en verde la respuesta deseable de un ítem del propio constructo | medio | **corregido** (ejemplo neutro, solo en etapas nuevas) |
 | EV-34 | «Las respuestas parecen sinceras / armadas» suena a veredicto | medio | **corregido** (lenguaje de señal) |
 | EV-35 | Ajustes: cinco botones de guardar en una pestaña (`ProcessSettings.tsx:166, 376, 506`; `ProcessEditor.tsx:1207`) | medio | propuesto |
-| EV-36 | Terminología: «concurso» (18 apariciones) y «proceso» (138) para lo mismo | bajo | propuesto (glosario en 09) |
+| EV-36 | Terminología: «concurso» (18 apariciones) y «proceso» (138) para lo mismo | bajo | **corregido** (D-6: 13 textos visibles a «proceso»; glosario en [10-glosario.md](10-glosario.md); queda «test»/«prueba») |
 | EV-37 | Corrección manual: no hay dónde poner nota a una respuesta escrita o a un video; solo la nota libre del equipo | medio | propuesto (innovación I-2) |
 | EV-38 | `submitStage` devuelve `error.message` de la base al navegador | bajo | pendiente |
 | EV-40 | Editar el enunciado de un ítem likert de plantilla le borraba la escala (`updateQuestion` guardaba `options = []` en todo lo que no fuera de opciones), y el candidato veía la frase sin nada para elegir | alto | **corregido** (se conservan las opciones, la correcta, el peso y el excluyente que tenía) |

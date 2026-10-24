@@ -50,6 +50,9 @@ recorridos bloqueados > UX > consistencia. **Nada está commiteado.**
 | C-23 | EV-24 | `lib/evaluar/report.ts` | Baremo con finalistas, contratados y descartados, en escala común y con el mismo redondeo; funciona antes de la 054 (reintenta sin la columna) | tsc/eslint |
 | C-24 | EV-19 | `ProcessEditor.tsx`, `puntaje.ts`, `actions.ts` | «Opción múltiple» fuera del editor | tsc/eslint |
 | C-25 | EV-39 | `CandidateRunner.tsx` | Accesibilidad de la evaluación | tsc/eslint; sin lector de pantalla |
+| C-26 | EV-15 (D-5 c) | `lib/evaluar.ts` (`BoardData.esDueno`), `export/route.ts` | El Excel del equipo sale sin email ni teléfono | tsc/eslint |
+| C-27 | EV-22 (D-7) | `supabase/migration-055.sql` (nueva), `puntaje.ts` (escala 3, `contarRespondidas`), `report.ts`, `DecisionBoard.tsx`, informe | Likert sin responder fuera del máximo para participantes nuevos; «respondió X de Y» | 3 pruebas (29/29); `supabase/tests/evaluar-055.sql` **sin correr** |
+| C-28 | EV-36 (D-6) | `actions.ts`, `cierre/page.tsx`, `PanelHome.tsx`, `ProcessEditor.tsx`, `ProcessSettings.tsx`, `lib/evaluar.ts`, `10-glosario.md` | «Concurso» → «proceso» en los textos visibles; glosario | grep sin apariciones visibles |
 | C-17 | EV-32 | `app/evaluar/precios/page.tsx` | «Las cinco pruebas del catálogo» | lectura |
 
 ## Compatibilidad del despliegue
@@ -79,4 +82,7 @@ El código funciona **antes y después** de aplicar la 053:
 14. Aplicar la 054 y correr `supabase/tests/evaluar-054.sql` → «A OK» a «C OK».
 15. Cuenta Esencial (fuera de la prueba): el botón dice «Excel · Profesional» y `/export` responde 403. En Profesional descarga, con la columna «Escala de rasgos».
 16. Proceso con candidatos de las dos escalas → los viejos muestran «Escala anterior»; el informe de integridad da la misma banda para las mismas respuestas.
+18. Aplicar la 055 y correr `supabase/tests/evaluar-055.sql` → «A OK» a «D OK».
+19. Un miembro del equipo con plan Profesional exporta → el archivo no trae email ni teléfono. La dueña sí los recibe.
+20. Candidato nuevo deja una etapa con un likert sin responder por fin del reloj → el tablero dice «respondió X de Y» y el rasgo no baja por el vacío.
 17. Recorrer la evaluación solo con teclado y con NVDA (Windows) o VoiceOver: se anuncian la pregunta, las opciones y cuál está elegida, y el aviso del último minuto.

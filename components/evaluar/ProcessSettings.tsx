@@ -426,7 +426,7 @@ export function ProcessOrg({ detail }: { detail: ProcessDetail }) {
       }
       setAviso(
         r.emailReason ??
-          `Le avisamos a ${managerEmail.trim()} que ya puede ver el concurso.`
+          `Le avisamos a ${managerEmail.trim()} que ya puede ver el proceso.`
       );
       router.refresh();
     });
@@ -438,7 +438,7 @@ export function ProcessOrg({ detail }: { detail: ProcessDetail }) {
     <div className="card p-5 space-y-4">
       <div>
         <h2 className="font-semibold text-primary-dark flex items-center gap-2">
-          <Building2 size={17} /> Para qué área es el concurso
+          <Building2 size={17} /> Para qué área es el proceso
         </h2>
         <p className="text-xs text-slate-500 mt-1">
           Aparece en el informe y en el correo al equipo. Sirve para no
@@ -515,7 +515,7 @@ export function ProcessOrg({ detail }: { detail: ProcessDetail }) {
           }
           className="btn-secondary press text-sm disabled:opacity-40"
         >
-          <UserPlus size={15} /> Invitarlo a ver el concurso
+          <UserPlus size={15} /> Invitarlo a ver el proceso
         </button>
       </div>
     </div>

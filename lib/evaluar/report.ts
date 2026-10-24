@@ -6,7 +6,12 @@ import {
   LIKERT_DIMENSIONS,
   LIKERT_LABELS,
 } from "@/lib/evaluar/templates";
-import { aEscalaV2, pctParaCortes, versionDe } from "@/lib/evaluar/puntaje";
+import {
+  aEscalaV2,
+  contarRespondidas,
+  pctParaCortes,
+  versionDe,
+} from "@/lib/evaluar/puntaje";
 
 // Informe por candidato: el puntaje solo no alcanza.
 //
@@ -298,7 +303,9 @@ export type CandidateReport = {
   quality: QualityFlag[];
   /** Respuestas en video, para que la empresa las mire. */
   videos: { questionId: string; text: string }[];
+  /** Preguntas contestadas, de las entregadas (`total`). */
   answered: number;
+  total: number;
   /** Minutos entre la primera y la última respuesta. */
   minutes: number | null;
 };
@@ -350,7 +357,10 @@ export async function getCandidateReport(
         questionId: a.question!.id,
         text: a.question!.text,
       })),
-    answered: filas.length,
+    ...(() => {
+      const r = contarRespondidas(filas);
+      return { answered: r.respondidas, total: r.total };
+    })(),
     // De los tiempos por etapa, no de los created_at: esos son todos el
     // mismo instante porque la correccion inserta todo junto.
     minutes: (() => {

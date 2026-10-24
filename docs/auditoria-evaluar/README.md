@@ -21,6 +21,7 @@ datos y devuelven 404. Ver [09-pendientes.md](09-pendientes.md).
 | [07-innovacion.md](07-innovacion.md) | 10 oportunidades y las 3 apuestas |
 | [08-roadmap.md](08-roadmap.md) | Orden propuesto de trabajo |
 | [09-pendientes.md](09-pendientes.md) | Pendientes, bloqueos y decisiones de producto abiertas |
+| [10-glosario.md](10-glosario.md) | Terminología del producto (decisión D-6) |
 
 ## Resumen ejecutivo
 

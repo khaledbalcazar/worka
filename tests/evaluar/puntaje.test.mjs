@@ -10,6 +10,7 @@ import assert from "node:assert/strict";
 import {
   aEscalaV2,
   cambioDeCorreccion,
+  contarRespondidas,
   corregirEtapa,
   iniciados,
   mensajeBloqueo,
@@ -293,4 +294,52 @@ test("versionDe: sin columna o sin dato es la escala 1", () => {
   assert.equal(versionDe(undefined), 1);
   assert.equal(versionDe(null), 1);
   assert.equal(versionDe(2), 2);
+});
+
+// ── Sin responder, escala 3 (D-7) ──────────────────────────────
+
+test("escala 3: el likert sin responder no suma al máximo", () => {
+  const preguntas = [
+    { id: "a", kind: "likert", dimension: "teson" },
+    { id: "b", kind: "likert", dimension: "teson", reverse: true },
+    { id: "c", kind: "likert", dimension: "teson" },
+  ];
+  // a = 4 → 3 ; b inverso 2 → 3 ; c vacío: fuera. 6 de 8, no 6 de 12.
+  const r3 = corregirEtapa(preguntas, { a: 4, b: 2 }, {}, 3);
+  assert.deepEqual(r3.profile.teson, { raw: 6, max: 8 });
+  // La escala 2 queda como estaba.
+  const r2 = corregirEtapa(preguntas, { a: 4, b: 2 }, {}, 2);
+  assert.deepEqual(r2.profile.teson, { raw: 6, max: 12 });
+  // Un valor fuera de rango cuenta como vacío también en la 3.
+  const fuera = corregirEtapa([preguntas[0]], { a: 9 }, {}, 3);
+  assert.equal(fuera.profile.teson, undefined);
+});
+
+test("escala 3: la pregunta con correcta sin responder sigue contando", () => {
+  // Si no contara, contestar solo las fáciles daría 100%.
+  const r = corregirEtapa(
+    [
+      { id: "q1", kind: "unica", correct: "A", weight: 2 },
+      { id: "q2", kind: "unica", correct: "B", weight: 1 },
+    ],
+    { q2: "B" },
+    {},
+    3
+  );
+  assert.equal(r.total, 1);
+  assert.equal(r.max, 3);
+});
+
+test("contarRespondidas: las filas vacías son entregadas pero no respondidas", () => {
+  assert.deepEqual(
+    contarRespondidas([
+      { value: "A" },
+      { value: null },
+      { value: 3 },
+      { value: "" },
+      { value: { video: "x.webm" } },
+    ]),
+    { respondidas: 3, total: 5 }
+  );
+  assert.deepEqual(contarRespondidas([]), { respondidas: 0, total: 0 });
 });

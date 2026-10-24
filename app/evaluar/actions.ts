@@ -1259,10 +1259,10 @@ async function notifyTeamMember(
 
   return sendEmail({
     to: email,
-    subject: `Te sumaron al concurso de ${proc.title}${donde ? ` (${donde})` : ""}`,
+    subject: `Te sumaron al proceso de ${proc.title}${donde ? ` (${donde})` : ""}`,
     html: emailLayout(`
       <p>Hola,</p>
-      <p>Te sumaron como evaluador del concurso de
+      <p>Te sumaron como evaluador del proceso de
       <strong>${escapeHtml(proc.title)}</strong>${donde ? ` — ${escapeHtml(donde)}` : ""}.</p>
       ${
         processId
@@ -1274,7 +1274,7 @@ async function notifyTeamMember(
       }
       <p style="margin:24px 0">
         <a href="${url}" style="background:#2563eb;color:#fff;padding:12px 20px;border-radius:12px;text-decoration:none;font-weight:600">
-          ${processId ? "Ver el concurso" : "Crear mi cuenta"}
+          ${processId ? "Ver el proceso" : "Crear mi cuenta"}
         </a>
       </p>
     `),

@@ -76,7 +76,13 @@ export function fitCoverage(
 // (evaluar_participants.scoring_version) y sus números no se recalculan. Lo
 // que sí se lleva a una escala común es lo que compara a unos con otros: el
 // baremo y las bandas de integridad.
-export const ESCALA_ACTUAL = 2;
+//
+// v3 (migración 055): misma escala que v2, pero un ítem likert sin responder
+// no suma al máximo (antes contaba 0 de 4, o 0 de 5 en v1: peor que contestar
+// el mínimo). Es lo que ya pasaba con el juicio situacional. Las preguntas
+// con respuesta correcta sin contestar siguen contando como incorrectas: si
+// no, alcanzaría con contestar solo las fáciles para sacar 100%.
+export const ESCALA_ACTUAL = 3;
 
 export function versionDe(v: number | null | undefined): number {
   return typeof v === "number" && v >= 1 ? v : 1;
@@ -264,7 +270,7 @@ export function corregirEtapa(
       const n = likertValido(value);
       if (version >= 2) {
         if (n !== null) points = q.reverse ? 5 - n : n - 1;
-        itemMax = 4;
+        itemMax = version >= 3 && n === null ? null : 4;
       } else {
         if (n !== null) points = q.reverse ? 6 - n : n;
         itemMax = 5;
@@ -347,7 +353,23 @@ export function cambioDeCorreccion(
   return null;
 }
 
-export type ResultadoEntrega ="corregir" | "repetida" | "fuera_de_orden" | "invalida";
+// ── Respondidas ────────────────────────────────────────────────
+
+/**
+ * Cuántas preguntas contestó de las que ya entregó. La entrega guarda una
+ * fila por pregunta de la etapa, aunque esté vacía (valor null), así que las
+ * filas son el total y las que tienen valor son las respondidas.
+ */
+export function contarRespondidas(
+  answers: { value: unknown }[]
+): { respondidas: number; total: number } {
+  const respondidas = answers.filter(
+    (a) => a.value !== null && a.value !== undefined && a.value !== ""
+  ).length;
+  return { respondidas, total: answers.length };
+}
+
+export type ResultadoEntrega = "corregir" | "repetida" | "fuera_de_orden" | "invalida";
 
 // Qué hace la base con una entrega, según en qué etapa está la persona.
 //

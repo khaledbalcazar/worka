@@ -39,10 +39,10 @@
 **Recomendación:** (a) primero, porque no pierde datos del candidato, y medir cuánto pasa antes de endurecer.
 
 **D-5 · Exportación (EV-15).** Ver las opciones en el hallazgo. **Recomendación:** CSV en todos los planes; datos de contacto solo para la dueña.
-**Decidido:** solo desde Profesional. Implementado. Queda abierto si el equipo (no la dueña) puede exportar emails y teléfonos.
+**Decidido:** solo desde Profesional, y los emails y teléfonos solo para la dueña. Implementado.
 
-**D-6 · Terminología.**
+**D-6 · Terminología.** — **Decidido y aplicado** (ver [10-glosario.md](10-glosario.md)).
 Propuesta de glosario: **proceso** = la búsqueda completa; **etapa** = cada parte; **prueba** = el instrumento del catálogo; **evaluación** = lo que vive el candidato. «Concurso» queda solo para sector público, como opción de la cuenta.
 **Recomendación:** adoptar el glosario y hacer un barrido de textos.
 
-**D-7 · Sin responder (EV-22).** Excluir del máximo los ítems sin responder y mostrar «respondió 23 de 25». Cambia los números nuevos, así que va con la marca de versión de D-2.
+**D-7 · Sin responder (EV-22).** — **Decidido; implementado en la 055 (sin aplicar)**, solo para likert y SJT. Las preguntas con correcta sin contestar siguen contando como incorrectas. Excluir del máximo los ítems sin responder y mostrar «respondió 23 de 25». Cambia los números nuevos, así que va con la marca de versión de D-2.

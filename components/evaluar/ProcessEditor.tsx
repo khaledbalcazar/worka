@@ -202,7 +202,7 @@ export default function ProcessEditor({
             </span>
             {!esDueno ? (
               <span className="chip bg-slate-100 text-slate-600">
-                Te sumaron a este concurso
+                Te sumaron a este proceso
               </span>
             ) : process.status !== "activo" ? (
               <button

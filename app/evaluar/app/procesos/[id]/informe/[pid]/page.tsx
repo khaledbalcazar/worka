@@ -99,7 +99,7 @@ export default async function InformePage({
             <p className="text-sm text-slate-600 mt-1">{board.process.title}</p>
             {/* Para qué área se llamó. Sin esto, el informe impreso llega a
                 un escritorio que no participó de la búsqueda y no distingue
-                dos concursos del mismo puesto. */}
+                dos procesos del mismo puesto. */}
             {(board.process.org_unit || board.process.department) && (
               <p className="text-sm text-slate-500">
                 {[board.process.org_unit, board.process.department]
@@ -215,7 +215,7 @@ export default async function InformePage({
         {report && report.answered > 0 && report.quality.length === 0 && (
           <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 mt-6">
             <strong className="font-semibold">Respuesta consistente.</strong>{" "}
-            {report.answered} preguntas
+            Respondió {report.answered} de {report.total} preguntas
             {report.minutes ? ` en ${report.minutes} minutos` : ""}, sin señales
             de respuesta apurada, plana ni contradictoria.
           </p>

@@ -40,10 +40,14 @@ export async function GET(
     ...new Set(board.candidates.flatMap((c) => Object.keys(c.profile))),
   ];
 
+  // Email y teléfono son datos personales: los exporta solo la empresa
+  // dueña del proceso. La gente del equipo los ve en pantalla para trabajar,
+  // pero no se los lleva en un archivo (decisión D-5).
+  const conContacto = board.esDueno;
+
   const header = [
     "Nombre",
-    "Email",
-    "Teléfono",
+    ...(conContacto ? ["Email", "Teléfono"] : []),
     "Origen",
     "Estado",
     "Puntaje",
@@ -60,8 +64,7 @@ export async function GET(
 
   const rows = board.candidates.map((c) => [
     c.full_name,
-    c.email ?? "",
-    c.phone ?? "",
+    ...(conContacto ? [c.email ?? "", c.phone ?? ""] : []),
     c.source === "worka" ? "Desde Worka" : "Invitado",
     c.status,
     c.score ?? "",

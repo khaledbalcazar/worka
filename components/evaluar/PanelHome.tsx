@@ -310,7 +310,7 @@ export default function PanelHome({
           {compartidos.length > 0 && (
             <section>
               <p className="nk-mono mb-3" style={{ color: "rgba(233,233,237,.4)" }}>
-                Te sumaron a estos concursos
+                Te sumaron a estos procesos
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 {compartidos.map((p) => (

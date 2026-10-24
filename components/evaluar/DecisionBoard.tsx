@@ -14,6 +14,7 @@ import {
   UserX,
 } from "lucide-react";
 import type { BoardData } from "@/lib/evaluar";
+import { contarRespondidas } from "@/lib/evaluar/puntaje";
 import CvLink from "./CvLink";
 import VideoPlayback from "./VideoPlayback";
 import BoardMetrics from "./BoardMetrics";
@@ -363,7 +364,10 @@ export default function DecisionBoard({
                   Etapa {Math.min(c.stage_index + 1, board.stages.length || 1)}{" "}
                   de {board.stages.length}
                   {c.answers.length > 0 &&
-                    ` · ${c.answers.length} respuestas`}
+                    (() => {
+                      const r = contarRespondidas(c.answers);
+                      return ` · respondió ${r.respondidas} de ${r.total}`;
+                    })()}
                 </p>
 
                 {/* Perfil por rasgo. Va sin colores de "bueno/malo" a
