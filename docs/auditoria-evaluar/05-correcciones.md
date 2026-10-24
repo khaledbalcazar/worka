@@ -42,6 +42,8 @@ recorridos bloqueados > UX > consistencia. **Nada está commiteado.**
 | C-14 | EV-28, 23, 29 | `DecisionBoard.tsx`, `BoardMetrics.tsx`, `lib/evaluar.ts` (`fitCoverage`) | Explicación de ajuste y puntaje; «rindió X de Y»; sin trofeo para descartados; métricas del grupo después de los candidatos y solo con 2 o más personas | tsc/eslint |
 | C-15 | EV-31 | `ProcessEditor.tsx`, `lib/evaluar.ts` (tipo) | Chips con nombre legible y modo de corrección real | prueba `modoCorreccion` |
 | C-16 | EV-20, 33, 34 | `lib/evaluar/integridad.ts`, `IntegrityReport.tsx` | No se muestra integridad si solo hay el rasgo compartido; demo neutra; lenguaje de señal | tsc/eslint |
+| C-18 | EV-18 (D-1 a) | `app/evaluar/actions.ts` (`structureLock`, `processOfStage`, `processOfQuestion` en 10 acciones; `duplicateProcess`), `components/evaluar/ProcessEditor.tsx`, `lib/evaluar/puntaje.ts` | Estructura fija con candidatos iniciados, en el servidor y en el editor; «Duplicar como versión nueva»; duplicado completo | 3 pruebas nuevas (22/22), tsc/eslint. Sin recorrido en el navegador (en demo no hay procesos) |
+| C-19 | EV-40 | `actions.ts` (`updateQuestion`) | Las preguntas sin opciones conservan las que tenían | tsc/eslint |
 | C-17 | EV-32 | `app/evaluar/precios/page.tsx` | «Las cinco pruebas del catálogo» | lectura |
 
 ## Compatibilidad del despliegue
@@ -64,3 +66,7 @@ El código funciona **antes y después** de aplicar la 053:
 7. Miembro del equipo intenta pasar a finalista → error explícito.
 8. Candidato de Worka entra desde la vacante enlazada → se crea la participación.
 9. Exportar con un nombre `=1+1` → la celda se abre como texto.
+10. Proceso con un candidato `en_curso`: el editor muestra el aviso y no ofrece mover, borrar ni agregar. Llamar a `deleteStage` desde la consola devuelve el mensaje de bloqueo.
+11. En ese proceso, corregir el enunciado de una pregunta → se guarda. Cambiar el puntaje → error «No se puede cambiar el puntaje…».
+12. «Duplicar como versión nueva» → abre un borrador con las mismas etapas, la explicación, el ejemplo y el tope de video, sin candidatos ni vacante.
+13. Editar el enunciado de un ítem likert de plantilla → el candidato sigue viendo las 5 opciones.

@@ -17,7 +17,11 @@ import {
   motivoEsCompartible,
 } from "@/lib/evaluar/motivos";
 import { emailEnabled, emailLayout, sendEmail } from "@/lib/email";
-import { escapeHtml } from "@/lib/evaluar/puntaje";
+import {
+  cambioDeCorreccion,
+  escapeHtml,
+  mensajeBloqueo,
+} from "@/lib/evaluar/puntaje";
 import { evaluarUrl } from "@/lib/supabase/config";
 import {
   PLANS,
@@ -101,6 +105,56 @@ async function nextStagePosition(
     .maybeSingle();
   const ultima = (data as { position?: number } | null)?.position;
   return typeof ultima === "number" ? ultima + 1 : 0;
+}
+
+// ¿La estructura del proceso está fija? Con alguien que ya empezó a rendir,
+// tocar etapas o corrección deja a dos candidatos medidos con reglas
+// distintas (ver cambioDeCorreccion en lib/evaluar/puntaje.ts). Devuelve el
+// mensaje para mostrar, o null si todavía se puede editar todo.
+//
+// Se chequea acá y no solo en el editor: la pantalla oculta los botones,
+// pero la acción se puede llamar igual.
+async function structureLock(
+  supabase: NonNullable<Awaited<ReturnType<typeof getServerClient>>>,
+  processId: string
+): Promise<string | null> {
+  const { count } = await supabase
+    .from("evaluar_participants")
+    .select("id", { count: "exact", head: true })
+    .eq("process_id", processId)
+    .neq("status", "invitado");
+  return count ? mensajeBloqueo(count) : null;
+}
+
+// El proceso de una etapa o de una pregunta, leído de la base. El processId
+// que manda el navegador sirve para revalidar la página, pero el bloqueo se
+// decide con el proceso real: si no, alcanzaría con mandar el id de otro
+// proceso sin candidatos.
+async function processOfStage(
+  supabase: NonNullable<Awaited<ReturnType<typeof getServerClient>>>,
+  stageId: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("evaluar_stages")
+    .select("process_id")
+    .eq("id", stageId)
+    .maybeSingle();
+  return (data as { process_id?: string } | null)?.process_id ?? null;
+}
+
+async function processOfQuestion(
+  supabase: NonNullable<Awaited<ReturnType<typeof getServerClient>>>,
+  questionId: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("evaluar_questions")
+    .select("stage:evaluar_stages(process_id)")
+    .eq("id", questionId)
+    .maybeSingle();
+  return (
+    (data as unknown as { stage: { process_id: string } | null } | null)?.stage
+      ?.process_id ?? null
+  );
 }
 
 // ── Cuenta y prueba ────────────────────────────────────────────
@@ -394,6 +448,10 @@ export async function duplicateProcess(id: string): Promise<Result> {
       brand_color: o.brand_color,
       use_company_brand: o.use_company_brand,
       ideal_profile: o.ideal_profile ?? {},
+      org_unit: o.org_unit ?? "",
+      department: o.department ?? "",
+      manager_name: o.manager_name ?? "",
+      manager_email: o.manager_email ?? "",
       // La vacante enlazada NO se copia: una vacante solo puede tener un
       // proceso, y copiar el enlace le robaría el suyo al original.
       job_id: null,
@@ -412,8 +470,12 @@ export async function duplicateProcess(id: string): Promise<Result> {
     .from("evaluar_stages")
     .select("*, evaluar_questions(*)")
     .eq("process_id", id)
-    .order("position");
+    .order("position")
+    .order("created_at")
+    .order("id");
 
+  // Las posiciones se renumeran 0, 1, 2…: el original puede tener empates.
+  let pos = 0;
   for (const s of (stages ?? []) as unknown as (Record<string, unknown> & {
     evaluar_questions: Record<string, unknown>[];
   })[]) {
@@ -425,9 +487,13 @@ export async function duplicateProcess(id: string): Promise<Result> {
         description: s.description,
         kind: s.kind,
         minutes: s.minutes,
-        position: s.position,
+        position: pos++,
         timed: s.timed ?? false,
         template_key: s.template_key ?? null,
+        // Sin esto la copia perdía la explicación y el ejemplo resuelto de
+        // cada etapa, y las de video volvían al tope por defecto.
+        intro: s.intro ?? "",
+        demo: s.demo ?? null,
       })
       .select("id")
       .single();
@@ -449,6 +515,7 @@ export async function duplicateProcess(id: string): Promise<Result> {
         reverse: q.reverse ?? false,
         weight: q.weight ?? 1,
         knockout: q.knockout ?? false,
+        max_seconds: q.max_seconds ?? 90,
       }))
     );
   }
@@ -491,6 +558,8 @@ export async function addStage(
   if (blocked) return { ok: false, error: blocked };
   if (!input.title.trim())
     return { ok: false, error: "La etapa necesita un nombre." };
+  const lock = await structureLock(supabase, processId);
+  if (lock) return { ok: false, error: lock };
 
   const { data, error } = await supabase
     .from("evaluar_stages")
@@ -520,6 +589,11 @@ export async function deleteStage(
   if (!supabase) return DEMO;
   const blocked = await requireActiveAccount();
   if (blocked) return { ok: false, error: blocked };
+
+  const real = await processOfStage(supabase, stageId);
+  if (!real) return { ok: false, error: "Esa etapa ya no existe." };
+  const lock = await structureLock(supabase, real);
+  if (lock) return { ok: false, error: lock };
 
   const { error } = await supabase
     .from("evaluar_stages")
@@ -557,11 +631,10 @@ export async function addQuestion(
   if (needsOptions && options.length < 2)
     return { ok: false, error: "Cargá al menos dos opciones." };
 
-  const { count } = await supabase
-    .from("evaluar_stages")
-    .select("id", { count: "exact", head: true })
-    .eq("id", stageId);
-  if (!count) return { ok: false, error: "Esa etapa ya no existe." };
+  const real = await processOfStage(supabase, stageId);
+  if (!real) return { ok: false, error: "Esa etapa ya no existe." };
+  const lock = await structureLock(supabase, real);
+  if (lock) return { ok: false, error: lock };
 
   const { count: qCount } = await supabase
     .from("evaluar_questions")
@@ -613,6 +686,8 @@ export async function applyTemplate(
 
   const template = getTemplate(templateKey);
   if (!template) return { ok: false, error: "Esa plantilla no existe." };
+  const lock = await structureLock(supabase, processId);
+  if (lock) return { ok: false, error: lock };
 
   const { data: stage, error: stageError } = await supabase
     .from("evaluar_stages")
@@ -694,23 +769,51 @@ export async function updateQuestion(
 
   const { data: current } = await supabase
     .from("evaluar_questions")
-    .select("kind, options, correct")
+    .select(
+      "kind, options, correct, weight, knockout, stage:evaluar_stages(process_id)"
+    )
     .eq("id", questionId)
     .maybeSingle();
   if (!current) return { ok: false, error: "Esa pregunta ya no existe." };
 
-  const row = current as { kind: string; options: string[]; correct: unknown };
+  const row = current as unknown as {
+    kind: string;
+    options: string[];
+    correct: unknown;
+    weight: number;
+    knockout: boolean;
+    stage: { process_id: string } | null;
+  };
   const needsOptions = row.kind === "unica" || row.kind === "multiple";
+  // Las que no son de opciones se quedan con las que tenían. Antes se
+  // guardaba [], y editar el enunciado de un ítem likert de plantilla le
+  // borraba la escala: el candidato veía la frase sin nada para elegir.
   const options = needsOptions
     ? input.options.map((o) => o.trim()).filter(Boolean)
-    : [];
+    : (row.options ?? []);
   if (needsOptions && options.length < 2)
     return { ok: false, error: "Cargá al menos dos opciones." };
 
   const correct =
     needsOptions && input.correctIndex !== null
       ? (options[input.correctIndex] ?? null)
-      : null;
+      : // Sin opciones (likert, abierta) la correcta no se edita acá.
+        needsOptions
+        ? null
+        : row.correct;
+  const weight = needsOptions ? Math.max(1, input.weight) : row.weight;
+  const knockout = needsOptions ? input.knockout && correct !== null : row.knockout;
+
+  // Con candidatos rindiendo solo se corrige el enunciado.
+  if (row.stage?.process_id) {
+    const lock = await structureLock(supabase, row.stage.process_id);
+    const cambio = cambioDeCorreccion(row, { options, correct, weight, knockout });
+    if (lock && cambio)
+      return {
+        ok: false,
+        error: `No se puede cambiar ${cambio}: ${lock}`,
+      };
+  }
 
   const { error } = await supabase
     .from("evaluar_questions")
@@ -718,8 +821,8 @@ export async function updateQuestion(
       text: input.text.trim(),
       options,
       correct,
-      weight: Math.max(1, input.weight),
-      knockout: input.knockout && correct !== null,
+      weight,
+      knockout,
     })
     .eq("id", questionId);
 
@@ -750,6 +853,22 @@ export async function updateStage(
   if (!input.title.trim())
     return { ok: false, error: "La etapa necesita un nombre." };
 
+  // Nombre, descripción y explicación se corrigen siempre. Los minutos y el
+  // cronómetro no, con gente rindiendo: cambiarían las condiciones de la
+  // prueba a mitad de camino.
+  const { data: actual } = await supabase
+    .from("evaluar_stages")
+    .select("process_id, minutes, timed")
+    .eq("id", stageId)
+    .maybeSingle();
+  if (!actual) return { ok: false, error: "Esa etapa ya no existe." };
+  const a = actual as { process_id: string; minutes: number; timed: boolean };
+  if (a.minutes !== Math.max(1, input.minutes) || !!a.timed !== input.timed) {
+    const lock = await structureLock(supabase, a.process_id);
+    if (lock)
+      return { ok: false, error: `No se pueden cambiar el tiempo ni el cronómetro: ${lock}` };
+  }
+
   const { error } = await supabase
     .from("evaluar_stages")
     .update({
@@ -778,11 +897,16 @@ export async function moveStage(
   const blocked = await requireActiveAccount();
   if (blocked) return { ok: false, error: blocked };
 
+  const lock = await structureLock(supabase, processId);
+  if (lock) return { ok: false, error: lock };
+
   const { data: stages } = await supabase
     .from("evaluar_stages")
     .select("id, position")
     .eq("process_id", processId)
-    .order("position");
+    .order("position")
+    .order("created_at")
+    .order("id");
 
   const list = (stages ?? []) as { id: string; position: number }[];
   const i = list.findIndex((s) => s.id === stageId);
@@ -818,6 +942,8 @@ export async function applyRoleTemplate(
 
   const role = getRoleTemplate(roleKey);
   if (!role) return { ok: false, error: "Ese rubro no existe." };
+  const lock = await structureLock(supabase, processId);
+  if (lock) return { ok: false, error: lock };
 
   let position = await nextStagePosition(supabase, processId);
 
@@ -1180,6 +1306,11 @@ export async function deleteQuestion(
   if (!supabase) return DEMO;
   const blocked = await requireActiveAccount();
   if (blocked) return { ok: false, error: blocked };
+
+  const real = await processOfQuestion(supabase, questionId);
+  if (!real) return { ok: false, error: "Esa pregunta ya no existe." };
+  const lock = await structureLock(supabase, real);
+  if (lock) return { ok: false, error: lock };
 
   const { error } = await supabase
     .from("evaluar_questions")
@@ -1898,6 +2029,10 @@ export async function generateStageWithAi(
       ok: false,
       error: "Contame un poco más: qué puesto es y qué querés medir.",
     };
+
+  // Antes de gastar una llamada a la IA.
+  const lock = await structureLock(supabase, processId);
+  if (lock) return { ok: false, error: lock };
 
   const { callAi } = await import("@/lib/evaluar/ai");
   const r = await callAi({

@@ -250,7 +250,55 @@ export function corregirEtapa(
   return { total, max, knocked, profile, scores };
 }
 
-export type ResultadoEntrega = "corregir" | "repetida" | "fuera_de_orden" | "invalida";
+// ── Estructura fija con candidatos ─────────────────────────────
+//
+// Con alguien que ya empezó a rendir, cambiar las etapas o la corrección
+// deja a dos candidatos del mismo proceso medidos con reglas distintas: borrar
+// una pregunta borra sus respuestas sin recalcular el puntaje, mover una etapa
+// cambia cuál le toca a quien va por la mitad, y cambiar la correcta o el
+// peso no recorrige a nadie. Desde ese momento solo se corrigen textos, y para
+// el resto se duplica el proceso como versión nueva.
+
+/** Cuántas personas ya empezaron (todo estado salvo "invitado"). */
+export function iniciados(statuses: string[]): number {
+  return statuses.filter((s) => s !== "invitado").length;
+}
+
+export function mensajeBloqueo(n: number): string {
+  const quien =
+    n === 1 ? "Una persona ya empezó" : `${n} personas ya empezaron`;
+  return (
+    `${quien} a rendir este proceso, así que sus etapas y preguntas quedaron ` +
+    `fijas para que los resultados sigan siendo comparables. Podés corregir ` +
+    `textos; para cambiar el resto, duplicá el proceso como versión nueva.`
+  );
+}
+
+type PreguntaEditable = {
+  options: string[];
+  correct: unknown;
+  weight: number;
+  knockout: boolean;
+};
+
+/**
+ * ¿El cambio de una pregunta toca la corrección? Con la estructura fija solo
+ * se acepta corregir el enunciado: opciones, correcta, peso y excluyente
+ * quedan como estaban. Devuelve qué cambió, o null si no cambió nada de eso.
+ */
+export function cambioDeCorreccion(
+  actual: PreguntaEditable,
+  nueva: PreguntaEditable
+): string | null {
+  if (!igualJson(actual.options ?? [], nueva.options ?? [])) return "las opciones";
+  if (!igualJson(actual.correct ?? null, nueva.correct ?? null))
+    return "la respuesta correcta";
+  if ((actual.weight ?? 1) !== (nueva.weight ?? 1)) return "el puntaje";
+  if (!!actual.knockout !== !!nueva.knockout) return "si es excluyente";
+  return null;
+}
+
+export type ResultadoEntrega ="corregir" | "repetida" | "fuera_de_orden" | "invalida";
 
 // Qué hace la base con una entrega, según en qué etapa está la persona.
 //

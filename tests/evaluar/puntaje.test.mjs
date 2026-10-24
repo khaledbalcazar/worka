@@ -8,7 +8,10 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  cambioDeCorreccion,
   corregirEtapa,
+  iniciados,
+  mensajeBloqueo,
   csvCell,
   dimensionPct,
   escapeHtml,
@@ -216,4 +219,33 @@ test("modoCorreccion: los ítems de plantilla no los juzga el evaluador", () => 
   );
   assert.equal(modoCorreccion({ kind: "unica", correct: "A" }), "correcta");
   assert.equal(modoCorreccion({ kind: "texto", correct: null }), "manual");
+});
+
+// ── Estructura fija con candidatos (D-1) ───────────────────────
+
+test("iniciados: cuenta a todos menos a los invitados", () => {
+  assert.equal(iniciados(["invitado", "invitado"]), 0);
+  assert.equal(
+    iniciados(["invitado", "en_curso", "completado", "descartado", "finalista", "contratado"]),
+    5
+  );
+  assert.equal(iniciados([]), 0);
+});
+
+test("mensajeBloqueo: singular y plural", () => {
+  assert.match(mensajeBloqueo(1), /^Una persona ya empezó/);
+  assert.match(mensajeBloqueo(3), /^3 personas ya empezaron/);
+});
+
+test("cambioDeCorreccion: solo el enunciado se puede tocar", () => {
+  const base = { options: ["A", "B"], correct: "A", weight: 2, knockout: false };
+  assert.equal(cambioDeCorreccion(base, { ...base }), null);
+  assert.equal(cambioDeCorreccion(base, { ...base, options: ["A", "C"] }), "las opciones");
+  assert.equal(cambioDeCorreccion(base, { ...base, options: ["B", "A"] }), "las opciones");
+  assert.equal(cambioDeCorreccion(base, { ...base, correct: "B" }), "la respuesta correcta");
+  assert.equal(cambioDeCorreccion(base, { ...base, weight: 3 }), "el puntaje");
+  assert.equal(cambioDeCorreccion(base, { ...base, knockout: true }), "si es excluyente");
+  // Una abierta sin correcta: null y undefined son lo mismo.
+  const abierta = { options: [], correct: null, weight: 1, knockout: false };
+  assert.equal(cambioDeCorreccion(abierta, { ...abierta, correct: undefined }), null);
 });

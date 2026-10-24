@@ -31,7 +31,22 @@ declare
   v_r jsonb;
   v_p evaluar_participants;
   v_ok boolean;
+  v_err text;
 begin
+  -- Antes que nada: ¿está aplicada la 053? Sin ella todos los casos fallan
+  -- con mensajes que confunden (el primero es «evaluar_start aceptó un
+  -- borrador», porque la versión vieja no mira el estado del proceso).
+  if not exists (select 1 from pg_proc where proname = 'evaluar_begin_stage')
+     or not exists (
+       select 1 from information_schema.columns
+       where table_name = 'evaluar_participants' and column_name = 'stage_started_at'
+     ) then
+    raise exception 'La migración 053 no está aplicada en esta base: corré supabase/migration-053.sql y después este script.';
+  end if;
+  if pg_get_functiondef('evaluar_start(text)'::regprocedure) not like '%no está abierta%' then
+    raise exception 'evaluar_start es la versión vieja (sin chequeo de estado): volvé a correr la sección 7 de la 053.';
+  end if;
+
   insert into auth.users (id, email) values (v_company, 'auditoria-053@example.invalid');
   insert into profiles (id, role) values (v_company, 'company')
     on conflict (id) do update set role = 'company';
@@ -62,17 +77,23 @@ begin
 
   -- A. Borrador
   v_ok := false;
+  v_err := '(no lanzó error)';
   begin
     perform evaluar_start(v_token);
-  exception when others then v_ok := sqlerrm like '%no está abierta%';
+  exception when others then
+    v_err := sqlerrm;
+    v_ok := sqlerrm like '%no está abierta%';
   end;
-  if not v_ok then raise exception 'A: evaluar_start aceptó un borrador'; end if;
+  if not v_ok then raise exception 'A: evaluar_start aceptó un borrador. Respuesta: %', v_err; end if;
   v_ok := false;
+  v_err := '(no lanzó error)';
   begin
     perform evaluar_submit_stage(v_token, v_s1, jsonb_build_object(v_q1::text, 'B'), null);
-  exception when others then v_ok := sqlerrm like '%no está abierta%';
+  exception when others then
+    v_err := sqlerrm;
+    v_ok := sqlerrm like '%no está abierta%';
   end;
-  if not v_ok then raise exception 'A: la entrega aceptó un borrador'; end if;
+  if not v_ok then raise exception 'A: la entrega aceptó un borrador. Respuesta: %', v_err; end if;
   raise notice 'A OK';
 
   update evaluar_processes set status = 'activo' where id = v_process;
@@ -103,11 +124,14 @@ begin
 
   -- D. Fuera de orden
   v_ok := false;
+  v_err := '(no lanzó error)';
   begin
     perform evaluar_submit_stage(v_token, v_s3, '{}'::jsonb, null);
-  exception when others then v_ok := sqlerrm like '%etapa anterior%';
+  exception when others then
+    v_err := sqlerrm;
+    v_ok := sqlerrm like '%etapa anterior%';
   end;
-  if not v_ok then raise exception 'D: aceptó una etapa salteada'; end if;
+  if not v_ok then raise exception 'D: aceptó una etapa salteada. Respuesta: %', v_err; end if;
   raise notice 'D OK';
 
   -- E. Likert fuera de rango + inverso

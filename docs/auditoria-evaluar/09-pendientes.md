@@ -24,6 +24,7 @@
 **D-1 · Editar un proceso con candidatos (EV-18).**
 (a) Bloquear borrar y mover etapas, borrar preguntas y cambiar la correcta o el peso cuando hay alguien con `status ≠ invitado`, y ofrecer «duplicar como versión nueva». (b) Versionar etapas y preguntas, y que cada participante quede atado a su versión. (c) Permitir todo con un aviso.
 **Recomendación:** (a) ya, porque es chico y ya existe `duplicateProcess`; (b) junto con I-7.
+**Estado:** (a) implementada en la 2ª sesión (C-18). Falta verificarla en staging (pasos 10–12 de 05-correcciones). Como la vacante enlazada no se copia al duplicar, para pasarla a la versión nueva primero hay que desenlazarla del original desde Ajustes.
 
 **D-2 · Escala likert (EV-21).**
 (a) Dejarla como está y documentar el piso de 20%. (b) Pasar a `(v−1)/4` solo para participantes nuevos, con una marca de versión de cálculo. (c) Recalcular el histórico.

@@ -5,7 +5,9 @@ import { useRouter } from "next/navigation";
 import {
   Check,
   Copy,
+  CopyPlus,
   Link2,
+  Lock,
   ChevronDown,
   Clock,
   FileText,
@@ -22,7 +24,12 @@ import {
 } from "lucide-react";
 import type { EvaluarQuestion, ProcessDetail } from "@/lib/evaluar";
 import type { PlanLimits } from "@/lib/evaluar-plans";
-import { KIND_LABEL, modoCorreccion } from "@/lib/evaluar/puntaje";
+import {
+  KIND_LABEL,
+  iniciados,
+  mensajeBloqueo,
+  modoCorreccion,
+} from "@/lib/evaluar/puntaje";
 import TemplatePicker from "./TemplatePicker";
 import AiStageGenerator from "./AiStageGenerator";
 import CandidateBoard from "./CandidateBoard";
@@ -39,6 +46,7 @@ import {
   applyTemplate,
   deleteQuestion,
   deleteStage,
+  duplicateProcess,
   inviteBatch,
   inviteParticipant,
   moveStage,
@@ -76,6 +84,19 @@ export default function ProcessEditor({
       const result = await fn();
       if (result.ok) router.refresh();
       else setError(result.error ?? "Ocurrió un error.");
+    });
+  }
+
+  // Con alguien que ya empezó, etapas y corrección quedan fijas (el
+  // servidor lo vuelve a chequear en cada acción).
+  const empezaron = iniciados(participants.map((p) => p.status));
+
+  function duplicarComoVersion() {
+    setError(null);
+    startTransition(async () => {
+      const r = await duplicateProcess(process.id);
+      if (r.ok && r.id) router.push(`/evaluar/app/procesos/${r.id}`);
+      else setError(r.error ?? "No pudimos duplicar el proceso.");
     });
   }
 
@@ -313,6 +334,8 @@ export default function ProcessEditor({
           detail={detail}
           pending={pending}
           plan={plan}
+          empezaron={empezaron}
+          onDuplicate={duplicarComoVersion}
           onApplyTemplate={(key) => run(() => applyTemplate(process.id, key))}
           onApplyRole={(key) => run(() => applyRoleTemplate(process.id, key))}
           onAddStage={(input) => run(() => addStage(process.id, input))}
@@ -405,6 +428,8 @@ function StagesTab({
   detail,
   pending,
   plan,
+  empezaron,
+  onDuplicate,
   onApplyTemplate,
   onApplyRole,
   onAddStage,
@@ -418,6 +443,9 @@ function StagesTab({
   detail: ProcessDetail;
   pending: boolean;
   plan: PlanLimits;
+  /** Cuántos ya empezaron a rendir. Con uno, la estructura queda fija. */
+  empezaron: number;
+  onDuplicate: () => void;
   onApplyTemplate: (key: string) => void;
   onApplyRole: (key: string) => void;
   onAddStage: (i: { title: string; description: string; minutes: number }) => void;
@@ -470,9 +498,26 @@ function StagesTab({
     });
   const [editQ, setEditQ] = useState<string | null>(null);
   const [editS, setEditS] = useState<string | null>(null);
+  const fija = empezaron > 0;
 
   return (
     <div className="space-y-3">
+      {fija && (
+        <div className="card p-4 flex flex-col sm:flex-row sm:items-center gap-3 border-amber-200 bg-amber-50/60">
+          <Lock size={18} className="text-amber-700 shrink-0" />
+          <p className="text-sm text-amber-900 flex-1">{mensajeBloqueo(empezaron)}</p>
+          {detail.esDueno && (
+            <button
+              onClick={onDuplicate}
+              disabled={pending}
+              className="btn-secondary press text-sm shrink-0 disabled:opacity-40"
+            >
+              <CopyPlus size={15} /> Duplicar como versión nueva
+            </button>
+          )}
+        </div>
+      )}
+
       {detail.stages.map((stage, i) => (
         <div key={stage.id} className="card p-5">
           <div className="flex items-start justify-between gap-3">
@@ -490,6 +535,8 @@ function StagesTab({
             <div className="flex items-center gap-0.5 shrink-0">
               {/* Reordenar: antes las etapas quedaban para siempre en el orden
                   en que se crearon. */}
+              {!fija && (
+              <>
               <button
                 onClick={() => onMoveStage(stage.id, "arriba")}
                 disabled={pending || i === 0}
@@ -506,6 +553,8 @@ function StagesTab({
               >
                 <ChevronDown size={16} />
               </button>
+              </>
+              )}
               <button
                 onClick={() => setEditS(editS === stage.id ? null : stage.id)}
                 disabled={pending}
@@ -514,6 +563,7 @@ function StagesTab({
               >
                 <Pencil size={15} />
               </button>
+              {!fija && (
               <button
                 onClick={() => {
                   // Borrar una etapa borra en cascada las respuestas que ya
@@ -530,6 +580,7 @@ function StagesTab({
               >
                 <Trash2 size={15} />
               </button>
+              )}
             </div>
           </div>
 
@@ -537,6 +588,7 @@ function StagesTab({
             <StageForm
               stage={stage}
               pending={pending}
+              soloTextos={fija}
               onCancel={() => setEditS(null)}
               onSave={(input) => {
                 onUpdateStage(stage.id, input);
@@ -569,6 +621,7 @@ function StagesTab({
                   <QuestionForm
                     pending={pending}
                     initial={q}
+                    soloTexto={fija}
                     onCancel={() => setEditQ(null)}
                     onSave={(input) => {
                       onUpdateQuestion(q.id, input);
@@ -628,6 +681,7 @@ function StagesTab({
                 >
                   <Pencil size={14} />
                 </button>
+                {!fija && (
                 <button
                   onClick={() => {
                     const aviso =
@@ -642,6 +696,7 @@ function StagesTab({
                 >
                   <X size={14} />
                 </button>
+                )}
               </li>
               )
             )}
@@ -658,7 +713,7 @@ function StagesTab({
             </button>
           )}
 
-          {openQ === stage.id ? (
+          {fija ? null : openQ === stage.id ? (
             <QuestionForm
               pending={pending}
               onCancel={() => setOpenQ(null)}
@@ -683,6 +738,7 @@ function StagesTab({
           etapas: quien ya armó su proceso tenía media pantalla ocupada por
           instrucciones de cómo armarlo. Se abre sola cuando todavía no hay
           nada, que es cuando de verdad hace falta. */}
+      {!fija && (
       <AddStagePanel
         detail={detail}
         pending={pending}
@@ -691,6 +747,7 @@ function StagesTab({
         onApplyRole={onApplyRole}
         onAddStage={onAddStage}
       />
+      )}
     </div>
   );
 }
@@ -698,12 +755,15 @@ function StagesTab({
 function QuestionForm({
   pending,
   initial,
+  soloTexto = false,
   onSave,
   onCancel,
 }: {
   pending: boolean;
   /** Pregunta existente: si viene, el formulario edita en vez de crear. */
   initial?: EvaluarQuestion;
+  /** Con candidatos rindiendo: solo se corrige el enunciado. */
+  soloTexto?: boolean;
   onCancel: () => void;
   onSave: (i: {
     text: string;
@@ -739,6 +799,12 @@ function QuestionForm({
 
   return (
     <div className="border border-slate-200 rounded-2xl p-4 mt-3 space-y-3 animate-rise">
+      {soloTexto && (
+        <p className="text-xs text-amber-800 bg-amber-50 rounded-xl px-3 py-2">
+          Ya hay candidatos rindiendo: podés corregir el enunciado, pero las
+          opciones, la correcta, el puntaje y si es excluyente quedan fijos.
+        </p>
+      )}
       <div>
         <label className="label">Pregunta</label>
         <input
@@ -800,6 +866,7 @@ function QuestionForm({
               <div key={i} className="flex items-center gap-2">
                 <button
                   type="button"
+                  disabled={soloTexto}
                   onClick={() => setCorrectIndex(correctIndex === i ? null : i)}
                   aria-label="Marcar como correcta"
                   className={`w-8 h-8 shrink-0 rounded-full grid place-items-center border-2 press ${
@@ -811,8 +878,9 @@ function QuestionForm({
                   <Check size={14} />
                 </button>
                 <input
-                  className="input flex-1"
+                  className="input flex-1 disabled:opacity-60"
                   placeholder={`Opción ${i + 1}`}
+                  disabled={soloTexto}
                   value={o}
                   onChange={(e) => {
                     const next = [...options];
@@ -820,7 +888,7 @@ function QuestionForm({
                     setOptions(next);
                   }}
                 />
-                {options.length > 2 && (
+                {options.length > 2 && !soloTexto && (
                   <button
                     type="button"
                     onClick={() => {
@@ -836,13 +904,15 @@ function QuestionForm({
               </div>
             ))}
           </div>
-          <button
-            type="button"
-            onClick={() => setOptions([...options, ""])}
-            className="text-xs text-primary font-medium mt-2"
-          >
-            + Otra opción
-          </button>
+          {!soloTexto && (
+            <button
+              type="button"
+              onClick={() => setOptions([...options, ""])}
+              className="text-xs text-primary font-medium mt-2"
+            >
+              + Otra opción
+            </button>
+          )}
         </div>
       )}
 
@@ -854,7 +924,8 @@ function QuestionForm({
               type="number"
               min={1}
               max={10}
-              className="input w-20"
+              className="input w-20 disabled:opacity-60"
+              disabled={soloTexto}
               value={weight}
               onChange={(e) => setWeight(Number(e.target.value))}
             />
@@ -863,6 +934,7 @@ function QuestionForm({
             <input
               type="checkbox"
               className="w-5 h-5 accent-red-500"
+              disabled={soloTexto}
               checked={knockout}
               onChange={(e) => setKnockout(e.target.checked)}
             />
@@ -1214,11 +1286,14 @@ function SettingsTab({
 function StageForm({
   stage,
   pending,
+  soloTextos = false,
   onSave,
   onCancel,
 }: {
   stage: ProcessDetail["stages"][number];
   pending: boolean;
+  /** Con candidatos rindiendo: el tiempo y el cronómetro quedan fijos. */
+  soloTextos?: boolean;
   onCancel: () => void;
   onSave: (i: {
     title: string;
@@ -1259,7 +1334,8 @@ function StageForm({
             type="number"
             min={1}
             max={120}
-            className="input w-24"
+            className="input w-24 disabled:opacity-60"
+            disabled={soloTextos}
             value={minutes}
             onChange={(e) => setMinutes(Number(e.target.value))}
           />
@@ -1268,6 +1344,7 @@ function StageForm({
           <input
             type="checkbox"
             className="w-5 h-5 accent-primary"
+            disabled={soloTextos}
             checked={timed}
             onChange={(e) => setTimed(e.target.checked)}
           />

@@ -101,11 +101,12 @@ cambian) y las de los `.ts/.tsx` **después** de esta sesión.
 ### EV-07 · Sigue viva la corrección de 3 argumentos de la 023 — medio · confianza alta · **corregido en 053**
 - `create or replace` con otra firma crea una sobrecarga: la versión de la `023:50` sigue ejecutable por `anon` (`023:299`). La 053 la borra.
 
-### EV-18 · Editar un proceso publicado cambia o borra resultados — **crítico** · confianza alta · **parcial** (confirmación) / **propuesto** (versionado)
+### EV-18 · Editar un proceso publicado cambia o borra resultados — **crítico** · confianza alta · **corregido** (bloqueo, opción D-1 a) / **propuesto** (versionado, D-1 b)
 - **Evidencia:** no hay bloqueo de edición por estado. `deleteStage` y `deleteQuestion` borran en cascada las respuestas (`migration-022.sql:134`) sin recalcular `score/max_score`. `moveStage` reordena, pero `stage_index` es un índice: quien estaba en la etapa 2 pasa a rendir otra. `updateQuestion` cambia la correcta o el peso sin recorregir, y `setIdealProfile` cambia el ajuste de todos retroactivamente. No había ninguna confirmación (`confirm(` no aparecía en todo Evaluar).
 - **Impacto:** resultados no comparables entre candidatos del mismo proceso, y pérdida de datos con un toque.
-- **Hecho:** confirmación antes de borrar una etapa o una pregunta, que avisa que se pierden respuestas.
-- **Propuesto:** ver 09-pendientes D-1 (bloquear la estructura con candidatos iniciados, o versionar).
+- **Hecho (1ª sesión):** confirmación antes de borrar una etapa o una pregunta.
+- **Hecho (2ª sesión, D-1 a):** con al menos una persona en un estado distinto de `invitado`, el servidor rechaza agregar, borrar o mover etapas; agregar o borrar preguntas; aplicar plantillas o la IA; cambiar opciones, correcta, puntaje o excluyente; y cambiar minutos o cronómetro. Se puede seguir corrigiendo el enunciado, el nombre, la descripción y la explicación de cada etapa. El proceso real se lee de la base (`processOfStage` / `processOfQuestion`), no del id que manda el navegador. El editor oculta esos controles, muestra el aviso y ofrece «Duplicar como versión nueva». `duplicateProcess` ahora copia también la explicación, el ejemplo, el tope de video y los datos de la unidad, y renumera las posiciones. Reglas en `iniciados`, `mensajeBloqueo` y `cambioDeCorreccion` (`lib/evaluar/puntaje.ts`), con 3 pruebas.
+- **Queda:** `setIdealProfile` sigue cambiando el ajuste retroactivamente. Es una lente de lectura y no un resultado guardado, así que se dejó libre a propósito. El versionado de verdad (D-1 b) llega con I-7.
 
 ### EV-19 · «Opción múltiple» es en realidad opción única — medio · confianza alta · **propuesto**
 - **Evidencia:** el editor ofrece «Opción múltiple» (`ProcessEditor.tsx:762`), pero solo deja marcar una correcta. El runner trata `multiple` igual que `unica` y guarda un solo valor (`CandidateRunner.tsx:515`). La base compara igualdad de JSON.
@@ -153,4 +154,5 @@ cambian) y las de los `.ts/.tsx` **después** de esta sesión.
 | EV-36 | Terminología: «concurso» (18 apariciones) y «proceso» (138) para lo mismo | bajo | propuesto (glosario en 09) |
 | EV-37 | Corrección manual: no hay dónde poner nota a una respuesta escrita o a un video; solo la nota libre del equipo | medio | propuesto (innovación I-2) |
 | EV-38 | `submitStage` devuelve `error.message` de la base al navegador | bajo | pendiente |
+| EV-40 | Editar el enunciado de un ítem likert de plantilla le borraba la escala (`updateQuestion` guardaba `options = []` en todo lo que no fuera de opciones), y el candidato veía la frase sin nada para elegir | alto | **corregido** (se conservan las opciones, la correcta, el peso y el excluyente que tenía) |
 | EV-39 | Accesibilidad: opciones del runner sin `role="radio"` ni `aria-checked`, y escala 1–5 sin etiqueta textual; no se midió contraste | medio | pendiente (confianza media) |
