@@ -265,7 +265,7 @@ export default function ProcessEditor({
                 >
                   {e.v}
                 </p>
-                <p className="nk-mono mt-1.5" style={{ color: "rgba(233,233,237,.42)" }}>
+                <p className="nk-mono mt-1.5" style={{ color: "#767676" }}>
                   {e.l}
                 </p>
               </div>
@@ -629,7 +629,7 @@ function StagesTab({
               className="w-full mt-3 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-3 text-sm press"
               style={{
                 border: "1px dashed var(--nk-line, #e2e8f0)",
-                color: "rgba(233,233,237,.55)",
+                color: "#666666",
               }}
             >
               <span>
@@ -737,7 +737,7 @@ function StagesTab({
             <button
               onClick={() => alternar(stage.id)}
               className="w-full mt-2 py-2 text-xs press"
-              style={{ color: "rgba(233,233,237,.45)" }}
+              style={{ color: "#767676" }}
             >
               <ChevronUp size={14} /> Plegar las preguntas
             </button>

@@ -52,7 +52,7 @@ export default function EvaluarPlanCheckout({
           {PLANES.map((p) => (
             <label
               key={p.id}
-              className={`rounded-xl border p-3.5 cursor-pointer ${plan === p.id ? "border-[var(--nk-300,#818cf8)]" : "border-[#292b31]"}`}
+              className={`rounded-xl border p-3.5 cursor-pointer ${plan === p.id ? "border-[var(--nk-300,#818cf8)]" : "border-[#e0dfdc]"}`}
             >
               <input
                 type="radio"
@@ -76,7 +76,7 @@ export default function EvaluarPlanCheckout({
           {DURACIONES.map((d) => (
             <label
               key={d.months}
-              className={`rounded-xl border p-2.5 text-center text-sm cursor-pointer ${months === d.months ? "border-[var(--nk-300,#818cf8)]" : "border-[#292b31]"}`}
+              className={`rounded-xl border p-2.5 text-center text-sm cursor-pointer ${months === d.months ? "border-[var(--nk-300,#818cf8)]" : "border-[#e0dfdc]"}`}
             >
               <input
                 type="radio"

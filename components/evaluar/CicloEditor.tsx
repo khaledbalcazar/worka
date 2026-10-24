@@ -78,10 +78,10 @@ export default function CicloEditor({ detalle }: { detalle: CicloDetalle }) {
             {evaluaciones.length > 0 && (
               <div className="mt-3 max-w-sm">
                 <div className="flex justify-between text-xs mb-1.5">
-                  <span style={{ color: "rgba(233,233,237,.55)" }}>
+                  <span style={{ color: "#666666" }}>
                     {enviadas} de {evaluaciones.length} enviadas
                   </span>
-                  <span style={{ color: "rgba(233,233,237,.42)" }}>
+                  <span style={{ color: "#767676" }}>
                     {Math.round((enviadas / evaluaciones.length) * 100)}%
                   </span>
                 </div>

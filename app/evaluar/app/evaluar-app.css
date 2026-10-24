@@ -1,0 +1,59 @@
+/* Tokens de Worka Evaluar dentro del sistema del ecosistema Worka.
+   La base (lienzo cálido, tarjetas, botones, tipografía) es la del panel de
+   empresa: app/empresa/company.css, que se importa junto con este archivo.
+   Acá solo va lo propio de Evaluar:
+
+   - Su color de identidad (violeta), que se usa en el chip de la marca y en
+     nada más: las acciones siguen siendo azules como en todo Worka.
+   - La traducción a claro de las variables del tema oscuro anterior
+     (Nocturne). Algunos componentes las nombran en estilos en línea; con
+     estos valores se leen bien mientras se terminan de migrar. */
+
+.ev-app {
+  --ev-identity: #5d5294;
+  --ev-identity-bg: #efedfb;
+
+  /* Nocturne → claro */
+  --color-bg: #f3efea;
+  --color-text: #1d2226;
+  --color-accent: #0a66c2;
+  --nk-100: #004182;
+  --nk-200: #004182;
+  --nk-300: #0a66c2;
+  --nk-400: #2a78d6;
+  --nk-500: #6da7ec;
+  --nk-700: #0a66c2;
+  --nk-800: #cde2fb;
+  --nk-line: #e0dfdc;
+  --nk-line-2: #c9c7c3;
+  --nk-card: #ffffff;
+  --nk-deep: #f6f4f1;
+  --nk-band: #edf3f8;
+
+  /* Tinta del sistema (las mismas de company.css) para los estilos nuevos. */
+  --ev-ink: #1d2226;
+  --ev-ink-2: #404040;
+  --ev-ink-3: #666666;
+  --ev-line: #e0dfdc;
+}
+
+/* Chip de la marca: mismo molde que «Empresas» y «Backoffice», en violeta. */
+.ev-app .co-brand small.ev-chip { color: var(--ev-identity); background: var(--ev-identity-bg); }
+
+.ev-switch { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 600; color: #404040; }
+.ev-switch:hover { background: #f3f2f0; color: #1d2226; }
+
+/* En celular la barra de abajo tiene cuatro accesos, no cinco. */
+.ev-bottom { grid-template-columns: repeat(4, 1fr); }
+
+/* Rótulo chico de dato: antes monoespaciado y en versalitas (firma del tema
+   oscuro); ahora el rótulo del ecosistema, igual al de las tarjetas del
+   panel de empresa. */
+.ev-app .nk-mono { font-family: inherit; font-size: 10px; font-weight: 700; line-height: 1.2; letter-spacing: .08em; text-transform: uppercase; color: #8c8c8c; }
+
+/* Los CTA contorneados del tema oscuro pasan a ser los botones del sistema. */
+.ev-app .nk-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 18px; border-radius: 999px; background: #0a66c2; color: #fff; font-size: 14px; font-weight: 600; border: 0; }
+.ev-app .nk-cta:hover { background: #004182; color: #fff; box-shadow: none; }
+.ev-app .nk-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 18px; border-radius: 999px; border: 1px solid #0a66c2; color: #0a66c2; background: #fff; font-size: 14px; font-weight: 600; }
+.ev-app .nk-ghost:hover { background: #edf3f8; }
+.ev-app .nk-rule { height: 1px; border: 0; background: #e0dfdc; }

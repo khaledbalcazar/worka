@@ -51,10 +51,10 @@ export default async function EvaluarPlanPage({
         </p>
       )}
 
-      <section className="rounded-2xl border border-[#292b31] bg-[#1a1c26] p-6">
-        <h1 className="text-xl font-semibold text-[#e9e9ed]">Mi plan</h1>
+      <section className="card p-6">
+        <h1 className="text-xl font-semibold">Mi plan</h1>
         {cuenta ? (
-          <p className="text-sm text-[rgba(233,233,237,.6)] mt-1">
+          <p className="text-sm text-[#404040] mt-1">
             {access.inTrial
               ? `Prueba gratuita con todo habilitado: te quedan ${access.daysLeft} ${access.daysLeft === 1 ? "día" : "días"}.`
               : access.active
@@ -62,18 +62,18 @@ export default async function EvaluarPlanPage({
                 : `${ESTADO[cuenta.status] ?? cuenta.status}. Tus procesos siguen guardados: al activar un plan seguís donde estabas.`}
           </p>
         ) : (
-          <p className="text-sm text-[rgba(233,233,237,.6)] mt-1">
+          <p className="text-sm text-[#404040] mt-1">
             Todavía no activaste Worka Evaluar. Podés empezar con la prueba gratuita desde el panel o contratar directamente.
           </p>
         )}
       </section>
 
-      <section className="rounded-2xl border border-[#292b31] bg-[#1a1c26] p-6 text-[#e9e9ed]">
+      <section className="card p-6">
         {oferta ? (
           <EvaluarPlanCheckout oferta={oferta} planInicial={planInicial} />
         ) : (
           <div>
-            <p className="text-sm text-[rgba(233,233,237,.6)]">
+            <p className="text-sm text-[#404040]">
               Por ahora el pago es por transferencia bancaria o link de pago. Escribinos y activamos tu plan en el día.
             </p>
             <VentasCta variante="cta" className="w-full mt-4" mensaje="Hola, quiero contratar Worka Evaluar.">
@@ -81,7 +81,7 @@ export default async function EvaluarPlanPage({
             </VentasCta>
           </div>
         )}
-        <p className="text-xs text-[rgba(233,233,237,.45)] mt-5">
+        <p className="text-xs text-[#767676] mt-5">
           ¿Más de 20 procesos al año o necesidades especiales? El plan Corporativo es a medida.{" "}
           <Link href="/evaluar/precios" className="underline">Ver todos los planes</Link>
         </p>

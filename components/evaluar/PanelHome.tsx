@@ -155,7 +155,7 @@ export default function PanelHome({
           <div>
             <p
               className="nk-mono m-0"
-              style={{ color: "rgba(233,233,237,.4)" }}
+              style={{ color: "#767676" }}
             >
               {alerts.length > 0 ? "Necesita tu atención" : "Todo al día"}
             </p>
@@ -198,10 +198,10 @@ export default function PanelHome({
                       className="card press p-4 flex items-start gap-3 relative overflow-hidden"
                       style={{
                         borderColor:
-                          a.kind === "revisar" ? "#423a6a" : "var(--nk-line)",
+                          a.kind === "revisar" ? "#c9d9ea" : "var(--nk-line)",
                         background:
                           a.kind === "revisar"
-                            ? "linear-gradient(150deg,#232532,#1b1d29)"
+                            ? "#f3f8fd"
                             : "var(--nk-card)",
                       }}
                     >
@@ -218,11 +218,11 @@ export default function PanelHome({
                       <span
                         className="w-10 h-10 shrink-0 rounded-[10px] grid place-items-center"
                         style={{
-                          border: `1px solid ${a.kind === "revisar" ? "rgba(145,132,217,.4)" : "rgba(233,233,237,.14)"}`,
+                          border: `1px solid ${a.kind === "revisar" ? "#c9d9ea" : "#e0dfdc"}`,
                           color:
                             a.kind === "revisar"
                               ? "var(--color-accent)"
-                              : "rgba(233,233,237,.7)",
+                              : "#404040",
                         }}
                       >
                         <Icon size={18} />
@@ -273,7 +273,7 @@ export default function PanelHome({
                 </p>
                 <p
                   className="nk-mono mt-2"
-                  style={{ color: "rgba(233,233,237,.42)" }}
+                  style={{ color: "#767676" }}
                 >
                   {s.l}
                 </p>
@@ -284,10 +284,10 @@ export default function PanelHome({
           {/* Procesos */}
           <section>
             <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-              <p className="nk-mono m-0" style={{ color: "rgba(233,233,237,.4)" }}>
+              <p className="nk-mono m-0" style={{ color: "#767676" }}>
                 Tus procesos
               </p>
-              <span className="text-[12.5px]" style={{ color: "rgba(233,233,237,.45)" }}>
+              <span className="text-[12.5px]" style={{ color: "#767676" }}>
                 {propios.length}
               </span>
             </div>
@@ -309,7 +309,7 @@ export default function PanelHome({
               porque no los administro: solo puedo mirarlos y opinar. */}
           {compartidos.length > 0 && (
             <section>
-              <p className="nk-mono mb-3" style={{ color: "rgba(233,233,237,.4)" }}>
+              <p className="nk-mono mb-3" style={{ color: "#767676" }}>
                 Te sumaron a estos procesos
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -339,7 +339,7 @@ export default function PanelHome({
           {/* Actividad reciente */}
           {activity.length > 0 && (
             <section>
-              <p className="nk-mono mb-3" style={{ color: "rgba(233,233,237,.4)" }}>
+              <p className="nk-mono mb-3" style={{ color: "#767676" }}>
                 Últimos movimientos
               </p>
               <ol className="card divide-y divide-slate-100">
