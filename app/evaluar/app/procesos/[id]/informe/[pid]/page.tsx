@@ -10,6 +10,8 @@ import ProfileRadar from "@/components/evaluar/ProfileRadar";
 import PercentileBar from "@/components/evaluar/PercentileBar";
 import IntegrityReport from "@/components/evaluar/IntegrityReport";
 import { DIMENSIONES_INTEGRIDAD } from "@/lib/evaluar/integridad";
+import { StatusChip } from "@/components/evaluar/ProcessEditor";
+import { AiCandidateBrief } from "@/components/evaluar/AiAssist";
 
 export const metadata = {
   title: "Informe del candidato",
@@ -75,318 +77,250 @@ export default async function InformePage({
   );
   const alertas = (report?.quality ?? []).filter((q) => q.severity === "alerta");
 
+  const initials = (c.full_name || "?")
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
+  const etapa = Math.min(c.stage_index + 1, board.stages.length || 1);
+  const terminado = !!c.completed_at;
+
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8 print:py-0">
-      <div className="flex items-center justify-between gap-3 print:hidden">
-        <a
-          href={`/evaluar/app/procesos/${id}/tablero`}
-          className="text-sm text-primary font-medium"
-        >
-          ← Volver al tablero
-        </a>
+    <div className="max-w-6xl mx-auto print:max-w-none">
+      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
+        <Link href={`/evaluar/app/procesos/${id}/tablero`} className="text-sm text-primary font-medium inline-flex items-center gap-1">
+          ← Comparar y decidir
+        </Link>
         <PrintButton />
       </div>
 
-      <div className="card p-8 mt-4 print:border-0 print:shadow-none print:p-0">
-        <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
-          <div>
-            <p className="text-xs text-slate-400 uppercase tracking-wide">
-              Informe de evaluación
+      {/* ── Cabecera: quién es y para qué se evaluó ── */}
+      <header className="card p-6 mt-4 print:border-0 print:p-0">
+        <div className="flex flex-wrap items-start gap-4">
+          <span className="w-16 h-16 rounded-full bg-[#efedfb] text-[#5d5294] grid place-items-center text-xl font-bold shrink-0 print:hidden" aria-hidden>
+            {initials}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="ev-label">Informe de evaluación</p>
+            <h1 className="text-[26px] font-semibold text-primary-dark leading-tight mt-0.5">{c.full_name || "Sin nombre"}</h1>
+            <p className="text-sm text-slate-600 mt-1">
+              {board.process.title}
+              {(board.process.org_unit || board.process.department) && (
+                <> · {[board.process.org_unit, board.process.department].filter(Boolean).join(" · ")}</>
+              )}
             </p>
-            <h1 className="text-2xl font-bold text-primary-dark mt-0.5">
-              {c.full_name || "Sin nombre"}
-            </h1>
-            <p className="text-sm text-slate-600 mt-1">{board.process.title}</p>
-            {/* Para qué área se llamó. Sin esto, el informe impreso llega a
-                un escritorio que no participó de la búsqueda y no distingue
-                dos procesos del mismo puesto. */}
-            {(board.process.org_unit || board.process.department) && (
-              <p className="text-sm text-slate-500">
-                {[board.process.org_unit, board.process.department]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
-            )}
-            {board.process.manager_name && (
-              <p className="text-xs text-slate-400 mt-0.5">
-                Responsable: {board.process.manager_name}
-              </p>
-            )}
+            <div className="flex flex-wrap items-center gap-2 mt-3 text-xs">
+              <StatusChip status={c.status} />
+              <span className="chip bg-[#f3f1ee] text-slate-700">{c.source === "worka" ? "Postuló desde Worka Empleos" : "Invitado por la empresa"}</span>
+              {c.city && <span className="chip bg-[#f3f1ee] text-slate-700">{c.city}</span>}
+              {c.email && <span className="chip bg-[#f3f1ee] text-slate-700">{c.email}</span>}
+              {c.phone && <span className="chip bg-[#f3f1ee] text-slate-700">{c.phone}</span>}
+            </div>
           </div>
-          <div className="text-right shrink-0">
-            <p className="font-bold text-primary-dark">Worka Evaluar</p>
-            <p className="text-xs text-slate-400">
-              {new Date().toLocaleDateString("es-PY", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            </p>
+          <div className="text-right shrink-0 text-xs text-slate-500">
+            <p className="font-semibold text-primary-dark text-sm">Worka Evaluar</p>
+            {new Date().toLocaleDateString("es-PY", { day: "numeric", month: "long", year: "numeric" })}
+            {board.process.manager_name && <p className="mt-1">Responsable: {board.process.manager_name}</p>}
           </div>
         </div>
 
-        {/* Datos y resultado general */}
-        <div className="grid sm:grid-cols-2 gap-x-8 gap-y-2 mt-5 text-sm">
-          {[
-            ["Estado", c.status.replace("_", " ")],
-            [
-              "Origen",
-              c.source === "worka" ? "Desde Worka Empleos" : "Invitado",
-            ],
-            ["Email", c.email || "—"],
-            ["Teléfono", c.phone || "—"],
-            [
-              "Etapa alcanzada",
-              `${Math.min(c.stage_index + 1, board.stages.length || 1)} de ${board.stages.length}`,
-            ],
-            [
-              "Completado",
-              c.completed_at
-                ? new Date(c.completed_at).toLocaleDateString("es-PY")
-                : "En curso",
-            ],
-          ].map(([k, v]) => (
-            <div key={k} className="flex justify-between gap-3 border-b border-slate-100 py-1.5">
-              <span className="text-slate-500">{k}</span>
-              <span className="text-slate-800 font-medium text-right">{v}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* CV adjunto. Antes se subía y no aparecía en ningún lado. */}
-        {c.cv_url && (
-          <div className="mt-4">
-            <CvLink participantId={pid} />
+        {/* Tres lecturas distintas, cada una con lo que mide. Antes se veían
+            juntos un ajuste, un porcentaje y unos puntos sin explicar la
+            relación, y se leían como el mismo número. */}
+        <div className="grid sm:grid-cols-3 gap-3 mt-6">
+          <div className="rounded-xl border border-[#c9d9ea] bg-[#f3f8fd] p-4">
+            <p className="ev-label !text-[#004182]">Ajuste al puesto</p>
+            <p className="text-[32px] font-semibold leading-none text-[#004182] mt-2 tabular-nums">{c.fit === null ? "—" : `${c.fit}%`}</p>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              {c.fit === null
+                ? "Definí qué importa para el puesto en Ajustes › Qué importa en el puesto para calcularlo."
+                : `Qué tanto se parece su perfil a lo que marcaste para el puesto (rindió ${c.fitCoverage.rendidos} de ${c.fitCoverage.pedidos} rasgos).`}
+            </p>
           </div>
-        )}
-
-        {/* Pruebas con vara objetiva */}
-        {c.percent !== null && (
-          <section className="mt-6">
-            <h2 className="font-bold text-primary-dark">
-              Resultado en pruebas objetivas
-            </h2>
-            <p className="text-sm text-slate-500">
-              Conocimientos, razonamiento y juicio situacional.
+          <div className="rounded-xl border border-[#e0dfdc] bg-white p-4">
+            <p className="ev-label">Pruebas objetivas</p>
+            <p className="text-[32px] font-semibold leading-none text-primary-dark mt-2 tabular-nums">{c.percent === null ? "—" : `${c.percent}%`}</p>
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              {c.percent === null
+                ? "Todavía sin preguntas que se corrijan solas."
+                : `${c.score} de ${c.max_score} puntos en conocimientos, razonamiento y juicio situacional, sobre lo que rindió.`}
             </p>
-            <div className="flex items-baseline gap-2 mt-2">
-              <span className="text-4xl font-bold text-primary-dark">
-                {c.percent}%
-              </span>
-              <span className="text-sm text-slate-500">
-                {c.score} de {c.max_score} puntos
-              </span>
-            </div>
-          </section>
-        )}
-
-        {/* Calidad de la respuesta.
-            Va ANTES del perfil a propósito: si la persona contestó todo igual
-            en cuarenta segundos, los rasgos de abajo no describen a nadie, y
-            enterarse después de haberlos leído es enterarse tarde. */}
-        {report && report.quality.length > 0 && (
-          <section className="mt-6">
-            <h2 className="font-bold text-primary-dark">
-              Calidad de la respuesta
-            </h2>
-            <p className="text-sm text-slate-500">
-              Señales de que el perfil de abajo puede no ser confiable.
+          </div>
+          <div className="rounded-xl border border-[#e0dfdc] bg-white p-4">
+            <p className="ev-label">Avance</p>
+            <p className="text-[32px] font-semibold leading-none text-primary-dark mt-2 tabular-nums">
+              {etapa}
+              <span className="text-lg text-slate-500"> de {board.stages.length}</span>
             </p>
-            <div className="space-y-2 mt-3">
-              {report.quality.map((q) => (
-                <div
-                  key={q.kind}
-                  className={`rounded-xl border px-3.5 py-2.5 ${
-                    q.severity === "alerta"
-                      ? "border-amber-300 bg-amber-50"
-                      : "border-slate-200 bg-slate-50"
-                  }`}
-                >
-                  <p className="text-sm font-semibold text-primary-dark">
-                    {q.label}
-                  </p>
-                  <p className="text-xs text-slate-600 mt-0.5">{q.detail}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {report && report.answered > 0 && report.quality.length === 0 && (
-          <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 mt-6">
-            <strong className="font-semibold">Respuesta consistente.</strong>{" "}
-            Respondió {report.answered} de {report.total} preguntas
-            {report.minutes ? ` en ${report.minutes} minutos` : ""}, sin señales
-            de respuesta apurada, plana ni contradictoria.
-          </p>
-        )}
-
-        {/* Integridad. Va antes del perfil general porque se lee distinto:
-            aca no hay rasgos mejores ni peores sino factores que piden o no
-            una repregunta en la entrevista. */}
-        <IntegrityReport profile={c.profile} version={c.scoring_version ?? 1} />
-
-        {/* Perfil por rasgo */}
-        {dims.length > 0 && (
-          <section className="mt-6">
-            <h2 className="font-bold text-primary-dark">Perfil por rasgo</h2>
-            <p className="text-sm text-slate-500">
-              Describe estilos de trabajo, no capacidad: no hay perfiles buenos
-              ni malos. El percentil compara contra el resto de las personas
-              evaluadas en Worka Evaluar.
+            <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              {terminado
+                ? `Terminó el ${new Date(c.completed_at!).toLocaleDateString("es-PY")}${report?.minutes ? `, en ${report.minutes} minutos` : ""}.`
+                : "Todavía está rindiendo."}
             </p>
-            {/* La forma entera de un vistazo, antes del detalle rasgo por
-                rasgo. Con el perfil ideal encima, la pregunta que importa
-                deja de ser "cuánto sacó" y pasa a ser "cuánto se parece a lo
-                que buscamos", que es la que se está tratando de contestar. */}
-            <ProfileRadar
-              dimensions={dims}
-              ideal={board.process.ideal_profile}
-            />
+          </div>
+        </div>
+      </header>
 
-            <div className="space-y-4 mt-5">
-              {dims.map((d) => (
-                <div
-                  key={d.key}
-                  className="sm:flex sm:items-start sm:gap-5 break-inside-avoid"
-                >
-                  <div className="sm:flex-1 min-w-0">
-                    <div className="flex justify-between text-sm gap-3">
-                      <span className="text-slate-700 font-medium">
-                        {d.label}
-                      </span>
-                      <span className="text-slate-500 shrink-0">{d.pct}%</span>
-                    </div>
-                    <div className="relative h-1.5 rounded-full bg-slate-100 overflow-hidden mt-1">
-                      <div
-                        className="h-full rounded-full bg-indigo-400"
-                        style={{ width: `${d.pct}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                      {d.alto ? d.high : d.low}
-                    </p>
-                    {d.percentile === null && (
-                      <p className="text-[11px] text-slate-400 mt-1">
-                        Todavía no hay baremo para este rasgo: {d.sample} de las{" "}
-                        {MIN_MUESTRA} respuestas que hacen falta para comparar.
-                      </p>
-                    )}
+      <div className="grid gap-4 mt-4 lg:grid-cols-[minmax(0,1fr)_320px] items-start print:block">
+        {/* ── Evidencia ── */}
+        <div className="space-y-4 min-w-0">
+          {/* Calidad de la respuesta: antes que el perfil, porque si la persona
+              contestó todo igual en cuarenta segundos los rasgos de abajo no
+              describen a nadie. */}
+          {report && report.quality.length > 0 && (
+            <section className="card p-5 break-inside-avoid">
+              <h2 className="font-semibold text-primary-dark">Calidad de la respuesta</h2>
+              <p className="text-sm text-slate-500">Señales de que el perfil de abajo puede no ser confiable.</p>
+              <div className="space-y-2 mt-3">
+                {report.quality.map((q) => (
+                  <div
+                    key={q.kind}
+                    className={`rounded-xl border px-3.5 py-2.5 ${q.severity === "alerta" ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-slate-50"}`}
+                  >
+                    <p className="text-sm font-semibold text-primary-dark">{q.label}</p>
+                    <p className="text-xs text-slate-600 mt-0.5">{q.detail}</p>
                   </div>
-
-                  {/* La campana con la marca: "percentil 85" no le dice nada
-                      a quien no trabaja con estadística, y quien decide una
-                      contratación casi nunca lo hace. */}
-                  <div className="shrink-0 mt-2 sm:mt-0">
-                    <PercentileBar d={d} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Cómo leer esto. Un informe que no se sabe leer se lee mal: lo más
-            común es tomar el rasgo más alto como si fuera una nota. */}
-        {dims.length > 0 && (
-          <section className="mt-6 rounded-2xl bg-slate-50 border border-slate-200 p-4 break-inside-avoid">
-            <h2 className="font-bold text-primary-dark text-sm">
-              Cómo leer este informe
-            </h2>
-            <ul className="text-xs text-slate-600 mt-2 space-y-1.5 leading-relaxed">
-              <li>
-                <strong className="font-semibold">El porcentaje</strong> es
-                cuánto marcó la persona en ese rasgo. No es una nota: 30% en
-                extraversión no es peor que 80%, es distinto.
-              </li>
-              <li>
-                <strong className="font-semibold">El percentil</strong> compara
-                contra el resto de los evaluados. P85 significa que quedó por
-                encima del 85% de ellos.
-              </li>
-              <li>
-                <strong className="font-semibold">
-                  La línea verde punteada
-                </strong>{" "}
-                del gráfico es lo que pediste para el puesto. Mientras más se
-                superponga con la violeta, más se parece este candidato a lo que
-                buscás.
-              </li>
-              <li>
-                Un rasgo alto o bajo no descarta a nadie por sí solo. Esto entra
-                a la conversación junto a la entrevista y la experiencia, nunca
-                en lugar de ellas.
-              </li>
-            </ul>
-          </section>
-        )}
-
-        {/* Entrevista asincrónica */}
-        {report && report.videos.length > 0 && (
-          <section className="mt-6">
-            <h2 className="font-bold text-primary-dark">
-              Respuestas en video
-            </h2>
-            <p className="text-sm text-slate-500">
-              Grabadas por el candidato en su momento, sin coordinar agenda.
-            </p>
-            <div className="space-y-2.5 mt-3">
-              {report.videos.map((v) => (
-                <VideoPlayback
-                  key={v.questionId}
-                  participantId={pid}
-                  questionId={v.questionId}
-                  text={v.text}
-                />
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Notas del equipo */}
-        {c.notes.length > 0 && (
-          <section className="mt-6">
-            <h2 className="font-bold text-primary-dark">Notas del equipo</h2>
-            <ul className="mt-2 space-y-2">
-              {c.notes.map((n) => (
-                <li
-                  key={n.id}
-                  className="text-sm text-slate-700 border-l-2 border-slate-200 pl-3"
-                >
-                  {n.body}
-                  <span className="block text-xs text-slate-400 mt-0.5">
-                    {new Date(n.created_at).toLocaleDateString("es-PY")}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        )}
-
-        {c.outcome_note && (
-          <section className="mt-6">
-            <h2 className="font-bold text-primary-dark">Resolución</h2>
-            <p className="text-sm text-slate-700 mt-1">{c.outcome_note}</p>
-          </section>
-        )}
-
-        <p className="text-xs text-slate-400 mt-8 border-t border-slate-200 pt-3">
-          Los resultados de este informe son una entrada más del proceso de
-          selección y no deben usarse como único criterio de decisión. Los
-          rasgos de personalidad describen estilos de trabajo, no aptitud.
-          {alertas.length > 0 && (
-            <>
-              {" "}
-              <strong className="text-amber-700 font-semibold">
-                En este caso, además, el control de calidad marcó
-                {alertas.length === 1 ? " una alerta" : ` ${alertas.length} alertas`}
-                : conviene repreguntar en la entrevista antes de sacar
-                conclusiones del perfil.
-              </strong>
-            </>
+                ))}
+              </div>
+            </section>
           )}
-        </p>
+
+          {report && report.answered > 0 && report.quality.length === 0 && (
+            <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3">
+              <strong className="font-semibold">Respuesta consistente.</strong> Respondió {report.answered} de {report.total} preguntas
+              {report.minutes ? ` en ${report.minutes} minutos` : ""}, sin señales de respuesta apurada, plana ni contradictoria.
+            </p>
+          )}
+
+          {/* Integridad: factores que piden o no una repregunta, no rasgos. */}
+          <IntegrityReport profile={c.profile} version={c.scoring_version ?? 1} />
+
+          {dims.length > 0 && (
+            <section className="card p-5 break-inside-avoid">
+              <h2 className="font-semibold text-primary-dark">Perfil por rasgo</h2>
+              <p className="text-sm text-slate-500">
+                Describe estilos de trabajo, no capacidad: no hay perfiles buenos ni malos. El percentil compara contra el resto de las
+                personas evaluadas en Worka Evaluar.
+              </p>
+              {/* La forma entera de un vistazo, con el perfil ideal encima. */}
+              <ProfileRadar dimensions={dims} ideal={board.process.ideal_profile} />
+
+              <div className="space-y-4 mt-5">
+                {dims.map((d) => (
+                  <div key={d.key} className="sm:flex sm:items-start sm:gap-5 break-inside-avoid">
+                    <div className="sm:flex-1 min-w-0">
+                      <div className="flex justify-between text-sm gap-3">
+                        <span className="text-slate-700 font-medium">{d.label}</span>
+                        <span className="text-slate-600 shrink-0 tabular-nums">{d.pct}%</span>
+                      </div>
+                      <div className="relative h-1.5 rounded-full bg-[#ebe9e6] overflow-hidden mt-1">
+                        <div className="h-full rounded-full bg-[#2a78d6]" style={{ width: `${d.pct}%` }} />
+                      </div>
+                      <p className="text-xs text-slate-600 mt-1 leading-relaxed">{d.alto ? d.high : d.low}</p>
+                      {d.percentile === null && (
+                        <p className="text-[11px] text-slate-500 mt-1">
+                          Todavía no hay baremo para este rasgo: {d.sample} de las {MIN_MUESTRA} respuestas que hacen falta para comparar.
+                        </p>
+                      )}
+                    </div>
+                    <div className="shrink-0 mt-2 sm:mt-0">
+                      <PercentileBar d={d} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {report && report.videos.length > 0 && (
+            <section className="card p-5">
+              <h2 className="font-semibold text-primary-dark">Respuestas en video</h2>
+              <p className="text-sm text-slate-500">Grabadas por el candidato en su momento, sin coordinar agenda.</p>
+              <div className="space-y-2.5 mt-3">
+                {report.videos.map((v) => (
+                  <VideoPlayback key={v.questionId} participantId={pid} questionId={v.questionId} text={v.text} />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+
+        {/* ── Contexto y decisión ── */}
+        <aside className="space-y-4 min-w-0 print:mt-4">
+          {c.status !== "invitado" && <AiCandidateBrief processId={id} participantId={pid} enabled={plan.ai} />}
+          {c.cv_url && (
+            <section className="card p-5">
+              <h2 className="font-semibold text-primary-dark mb-2">CV</h2>
+              <CvLink participantId={pid} />
+            </section>
+          )}
+
+          <section className="card p-5">
+            <h2 className="font-semibold text-primary-dark">Notas del equipo</h2>
+            {c.notes.length === 0 ? (
+              <p className="text-sm text-slate-500 mt-1">Sin notas todavía. Se agregan desde Comparar y decidir.</p>
+            ) : (
+              <ul className="mt-2 space-y-3">
+                {c.notes.map((n) => (
+                  <li key={n.id} className="text-sm text-slate-700 border-l-2 border-[#c9d9ea] pl-3">
+                    {n.body}
+                    <span className="block text-xs text-slate-500 mt-0.5">
+                      {new Date(n.created_at).toLocaleDateString("es-PY")}
+                      {n.rating ? ` · ${"★".repeat(n.rating)}` : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {c.outcome_note && (
+            <section className="card p-5">
+              <h2 className="font-semibold text-primary-dark">Resolución</h2>
+              <p className="text-sm text-slate-700 mt-1">{c.outcome_note}</p>
+            </section>
+          )}
+
+          {/* Un informe que no se sabe leer se lee mal: lo más común es tomar
+              el rasgo más alto como si fuera una nota. */}
+          <section className="rounded-xl bg-[#f6f4f1] border border-[#e0dfdc] p-5 break-inside-avoid">
+            <h2 className="font-semibold text-primary-dark text-sm">Cómo leer este informe</h2>
+            <ul className="text-xs text-slate-700 mt-2 space-y-2 leading-relaxed">
+              <li>
+                <strong className="font-semibold">Ajuste al puesto</strong> compara el perfil con lo que pediste. Sale solo de los rasgos
+                que rindió.
+              </li>
+              <li>
+                <strong className="font-semibold">Pruebas objetivas</strong> es el % de puntos en preguntas con respuesta correcta. No mide
+                personalidad.
+              </li>
+              <li>
+                <strong className="font-semibold">El % de cada rasgo</strong> no es una nota: 30% en extraversión no es peor que 80%, es
+                distinto. <strong className="font-semibold">El percentil</strong> compara contra el resto de los evaluados.
+              </li>
+              <li>
+                En el gráfico, <strong className="font-semibold">la línea verde punteada</strong> es lo que pediste para el puesto.
+              </li>
+              <li>Nada de esto descarta a nadie por sí solo: entra a la conversación junto a la entrevista y la experiencia.</li>
+            </ul>
+          </section>
+        </aside>
       </div>
+
+      <p className="text-xs text-slate-500 mt-6 border-t border-[#e0dfdc] pt-3">
+        Los resultados de este informe son una entrada más del proceso de selección y no deben usarse como único criterio de decisión. Los
+        rasgos de personalidad describen estilos de trabajo, no aptitud.
+        {alertas.length > 0 && (
+          <>
+            {" "}
+            <strong className="text-amber-800 font-semibold">
+              En este caso, además, el control de calidad marcó
+              {alertas.length === 1 ? " una alerta" : ` ${alertas.length} alertas`}: conviene repreguntar en la entrevista antes de sacar
+              conclusiones del perfil.
+            </strong>
+          </>
+        )}
+      </p>
     </div>
   );
 }

@@ -812,3 +812,128 @@ html {
   .promo-backdrop, .promo-dialog, .promo-chip, .tour-pop { animation: none; }
   .tour-spot { transition: none; }
 }
+
+/* ── Evaluar en claro · la parte pública con el idioma de Worka ──
+   Misma estructura que Nocturne (.nk) con los tokens del ecosistema:
+   lienzo crema, tarjetas blancas, tinta oscura, violeta solo como marca de
+   Evaluar y azul cobalto para las acciones. Así la portada se ve hermana de
+   /para-empresas y del panel. */
+.nk-light {
+  --color-bg: #f3efea;
+  --color-surface: #ffffff;
+  --color-text: #1d2226;
+  --color-accent: #5d5294;
+
+  --nk-100: #ffffff;
+  --nk-200: #ffffff;
+  --nk-300: #5d5294;
+  --nk-400: #5d5294;
+  --nk-500: #6f63a8;
+  --nk-700: #5d5294;
+  --nk-800: #d9d4f3;
+
+  --nk-line: #e0dfdc;
+  --nk-line-2: #d4d2ce;
+  --nk-card: #ffffff;
+  --nk-deep: #ebe6df;
+  --nk-band: #efedfb;
+
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: Inter, system-ui, sans-serif;
+}
+.nk-light h1, .nk-light h2, .nk-light h3, .nk-light h4 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+}
+.nk-light .nk-cta {
+  background: #0a66c2; border-color: #0a66c2; color: #fff; border-radius: 999px; font-weight: 600;
+}
+.nk-light .nk-cta:hover { background: #004182; border-color: #004182; color: #fff; box-shadow: none; }
+.nk-light .nk-ghost {
+  background: #fff; border-color: #0a66c2; color: #0a66c2; border-radius: 999px; font-weight: 600;
+}
+.nk-light .nk-ghost:hover { background: #eef5fc; color: #004182; border-color: #004182; }
+.nk-light .nk-rule {
+  background: linear-gradient(90deg, transparent, #e0dfdc 48px, #e0dfdc calc(100% - 48px), transparent);
+}
+.nk-light .card { background: #fff; border-color: #e0dfdc; }
+.nk-light .input { background: #fff; border-color: #d4d2ce; color: #1d2226; }
+.nk-light .input::placeholder { color: #8a8a8a; }
+.nk-light .label { color: #404040; font-weight: 500; }
+.nk-light .btn-primary { background: #0a66c2; border-color: #0a66c2; color: #fff; }
+.nk-light .btn-primary:hover { background: #004182; color: #fff; }
+.nk-light .btn-secondary { background: #fff; border-color: #0a66c2; color: #0a66c2; }
+.nk-light .btn-secondary:hover { background: #eef5fc; color: #004182; }
+.nk-light .text-primary-dark { color: #1d2226; }
+.nk-light .text-primary { color: #0a66c2; }
+.nk-light .text-slate-500, .nk-light .text-slate-600,
+.nk-light .text-gray-500, .nk-light .text-gray-600 { color: #5f5f5f; }
+.nk-light .text-slate-400, .nk-light .text-gray-400 { color: #767676; }
+.nk-light .text-slate-700, .nk-light .text-slate-800, .nk-light .text-gray-700 { color: #404040; }
+.nk-light .bg-white { background: #fff; }
+.nk-light .bg-slate-50, .nk-light .bg-surface { background: #f7f5f2; }
+.nk-light .bg-slate-100 { background: #efedea; }
+.nk-light .border-slate-200, .nk-light .border-gray-100, .nk-light .border-gray-200 { border-color: #e0dfdc; }
+
+/* ── Evaluación del candidato · movimiento ─────────────────────
+   Las preguntas pasan como páginas, la opción elegida responde al toque y
+   las esperas muestran progreso en vez de un spinner mudo. */
+@keyframes ev-q-next { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes ev-q-prev { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+.ev-q-next { animation: ev-q-next .32s cubic-bezier(.22,1,.36,1) both; }
+.ev-q-prev { animation: ev-q-prev .32s cubic-bezier(.22,1,.36,1) both; }
+@keyframes ev-opt-pop { 0% { transform: scale(1); } 40% { transform: scale(1.025); } 100% { transform: scale(1); } }
+.ev-opt-pop { animation: ev-opt-pop .28s ease-out; }
+@keyframes ev-load-bar { 0% { transform: translateX(-100%); width: 40%; } 100% { transform: translateX(260%); width: 40%; } }
+.ev-load-bar { width: 40%; animation: ev-load-bar 1.2s ease-in-out infinite; }
+@keyframes ev-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+.ev-skeleton {
+  background: linear-gradient(90deg, #efedea 25%, #f7f5f2 50%, #efedea 75%);
+  background-size: 200% 100%;
+  animation: ev-shimmer 1.4s linear infinite;
+}
+@keyframes ev-pulse-ring { 0% { transform: scale(.7); opacity: .9; } 100% { transform: scale(1.35); opacity: 0; } }
+.ev-pulse-ring { animation: ev-pulse-ring 1.4s ease-out infinite; }
+@keyframes ev-ring-fill { from { stroke-dashoffset: var(--ev-ring-from); } }
+.ev-ring-fill { animation: ev-ring-fill 1s cubic-bezier(.22,1,.36,1) .15s both; }
+@keyframes ev-toast { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: none; } }
+.ev-toast { animation: ev-toast .35s cubic-bezier(.22,1,.36,1) both; }
+.ev-done-ring { box-shadow: 0 0 0 0 currentColor; animation: ev-pulse-done 1.6s ease-out 1; }
+@keyframes ev-pulse-done { 0% { box-shadow: 0 0 0 0 rgba(10,102,194,.25); } 100% { box-shadow: 0 0 0 18px rgba(10,102,194,0); } }
+@media (prefers-reduced-motion: reduce) {
+  .ev-q-next, .ev-q-prev, .ev-opt-pop, .ev-load-bar, .ev-skeleton, .ev-pulse-ring,
+  .ev-ring-fill, .ev-toast, .ev-done-ring { animation: none; }
+}
+
+/* ── Asistente de IA de Evaluar ─────────────────────────────────
+   Violeta de Evaluar, para que lo que sugiere la IA no se confunda con un
+   resultado medido (azul) ni con una acción principal. */
+.ai-pill {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 15px; border-radius: 999px;
+  font-size: 13.5px; font-weight: 600; color: #fff;
+  background: linear-gradient(120deg, #5d5294, #7b6fc0 55%, #0a66c2);
+  background-size: 200% 100%;
+  transition: background-position .5s ease, opacity .2s;
+  box-shadow: 0 6px 16px rgba(93, 82, 148, .22);
+}
+.ai-pill:hover { background-position: 100% 0; }
+.ai-pill:disabled { opacity: .7; }
+.ai-card {
+  position: relative; background: #fff; border-radius: 16px;
+  border: 1px solid #d9d4f3;
+  background-image: linear-gradient(180deg, #faf9ff, #fff 120px);
+}
+@keyframes ai-spin { to { transform: rotate(360deg); } }
+.ai-spark-spin { animation: ai-spin 1.6s linear infinite; }
+@keyframes ai-line { 0% { transform: scaleX(.2); opacity: .4; } 60% { opacity: 1; } 100% { transform: scaleX(1); opacity: .55; } }
+.ai-line {
+  height: 10px; border-radius: 6px; transform-origin: left;
+  background: linear-gradient(90deg, #e7e4fa, #f3f1fd);
+  animation: ai-line 1.4s ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-spark-spin, .ai-line { animation: none; }
+}

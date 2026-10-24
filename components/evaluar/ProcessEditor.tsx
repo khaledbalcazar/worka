@@ -4,6 +4,8 @@ import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import ProcessNav from "./ProcessNav";
 import ProcessSummary from "./ProcessSummary";
+import ProcessSettingsPanel, { SECTION_ICONS } from "./ProcessSettingsPanel";
+import { AiWriteButton } from "./AiAssist";
 import { useRouter } from "next/navigation";
 import {
   Check,
@@ -401,18 +403,24 @@ export default function ProcessEditor({
       )}
 
       {tab === "ajustes" && esDueno && (
-        <div className="space-y-4">
-          <ProcessOrg detail={detail} />
-          <IdealProfile detail={detail} />
-          <ProcessDesign detail={detail} />
-          <ProcessTeam detail={detail} />
-          <SettingsTab
+        <ProcessSettingsPanel
           detail={detail}
-          jobs={jobs}
-          pending={pending}
-          onSave={(input) => run(() => updateProcess(process.id, input))}
-          />
-        </div>
+          sections={[
+            {
+              key: "general",
+              label: "General",
+              hint: "Nombre, vacante y mensajes",
+              Icon: SECTION_ICONS.FileText,
+              node: (
+                <SettingsTab detail={detail} jobs={jobs} pending={pending} onSave={(input) => run(() => updateProcess(process.id, input))} />
+              ),
+            },
+            { key: "area", label: "Área y responsable", hint: "Sucursal, departamento y jefe", Icon: SECTION_ICONS.Building2, node: <ProcessOrg detail={detail} /> },
+            { key: "perfil", label: "Qué importa en el puesto", hint: "Perfil ideal para el ajuste", Icon: SECTION_ICONS.Target, node: <IdealProfile detail={detail} /> },
+            { key: "diseno", label: "Diseño y plazo", hint: "Cómo lo ve el candidato", Icon: SECTION_ICONS.Palette, node: <ProcessDesign detail={detail} /> },
+            { key: "equipo", label: "Equipo", hint: "Quién más evalúa", Icon: SECTION_ICONS.Users, node: <ProcessTeam detail={detail} /> },
+          ]}
+        />
       )}
     </div>
   );
@@ -1276,7 +1284,10 @@ function SettingsTab({
         />
       </div>
       <div>
-        <label className="label">Descripción para el candidato</label>
+        <div className="flex items-center justify-between gap-2">
+          <label className="label">Descripción para el candidato</label>
+          <AiWriteButton processId={process.id} kind="descripcion" value={description} onText={setDescription} />
+        </div>
         <textarea
           className="input min-h-20"
           value={description}
@@ -1303,7 +1314,10 @@ function SettingsTab({
         </p>
       </div>
       <div>
-        <label className="label">Mensaje al terminar</label>
+        <div className="flex items-center justify-between gap-2">
+          <label className="label">Mensaje al terminar</label>
+          <AiWriteButton processId={process.id} kind="cierre" value={closing} onText={setClosing} />
+        </div>
         <textarea
           className="input min-h-20"
           placeholder="Ej: Gracias por tu tiempo. Revisamos todo y te contamos en 5 días hábiles."

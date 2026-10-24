@@ -68,8 +68,8 @@ const process: ProcessDetail["process"] = {
   theme: "sobrio",
   deadline_at: new Date(Date.now() + 5 * DAY).toISOString(),
   archived: false,
-  // Lo que más importa para el puesto (0-100 por rasgo).
-  ideal_profile: { numerico: 70, servicio: 85, integridad_sjt: 90, detalle: 80, presion: 75 },
+  // Qué pesa para el puesto: de 1 (algo) a 3 (mucho), como lo carga la empresa.
+  ideal_profile: { numerico: 2, servicio: 3, integridad_sjt: 3, detalle: 2, presion: 2 },
   org_unit: "Sucursal Centro",
   department: "Cajas",
 };
@@ -115,7 +115,8 @@ const participants: EvaluarParticipant[] = PEOPLE.map(([name, status, stage, pct
     outcome_note: status === "descartado" ? "No alcanzó lo mínimo en integridad." : null,
     reject_reason: status === "descartado" ? "perfil" : null,
     started_at: status === "invitado" ? null : ago(days - 0.2),
-    completed_at: done ? ago(days - 1) : null,
+    // Entre 18 y 32 minutos para terminar, como una evaluación real.
+    completed_at: done ? new Date(Date.parse(ago(days - 0.2)) + (18 + (i * 7) % 15) * 60000).toISOString() : null,
     created_at: ago(days),
     profile: Object.fromEntries(Object.entries(prof).map(([k, v]) => [k, { raw: Math.round(v * 40), max: 40 }])),
     scoring_version: 3,
@@ -175,3 +176,56 @@ export function demoBoardNotes(): Record<string, BoardData["candidates"][number]
   };
 }
 
+
+// Lo que ve el candidato al abrir su enlace (`/evaluar/e/demo-token-N`), con
+// el mismo formato que devuelve `evaluar_load`. Sirve para revisar la pantalla
+// de rendición sin base: nada de lo que se conteste se guarda.
+export function demoEvaluation(token: string) {
+  const p = participants.find((x) => x.token === token);
+  if (!p) return null;
+  return {
+    participant: {
+      id: p.id,
+      full_name: p.full_name,
+      email: p.email,
+      phone: p.phone,
+      city: p.city,
+      cv_url: p.cv_url,
+      status: p.status,
+      stage_index: p.stage_index,
+      score: p.score,
+      max_score: p.max_score,
+      draft: null,
+      outcome_note: p.outcome_note,
+      completed_at: p.completed_at,
+      stage_started_at: null,
+      stage_started_for: null,
+    },
+    server_now: new Date().toISOString(),
+    process: {
+      id: process.id,
+      title: process.title,
+      description: process.description,
+      closing_message: process.closing_message,
+      status: process.status,
+      company: "Supermercado Demo",
+      logo: null,
+      theme: process.theme,
+      brand_color: null,
+      deadline_at: process.deadline_at,
+    },
+    stages: stages.map((s) => ({
+      id: s.id,
+      title: s.title,
+      description: s.description,
+      kind: s.kind,
+      minutes: s.minutes,
+      question_count: s.questions.length,
+      timed: s.timed,
+      intro: s.intro,
+      demo: s.demo,
+      questions: s.questions.map((q) => ({ id: q.id, kind: q.kind, figure: q.figure ?? null, text: q.text, options: q.options })),
+    })),
+    events: p.started_at ? [{ kind: "inicio", message: "Empezaste la evaluación", at: p.started_at }] : [],
+  };
+}

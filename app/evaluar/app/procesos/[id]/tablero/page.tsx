@@ -7,6 +7,7 @@ import { getBoardData, getMyEvaluarAccess } from "@/lib/evaluar";
 import { planOf } from "@/lib/evaluar-plans";
 import DecisionBoard from "@/components/evaluar/DecisionBoard";
 import ProcessNav from "@/components/evaluar/ProcessNav";
+import { AiFinalists } from "@/components/evaluar/AiAssist";
 
 export const metadata = { title: "Comparar y decidir" };
 
@@ -42,6 +43,7 @@ export default async function BoardPage({
         counts={{ candidatos: board.candidates.length, etapas: board.stages.length }}
         esDueno={board.esDueno}
       />
+      <AiFinalists processId={id} enabled={plan.ai} />
       <DecisionBoard
         board={board}
         puedeExportar={plan.reports}

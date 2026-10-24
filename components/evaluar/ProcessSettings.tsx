@@ -14,6 +14,7 @@ import {
 import type { ProcessDetail } from "@/lib/evaluar";
 import { THEMES, readableOn } from "@/lib/evaluar/themes";
 import { ALL_DIMENSIONS } from "@/lib/evaluar/templates";
+import { AiIdealButton } from "./AiAssist";
 import {
   addProcessMember,
   removeProcessMember,
@@ -266,6 +267,8 @@ export function IdealProfile({ detail }: { detail: ProcessDetail }) {
   );
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // Por qué la IA propuso estos pesos: se muestra hasta que se guarda.
+  const [porque, setPorque] = useState<string | null>(null);
 
   // Solo los rasgos que este proceso realmente mide: ofrecer los 20 del
   // catálogo cuando el proceso mide 5 sería pedirle a la empresa que decida
@@ -299,7 +302,10 @@ export function IdealProfile({ detail }: { detail: ProcessDetail }) {
         Object.entries(pesos).filter(([, v]) => v > 0)
       );
       const r = await setIdealProfile(detail.process.id, limpio);
-      if (r.ok) router.refresh();
+      if (r.ok) {
+        setPorque(null);
+        router.refresh();
+      }
       else setError(r.error ?? "No pudimos guardar.");
     });
   }
@@ -309,9 +315,18 @@ export function IdealProfile({ detail }: { detail: ProcessDetail }) {
   return (
     <div className="card p-5 space-y-4">
       <div>
-        <h2 className="font-semibold text-primary-dark flex items-center gap-2">
-          <Target size={17} /> Perfil ideal del puesto
-        </h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="font-semibold text-primary-dark flex items-center gap-2">
+            <Target size={17} /> Perfil ideal del puesto
+          </h2>
+          <AiIdealButton
+            processId={detail.process.id}
+            onSuggest={(s) => {
+              setPesos(Object.fromEntries(disponibles.map((k) => [k, s.pesos[k] ?? 0])));
+              setPorque(s.porque || "Sugerencia lista. Revisala y guardá si te sirve.");
+            }}
+          />
+        </div>
         <p className="text-xs text-slate-500 mt-1">
           Decí qué rasgos importan para <strong>este</strong> puesto y cuánto.
           El tablero va a ordenar por ajuste real en vez de por puntaje bruto,
@@ -359,6 +374,12 @@ export function IdealProfile({ detail }: { detail: ProcessDetail }) {
           );
         })}
       </div>
+
+      {porque && (
+        <p className="text-sm rounded-xl bg-[#efedfb] text-[#3f3870] px-4 py-3 animate-rise">
+          <strong className="font-semibold">Sugerencia de la IA:</strong> {porque} Todavía no se guardó.
+        </p>
+      )}
 
       {error && <p className="text-sm text-danger">{error}</p>}
 

@@ -146,3 +146,19 @@
 .ev-app .nk-ghost { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 0 18px; border-radius: 999px; border: 1px solid #0a66c2; color: #0a66c2; background: #fff; font-size: 14px; font-weight: 600; }
 .ev-app .nk-ghost:hover { background: #edf3f8; }
 .ev-app .nk-rule { height: 1px; border: 0; background: #e0dfdc; }
+
+/* Índice de los ajustes del proceso. */
+.ev-set-nav { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.ev-set-nav::-webkit-scrollbar { display: none; }
+.ev-set-nav-item { display: flex; align-items: center; gap: 10px; flex-shrink: 0; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--ev-line); background: #fff; font-size: 14px; font-weight: 600; color: #404040; text-align: left; }
+.ev-set-nav-item svg { color: #666; flex-shrink: 0; }
+.ev-set-nav-item[aria-current=page] { border-color: var(--ev-blue); color: var(--ev-blue); background: #f3f8fd; }
+.ev-set-nav-item[aria-current=page] svg { color: var(--ev-blue); }
+.ev-set-nav-hint { display: none; font-size: 12px; font-weight: 400; color: #767676; }
+@media (min-width: 1024px) {
+  .ev-set-nav { flex-direction: column; gap: 2px; position: sticky; top: 76px; overflow: visible; }
+  .ev-set-nav-item { border: 0; border-radius: 10px; background: transparent; padding: 10px 12px; }
+  .ev-set-nav-item:hover { background: #eeebe7; }
+  .ev-set-nav-item[aria-current=page] { background: #fff; box-shadow: inset 3px 0 0 var(--ev-blue), 0 0 0 1px var(--ev-line); }
+  .ev-set-nav-hint { display: block; }
+}

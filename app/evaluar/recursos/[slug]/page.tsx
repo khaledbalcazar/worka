@@ -84,7 +84,7 @@ export default async function RecursoPage({
           <span className="nk-mono" style={{ color: "var(--color-accent)" }}>
             {r.tema}
           </span>
-          <span className="nk-mono" style={{ color: "rgba(233,233,237,.35)" }}>
+          <span className="nk-mono" style={{ color: "#6b6b6b" }}>
             {r.minutos} min de lectura
           </span>
         </div>
@@ -94,7 +94,7 @@ export default async function RecursoPage({
         </h1>
         <p
           className="text-[17px] leading-relaxed mt-4"
-          style={{ color: "rgba(233,233,237,.55)" }}
+          style={{ color: "#5f5f5f" }}
         >
           {r.bajada}
         </p>
@@ -109,7 +109,7 @@ export default async function RecursoPage({
         <div
           className="rounded-2xl p-7 mt-14"
           style={{
-            background: "linear-gradient(150deg,var(--nk-band),#1d2048)",
+            background: "linear-gradient(150deg,var(--nk-band),#efedfb)",
             border: "1px solid var(--nk-800)",
           }}
         >
@@ -121,7 +121,7 @@ export default async function RecursoPage({
           </p>
           <p
             className="text-sm leading-relaxed m-0 mb-5"
-            style={{ color: "rgba(233,233,237,.68)" }}
+            style={{ color: "#404040" }}
           >
             Las pruebas escritas, la corrección automática y el informe con
             percentiles. Enlazás tu vacante y la gente rinde desde el propio
@@ -139,7 +139,7 @@ export default async function RecursoPage({
           <div className="mt-12">
             <p
               className="nk-mono mb-4"
-              style={{ color: "rgba(233,233,237,.4)" }}
+              style={{ color: "#6b6b6b" }}
             >
               Seguí leyendo
             </p>

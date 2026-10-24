@@ -74,13 +74,13 @@ export default function VentasBurbuja() {
           style={{
             background: "var(--nk-card)",
             border: "1px solid var(--nk-line-2)",
-            boxShadow: "0 24px 60px rgba(0,0,0,.6)",
+            boxShadow: "0 24px 60px rgba(0,0,0,.08)",
           }}
         >
           <div
             className="px-5 py-4 flex items-start justify-between gap-3"
             style={{
-              background: "linear-gradient(150deg,var(--nk-band),#1d2048)",
+              background: "linear-gradient(150deg,var(--nk-band),#efedfb)",
               borderBottom: "1px solid var(--nk-line-2)",
             }}
           >
@@ -90,7 +90,7 @@ export default function VentasBurbuja() {
               </p>
               <p
                 className="text-[12.5px] mt-0.5 m-0"
-                style={{ color: "rgba(233,233,237,.6)" }}
+                style={{ color: "#5f5f5f" }}
               >
                 Respondemos en el día
               </p>
@@ -99,7 +99,7 @@ export default function VentasBurbuja() {
               onClick={cerrar}
               aria-label="Cerrar"
               className="shrink-0 p-1 -m-1"
-              style={{ color: "rgba(233,233,237,.55)" }}
+              style={{ color: "#5f5f5f" }}
             >
               <X size={18} />
             </button>
@@ -124,7 +124,7 @@ export default function VentasBurbuja() {
               </div>
               <span
                 className="text-[13px]"
-                style={{ color: "rgba(233,233,237,.6)" }}
+                style={{ color: "#5f5f5f" }}
               >
                 Ventas de Worka Evaluar
               </span>
@@ -132,7 +132,7 @@ export default function VentasBurbuja() {
 
             <p
               className="text-sm leading-relaxed m-0 mb-4"
-              style={{ color: "rgba(233,233,237,.68)" }}
+              style={{ color: "#404040" }}
             >
               Si tenés más de tres búsquedas abiertas a la vez o trabajás con
               varias sucursales, el{" "}
@@ -167,7 +167,7 @@ export default function VentasBurbuja() {
 
             <p
               className="text-[12px] text-center mt-4 m-0"
-              style={{ color: "rgba(233,233,237,.45)" }}
+              style={{ color: "#6b6b6b" }}
             >
               También por{" "}
               <a
@@ -185,10 +185,9 @@ export default function VentasBurbuja() {
         onClick={() => (abierta ? cerrar() : setAbierta(true))}
         className="nk-cta shadow-lg"
         style={{
-          background: abierta
-            ? "var(--nk-card)"
-            : "color-mix(in srgb, var(--color-accent) 18%, var(--nk-card))",
-          boxShadow: "0 12px 32px rgba(0,0,0,.5)",
+          background: abierta ? "#fff" : "#0a66c2",
+          color: abierta ? "#0a66c2" : "#fff",
+          boxShadow: "0 12px 32px rgba(0,0,0,.12)",
         }}
       >
         {abierta ? (

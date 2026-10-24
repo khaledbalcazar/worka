@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import EvaluarLogo from "./EvaluarLogo";
-import NocturneFx from "./NocturneFx";
 import VentasBurbuja from "./VentasBurbuja";
 
 // Cinco entradas es el techo antes de que el encabezado se vuelva un indice.
@@ -20,9 +19,9 @@ const NAV = [
 // Marco de la parte pública de Worka Evaluar.
 //
 // Va aparte del panel de trabajo a propósito: una landing de venta y una
-// pantalla donde se comparan candidatos todo el día no piden lo mismo. Los
-// dos comparten ahora el mismo idioma oscuro, pero la portada puede permitirse
-// la grilla reactiva y el parallax que en una jornada de trabajo cansarían.
+// pantalla donde se comparan candidatos todo el día no piden lo mismo. Las
+// dos hablan el idioma claro de Worka (lienzo crema, tarjetas blancas, azul
+// para actuar) para que se note que es la misma familia que Worka Empleos.
 export default function MarketingShell({
   children,
 }: {
@@ -31,7 +30,7 @@ export default function MarketingShell({
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="nk min-h-screen flex flex-col">
+    <div className="nk-light min-h-screen flex flex-col">
       {/* Fondo fijo: el body del sitio es claro, y sin esto asoma gris en el
           rebote del scroll y en los bordes de pantallas altas. */}
       <div
@@ -39,13 +38,12 @@ export default function MarketingShell({
         style={{ background: "var(--color-bg)" }}
         aria-hidden
       />
-      <NocturneFx />
       <VentasBurbuja />
 
       <header
         className="sticky top-0 z-50 backdrop-blur-sm"
         style={{
-          borderBottom: "1px solid rgba(233,233,237,.08)",
+          borderBottom: "1px solid rgba(29,34,38,.08)",
           background: "color-mix(in srgb, var(--color-bg) 92%, transparent)",
         }}
       >
@@ -60,7 +58,7 @@ export default function MarketingShell({
                 key={item.href}
                 href={item.href}
                 className="text-[13.5px] transition-colors"
-                style={{ color: "rgba(233,233,237,.6)" }}
+                style={{ color: "#5f5f5f" }}
               >
                 {item.label}
               </Link>
@@ -83,7 +81,7 @@ export default function MarketingShell({
 
           <button
             className="lg:hidden p-2"
-            style={{ color: "rgba(233,233,237,.7)" }}
+            style={{ color: "#404040" }}
             onClick={() => setMenuOpen(!menuOpen)}
             aria-label="Menú"
             aria-expanded={menuOpen}
@@ -117,7 +115,7 @@ export default function MarketingShell({
           <div
             className="lg:hidden px-6 py-4 flex flex-col gap-3"
             style={{
-              borderTop: "1px solid rgba(233,233,237,.08)",
+              borderTop: "1px solid rgba(29,34,38,.08)",
               background: "var(--color-bg)",
             }}
           >
@@ -127,7 +125,7 @@ export default function MarketingShell({
                 href={item.href}
                 onClick={() => setMenuOpen(false)}
                 className="text-sm py-1"
-                style={{ color: "rgba(233,233,237,.6)" }}
+                style={{ color: "#5f5f5f" }}
               >
                 {item.label}
               </Link>
@@ -136,7 +134,7 @@ export default function MarketingShell({
               href="/evaluar/app"
               onClick={() => setMenuOpen(false)}
               className="text-sm py-1"
-              style={{ color: "rgba(233,233,237,.6)" }}
+              style={{ color: "#5f5f5f" }}
             >
               Mi panel
             </Link>
@@ -153,13 +151,13 @@ export default function MarketingShell({
 
       <main className="flex-1">{children}</main>
 
-      <footer style={{ borderTop: "1px solid rgba(233,233,237,.08)" }}>
+      <footer style={{ borderTop: "1px solid rgba(29,34,38,.08)" }}>
         <div className="max-w-[1160px] mx-auto px-6 sm:px-8 py-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
           <div>
             <EvaluarLogo size={26} />
             <p
               className="text-xs mt-2.5 max-w-xs leading-relaxed"
-              style={{ color: "rgba(233,233,237,.45)" }}
+              style={{ color: "#6b6b6b" }}
             >
               Software de selección de personal. Parte de{" "}
               <a
@@ -173,7 +171,7 @@ export default function MarketingShell({
           </div>
           <div
             className="flex flex-wrap gap-5 text-xs"
-            style={{ color: "rgba(233,233,237,.45)" }}
+            style={{ color: "#6b6b6b" }}
           >
             <Link href="/evaluar/precios">Precios</Link>
             <Link href="/terminos">Términos</Link>

@@ -8,7 +8,7 @@ export default function Faq() {
   const [abierta, setAbierta] = useState<number | null>(0);
 
   return (
-    <div className="divide-y divide-[rgba(233,233,237,.08)] border-y border-[rgba(233,233,237,.08)]">
+    <div className="divide-y divide-[rgba(29,34,38,.08)] border-y border-[rgba(29,34,38,.08)]">
       {FAQS.map((f, i) => {
         const open = abierta === i;
         return (
@@ -20,7 +20,7 @@ export default function Faq() {
             >
               <span
                 className={`font-medium transition-colors ${
-                  open ? "text-[#e9e9ed]" : "text-[rgba(233,233,237,.6)] group-hover:text-[#e9e9ed]"
+                  open ? "text-[#1d2226]" : "text-[#5f5f5f] group-hover:text-[#1d2226]"
                 }`}
               >
                 {f.q}
@@ -42,7 +42,7 @@ export default function Faq() {
               </svg>
             </button>
             {open && (
-              <p className="text-sm text-[rgba(233,233,237,.6)] leading-relaxed pb-5 pr-8 animate-rise">
+              <p className="text-sm text-[#5f5f5f] leading-relaxed pb-5 pr-8 animate-rise">
                 {f.a}
               </p>
             )}

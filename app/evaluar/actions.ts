@@ -23,6 +23,7 @@ import {
   mensajeBloqueo,
 } from "@/lib/evaluar/puntaje";
 import { evaluarUrl } from "@/lib/supabase/config";
+import { demoEvaluation } from "@/lib/evaluar/demo";
 import {
   PLANS,
   planOf,
@@ -1794,7 +1795,7 @@ export async function joinProcessFromJob(processId: string): Promise<Result> {
 
 export async function loadEvaluation(token: string) {
   const supabase = await getServerClient();
-  if (!supabase) return null;
+  if (!supabase) return demoEvaluation(token);
   const { data, error } = await supabase.rpc("evaluar_load", {
     p_token: token,
   });
@@ -1807,7 +1808,8 @@ export async function loadEvaluation(token: string) {
 
 export async function startEvaluation(token: string): Promise<Result> {
   const supabase = await getServerClient();
-  if (!supabase) return DEMO;
+  // En demo se deja entrar para poder ver las etapas; nada se guarda.
+  if (!supabase) return { ok: true };
   const { error } = await supabase.rpc("evaluar_start", { p_token: token });
   if (error) return { ok: false, error: "No pudimos abrir la evaluación." };
   return { ok: true };
@@ -1847,7 +1849,8 @@ export async function submitStage(
   seconds?: number
 ): Promise<Result & { status?: string }> {
   const supabase = await getServerClient();
-  if (!supabase) return DEMO;
+  // En demo se acepta para poder ver el paso entre etapas; nada se guarda.
+  if (!supabase) return { ok: true, status: "en_curso" };
 
   const { data, error } = await supabase.rpc("evaluar_submit_stage", {
     p_token: token,
@@ -2398,4 +2401,190 @@ export async function setAiKeyModel(
   }
   revalidatePath("/admin");
   return { ok: true };
+}
+
+// ── «Continuar con Worka Empleos» ──────────────────────────────
+//
+// El postulante que ya tiene cuenta en Worka Empleos puede traer sus datos y
+// su CV a la evaluación en vez de tipearlos de nuevo. Es opcional: el enlace
+// sigue alcanzando para rendir sin cuenta.
+//
+// Funciona como un OAuth propio. Evaluar vive en otro subdominio y no ve la
+// sesión de Worka (las cookies son de cada host), así que el candidato va a
+// worka.click/conectar/evaluar, inicia sesión ahí si hace falta, ve qué datos
+// se comparten y con quién, y recién al tocar «Permitir» se copian. El token
+// de la evaluación hace de `state`: identifica a qué ficha van los datos.
+
+export type WorkaConnectInfo = {
+  company: string;
+  process: string;
+  /** Datos de la cuenta de Worka que se van a compartir. */
+  user: {
+    name: string;
+    email: string | null;
+    phone: string | null;
+    city: string | null;
+    hasCv: boolean;
+  } | null;
+  /** Hay sesión pero no es una cuenta de candidato (por ejemplo, empresa). */
+  notCandidate: boolean;
+  /** La ficha ya está conectada a otra cuenta de Worka. */
+  linkedToOther: boolean;
+  alreadyLinked: boolean;
+  demo?: boolean;
+};
+
+export async function getWorkaConnectInfo(token: string): Promise<WorkaConnectInfo | null> {
+  const supabase = await getServerClient();
+  if (!supabase) {
+    const demo = demoEvaluation(token);
+    if (!demo) return null;
+    return {
+      company: demo.process.company ?? "La empresa",
+      process: demo.process.title,
+      user: { name: "Nahum Balcázar", email: "postulante@ejemplo.com", phone: "0981 000 000", city: "Asunción", hasCv: true },
+      notCandidate: false,
+      linkedToOther: false,
+      alreadyLinked: false,
+      demo: true,
+    };
+  }
+
+  const { getAdminClient } = await import("@/lib/supabase/admin");
+  const admin = getAdminClient();
+  if (!admin) return null;
+  const { data: p } = await admin
+    .from("evaluar_participants")
+    .select("candidate_id, process:evaluar_processes(title, company:companies(trade_name, company_name))")
+    .eq("token", token)
+    .maybeSingle();
+  if (!p) return null;
+  const row = p as unknown as {
+    candidate_id: string | null;
+    process: { title: string; company: { trade_name: string | null; company_name: string | null } | null } | null;
+  };
+
+  const user = await getCurrentUser();
+  type Cand = { full_name: string; phone_whatsapp: string | null; location_city: string | null; cv_url: string | null };
+  let cand = null as Cand | null;
+  if (user) {
+    const { data } = await supabase
+      .from("candidates")
+      .select("full_name, phone_whatsapp, location_city, cv_url")
+      .eq("id", user.id)
+      .maybeSingle();
+    cand = data as Cand | null;
+  }
+
+  return {
+    company: row.process?.company?.trade_name || row.process?.company?.company_name || "La empresa",
+    process: row.process?.title ?? "Evaluación",
+    user: cand
+      ? {
+          name: cand.full_name,
+          email: user?.email ?? null,
+          phone: cand.phone_whatsapp,
+          city: cand.location_city,
+          hasCv: !!cand.cv_url,
+        }
+      : null,
+    notCandidate: !!user && !cand,
+    linkedToOther: !!user && !!row.candidate_id && row.candidate_id !== user.id,
+    alreadyLinked: !!user && row.candidate_id === user.id,
+  };
+}
+
+export async function connectWorkaProfile(token: string): Promise<Result & { token?: string }> {
+  const supabase = await getServerClient();
+  // En demo no hay nada que copiar: se vuelve a la evaluación como si sí.
+  if (!supabase) return demoEvaluation(token) ? { ok: true, token } : { ok: false, error: "Enlace inválido." };
+
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión en Worka Empleos para continuar." };
+
+  const { data: candData } = await supabase
+    .from("candidates")
+    .select("full_name, phone_whatsapp, location_city, cv_url")
+    .eq("id", user.id)
+    .maybeSingle();
+  const cand = candData as { full_name: string; phone_whatsapp: string | null; location_city: string | null; cv_url: string | null } | null;
+  if (!cand) return { ok: false, error: "Esta cuenta no es de postulante. Entrá con tu cuenta personal de Worka Empleos." };
+
+  const { getAdminClient } = await import("@/lib/supabase/admin");
+  const admin = getAdminClient();
+  if (!admin) return { ok: false, error: "No pudimos conectar tu cuenta. Probá de nuevo más tarde." };
+
+  const { data: pData } = await admin
+    .from("evaluar_participants")
+    .select("id, process_id, candidate_id, full_name, email, phone, city, cv_url")
+    .eq("token", token)
+    .maybeSingle();
+  const p = pData as {
+    id: string; process_id: string; candidate_id: string | null; full_name: string;
+    email: string | null; phone: string | null; city: string | null; cv_url: string | null;
+  } | null;
+  if (!p) return { ok: false, error: "Enlace inválido." };
+  if (p.candidate_id && p.candidate_id !== user.id)
+    return { ok: false, error: "Esta evaluación ya está conectada a otra cuenta de Worka Empleos." };
+
+  // Ya tenía una evaluación en este proceso (entró desde el aviso): se lo
+  // manda a esa en vez de duplicarlo, que chocaría con el unique.
+  if (!p.candidate_id) {
+    const { data: otra } = await admin
+      .from("evaluar_participants")
+      .select("token")
+      .eq("process_id", p.process_id)
+      .eq("candidate_id", user.id)
+      .neq("id", p.id)
+      .maybeSingle();
+    if (otra) return { ok: true, token: (otra as { token: string }).token };
+  }
+
+  // El CV se copia (no se enlaza): si mañana lo cambia o lo borra en Worka,
+  // la empresa sigue viendo el que se mandó con esta evaluación.
+  let cvPath = p.cv_url;
+  if (cand.cv_url && !p.cv_url) {
+    const destino = `evaluar/${p.id}.pdf`;
+    const { error: cvError } = await admin.storage.from("cvs").copy(cand.cv_url, destino);
+    if (cvError) console.error("connectWorkaProfile cv:", cvError);
+    else cvPath = destino;
+  }
+
+  const { error } = await admin
+    .from("evaluar_participants")
+    .update({
+      candidate_id: user.id,
+      full_name: cand.full_name?.trim() || p.full_name,
+      email: user.email ?? p.email,
+      phone: cand.phone_whatsapp || p.phone,
+      city: cand.location_city || p.city,
+      cv_url: cvPath,
+    })
+    .eq("id", p.id);
+  if (error) {
+    console.error("connectWorkaProfile:", error);
+    return { ok: false, error: "No pudimos conectar tu cuenta. Probá de nuevo." };
+  }
+
+  const { error: eventoError } = await admin.from("evaluar_events").insert({
+    participant_id: p.id,
+    kind: "worka",
+    message: "Conectaste tu perfil de Worka Empleos: tus datos y tu CV ya están cargados.",
+  });
+  if (eventoError) console.error("connectWorkaProfile evento:", eventoError);
+
+  revalidatePath(`/evaluar/e/${token}`);
+  return { ok: true, token };
+}
+
+// Si la ficha ya trae los datos de una cuenta de Worka, la evaluación no
+// vuelve a ofrecer el botón.
+export async function isWorkaLinked(token: string): Promise<boolean> {
+  const supabase = await getServerClient();
+  if (!supabase) return false;
+  const { getAdminClient } = await import("@/lib/supabase/admin");
+  const admin = getAdminClient();
+  if (!admin) return false;
+  const { data } = await admin.from("evaluar_participants").select("candidate_id").eq("token", token).maybeSingle();
+  return !!(data as { candidate_id: string | null } | null)?.candidate_id;
 }

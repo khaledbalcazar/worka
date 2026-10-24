@@ -99,17 +99,17 @@ export default async function PreciosPage() {
       />
       <div className="max-w-6xl mx-auto px-6 py-16 md:py-20">
         <header className="text-center max-w-2xl mx-auto">
-          <span className="inline-flex items-center gap-2 text-xs font-medium text-[var(--nk-300)] border border-[rgba(145,132,217,.35)] rounded-full px-3 py-1.5">
+          <span className="inline-flex items-center gap-2 text-xs font-medium text-[var(--nk-300)] border border-[rgba(93,82,148,.35)] rounded-full px-3 py-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)]" />
             {TRIAL_DAYS} días gratis · sin tarjeta
           </span>
-          <h1 className="font-medium text-4xl md:text-5xl text-[#e9e9ed] mt-5 leading-tight">
+          <h1 className="font-medium text-4xl md:text-5xl text-[#1d2226] mt-5 leading-tight">
             Precios claros, <em className="italic text-[var(--color-accent)]">sin sorpresas</em>
           </h1>
-          <p className="text-[rgba(233,233,237,.58)] mt-4 leading-relaxed">
+          <p className="text-[#5f5f5f] mt-4 leading-relaxed">
             Empezás probando con un proceso real. Si te sirve, activás el plan;
             si no, no pagás nada.{" "}
-            <strong className="text-[#e9e9ed] font-medium">
+            <strong className="text-[#1d2226] font-medium">
               No hay cobro automático
             </strong>
             : la renovación la confirmás vos cada vez.
@@ -122,32 +122,32 @@ export default async function PreciosPage() {
               key={p.nombre}
               className={`rounded-2xl p-7 border ${
                 p.destacado
-                  ? "border-[#5d5294] bg-[linear-gradient(165deg,#262a60,#1c1f42)]"
-                  : "border-[#292b31] bg-[#1a1c26]"
+                  ? "border-[#5d5294] bg-[linear-gradient(165deg,#efedfb,#efedfb)]"
+                  : "border-[#e0dfdc] bg-[#ffffff]"
               }`}
             >
               {p.destacado && (
-                <span className="nk-mono inline-block rounded-full px-2.5 py-1 mb-3" style={{ border: "1px solid rgba(210,206,253,.4)", color: "var(--nk-300)" }}>
+                <span className="nk-mono inline-block rounded-full px-2.5 py-1 mb-3" style={{ border: "1px solid rgba(93,82,148,.4)", color: "var(--nk-300)" }}>
                   El más elegido
                 </span>
               )}
-              <h2 className="font-medium text-xl text-[#e9e9ed]">
+              <h2 className="font-medium text-xl text-[#1d2226]">
                 {p.nombre}
               </h2>
-              <p className="text-sm text-[rgba(233,233,237,.58)] mt-1.5 leading-relaxed">
+              <p className="text-sm text-[#5f5f5f] mt-1.5 leading-relaxed">
                 {p.para}
               </p>
 
-              <p className="mt-6 pb-6 border-b border-[#292b31]">
+              <p className="mt-6 pb-6 border-b border-[#e0dfdc]">
                 {p.precio ? (
                   <>
-                    <span className="font-medium text-3xl text-[#e9e9ed]">
+                    <span className="font-medium text-3xl text-[#1d2226]">
                       {p.precio}
                     </span>
-                    <span className="text-sm text-[rgba(233,233,237,.58)]"> / mes</span>
+                    <span className="text-sm text-[#5f5f5f]"> / mes</span>
                   </>
                 ) : (
-                  <span className="font-medium text-2xl text-[#e9e9ed]">
+                  <span className="font-medium text-2xl text-[#1d2226]">
                     A convenir
                   </span>
                 )}
@@ -155,7 +155,7 @@ export default async function PreciosPage() {
 
               <ul className="mt-6 space-y-2.5">
                 {p.incluye.map((f) => (
-                  <li key={f} className="text-sm text-[rgba(233,233,237,.58)] flex items-start gap-2.5">
+                  <li key={f} className="text-sm text-[#5f5f5f] flex items-start gap-2.5">
                     <Check />
                     {f}
                   </li>
@@ -185,7 +185,7 @@ export default async function PreciosPage() {
               {p.nombre !== "Corporativo" && (
                 <Link
                   href={`/evaluar/app/plan?plan=${p.nombre === "Profesional" ? "profesional" : "esencial"}`}
-                  className="block text-center text-xs mt-2.5 text-[rgba(233,233,237,.55)] underline"
+                  className="block text-center text-xs mt-2.5 text-[#5f5f5f] underline"
                 >
                   o contratalo ya con tarjeta
                 </Link>
@@ -194,11 +194,11 @@ export default async function PreciosPage() {
           ))}
         </div>
 
-        <div className="rounded-2xl border border-[#292b31] bg-[#1a1c26] p-7 mt-10 max-w-2xl mx-auto">
-          <h2 className="font-medium text-lg text-[#e9e9ed]">
+        <div className="rounded-2xl border border-[#e0dfdc] bg-[#ffffff] p-7 mt-10 max-w-2xl mx-auto">
+          <h2 className="font-medium text-lg text-[#1d2226]">
             Cómo se paga
           </h2>
-          <p className="text-sm text-[rgba(233,233,237,.58)] mt-2 leading-relaxed">
+          <p className="text-sm text-[#5f5f5f] mt-2 leading-relaxed">
             Con tarjeta internacional, PayPal, Apple Pay o Google Pay: se cobra
             en dólares, el plan se activa al instante y se renueva solo hasta que
             lo canceles. También por transferencia bancaria o link de pago: nos

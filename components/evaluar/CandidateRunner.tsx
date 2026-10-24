@@ -4,11 +4,17 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   CalendarClock,
+  Check,
   CheckCircle2,
+  CloudOff,
   ChevronLeft,
   Circle,
   Clock,
   FileUp,
+  Loader2,
+  PartyPopper,
+  ShieldCheck,
+  Sparkles,
   TimerReset,
   XCircle,
 } from "lucide-react";
@@ -102,15 +108,26 @@ export type Evaluation = {
   events: { kind: string; message: string; at: string }[];
 };
 
+export type WorkaConnect = {
+  /** Pantalla de autorización en worka.click. */
+  url: string;
+  /** La ficha ya tiene los datos de una cuenta de Worka. */
+  linked: boolean;
+  /** Vuelve recién de autorizar: se le confirma con un aviso. */
+  justConnected: boolean;
+};
+
 export default function CandidateRunner({
   token,
   data,
   vencido,
+  workaConnect,
 }: {
   token: string;
   data: Evaluation;
   /** El plazo lo evalua el servidor: la hora del navegador es del usuario. */
   vencido: boolean;
+  workaConnect?: WorkaConnect;
 }) {
   const router = useRouter();
   const { participant, process, stages, events } = data;
@@ -126,6 +143,31 @@ export default function CandidateRunner({
   );
   const [error, setError] = useState<string | null>(null);
   const [started, setStarted] = useState(participant.status !== "invitado");
+  // Lo que dice la cabecera sobre el guardado: quien contesta en el celular
+  // con mala señal necesita saber si lo último quedó o no.
+  const [guardado, setGuardado] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  // Hacia dónde se mueve la pregunta: la nueva entra desde la derecha al
+  // avanzar y desde la izquierda al volver, como pasar páginas.
+  const [dir, setDir] = useState<"next" | "prev">("next");
+  // Pantalla de festejo entre etapas: sin ella, terminar una etapa y ver la
+  // explicación de la siguiente se sentía como un salto sin aviso.
+  const [etapaHecha, setEtapaHecha] = useState<{ titulo: string; numero: number } | null>(null);
+  // Qué se está cargando, para mostrar una pantalla de espera con sentido.
+  const [cargando, setCargando] = useState<null | "abrir" | "etapa" | "enviar">(null);
+  const [aviso, setAviso] = useState<string | null>(
+    workaConnect?.justConnected ? "Conectaste tu cuenta de Worka Empleos: tus datos y tu CV ya están cargados." : null
+  );
+  // El festejo entre etapas aparece donde estaba la pregunta, que en el
+  // celular suele quedar abajo: se lo trae a la vista.
+  const etapaRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (etapaHecha) etapaRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [etapaHecha]);
+  useEffect(() => {
+    if (!aviso) return;
+    const id = setTimeout(() => setAviso(null), 5000);
+    return () => clearTimeout(id);
+  }, [aviso]);
   const [pending, startTransition] = useTransition();
 
   const cerrado =
@@ -221,8 +263,10 @@ export default function CandidateRunner({
     if (!stage) return;
     const id = stage.id;
     setError(null);
+    setCargando("etapa");
     startTransition(async () => {
       const r = await beginStage(token, id);
+      setCargando(null);
       if (!r.ok) {
         setError(r.error ?? "No pudimos empezar la etapa.");
         return;
@@ -245,13 +289,18 @@ export default function CandidateRunner({
     setAnswers(next);
     // Se guarda en el momento, no al final de la etapa: si se corta la
     // conexión no se pierde lo ya contestado.
-    void saveDraft(token, next);
+    setGuardado("saving");
+    void saveDraft(token, next)
+      .then((r) => setGuardado(r.ok ? "saved" : "error"))
+      .catch(() => setGuardado("error"));
   }
 
   function comenzar() {
     setError(null);
+    setCargando("abrir");
     startTransition(async () => {
       const r = await startEvaluation(token);
+      setCargando(null);
       if (!r.ok) {
         setError(r.error ?? "No pudimos abrir la evaluación.");
         return;
@@ -268,24 +317,73 @@ export default function CandidateRunner({
     const seconds = startedAtRef.current
       ? Math.round((Date.now() - startedAtRef.current) / 1000)
       : undefined;
+    setCargando("enviar");
+    const titulo = stage.title;
+    const numero = participant.stage_index + 1;
     startTransition(async () => {
       const result = await submitStage(token, stage.id, answers, seconds);
       enviandoRef.current = false;
+      setCargando(null);
       if (!result.ok) {
         setError(result.error ?? "No pudimos guardar tus respuestas.");
         return;
       }
       setAnswers({});
       setQIndex(0);
+      setDir("next");
       setInicio(null);
       setLeft(null);
       if (result.status === "completado") celebrate();
+      else setEtapaHecha({ titulo, numero });
       router.refresh();
     });
   }
   useEffect(() => {
     enviarRef.current = enviar;
   });
+
+  // Mientras se contesta, la pantalla es solo la pregunta: el mapa de etapas,
+  // los datos de contacto y la línea de tiempo vuelven al terminar la etapa.
+  const respondiendo =
+    !etapaHecha && !cerrado && abierto && !!stage && !vencido && started && !verBriefing && stage.questions.length > 0;
+  const minutosTotales = stages.reduce((t, s) => t + (s.minutes || 0), 0);
+
+  // Atajos de teclado en la compu: 1-9 elige la opción, Enter avanza.
+  const responderRef = useRef(responder);
+  useEffect(() => {
+    responderRef.current = responder;
+  });
+  const avanzarRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    avanzarRef.current = () => {
+      if (pending || !respondida) return;
+      if (esUltima) enviar();
+      else {
+        setDir("next");
+        setQIndex((i) => i + 1);
+      }
+    };
+  });
+  const kindActual = respondiendo ? question?.kind : undefined;
+  const opcionesActuales = respondiendo ? question?.options : undefined;
+  useEffect(() => {
+    if (!kindActual || !opcionesActuales) return;
+    const conOpciones = kindActual === "unica" || kindActual === "multiple" || kindActual === "likert" || kindActual === "figura";
+    function onKey(e: KeyboardEvent) {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT")) return;
+      if (e.key === "Enter") {
+        avanzarRef.current();
+        return;
+      }
+      const n = Number(e.key);
+      if (!conOpciones || !Number.isInteger(n) || n < 1 || n > opcionesActuales!.length) return;
+      const o = opcionesActuales![n - 1];
+      responderRef.current(kindActual === "likert" ? n : o);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [kindActual, opcionesActuales]);
 
   return (
     <div className={`min-h-screen ${theme.page}`}>
@@ -308,16 +406,45 @@ export default function CandidateRunner({
               {(process.company ?? "W")[0]?.toUpperCase()}
             </span>
           )}
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="font-semibold truncate">
               {process.company ?? "Evaluación"}
             </p>
             <p className="text-xs opacity-70 truncate">{process.title}</p>
           </div>
+          {started && !cerrado && (
+            <span className="shrink-0 text-xs flex items-center gap-1.5 opacity-80" role="status" aria-live="polite">
+              {guardado === "saving" ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" /> Guardando…
+                </>
+              ) : guardado === "error" ? (
+                <>
+                  <CloudOff size={14} /> Sin conexión
+                </>
+              ) : (
+                <>
+                  <Check size={14} /> {guardado === "saved" ? "Guardado" : "Se guarda solo"}
+                </>
+              )}
+            </span>
+          )}
         </div>
       </header>
 
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+      {aviso && (
+        <div className="fixed top-3 inset-x-0 z-50 px-4 flex justify-center pointer-events-none">
+          <p role="status" className="ev-toast pointer-events-auto max-w-md w-full rounded-2xl bg-[#1d2226] text-white text-sm px-4 py-3 shadow-lg flex items-start gap-2.5">
+            <CheckCircle2 size={17} className="text-emerald-400 shrink-0 mt-0.5" />
+            <span className="flex-1">{aviso}</span>
+            <button onClick={() => setAviso(null)} className="text-white/60 hover:text-white" aria-label="Cerrar aviso">
+              <XCircle size={16} />
+            </button>
+          </p>
+        </div>
+      )}
+
+      <div className="max-w-2xl mx-auto px-4 py-5 sm:py-8 space-y-4">
         {/* Aviso de plazo */}
         {process.deadline_at && !cerrado && (
           <p
@@ -335,17 +462,34 @@ export default function CandidateRunner({
         )}
 
         {/* Mapa de etapas */}
-        <div className={`${theme.card} p-5`}>
-          <h1 className={`font-bold ${theme.heading}`}>
-            Hola{participant.full_name ? `, ${participant.full_name}` : ""}
+        {!respondiendo && (
+        <div className={`${theme.card} p-5 sm:p-6`}>
+          <p className={`text-xs font-semibold ${theme.muted}`}>
+            {cerrado ? "Tu evaluación" : started ? "Tu avance" : "Te damos la bienvenida"}
+          </p>
+          <h1 className={`text-xl font-bold mt-0.5 ${theme.heading}`}>
+            Hola{participant.full_name ? `, ${participant.full_name.split(" ")[0]}` : ""}
           </h1>
-          {process.description && (
-            <p className={`text-sm mt-1 ${theme.muted}`}>
-              {process.description}
-            </p>
+          <p className={`text-sm mt-1 leading-relaxed ${theme.muted}`}>
+            {process.description ||
+              `${process.company ?? "La empresa"} te invitó a esta evaluación para la búsqueda «${process.title}».`}
+          </p>
+
+          {workaConnect?.linked && (
+            <span className="chip bg-[#eef5fc] text-[#0a66c2] mt-3">
+              <CheckCircle2 size={13} /> Conectado con Worka Empleos
+            </span>
           )}
 
-          <ol className="mt-4 space-y-2.5">
+          {!started && !cerrado && (
+            <div className="grid grid-cols-3 gap-2 mt-4">
+              <Dato icono={<Clock size={16} />} valor={`${minutosTotales} min`} texto="en total, aprox." accent={accent} />
+              <Dato icono={<CheckCircle2 size={16} />} valor={String(stages.length)} texto={stages.length === 1 ? "etapa" : "etapas"} accent={accent} />
+              <Dato icono={<ShieldCheck size={16} />} valor="Se guarda" texto="cada respuesta" accent={accent} />
+            </div>
+          )}
+
+          <ol className="mt-5 space-y-2.5">
             {stages.map((s, i) => {
               const hecha = i < participant.stage_index;
               const actual = i === participant.stage_index && !cerrado;
@@ -384,14 +528,20 @@ export default function CandidateRunner({
             })}
           </ol>
         </div>
+        )}
 
         {/* Resultado cerrado */}
         {cerrado && (
-          <div className={`${theme.card} p-6 text-center animate-rise`}>
+          <div className={`${theme.card} p-6 sm:p-8 text-center animate-rise`}>
             {participant.status === "descartado" ? (
               <XCircle size={32} className="text-slate-400 mx-auto" />
             ) : (
-              <CheckCircle2 size={32} style={{ color: accent }} className="mx-auto" />
+              <span
+                className="ev-done-ring mx-auto w-16 h-16 rounded-full grid place-items-center"
+                style={{ background: `${accent}14`, color: accent }}
+              >
+                <CheckCircle2 size={34} className="animate-pop" />
+              </span>
             )}
             <p className={`font-bold mt-2 ${theme.heading}`}>
               {participant.status === "descartado"
@@ -427,37 +577,70 @@ export default function CandidateRunner({
 
         {/* Datos y CV: el invitado no tiene cuenta de Worka, así que sus datos
             no salen de ningún lado si no se los pedimos. */}
-        {!cerrado && abierto && started && (
-          <CandidateData token={token} participant={participant} theme={theme} />
+        {!cerrado && abierto && started && !respondiendo && (
+          <CandidateData token={token} participant={participant} theme={theme} workaConnect={workaConnect} />
         )}
 
         {/* Etapa en curso */}
         {!cerrado && abierto && stage && !vencido && (
-          <div className={`${theme.card} p-5`}>
+          <div ref={etapaRef} className={`${theme.card} p-5 scroll-mt-4`}>
             {!started ? (
-              <div className="text-center py-2">
+              <div className="py-1">
+                {workaConnect && !workaConnect.linked && (
+                  <div className="mb-5 pb-5 border-b border-[#ebe9e6]">
+                    <WorkaButton href={workaConnect.url} />
+                    <p className={`text-xs text-center mt-2 ${theme.muted}`}>
+                      Opcional. Si tenés cuenta en Worka Empleos, cargamos tu nombre, contacto y CV por vos.
+                    </p>
+                  </div>
+                )}
                 <p className={`font-semibold ${theme.heading}`}>
-                  Cuando quieras, empezamos
+                  Antes de empezar
                 </p>
-                <p className={`text-sm mt-1 ${theme.muted}`}>
-                  La primera etapa te va a llevar unos {stage.minutes} minutos.
-                  Se guarda cada respuesta, así que podés cortar y seguir
-                  después.
-                </p>
-                <button
-                  onClick={comenzar}
-                  disabled={pending}
-                  className="w-full mt-4 text-base py-3 rounded-xl font-semibold press"
-                  style={{ background: accent, color: onAccent }}
-                >
-                  {pending ? "Abriendo…" : "Empezar evaluación"}
-                </button>
+                <ul className={`text-sm mt-2 space-y-2 ${theme.muted}`}>
+                  {[
+                    "Buscá un lugar tranquilo. Se puede hacer desde el celular.",
+                    `La primera etapa lleva unos ${stage.minutes} minutos.`,
+                    "Si una etapa tiene tiempo, te avisamos antes y el reloj arranca recién cuando vos lo decidís.",
+                    "Cada respuesta se guarda sola: podés cortar y seguir después con este mismo enlace.",
+                  ].map((t) => (
+                    <li key={t} className="flex items-start gap-2">
+                      <Check size={15} className="shrink-0 mt-0.5" style={{ color: accent }} />
+                      <span>{t}</span>
+                    </li>
+                  ))}
+                </ul>
+                {cargando === "abrir" ? (
+                  <Cargando accent={accent} theme={theme} mensajes={["Abriendo tu evaluación…", "Preparando la primera etapa…"]} />
+                ) : (
+                  <button
+                    onClick={comenzar}
+                    disabled={pending}
+                    className="w-full mt-4 text-base py-3 rounded-xl font-semibold press"
+                    style={{ background: accent, color: onAccent }}
+                  >
+                    Empezar evaluación
+                  </button>
+                )}
                 {error && (
                   <p className="text-sm text-danger bg-red-50 rounded-xl px-4 py-3 mt-3">
                     {error}
                   </p>
                 )}
               </div>
+            ) : etapaHecha ? (
+              <EtapaCompletada
+                titulo={etapaHecha.titulo}
+                numero={etapaHecha.numero}
+                total={stages.length}
+                siguiente={stage.title}
+                accent={accent}
+                onAccent={onAccent}
+                theme={theme}
+                onSeguir={() => setEtapaHecha(null)}
+              />
+            ) : cargando === "etapa" ? (
+              <Cargando accent={accent} theme={theme} mensajes={["Preparando tus preguntas…", "Mezclando las opciones…", "Ya casi…"]} />
             ) : verBriefing ? (
               <>
                 <StageBriefing
@@ -477,14 +660,18 @@ export default function CandidateRunner({
                 )}
               </>
             ) : stage.questions.length === 0 ? (
-              <p
-                className={`text-sm text-center py-6 ${theme.muted}`}
-                role="status"
-              >
-                Preparando tus preguntas…
-              </p>
+              <Cargando accent={accent} theme={theme} mensajes={["Preparando tus preguntas…", "Ya casi…"]} />
             ) : (
               <>
+                <div className="flex gap-1 mb-4" aria-hidden>
+                  {stages.map((s, i) => (
+                    <span
+                      key={s.id}
+                      className="h-1 flex-1 rounded-full"
+                      style={{ background: i <= participant.stage_index ? accent : "#e0dfdc", opacity: i === participant.stage_index ? 1 : i < participant.stage_index ? 0.45 : 1 }}
+                    />
+                  ))}
+                </div>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className={`text-[11px] font-semibold uppercase tracking-wide ${theme.muted}`}>
@@ -548,12 +735,12 @@ export default function CandidateRunner({
                 </div>
 
                 {question && (
-                  <div key={question.id} className="mt-5 animate-rise">
+                  <div key={question.id} className={`mt-5 ${dir === "next" ? "ev-q-next" : "ev-q-prev"}`}>
                     <p
                       ref={preguntaRef}
                       tabIndex={-1}
                       id={`q-${question.id}`}
-                      className={`text-base font-medium outline-none ${theme.heading}`}
+                      className={`text-[17px] leading-snug font-semibold outline-none ${theme.heading}`}
                     >
                       {question.text}
                     </p>
@@ -576,7 +763,7 @@ export default function CandidateRunner({
                               role="radio"
                               aria-checked={elegido}
                               onClick={() => responder(valor)}
-                              className="w-full text-left text-sm px-4 py-3 rounded-xl border press transition-colors flex items-center gap-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                              className={`w-full text-left text-[15px] px-4 py-3.5 rounded-xl border press transition-colors flex items-center gap-3 hover:bg-black/[.02] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ${elegido ? "ev-opt-pop" : ""}`}
                               style={
                                 elegido
                                   ? {
@@ -584,19 +771,21 @@ export default function CandidateRunner({
                                       color: onAccent,
                                       borderColor: accent,
                                     }
-                                  : { borderColor: "#e2e8f0" }
+                                  : { borderColor: "#e0dfdc" }
                               }
                             >
                               <span
                                 aria-hidden
-                                className="w-5 h-5 rounded-full border-2 shrink-0"
+                                className="w-6 h-6 rounded-full border shrink-0 grid place-items-center text-xs font-semibold"
                                 style={{
-                                  borderColor: elegido ? onAccent : "#cbd5e1",
+                                  borderColor: elegido ? onAccent : "#d4d2ce",
                                   background: elegido
-                                    ? "rgba(255,255,255,.35)"
+                                    ? "rgba(255,255,255,.25)"
                                     : "transparent",
                                 }}
-                              />
+                              >
+                                {elegido ? <Check size={13} /> : oi + 1}
+                              </span>
                               {o}
                             </button>
                           );
@@ -638,7 +827,7 @@ export default function CandidateRunner({
                                       color: onAccent,
                                       borderColor: accent,
                                     }
-                                  : { borderColor: "#e2e8f0" }
+                                  : { borderColor: "#e0dfdc" }
                               }
                             >
                               {n}
@@ -693,7 +882,7 @@ export default function CandidateRunner({
                                 style={
                                   elegido
                                     ? { borderColor: accent, boxShadow: `0 0 0 2px ${accent}` }
-                                    : { borderColor: "#e2e8f0" }
+                                    : { borderColor: "#e0dfdc" }
                                 }
                               >
                                 <span className="block text-xs font-semibold text-left opacity-70">
@@ -749,7 +938,10 @@ export default function CandidateRunner({
                 <div className="flex gap-2 mt-5">
                   {qIndex > 0 && (
                     <button
-                      onClick={() => setQIndex((i) => i - 1)}
+                      onClick={() => {
+                        setDir("prev");
+                        setQIndex((i) => i - 1);
+                      }}
                       className="btn-secondary press shrink-0"
                       aria-label="Pregunta anterior"
                     >
@@ -757,15 +949,19 @@ export default function CandidateRunner({
                     </button>
                   )}
                   <button
-                    onClick={() =>
-                      esUltima ? enviar() : setQIndex((i) => i + 1)
-                    }
+                    onClick={() => {
+                      if (esUltima) enviar();
+                      else {
+                        setDir("next");
+                        setQIndex((i) => i + 1);
+                      }
+                    }}
                     disabled={pending || !respondida}
                     className="flex-1 text-base py-3 rounded-xl font-semibold press disabled:opacity-40"
                     style={{ background: accent, color: onAccent }}
                   >
-                    {pending
-                      ? "Enviando…"
+                    {cargando === "enviar"
+                      ? "Enviando tus respuestas…"
                       : esUltima
                         ? participant.stage_index + 1 >= stages.length
                           ? "Terminar evaluación"
@@ -773,18 +969,21 @@ export default function CandidateRunner({
                         : "Siguiente"}
                   </button>
                 </div>
-                {!respondida && (
-                  <p className={`text-xs text-center mt-2 ${theme.muted}`}>
-                    Elegí una respuesta para continuar.
-                  </p>
-                )}
+                <p className={`text-xs text-center mt-2 ${theme.muted}`}>
+                  {!respondida
+                    ? "Elegí una respuesta para continuar."
+                    : esUltima
+                      ? "Al terminar se envía la etapa y ya no se puede cambiar."
+                      : "Podés volver a la pregunta anterior con la flecha."}
+                  <span className="hidden sm:inline"> · Atajos: números para elegir, Enter para seguir.</span>
+                </p>
               </>
             )}
           </div>
         )}
 
         {/* Línea de tiempo */}
-        {events.length > 0 && (
+        {events.length > 0 && !respondiendo && (
           <div className={`${theme.card} p-5`}>
             <h2 className={`font-semibold text-sm ${theme.heading}`}>
               Lo que pasó hasta ahora
@@ -814,10 +1013,146 @@ export default function CandidateRunner({
         )}
 
         <p className={`text-xs text-center ${theme.muted}`}>
-          Guardá este enlace: es tu acceso a esta evaluación. Con tecnología de
-          Worka.
+          Guardá este enlace: es tu acceso a esta evaluación. Tus respuestas
+          solo las ve {process.company ?? "la empresa"}. Con tecnología de Worka.
         </p>
       </div>
+    </div>
+  );
+}
+
+// «Continuar con Worka Empleos», al estilo de los botones de Google o
+// Microsoft: es el gesto que la gente ya conoce para «usar mi cuenta».
+function WorkaButton({ href, compact = false }: { href: string; compact?: boolean }) {
+  return (
+    <a
+      href={href}
+      className={`group w-full rounded-full bg-[#0a66c2] hover:bg-[#004182] text-white flex items-center gap-3 press transition-colors ${compact ? "px-2 py-1.5" : "px-2.5 py-2"}`}
+    >
+      <span className={`${compact ? "w-8 h-8 text-[13px]" : "w-10 h-10 text-[15px]"} rounded-full bg-white text-[#0a3d7a] grid place-items-center font-extrabold shrink-0 tracking-tight`}>
+        W<span className="text-[#0a66c2]">.</span>
+      </span>
+      <span className="flex-1 min-w-0 text-left">
+        <span className={`block font-semibold ${compact ? "text-sm" : "text-[15px]"}`}>Continuar con Worka Empleos</span>
+        {!compact && <span className="block text-xs text-white/75">Tus datos y tu CV en un toque</span>}
+      </span>
+      <Sparkles size={16} className="mr-2 opacity-70 group-hover:opacity-100 transition-opacity" />
+    </a>
+  );
+}
+
+// Pantalla de espera: un spinner solo parece colgado; con mensajes que van
+// cambiando y una barra que avanza se entiende que algo está pasando.
+function Cargando({
+  accent,
+  theme,
+  mensajes,
+}: {
+  accent: string;
+  theme: ReturnType<typeof getTheme>;
+  mensajes: string[];
+}) {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setI((n) => Math.min(n + 1, mensajes.length - 1)), 1400);
+    return () => clearInterval(id);
+  }, [mensajes.length]);
+  return (
+    <div className="py-6 text-center" role="status" aria-live="polite">
+      <span className="relative mx-auto w-14 h-14 grid place-items-center">
+        <span className="absolute inset-0 rounded-full ev-pulse-ring" style={{ background: `${accent}22` }} />
+        <Loader2 size={26} className="animate-spin relative" style={{ color: accent }} />
+      </span>
+      <p key={i} className={`text-sm font-medium mt-4 animate-rise ${theme.heading}`}>
+        {mensajes[i]}
+      </p>
+      <div className="h-1 max-w-[220px] mx-auto rounded-full bg-[#ebe9e6] overflow-hidden mt-4">
+        <div className="h-full rounded-full ev-load-bar" style={{ background: accent }} />
+      </div>
+      <div className="mt-6 space-y-2.5 text-left" aria-hidden>
+        <div className="ev-skeleton h-4 w-3/4 rounded-md" />
+        <div className="ev-skeleton h-11 rounded-xl" />
+        <div className="ev-skeleton h-11 rounded-xl" />
+        <div className="ev-skeleton h-11 rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+// Festejo entre etapas, con el avance total y la próxima etapa a la vista.
+function EtapaCompletada({
+  titulo,
+  numero,
+  total,
+  siguiente,
+  accent,
+  onAccent,
+  theme,
+  onSeguir,
+}: {
+  titulo: string;
+  numero: number;
+  total: number;
+  siguiente: string;
+  accent: string;
+  onAccent: string;
+  theme: ReturnType<typeof getTheme>;
+  onSeguir: () => void;
+}) {
+  const pct = Math.round((numero / total) * 100);
+  const r = 34;
+  const c = 2 * Math.PI * r;
+  return (
+    <div className="py-4 text-center animate-rise">
+      <div className="relative mx-auto w-24 h-24">
+        <svg viewBox="0 0 80 80" className="w-24 h-24 -rotate-90" aria-hidden>
+          <circle cx="40" cy="40" r={r} fill="none" stroke="#ebe9e6" strokeWidth="6" />
+          <circle
+            cx="40"
+            cy="40"
+            r={r}
+            fill="none"
+            stroke={accent}
+            strokeWidth="6"
+            strokeLinecap="round"
+            strokeDasharray={c}
+            strokeDashoffset={c * (1 - pct / 100)}
+            className="ev-ring-fill"
+            style={{ ["--ev-ring-from" as string]: String(c * (1 - (numero - 1) / total)) }}
+          />
+        </svg>
+        <span className="absolute inset-0 grid place-items-center">
+          <PartyPopper size={28} className="animate-pop" style={{ color: accent }} />
+        </span>
+      </div>
+      <p className={`text-xs font-semibold mt-4 ${theme.muted}`}>
+        Etapa {numero} de {total} lista · {pct}% de la evaluación
+      </p>
+      <h2 className={`text-xl font-bold mt-1 ${theme.heading}`}>¡Muy bien! Terminaste «{titulo}»</h2>
+      <p className={`text-sm mt-1.5 ${theme.muted}`}>
+        Tus respuestas ya quedaron guardadas. Si querés, tomate un respiro: la próxima etapa no arranca hasta que vos lo decidas.
+      </p>
+      <div className="rounded-xl border border-[#e0dfdc] px-4 py-3 mt-5 text-left">
+        <p className={`text-[11px] font-semibold uppercase tracking-wide ${theme.muted}`}>Sigue</p>
+        <p className={`text-sm font-semibold ${theme.heading}`}>{siguiente}</p>
+      </div>
+      <button
+        onClick={onSeguir}
+        className="w-full mt-5 text-base py-3 rounded-xl font-semibold press"
+        style={{ background: accent, color: onAccent }}
+      >
+        Seguir con la próxima etapa
+      </button>
+    </div>
+  );
+}
+
+function Dato({ icono, valor, texto, accent }: { icono: React.ReactNode; valor: string; texto: string; accent: string }) {
+  return (
+    <div className="rounded-xl border border-[#e0dfdc] px-3 py-2.5">
+      <span style={{ color: accent }}>{icono}</span>
+      <p className="text-sm font-semibold text-[#1d2226] mt-1">{valor}</p>
+      <p className="text-[11px] text-[#666] leading-tight">{texto}</p>
     </div>
   );
 }
@@ -834,10 +1169,12 @@ function CandidateData({
   token,
   participant,
   theme,
+  workaConnect,
 }: {
   token: string;
   participant: Evaluation["participant"];
   theme: ReturnType<typeof getTheme>;
+  workaConnect?: WorkaConnect;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -896,6 +1233,12 @@ function CandidateData({
       <h2 className={`font-semibold text-sm ${theme.heading}`}>
         Tus datos de contacto
       </h2>
+      {workaConnect && !workaConnect.linked && (
+        <>
+          <WorkaButton href={workaConnect.url} compact />
+          <p className={`text-xs text-center ${theme.muted}`}>o cargalos a mano:</p>
+        </>
+      )}
       <input
         className="input"
         type="email"

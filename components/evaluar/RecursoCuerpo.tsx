@@ -20,7 +20,7 @@ function conNegritas(x: string) {
   );
 }
 
-const CUERPO = "rgba(233,233,237,.68)";
+const CUERPO = "#404040";
 
 export default function RecursoCuerpo({ bloques }: { bloques: Bloque[] }) {
   return (
@@ -80,7 +80,7 @@ export default function RecursoCuerpo({ bloques }: { bloques: Bloque[] }) {
                   <span
                     className="shrink-0 grid place-items-center w-6 h-6 rounded-full font-mono text-[11px] font-medium mt-0.5"
                     style={{
-                      border: "1px solid rgba(145,132,217,.4)",
+                      border: "1px solid rgba(93,82,148,.4)",
                       color: "var(--color-accent)",
                     }}
                   >

@@ -314,7 +314,7 @@ export async function getCandidateReport(
   participantId: string
 ): Promise<CandidateReport | null> {
   const supabase = await getServerClient();
-  if (!supabase) return null;
+  if (!supabase) return demoReport(participantId);
   const user = await getCurrentUser();
   if (!user) return null;
 
@@ -371,4 +371,26 @@ export async function getCandidateReport(
       return total > 0 ? Math.max(1, Math.round(total / 60)) : null;
     })(),
   };
+}
+
+// Modo demo: el perfil sale del acumulado por rasgo del candidato de
+// ejemplo. Sin baremo (no hay población), así que sin percentiles: mostrar
+// uno inventado sería justo lo que el informe dice que no hay que hacer.
+async function demoReport(participantId: string): Promise<CandidateReport | null> {
+  const { demoProcessDetail, DEMO_PROCESS_ID } = await import("@/lib/evaluar/demo");
+  const { ALL_DIMENSIONS } = await import("@/lib/evaluar/templates");
+  const detail = demoProcessDetail(DEMO_PROCESS_ID);
+  const p = detail?.participants.find((x) => x.id === participantId);
+  if (!detail || !p) return null;
+  const total = detail.stages.reduce((s, st) => s + st.questions.length, 0);
+  const dimensions: NormedDimension[] = Object.entries(p.profile ?? {})
+    .filter(([, v]) => v.max > 0)
+    .map(([key, v]) => {
+      const d = ALL_DIMENSIONS[key];
+      const pct = Math.round((v.raw / v.max) * 100);
+      return { key, label: d?.label ?? key, high: d?.high ?? "", low: d?.low ?? "", pct, alto: pct >= 50, percentile: null, sample: 0 };
+    });
+  const minutes =
+    p.started_at && p.completed_at ? Math.round((Date.parse(p.completed_at) - Date.parse(p.started_at)) / 60000) : null;
+  return { dimensions, quality: [], videos: [], answered: p.completed_at ? total : 0, total, minutes };
 }

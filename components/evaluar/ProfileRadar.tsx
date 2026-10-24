@@ -60,8 +60,9 @@ export default function ProfileRadar({
   return (
     <figure className="mt-4">
       <svg
-        viewBox="0 0 260 260"
-        className="w-full max-w-xs mx-auto"
+        // Margen a los costados para que los nombres de los rasgos no se corten.
+        viewBox="-70 -6 400 272"
+        className="w-full max-w-md mx-auto"
         role="img"
         aria-label={`Perfil por rasgo: ${dims
           .map((d) => `${d.label} ${d.pct}%`)
@@ -145,7 +146,7 @@ export default function ProfileRadar({
               fontSize="8.5"
               fill="#475569"
             >
-              {d.label.length > 18 ? d.label.slice(0, 17) + "…" : d.label}
+              {d.label.length > 26 ? d.label.slice(0, 25) + "…" : d.label}
             </text>
           );
         })}

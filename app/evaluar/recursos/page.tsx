@@ -40,7 +40,7 @@ export default function RecursosPage() {
         </h1>
         <p
           className="text-base leading-relaxed mt-4 max-w-[560px]"
-          style={{ color: "rgba(233,233,237,.6)" }}
+          style={{ color: "#5f5f5f" }}
         >
           Guías de fondo sobre selección, evaluación e integridad, escritas para
           quien contrata en Paraguay. Sin vender nada en el medio.
@@ -68,7 +68,7 @@ export default function RecursosPage() {
                 </span>
                 <span
                   className="nk-mono"
-                  style={{ color: "rgba(233,233,237,.35)" }}
+                  style={{ color: "#6b6b6b" }}
                 >
                   {r.minutos} min de lectura
                 </span>
@@ -76,7 +76,7 @@ export default function RecursosPage() {
               <h2 className="text-[21px] font-medium m-0 mb-2">{r.titulo}</h2>
               <p
                 className="text-sm leading-[1.7] m-0"
-                style={{ color: "rgba(233,233,237,.55)" }}
+                style={{ color: "#5f5f5f" }}
               >
                 {r.bajada}
               </p>

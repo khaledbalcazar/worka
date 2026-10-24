@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
-import { loadEvaluation } from "@/app/evaluar/actions";
+import { isWorkaLinked, loadEvaluation } from "@/app/evaluar/actions";
+import { SITE_URL } from "@/lib/supabase/config";
 import { isPastDeadline } from "@/lib/evaluar-access";
 import CandidateRunner, {
   type Evaluation,
@@ -15,14 +16,25 @@ export const metadata = {
 
 export default async function EvaluationPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ worka?: string }>;
 }) {
   const { token } = await params;
+  const { worka } = await searchParams;
   const data = (await loadEvaluation(token)) as Evaluation | null;
   if (!data) notFound();
 
   const vencido = isPastDeadline(data.process.deadline_at);
 
-  return <CandidateRunner token={token} data={data} vencido={vencido} />;
+  // «Continuar con Worka Empleos»: la autorización pasa en worka.click, donde
+  // está la sesión del candidato, y vuelve acá con ?worka=1.
+  const workaConnect = {
+    url: `${SITE_URL.replace(/\/$/, "")}/conectar/evaluar?t=${encodeURIComponent(token)}`,
+    linked: worka === "1" || (await isWorkaLinked(token)),
+    justConnected: worka === "1",
+  };
+
+  return <CandidateRunner token={token} data={data} vencido={vencido} workaConnect={workaConnect} />;
 }

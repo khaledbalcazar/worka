@@ -29,8 +29,8 @@ export const metadata = evaluarMetadata({
   path: "/",
 });
 
-const MUTED = "rgba(233,233,237,.6)";
-const FAINT = "rgba(233,233,237,.45)";
+const MUTED = "#5f5f5f";
+const FAINT = "#6b6b6b";
 
 const DIFERENCIALES = [
   {
@@ -194,7 +194,7 @@ export default async function EvaluarLandingPage() {
           <div data-parallax data-depth="8">
             <span
               className="inline-flex items-center gap-2.5 rounded-full px-3 py-1.5 mb-7"
-              style={{ border: "1px solid rgba(145,132,217,.35)" }}
+              style={{ border: "1px solid rgba(93,82,148,.35)" }}
             >
               <span
                 className="w-1.5 h-1.5 rounded-full nk-beat"
@@ -253,7 +253,7 @@ export default async function EvaluarLandingPage() {
                 </p>
                 <p className="text-2xl font-medium m-0">5 minutos</p>
               </div>
-              <div style={{ width: 1, background: "rgba(233,233,237,.12)" }} />
+              <div style={{ width: 1, background: "rgba(29,34,38,.12)" }} />
               <div>
                 <p className="nk-mono mb-1.5" style={{ color: FAINT }}>
                   Y lo probás
@@ -271,9 +271,9 @@ export default async function EvaluarLandingPage() {
               data-tilt
               className="relative rounded-[14px] p-5 overflow-hidden"
               style={{
-                background: "linear-gradient(165deg,#232532,#1a1c28)",
+                background: "linear-gradient(165deg,#ffffff,#ffffff)",
                 border: "1px solid var(--nk-line-2)",
-                boxShadow: "0 16px 40px rgba(0,0,0,.65)",
+                boxShadow: "0 16px 40px rgba(0,0,0,.08)",
                 transition: "transform .18s ease-out",
               }}
             >
@@ -281,7 +281,7 @@ export default async function EvaluarLandingPage() {
                 className="absolute left-0 right-0 top-0 h-[120px] pointer-events-none nk-sweep"
                 style={{
                   background:
-                    "linear-gradient(180deg,rgba(145,132,217,.14),transparent)",
+                    "linear-gradient(180deg,rgba(93,82,148,.14),transparent)",
                 }}
                 aria-hidden
               />
@@ -333,10 +333,10 @@ export default async function EvaluarLandingPage() {
                           width: `${c.v}%`,
                           animationDelay: `${i * 0.15}s`,
                           background: c.alto
-                            ? "linear-gradient(90deg,#5d5294,#b5abfc)"
+                            ? "linear-gradient(90deg,#5d5294,#5d5294)"
                             : c.v > 70
-                              ? "linear-gradient(90deg,#423a6a,#968ae0)"
-                              : "#595d6c",
+                              ? "linear-gradient(90deg,#d9d4f3,#5d5294)"
+                              : "#a3a3a3",
                         }}
                       />
                     </div>
@@ -346,7 +346,7 @@ export default async function EvaluarLandingPage() {
 
               <div
                 className="mt-5 pt-4 grid grid-cols-3 gap-3"
-                style={{ borderTop: "1px solid rgba(233,233,237,.1)" }}
+                style={{ borderTop: "1px solid rgba(29,34,38,.1)" }}
               >
                 {[
                   { l: "Razonamiento", v: "12/12", ac: false },
@@ -375,9 +375,9 @@ export default async function EvaluarLandingPage() {
                 left: -84,
                 bottom: -78,
                 width: 236,
-                background: "#1a1c28",
+                background: "#ffffff",
                 border: "1px solid var(--nk-line-2)",
-                boxShadow: "0 16px 40px rgba(0,0,0,.6)",
+                boxShadow: "0 16px 40px rgba(0,0,0,.08)",
                 transition: "transform .18s ease-out",
               }}
             >
@@ -397,9 +397,9 @@ export default async function EvaluarLandingPage() {
       <div
         className="relative z-[2]"
         style={{
-          background: "linear-gradient(180deg,var(--nk-band),#1f2350)",
-          borderTop: "1px solid rgba(233,233,237,.1)",
-          borderBottom: "1px solid rgba(233,233,237,.1)",
+          background: "linear-gradient(180deg,var(--nk-band),#efedfb)",
+          borderTop: "1px solid rgba(29,34,38,.1)",
+          borderBottom: "1px solid rgba(29,34,38,.1)",
         }}
       >
         <div className="max-w-[1160px] mx-auto px-6 sm:px-8 py-8 grid grid-cols-2 md:grid-cols-4 gap-7">
@@ -410,7 +410,7 @@ export default async function EvaluarLandingPage() {
               </p>
               <p
                 className="nk-mono mt-1.5"
-                style={{ color: "rgba(233,233,237,.55)" }}
+                style={{ color: "#5f5f5f" }}
               >
                 {c.l}
               </p>
@@ -451,7 +451,7 @@ export default async function EvaluarLandingPage() {
               <h3 className="text-[21px] font-medium mb-2.5">{d.t}</h3>
               <p
                 className="text-sm leading-[1.7] m-0"
-                style={{ color: "rgba(233,233,237,.55)" }}
+                style={{ color: "#5f5f5f" }}
               >
                 {d.d}
               </p>
@@ -464,7 +464,7 @@ export default async function EvaluarLandingPage() {
       <section
         id="instrumentos"
         className="relative z-[2] scroll-mt-20"
-        style={{ borderTop: "1px solid rgba(233,233,237,.08)" }}
+        style={{ borderTop: "1px solid rgba(29,34,38,.08)" }}
       >
         <div className="max-w-[1160px] mx-auto px-6 sm:px-8 py-20 md:py-24">
           <p className="nk-mono mb-3.5" style={{ color: "var(--color-accent)" }}>
@@ -511,7 +511,7 @@ export default async function EvaluarLandingPage() {
                 </div>
                 <p
                   className="text-[13.5px] leading-[1.65] mt-2.5 mb-4 flex-1"
-                  style={{ color: "rgba(233,233,237,.55)" }}
+                  style={{ color: "#5f5f5f" }}
                 >
                   {t.d}
                 </p>
@@ -541,7 +541,7 @@ export default async function EvaluarLandingPage() {
               data-tilt
               className="rounded-xl p-6 flex flex-col justify-between"
               style={{
-                background: "linear-gradient(150deg,var(--nk-band),#1d2048)",
+                background: "linear-gradient(150deg,var(--nk-band),#efedfb)",
                 border: "1px solid var(--nk-800)",
                 transition: "transform .18s ease-out",
               }}
@@ -555,7 +555,7 @@ export default async function EvaluarLandingPage() {
                 </h3>
                 <p
                   className="text-[13.5px] leading-[1.65] m-0"
-                  style={{ color: "rgba(233,233,237,.68)" }}
+                  style={{ color: "#404040" }}
                 >
                   Cajero, chofer, call center, gastronomía y vendedor: etapas,
                   preguntas de filtro y tests, listos para publicar.
@@ -568,7 +568,7 @@ export default async function EvaluarLandingPage() {
                       key={r}
                       className="nk-mono rounded-full px-2.5 py-1"
                       style={{
-                        border: "1px solid rgba(210,206,253,.3)",
+                        border: "1px solid rgba(93,82,148,.3)",
                         color: "var(--nk-300)",
                       }}
                     >
@@ -587,9 +587,9 @@ export default async function EvaluarLandingPage() {
         id="ia"
         className="relative z-[2] scroll-mt-20"
         style={{
-          background: "linear-gradient(180deg,var(--nk-band),#1f2350)",
-          borderTop: "1px solid rgba(233,233,237,.1)",
-          borderBottom: "1px solid rgba(233,233,237,.1)",
+          background: "linear-gradient(180deg,var(--nk-band),#efedfb)",
+          borderTop: "1px solid rgba(29,34,38,.1)",
+          borderBottom: "1px solid rgba(29,34,38,.1)",
         }}
       >
         <div className="max-w-[1160px] mx-auto px-6 sm:px-8 py-20 md:py-24">
@@ -603,7 +603,7 @@ export default async function EvaluarLandingPage() {
               </h2>
               <p
                 className="text-[15px] leading-relaxed mb-4"
-                style={{ color: "rgba(233,233,237,.7)" }}
+                style={{ color: "#404040" }}
               >
                 El catálogo cubre los puestos que más se buscan en Paraguay.
                 Pero cuando el puesto es raro, el que sabe qué preguntar sos
@@ -611,7 +611,7 @@ export default async function EvaluarLandingPage() {
               </p>
               <p
                 className="text-[15px] leading-relaxed"
-                style={{ color: "rgba(233,233,237,.7)" }}
+                style={{ color: "#404040" }}
               >
                 Escribí una línea sobre el puesto y en{" "}
                 <span style={{ color: "var(--color-text)" }}>
@@ -625,8 +625,8 @@ export default async function EvaluarLandingPage() {
               <div
                 className="mt-8 rounded-xl p-5"
                 style={{
-                  background: "rgba(0,0,0,.22)",
-                  border: "1px solid rgba(210,206,253,.18)",
+                  background: "rgba(0,0,0,.05)",
+                  border: "1px solid rgba(93,82,148,.18)",
                 }}
               >
                 <p className="nk-mono mb-2.5" style={{ color: "var(--nk-300)" }}>
@@ -634,7 +634,7 @@ export default async function EvaluarLandingPage() {
                 </p>
                 <p
                   className="text-sm leading-relaxed m-0"
-                  style={{ color: "rgba(233,233,237,.68)" }}
+                  style={{ color: "#404040" }}
                 >
                   Edad, sexo, religión, estado civil, hijos, embarazo, salud,
                   nacionalidad ni afiliación política. Además de
@@ -653,8 +653,8 @@ export default async function EvaluarLandingPage() {
               data-tilt
               className="rounded-[14px] p-6"
               style={{
-                background: "rgba(0,0,0,.28)",
-                border: "1px solid rgba(210,206,253,.2)",
+                background: "rgba(0,0,0,.05)",
+                border: "1px solid rgba(93,82,148,.2)",
                 transition: "transform .18s ease-out",
               }}
             >
@@ -664,7 +664,7 @@ export default async function EvaluarLandingPage() {
               <p
                 className="text-[14.5px] leading-relaxed rounded-lg px-4 py-3 m-0"
                 style={{
-                  background: "rgba(233,233,237,.06)",
+                  background: "rgba(29,34,38,.06)",
                   color: "var(--color-text)",
                 }}
               >
@@ -675,14 +675,14 @@ export default async function EvaluarLandingPage() {
               <div className="flex items-center gap-2.5 my-5">
                 <span
                   className="flex-1 h-px"
-                  style={{ background: "rgba(210,206,253,.2)" }}
+                  style={{ background: "rgba(93,82,148,.2)" }}
                 />
                 <span className="nk-mono" style={{ color: "var(--nk-300)" }}>
                   y sale
                 </span>
                 <span
                   className="flex-1 h-px"
-                  style={{ background: "rgba(210,206,253,.2)" }}
+                  style={{ background: "rgba(93,82,148,.2)" }}
                 />
               </div>
 
@@ -695,7 +695,7 @@ export default async function EvaluarLandingPage() {
                   <div
                     key={q}
                     className="rounded-lg px-3.5 py-2.5 flex items-start gap-2.5"
-                    style={{ border: "1px solid rgba(233,233,237,.1)" }}
+                    style={{ border: "1px solid rgba(29,34,38,.1)" }}
                   >
                     <span
                       className="font-mono text-[11px] shrink-0 mt-0.5"
@@ -705,7 +705,7 @@ export default async function EvaluarLandingPage() {
                     </span>
                     <span
                       className="text-[13px] leading-snug"
-                      style={{ color: "rgba(233,233,237,.72)" }}
+                      style={{ color: "#404040" }}
                     >
                       {q}
                     </span>
@@ -715,7 +715,7 @@ export default async function EvaluarLandingPage() {
 
               <p
                 className="text-[11.5px] leading-relaxed mt-4 m-0"
-                style={{ color: "rgba(233,233,237,.45)" }}
+                style={{ color: "#6b6b6b" }}
               >
                 Queda como borrador, con sus opciones y su respuesta correcta.
                 Revisalo antes de publicar: la responsabilidad de lo que se le
@@ -766,7 +766,7 @@ export default async function EvaluarLandingPage() {
                 <h3 className="text-[19px] font-medium m-0 mb-3">{b.t}</h3>
                 <p
                   className="text-[13.5px] leading-[1.7] m-0 flex-1"
-                  style={{ color: "rgba(233,233,237,.55)" }}
+                  style={{ color: "#5f5f5f" }}
                 >
                   {b.d}
                 </p>
@@ -803,7 +803,7 @@ export default async function EvaluarLandingPage() {
               </h3>
               <p
                 className="text-[13.5px] leading-[1.7] m-0"
-                style={{ color: "rgba(233,233,237,.55)" }}
+                style={{ color: "#5f5f5f" }}
               >
                 «Calificá comunicación del 1 al 5» da números que dependen de
                 quién califica: el jefe exigente pone 3 donde el complaciente
@@ -825,7 +825,7 @@ export default async function EvaluarLandingPage() {
                   key={a.n}
                   className="flex items-start gap-3 rounded-lg px-3.5 py-2.5"
                   style={{
-                    border: `1px solid ${a.on ? "var(--color-accent)" : "rgba(233,233,237,.1)"}`,
+                    border: `1px solid ${a.on ? "var(--color-accent)" : "rgba(29,34,38,.1)"}`,
                     background: a.on
                       ? "color-mix(in srgb, var(--color-accent) 8%, transparent)"
                       : "transparent",
@@ -835,7 +835,7 @@ export default async function EvaluarLandingPage() {
                     className="grid place-items-center w-5 h-5 rounded-full font-mono text-[11px] font-medium shrink-0 mt-0.5"
                     style={{
                       background: a.on ? "var(--color-accent)" : "var(--nk-line)",
-                      color: a.on ? "#161826" : "rgba(233,233,237,.5)",
+                      color: a.on ? "#ffffff" : "#5f5f5f",
                     }}
                   >
                     {a.n}
@@ -843,7 +843,7 @@ export default async function EvaluarLandingPage() {
                   <span
                     className="text-[13px] leading-snug"
                     style={{
-                      color: a.on ? "var(--color-text)" : "rgba(233,233,237,.5)",
+                      color: a.on ? "var(--color-text)" : "#5f5f5f",
                     }}
                   >
                     {a.t}
@@ -861,7 +861,7 @@ export default async function EvaluarLandingPage() {
       {/* ── El informe ──────────────────────────────────────── */}
       <section
         className="relative z-[2]"
-        style={{ borderTop: "1px solid rgba(233,233,237,.08)" }}
+        style={{ borderTop: "1px solid rgba(29,34,38,.08)" }}
       >
         <div className="max-w-[1160px] mx-auto px-6 sm:px-8 py-20 md:py-24">
           <p className="nk-mono mb-3.5" style={{ color: "var(--color-accent)" }}>
@@ -894,7 +894,7 @@ export default async function EvaluarLandingPage() {
                 <h3 className="text-[16px] font-medium m-0 mb-2.5">{x.t}</h3>
                 <p
                   className="text-[13px] leading-[1.65] m-0"
-                  style={{ color: "rgba(233,233,237,.55)" }}
+                  style={{ color: "#5f5f5f" }}
                 >
                   {x.d}
                 </p>
@@ -919,7 +919,7 @@ export default async function EvaluarLandingPage() {
         id="como-funciona"
         className="relative z-[2] scroll-mt-20"
         style={{
-          borderTop: "1px solid rgba(233,233,237,.08)",
+          borderTop: "1px solid rgba(29,34,38,.08)",
           background: "var(--nk-deep)",
         }}
       >
@@ -939,7 +939,7 @@ export default async function EvaluarLandingPage() {
                 top: 11,
                 height: 1,
                 background:
-                  "linear-gradient(90deg,rgba(145,132,217,.5),rgba(145,132,217,.12))",
+                  "linear-gradient(90deg,rgba(93,82,148,.5),rgba(93,82,148,.12))",
               }}
               aria-hidden
             />
@@ -949,8 +949,8 @@ export default async function EvaluarLandingPage() {
                   className="grid place-items-center w-[22px] h-[22px] rounded-full font-mono text-[11px] font-medium"
                   style={{
                     background: "var(--color-bg)",
-                    border: `1px solid ${i < 2 ? "var(--color-accent)" : "rgba(145,132,217,.5)"}`,
-                    color: i < 2 ? "var(--color-accent)" : "rgba(233,233,237,.7)",
+                    border: `1px solid ${i < 2 ? "var(--color-accent)" : "rgba(93,82,148,.5)"}`,
+                    color: i < 2 ? "var(--color-accent)" : "#404040",
                   }}
                 >
                   {i + 1}
@@ -958,7 +958,7 @@ export default async function EvaluarLandingPage() {
                 <h3 className="text-[17px] font-medium mt-5 mb-2">{p.t}</h3>
                 <p
                   className="text-[13.5px] leading-[1.65] m-0"
-                  style={{ color: "rgba(233,233,237,.52)" }}
+                  style={{ color: "#5f5f5f" }}
                 >
                   {p.d}
                 </p>
@@ -987,7 +987,7 @@ export default async function EvaluarLandingPage() {
         </h2>
         <p
           className="mt-5 mx-auto max-w-[500px] leading-relaxed"
-          style={{ color: "rgba(233,233,237,.55)" }}
+          style={{ color: "#5f5f5f" }}
         >
           Tomá tu próxima búsqueda y hacela acá. {TRIAL_DAYS} días completos,
           sin tarjeta y sin cobro automático: si no te sirve, cerrás la pestaña
