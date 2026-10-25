@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { signOut } from "@/app/actions";
 import NewProcess from "@/components/evaluar/NewProcess";
+import WorkaCopilot from "@/components/evaluar/WorkaCopilot";
 
 // Marco del panel de Worka Evaluar: barra lateral con la acción principal
 // («Nuevo proceso»), las secciones y el uso del plan abajo; barra superior
@@ -196,6 +197,7 @@ export default function EvaluarShell({ children, info }: { children: React.React
         </form>
 
         <div className="ml-auto flex items-center gap-1">
+          <WorkaCopilot />
           <Link href="/empresa" className="ev-pill hidden md:inline-flex" title="Volver al panel de empresa">
             <Building2 size={16} /> Panel de empresa
           </Link>
