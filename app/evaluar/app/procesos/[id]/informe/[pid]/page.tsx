@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getBoardData, getMyEvaluarAccess } from "@/lib/evaluar";
 import { getCandidateReport, MIN_MUESTRA } from "@/lib/evaluar/report";
 import { planOf } from "@/lib/evaluar-plans";
-import PrintButton from "@/components/evaluar/PrintButton";
+import { FileDown } from "lucide-react";
 import VideoPlayback from "@/components/evaluar/VideoPlayback";
 import CvLink from "@/components/evaluar/CvLink";
 import ProfileRadar from "@/components/evaluar/ProfileRadar";
@@ -18,10 +18,8 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-// Informe de un candidato, pensado para imprimir o guardar como PDF desde el
-// navegador. Sin librería de PDF a propósito: agregar una dependencia pesada
-// para generar una hoja no se justifica, y así el informe se ve igual que en
-// pantalla y se puede copiar y pegar.
+// Informe de un candidato. El PDF ya no es la impresión de esta página: lo
+// arma la ruta ./pdf desde los mismos datos, con su propia plantilla A4.
 export default async function InformePage({
   params,
 }: {
@@ -91,7 +89,10 @@ export default async function InformePage({
         <Link href={`/evaluar/app/procesos/${id}/tablero`} className="text-sm text-primary font-medium inline-flex items-center gap-1">
           ← Comparar y decidir
         </Link>
-        <PrintButton />
+        {/* PDF propio, armado desde los datos: no una impresión de la página. */}
+        <a href={`/evaluar/app/procesos/${id}/informe/${pid}/pdf`} className="btn-primary press text-sm" download>
+          <FileDown size={15} /> Descargar PDF
+        </a>
       </div>
 
       {/* ── Cabecera: quién es y para qué se evaluó ── */}
