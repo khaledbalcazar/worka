@@ -1,4 +1,17 @@
 import Link from "next/link";
+import {
+  ArrowRight,
+  Brain,
+  Check,
+  FileText,
+  LayoutDashboard,
+  Link2,
+  MessagesSquare,
+  ShieldCheck,
+  Sparkles,
+  Timer,
+  TrendingUp,
+} from "lucide-react";
 import MarketingShell from "@/components/evaluar/MarketingShell";
 import Faq from "@/components/evaluar/Faq";
 import { TRIAL_DAYS } from "@/lib/evaluar-config";
@@ -11,6 +24,10 @@ import {
 } from "@/lib/evaluar/seo";
 import { getSiteSettings } from "@/lib/data";
 import { ROLE_TEMPLATES, TEMPLATES } from "@/lib/evaluar/templates";
+import HeroCycle from "@/components/evaluar/landing/HeroCycle";
+import SolutionPicker from "@/components/evaluar/landing/SolutionPicker";
+import AiFeatureTabs from "@/components/evaluar/landing/AiFeatureTabs";
+import RevealOnScroll from "@/components/evaluar/landing/RevealOnScroll";
 
 // Las cifras del catálogo salen del catálogo: escritas a mano quedaban
 // viejas cada vez que se sumaba una prueba ("cinco pruebas", "96 preguntas").
@@ -29,8 +46,6 @@ export const metadata = evaluarMetadata({
   path: "/",
 });
 
-const MUTED = "#5f5f5f";
-const FAINT = "#6b6b6b";
 
 const DIFERENCIALES = [
   {
@@ -159,6 +174,25 @@ const CIFRAS = [
   { v: "24/7", l: "rinden cuando pueden" },
 ];
 
+// Un solo sistema: cada tarjeta es una parte real del producto.
+const SOLUCIONES = [
+  { Icon: LayoutDashboard, t: "Tablero de decisión", d: "Los finalistas lado a lado, con puntajes, respuestas y notas del equipo." },
+  { Icon: Brain, t: "Pruebas psicométricas", d: "Personalidad, estilo laboral y razonamiento, listas para usar." },
+  { Icon: ShieldCheck, t: "Integridad", d: "Nueve señales de actitud, con aviso si contestó para quedar bien." },
+  { Icon: MessagesSquare, t: "Juicio situacional", d: "Situaciones de mostrador y teléfono, con el orden de prioridades." },
+  { Icon: FileText, t: "Informe por candidato", d: "Una hoja que contesta lo que te preguntás antes de decidir." },
+  { Icon: TrendingUp, t: "Desempeño", d: "Evaluaciones anuales con conductas escritas, no estrellas." },
+  { Icon: Sparkles, t: "Asistente de IA", d: "Arma pruebas, lee informes y compara finalistas." },
+  { Icon: Link2, t: "Conectado a Worka", d: "Enlazás tu vacante y la gente rinde desde el propio aviso." },
+];
+
+const CANDIDATO = [
+  { t: "Sin crear cuenta", d: "Entra con el enlace, desde el celular, a la hora que puede." },
+  { t: "O con su cuenta de Worka", d: "«Continuar con Worka Empleos» carga sus datos y su CV en un toque." },
+  { t: "Sabe dónde está parado", d: "Ve cuántas etapas faltan, cuánto dura cada una y si tiene reloj." },
+  { t: "No pierde nada", d: "Cada respuesta se guarda sola: puede cortar y seguir después." },
+];
+
 export default async function EvaluarLandingPage() {
   // Los precios salen de site_settings, los mismos que muestra /precios: un
   // JSON-LD con un precio distinto al de la página es motivo de sanción.
@@ -166,6 +200,7 @@ export default async function EvaluarLandingPage() {
 
   return (
     <MarketingShell>
+      <RevealOnScroll />
       {/* Datos estructurados. Van en el HTML y no por script externo porque
           Google los lee al renderizar, y un script diferido puede no estar
           cuando pasa el rastreador. */}
@@ -182,638 +217,248 @@ export default async function EvaluarLandingPage() {
           ]),
         }}
       />
-      {/* ── Portada ─────────────────────────────────────────── */}
-      <section className="relative">
-        <canvas
-          data-grid
-          className="absolute inset-0 w-full h-full pointer-events-none opacity-90"
-          aria-hidden
-        />
 
-        <div className="relative z-[2] max-w-[1160px] mx-auto px-6 sm:px-8 py-20 md:py-24 grid gap-10 lg:grid-cols-[1.05fr_.95fr] items-center">
-          <div data-parallax data-depth="8">
-            <span
-              className="inline-flex items-center gap-2.5 rounded-full px-3 py-1.5 mb-7"
-              style={{ border: "1px solid rgba(93,82,148,.35)" }}
-            >
-              <span
-                className="w-1.5 h-1.5 rounded-full nk-beat"
-                style={{ background: "var(--color-accent)" }}
-              />
-              <span className="nk-mono" style={{ color: "var(--nk-300)" }}>
-                {TRIAL_DAYS} días · sin tarjeta
-              </span>
+      {/* ── 1. Portada ─────────────────────────────────────── */}
+      <section className="relative overflow-hidden evl-hero-bg">
+        <Ondas />
+        <div className="relative max-w-[1200px] mx-auto px-5 sm:px-8 pt-12 pb-20 md:pt-16 md:pb-24 grid gap-12 lg:grid-cols-[1fr_1.05fr] items-center">
+          <div>
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/80 border border-[#e6e3f6] px-3.5 py-1.5 text-[13px] font-semibold text-[#5d5294] mb-6 animate-rise">
+              <span className="w-2 h-2 rounded-full bg-[#0a66c2] nk-beat" /> {TRIAL_DAYS} días gratis · sin tarjeta
             </span>
-
-            <h1 className="text-[44px] sm:text-[58px] lg:text-[66px] leading-[1.03] tracking-[-.03em] font-medium mb-6">
-              La entrevista te{" "}
-              <span style={{ color: "var(--color-accent)" }}>miente</span>.
-              <br />
-              Los datos, no.
+            <h1 className="text-[clamp(38px,6vw,68px)] leading-[1.04] tracking-[-.035em] font-bold text-[var(--evl-ink)] animate-rise" style={{ animationDelay: "80ms" }}>
+              Software de <span className="evl-grad-text">selección, evaluación</span> y desarrollo de talento
             </h1>
-
-            <p
-              className="text-base leading-relaxed max-w-[440px] mb-8"
-              style={{ color: MUTED }}
-            >
-              Todos caemos: el que cae simpático en la entrevista arranca el
-              lunes y a los dos meses ya no está. Worka Evaluar te muestra
-              quién sabe hacer el trabajo{" "}
-              <span style={{ color: "var(--color-text)" }}>
-                antes de que le des el puesto
-              </span>
-              — y sin que nadie tenga que crear una cuenta.
+            <p className="text-[clamp(17px,1.6vw,20px)] leading-relaxed text-[#404b63] mt-6 max-w-[560px] animate-rise" style={{ animationDelay: "160ms" }}>
+              La entrevista te miente; los datos, no. Descubrí <strong className="text-[var(--evl-ink)]">quién sabe hacer el trabajo antes de darle el puesto</strong>, con pruebas listas, un tablero para decidir y{" "}
+              <strong className="text-[var(--evl-ink)]">un asistente de IA</strong> que te ahorra horas.
             </p>
-
-            <div className="flex gap-3 flex-wrap">
-              <Link href="/evaluar/app" className="nk-cta">
-                Empezar mis {TRIAL_DAYS} días
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                >
-                  <path d="M5 12h14" />
-                  <path d="m12 5 7 7-7 7" />
-                </svg>
-              </Link>
-              <Link href="/evaluar/precios" className="nk-ghost">
-                Ver precios
-              </Link>
+            <div className="mt-9 animate-rise" style={{ animationDelay: "240ms" }}>
+              <SolutionPicker trialDays={TRIAL_DAYS} />
             </div>
-
-            <div className="flex gap-7 mt-11">
-              <div>
-                <p className="nk-mono mb-1.5" style={{ color: FAINT }}>
-                  Armás el proceso en
-                </p>
-                <p className="text-2xl font-medium m-0">5 minutos</p>
-              </div>
-              <div style={{ width: 1, background: "rgba(29,34,38,.12)" }} />
-              <div>
-                <p className="nk-mono mb-1.5" style={{ color: FAINT }}>
-                  Y lo probás
-                </p>
-                <p className="text-2xl font-medium m-0">gratis {TRIAL_DAYS} días</p>
-              </div>
+            <div className="mt-14 flex flex-wrap items-center gap-x-6 gap-y-2 text-[14px] text-[#5f6475]">
+              <span className="inline-flex items-center gap-1.5"><Check size={16} className="text-[#0a66c2]" /> El candidato no crea cuenta</span>
+              <span className="inline-flex items-center gap-1.5"><Check size={16} className="text-[#0a66c2]" /> Hecho en Paraguay</span>
             </div>
           </div>
+          <div className="animate-rise" style={{ animationDelay: "200ms" }}>
+            <HeroCycle />
+          </div>
+        </div>
+      </section>
 
-          {/* Muestra del tablero. Es una ilustración de la pantalla real, no
-              una captura: mantenerla en HTML la deja nítida en cualquier
-              pantalla y no se despinta cuando el producto cambia de color. */}
-          <div data-parallax data-depth="-16" className="relative hidden lg:block">
-            <div
-              data-tilt
-              className="relative rounded-[14px] p-5 overflow-hidden"
-              style={{
-                background: "linear-gradient(165deg,#ffffff,#ffffff)",
-                border: "1px solid var(--nk-line-2)",
-                boxShadow: "0 16px 40px rgba(0,0,0,.08)",
-                transition: "transform .18s ease-out",
-              }}
-            >
-              <div
-                className="absolute left-0 right-0 top-0 h-[120px] pointer-events-none nk-sweep"
-                style={{
-                  background:
-                    "linear-gradient(180deg,rgba(93,82,148,.14),transparent)",
-                }}
-                aria-hidden
-              />
-              <div className="flex items-center justify-between mb-4">
-                <span className="nk-mono" style={{ color: FAINT }}>
-                  Tablero de decisión
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <span
-                    className="w-1.5 h-1.5 rounded-full nk-beat"
-                    style={{ background: "var(--nk-400)" }}
-                  />
-                  <span className="nk-mono" style={{ color: "var(--nk-300)" }}>
-                    en vivo
-                  </span>
-                </span>
+      {/* ── 2. Cifras ──────────────────────────────────────── */}
+      <section className="bg-[#f6f5fc] border-y border-[#eeecf5]">
+        <div className="max-w-[1200px] mx-auto px-5 sm:px-8 py-14 grid gap-10 lg:grid-cols-[1fr_1.4fr] items-center">
+          <p data-reveal className="text-[clamp(22px,2.4vw,28px)] leading-snug text-[var(--evl-ink)]">
+            Todo lo que necesitás para elegir bien, <strong>{PRUEBAS} pruebas</strong> y{" "}
+            <strong>{PROCESOS} procesos por puesto</strong> listos para publicar.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {CIFRAS.map((c, i) => (
+              <div key={c.l} data-reveal style={{ ["--d" as string]: `${i * 90}ms` }} className="rounded-2xl bg-white border border-[#ebe9f5] px-4 py-5 text-center">
+                <p className="text-[28px] font-bold evl-grad-text leading-none">{c.v}</p>
+                <p className="text-[13px] text-[#5f6475] mt-2 leading-snug">{c.l}</p>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-              <p className="text-xl font-medium m-0">Cajero/a · Sucursal Centro</p>
-              <p className="text-[12.5px] mt-0.5 mb-5" style={{ color: MUTED }}>
-                3 etapas · 18 candidatos · cierra en 6 días
-              </p>
-
-              <div className="flex flex-col gap-3.5">
-                {[
-                  { n: "Lucía M.", v: 92, alto: true },
-                  { n: "Rodrigo P.", v: 78, alto: false },
-                  { n: "Ana G.", v: 61, alto: false },
-                ].map((c, i) => (
-                  <div key={c.n}>
-                    <div className="flex justify-between items-baseline mb-1.5">
-                      <span className="text-[13px]">{c.n}</span>
-                      <span
-                        className="text-xs font-mono"
-                        style={{
-                          color: c.alto ? "var(--nk-300)" : MUTED,
-                        }}
-                      >
-                        {c.v}
-                      </span>
-                    </div>
-                    <div
-                      className="h-[3px] rounded-full overflow-hidden"
-                      style={{ background: "var(--nk-line)" }}
-                    >
-                      <div
-                        className="h-full rounded-full nk-grow"
-                        style={{
-                          width: `${c.v}%`,
-                          animationDelay: `${i * 0.15}s`,
-                          background: c.alto
-                            ? "linear-gradient(90deg,#5d5294,#5d5294)"
-                            : c.v > 70
-                              ? "linear-gradient(90deg,#d9d4f3,#5d5294)"
-                              : "#a3a3a3",
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
-
+      {/* ── 3. Un solo sistema ─────────────────────────────── */}
+      <section id="soluciones" className="relative overflow-hidden scroll-mt-24">
+        <Orbitas />
+        <div className="relative max-w-[1200px] mx-auto px-5 sm:px-8 py-20 md:py-28 grid gap-12 lg:grid-cols-[1.25fr_1fr] items-center">
+          <div className="grid grid-cols-2 gap-4 sm:gap-5 order-2 lg:order-1">
+            {SOLUCIONES.map(({ Icon, t, d }, i) => (
               <div
-                className="mt-5 pt-4 grid grid-cols-3 gap-3"
-                style={{ borderTop: "1px solid rgba(29,34,38,.1)" }}
+                key={t}
+                data-reveal
+                style={{ ["--d" as string]: `${(i % 4) * 80}ms` }}
+                className={`evl-card p-5 sm:p-6 ${i % 2 === 1 ? "lg:translate-y-14" : ""}`}
               >
-                {[
-                  { l: "Razonamiento", v: "12/12", ac: false },
-                  { l: "Situacional", v: "9/10", ac: false },
-                  { l: "Integridad", v: "sin señales", ac: true },
-                ].map((x) => (
-                  <div key={x.l}>
-                    <p className="nk-mono mb-1.5" style={{ color: FAINT }}>
-                      {x.l}
-                    </p>
-                    <p
-                      className="text-[15px] m-0"
-                      style={{ color: x.ac ? "var(--nk-300)" : undefined }}
-                    >
-                      {x.v}
-                    </p>
-                  </div>
-                ))}
+                <span className="evl-icon">
+                  <Icon size={20} />
+                </span>
+                <h3 className="text-[17px] sm:text-[19px] font-semibold text-[var(--evl-ink)] mt-5 leading-snug">{t}</h3>
+                <p className="text-[13.5px] text-[#5f6475] mt-1.5 leading-relaxed">{d}</p>
               </div>
-            </div>
-
-            <div
-              data-tilt
-              className="absolute rounded-xl px-4 py-3.5"
-              style={{
-                left: -84,
-                bottom: -78,
-                width: 236,
-                background: "#ffffff",
-                border: "1px solid var(--nk-line-2)",
-                boxShadow: "0 16px 40px rgba(0,0,0,.08)",
-                transition: "transform .18s ease-out",
-              }}
-            >
-              <p className="nk-mono mb-2" style={{ color: FAINT }}>
-                Etapa en curso
-              </p>
-              <p className="text-[17px] font-medium m-0">Razonamiento</p>
-              <p className="text-[11.5px] mt-1.5 m-0" style={{ color: FAINT }}>
-                12 preguntas · 10 min · cronometrada
-              </p>
+            ))}
+          </div>
+          <div className="order-1 lg:order-2 lg:sticky lg:top-28 self-start lg:pl-6" data-reveal>
+            <span className="evl-eyebrow">Plataforma</span>
+            <h2 className="text-[clamp(38px,5.4vw,64px)] leading-[1.02] tracking-[-.035em] font-bold mt-4 text-[var(--evl-ink)]">
+              Un solo sistema con <span className="evl-grad-text">todas las soluciones</span>
+            </h2>
+            <p className="text-[17px] text-[#404b63] mt-5 leading-relaxed max-w-[440px]">
+              Contratar mal te sale carísimo. Publicás, evaluás, comparás y decidís en el mismo lugar — y después seguís acompañando a tu gente.
+            </p>
+            <div className="flex flex-wrap gap-3 mt-8">
+              <VentasCta mensaje="Hola, quiero que me cuenten sobre Worka Evaluar." className="evl-btn !border-0" variante="cta">
+                Chateá con un asesor
+              </VentasCta>
+              <Link href="/evaluar/precios" className="evl-btn-ghost">Ver planes</Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Cifras ──────────────────────────────────────────── */}
-      <div
-        className="relative z-[2]"
-        style={{
-          background: "linear-gradient(180deg,var(--nk-band),#efedfb)",
-          borderTop: "1px solid rgba(29,34,38,.1)",
-          borderBottom: "1px solid rgba(29,34,38,.1)",
-        }}
-      >
-        <div className="max-w-[1160px] mx-auto px-6 sm:px-8 py-8 grid grid-cols-2 md:grid-cols-4 gap-7">
-          {CIFRAS.map((c) => (
-            <div key={c.l}>
-              <p className="text-[34px] font-medium m-0 tracking-[-.02em]">
-                {c.v}
-              </p>
-              <p
-                className="nk-mono mt-1.5"
-                style={{ color: "#5f5f5f" }}
-              >
-                {c.l}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Plataforma ──────────────────────────────────────── */}
-      <section
-        id="plataforma"
-        className="relative z-[2] max-w-[1160px] mx-auto px-6 sm:px-8 py-20 md:py-24 scroll-mt-20"
-      >
-        <p className="nk-mono mb-3.5" style={{ color: "var(--color-accent)" }}>
-          Plataforma
-        </p>
-        <h2 className="text-[30px] md:text-[38px] font-medium max-w-[640px] mb-11">
-          Contratar mal te sale carísimo. Esto lo evita.
-        </h2>
-        <div className="grid md:grid-cols-2 gap-4">
-          {DIFERENCIALES.map((d) => (
-            <div
-              key={d.n}
-              data-tilt
-              className="rounded-xl p-8"
-              style={{
-                background: "var(--nk-card)",
-                border: "1px solid var(--nk-line)",
-                transition: "transform .18s ease-out, border-color .3s ease",
-              }}
-            >
-              <p
-                className="font-mono text-xs mb-5 m-0"
-                style={{ color: "var(--color-accent)" }}
-              >
-                {d.n}
-              </p>
-              <h3 className="text-[21px] font-medium mb-2.5">{d.t}</h3>
-              <p
-                className="text-sm leading-[1.7] m-0"
-                style={{ color: "#5f5f5f" }}
-              >
-                {d.d}
-              </p>
-            </div>
-          ))}
+      {/* ── 4. Por qué funciona ────────────────────────────── */}
+      <section className="bg-[#0e1a33] text-white relative overflow-hidden">
+        <div className="absolute -right-40 -top-40 w-[520px] h-[520px] rounded-full opacity-30 blur-3xl" style={{ background: "radial-gradient(#5d5294, transparent 70%)" }} aria-hidden />
+        <div className="relative max-w-[1200px] mx-auto px-5 sm:px-8 py-20 md:py-24">
+          <span className="evl-eyebrow !text-[#b9b1ec]">Por qué funciona</span>
+          <h2 className="evl-h2 !text-white mt-4 max-w-[720px]">Se postulan y ya están rindiendo. Vos elegís en diez minutos.</h2>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mt-12">
+            {DIFERENCIALES.map((d, i) => (
+              <div key={d.n} data-reveal style={{ ["--d" as string]: `${i * 90}ms` }} className="rounded-2xl bg-white/[.06] border border-white/10 p-6 hover:bg-white/[.09] transition-colors">
+                <span className="text-[13px] font-mono text-[#8fc2f5]">{d.n}</span>
+                <h3 className="text-[18px] font-semibold mt-3 leading-snug">{d.t}</h3>
+                <p className="text-[14px] text-white/65 mt-2.5 leading-relaxed">{d.d}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* ── Instrumentos ────────────────────────────────────── */}
-      <section
-        id="instrumentos"
-        className="relative z-[2] scroll-mt-20"
-        style={{ borderTop: "1px solid rgba(29,34,38,.08)" }}
-      >
-        <div className="max-w-[1160px] mx-auto px-6 sm:px-8 py-20 md:py-24">
-          <p className="nk-mono mb-3.5" style={{ color: "var(--color-accent)" }}>
-            Instrumentos
+      {/* ── 5. Inteligencia artificial ─────────────────────── */}
+      <section id="ia" className="relative scroll-mt-24 bg-[linear-gradient(180deg,#ffffff,#f6f5fc)]">
+        <div className="max-w-[1200px] mx-auto px-5 sm:px-8 py-20 md:py-28">
+          <div data-reveal>
+            <span className="evl-eyebrow">Asistente de IA</span>
+            <h2 className="evl-h2 mt-4">
+              Funcionalidades con <span className="evl-grad-text">inteligencia artificial</span>
+            </h2>
+          </div>
+          <div className="mt-12" data-reveal>
+            <AiFeatureTabs />
+          </div>
+          <p className="text-[13.5px] text-[#5f6475] mt-12 max-w-[720px] rounded-2xl border border-[#e6e3f6] bg-white px-5 py-4" data-reveal>
+            <strong className="text-[var(--evl-ink)]">Lo que nunca va a preguntar:</strong> edad, sexo, religión, estado civil, hijos, embarazo, salud, nacionalidad ni afiliación política. Y a la IA no le llegan nombres ni datos de contacto de tus candidatos.
           </p>
-          <h2 className="text-[30px] md:text-[38px] font-medium max-w-[680px] mb-4">
-            Publicá hoy. Ya está todo escrito.
-          </h2>
-          <p
-            className="text-sm leading-relaxed max-w-[560px] mb-11"
-            style={{ color: MUTED }}
-          >
-            Otras plataformas te dan la plantilla vacía y el trabajo de
-            llenarla. Acá abrís, elegís y publicás: 96 preguntas escritas en
-            castellano de acá, que se corrigen y se interpretan solas.{" "}
-            <span style={{ color: "var(--color-text)" }}>
-              Cero horas de tu tiempo redactando
-            </span>
-            .
-          </p>
+        </div>
+      </section>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {INSTRUMENTOS.map((t) => (
-              <div
-                key={t.k}
-                data-tilt
-                className="rounded-xl p-6 flex flex-col"
-                style={{
-                  background: "var(--nk-card)",
-                  border: "1px solid var(--nk-line)",
-                  transition: "transform .18s ease-out, border-color .3s ease",
-                }}
-              >
-                <div className="flex items-baseline justify-between gap-3">
-                  <h3 className="text-[17px] font-medium m-0">{t.n}</h3>
+      {/* ── 6. Instrumentos ────────────────────────────────── */}
+      <section id="instrumentos" className="scroll-mt-24">
+        <div className="max-w-[1200px] mx-auto px-5 sm:px-8 py-20 md:py-28">
+          <div className="grid gap-6 lg:grid-cols-[1fr_1fr] items-end" data-reveal>
+            <div>
+              <span className="evl-eyebrow">Pruebas psicométricas</span>
+              <h2 className="evl-h2 mt-4">Publicá hoy. Ya está todo escrito.</h2>
+            </div>
+            <p className="text-[16px] text-[#404b63] leading-relaxed">
+              {ITEMS.toLocaleString("es-PY")} preguntas escritas en castellano de acá, que se corrigen y se interpretan solas.{" "}
+              <strong className="text-[var(--evl-ink)]">Cero horas de tu tiempo redactando.</strong>
+            </p>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-12">
+            {INSTRUMENTOS.map((t, i) => (
+              <div key={t.k} data-reveal style={{ ["--d" as string]: `${(i % 3) * 90}ms` }} className="evl-card p-6 flex flex-col">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-[19px] font-semibold text-[var(--evl-ink)]">{t.n}</h3>
                   {t.cron && (
-                    <span
-                      className="nk-mono shrink-0"
-                      style={{ color: "var(--nk-300)" }}
-                    >
-                      cronometrada
+                    <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-[#eef5fc] text-[#0a66c2] text-[12px] font-semibold px-2.5 py-1">
+                      <Timer size={13} /> Con reloj
                     </span>
                   )}
                 </div>
-                <p
-                  className="text-[13.5px] leading-[1.65] mt-2.5 mb-4 flex-1"
-                  style={{ color: "#5f5f5f" }}
-                >
-                  {t.d}
-                </p>
-                <div
-                  className="flex gap-4 pt-3.5"
-                  style={{ borderTop: "1px solid var(--nk-line)" }}
-                >
+                <p className="text-[14px] text-[#5f6475] leading-relaxed mt-2.5 flex-1">{t.d}</p>
+                <div className="grid grid-cols-3 gap-2 mt-5">
                   {[
-                    [`${t.i}`, "ítems"],
-                    [`${t.m}`, "minutos"],
-                    [`${t.dim}`, t.dim === 1 ? "rasgo" : "rasgos"],
+                    [t.i, "ítems"],
+                    [t.m, "minutos"],
+                    [t.dim, t.dim === 1 ? "rasgo" : "rasgos"],
                   ].map(([v, l]) => (
-                    <div key={l}>
-                      <p className="text-[15px] font-medium m-0">{v}</p>
-                      <p className="nk-mono mt-1" style={{ color: FAINT }}>
-                        {l}
-                      </p>
+                    <div key={String(l)} className="rounded-xl bg-[#f6f5fc] px-2 py-2.5 text-center">
+                      <p className="text-[18px] font-bold text-[var(--evl-ink)] leading-none">{v}</p>
+                      <p className="text-[11.5px] text-[#5f6475] mt-1">{l}</p>
                     </div>
                   ))}
                 </div>
               </div>
             ))}
-
-            {/* Los procesos por puesto cierran la grilla: son la puerta de
-                entrada real, porque nadie arma un proceso de cero. */}
-            <div
-              data-tilt
-              className="rounded-xl p-6 flex flex-col justify-between"
-              style={{
-                background: "linear-gradient(150deg,var(--nk-band),#efedfb)",
-                border: "1px solid var(--nk-800)",
-                transition: "transform .18s ease-out",
-              }}
-            >
-              <div>
-                <p className="nk-mono mb-3" style={{ color: "var(--nk-300)" }}>
-                  O directo por puesto
-                </p>
-                <h3 className="text-[17px] font-medium m-0 mb-2.5">
-                  Cinco procesos enteros, ya armados
-                </h3>
-                <p
-                  className="text-[13.5px] leading-[1.65] m-0"
-                  style={{ color: "#404040" }}
-                >
-                  Cajero, chofer, call center, gastronomía y vendedor: etapas,
-                  preguntas de filtro y tests, listos para publicar.
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-1.5 mt-5">
-                {["Cajero", "Chofer", "Call center", "Gastronomía", "Vendedor"].map(
-                  (r) => (
-                    <span
-                      key={r}
-                      className="nk-mono rounded-full px-2.5 py-1"
-                      style={{
-                        border: "1px solid rgba(93,82,148,.3)",
-                        color: "var(--nk-300)",
-                      }}
-                    >
-                      {r}
-                    </span>
-                  )
-                )}
+            <div data-reveal style={{ ["--d" as string]: "180ms", background: "var(--evl-grad)" }} className="rounded-[22px] p-6 text-white shadow-[0_18px_40px_-20px_rgba(10,102,194,.55)]">
+              <div className="h-full flex flex-col justify-between">
+                <div>
+                  <p className="text-[12.5px] font-bold uppercase tracking-[.08em] text-white/70">O directo por puesto</p>
+                  <h3 className="text-[21px] font-semibold mt-3 leading-snug">{PROCESOS} procesos enteros, ya armados</h3>
+                  <p className="text-[14px] text-white/80 mt-2 leading-relaxed">Etapas, preguntas de filtro y tests, listos para publicar.</p>
+                </div>
+                <div className="flex flex-wrap gap-1.5 mt-6">
+                  {["Cajero", "Chofer", "Call center", "Gastronomía", "Vendedor"].map((r) => (
+                    <span key={r} className="rounded-full bg-white/15 border border-white/25 px-3 py-1 text-[12.5px]">{r}</span>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Asistente de IA ─────────────────────────────────── */}
-      <section
-        id="ia"
-        className="relative z-[2] scroll-mt-20"
-        style={{
-          background: "linear-gradient(180deg,var(--nk-band),#efedfb)",
-          borderTop: "1px solid rgba(29,34,38,.1)",
-          borderBottom: "1px solid rgba(29,34,38,.1)",
-        }}
-      >
-        <div className="max-w-[1160px] mx-auto px-6 sm:px-8 py-20 md:py-24">
-          <div className="grid gap-12 lg:grid-cols-[1fr_1fr] items-start">
-            <div>
-              <p className="nk-mono mb-3.5" style={{ color: "var(--nk-300)" }}>
-                Asistente de IA
-              </p>
-              <h2 className="text-[30px] md:text-[38px] font-medium mb-5">
-                Contratás un tornero. ¿Y ahora qué le preguntás?
-              </h2>
-              <p
-                className="text-[15px] leading-relaxed mb-4"
-                style={{ color: "#404040" }}
-              >
-                El catálogo cubre los puestos que más se buscan en Paraguay.
-                Pero cuando el puesto es raro, el que sabe qué preguntar sos
-                vos — y no tenés tres horas para armar un test.
-              </p>
-              <p
-                className="text-[15px] leading-relaxed"
-                style={{ color: "#404040" }}
-              >
-                Escribí una línea sobre el puesto y en{" "}
-                <span style={{ color: "var(--color-text)" }}>
-                  treinta segundos
-                </span>{" "}
-                tenés la prueba armada, con sus opciones y sus respuestas
-                correctas. La revisás, la editás y la publicás. Nunca sale sola
-                al aire: vos tenés la última palabra.
-              </p>
-
-              <div
-                className="mt-8 rounded-xl p-5"
-                style={{
-                  background: "rgba(0,0,0,.05)",
-                  border: "1px solid rgba(93,82,148,.18)",
-                }}
-              >
-                <p className="nk-mono mb-2.5" style={{ color: "var(--nk-300)" }}>
-                  Lo que nunca va a preguntar
-                </p>
-                <p
-                  className="text-sm leading-relaxed m-0"
-                  style={{ color: "#404040" }}
-                >
-                  Edad, sexo, religión, estado civil, hijos, embarazo, salud,
-                  nacionalidad ni afiliación política. Además de
-                  discriminatorio, nada de eso predice desempeño —{" "}
-                  <span style={{ color: "var(--color-text)" }}>
-                    y escrito en un test es la prueba documentada de una
-                    decisión que no se puede defender
+      {/* ── 7. Experiencia del candidato ───────────────────── */}
+      <section id="candidato" className="scroll-mt-24 bg-[#f6f5fc] border-y border-[#eeecf5] overflow-hidden">
+        <div className="max-w-[1200px] mx-auto px-5 sm:px-8 py-20 md:py-28 grid gap-14 lg:grid-cols-[1fr_1fr] items-center">
+          <div data-reveal>
+            <span className="evl-eyebrow">Para el candidato</span>
+            <h2 className="evl-h2 mt-4">Una evaluación que se hace con ganas, <span className="evl-grad-text">desde el celular</span></h2>
+            <p className="text-[16px] text-[#404b63] mt-5 leading-relaxed max-w-[520px]">
+              Los que no quedan se van sin bronca, y esos son los que después te recomiendan. Cada persona ve tu marca, sabe cuánto le falta y cómo terminó.
+            </p>
+            <ul className="mt-8 grid gap-4 sm:grid-cols-2">
+              {CANDIDATO.map((c, i) => (
+                <li key={c.t} data-reveal style={{ ["--d" as string]: `${i * 80}ms` }} className="flex gap-3">
+                  <span className="w-8 h-8 shrink-0 rounded-full bg-white border border-[#e6e3f6] grid place-items-center text-[#0a66c2]">
+                    <Check size={16} />
                   </span>
-                  .
-                </p>
-              </div>
-            </div>
-
-            {/* Muestra del flujo: lo que se escribe y lo que sale. */}
-            <div
-              data-tilt
-              className="rounded-[14px] p-6"
-              style={{
-                background: "rgba(0,0,0,.05)",
-                border: "1px solid rgba(93,82,148,.2)",
-                transition: "transform .18s ease-out",
-              }}
-            >
-              <p className="nk-mono mb-3" style={{ color: "var(--nk-300)" }}>
-                Vos escribís
-              </p>
-              <p
-                className="text-[14.5px] leading-relaxed rounded-lg px-4 py-3 m-0"
-                style={{
-                  background: "rgba(29,34,38,.06)",
-                  color: "var(--color-text)",
-                }}
-              >
-                «Cajero de farmacia; quiero saber si maneja vuelto, si entiende
-                recetas y cómo reacciona ante un cliente apurado.»
-              </p>
-
-              <div className="flex items-center gap-2.5 my-5">
-                <span
-                  className="flex-1 h-px"
-                  style={{ background: "rgba(93,82,148,.2)" }}
-                />
-                <span className="nk-mono" style={{ color: "var(--nk-300)" }}>
-                  y sale
-                </span>
-                <span
-                  className="flex-1 h-px"
-                  style={{ background: "rgba(93,82,148,.2)" }}
-                />
-              </div>
-
-              <div className="flex flex-col gap-2.5">
-                {[
-                  "Un cliente reclama que le cobraste de más y hay fila…",
-                  "Te falta Gs. 15.000 en el cierre de caja. ¿Qué hacés?",
-                  "Una receta no coincide con el producto pedido…",
-                ].map((q, i) => (
-                  <div
-                    key={q}
-                    className="rounded-lg px-3.5 py-2.5 flex items-start gap-2.5"
-                    style={{ border: "1px solid rgba(29,34,38,.1)" }}
-                  >
-                    <span
-                      className="font-mono text-[11px] shrink-0 mt-0.5"
-                      style={{ color: "var(--nk-300)" }}
-                    >
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                    <span
-                      className="text-[13px] leading-snug"
-                      style={{ color: "#404040" }}
-                    >
-                      {q}
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <p
-                className="text-[11.5px] leading-relaxed mt-4 m-0"
-                style={{ color: "#6b6b6b" }}
-              >
-                Queda como borrador, con sus opciones y su respuesta correcta.
-                Revisalo antes de publicar: la responsabilidad de lo que se le
-                toma al candidato sigue siendo tuya.
-              </p>
-            </div>
+                  <span>
+                    <span className="block text-[15.5px] font-semibold text-[var(--evl-ink)]">{c.t}</span>
+                    <span className="block text-[14px] text-[#5f6475] mt-0.5 leading-relaxed">{c.d}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div data-reveal style={{ ["--d" as string]: "120ms" }}>
+            <TelefonoDemo />
           </div>
         </div>
       </section>
 
-      {/* ── Gestión de talento humano ───────────────────────── */}
-      <section
-        id="talento"
-        className="relative z-[2] scroll-mt-20"
-        style={{ background: "var(--nk-deep)" }}
-      >
-        <div className="max-w-[1160px] mx-auto px-6 sm:px-8 py-20 md:py-24">
-          <p className="nk-mono mb-3.5" style={{ color: "var(--color-accent)" }}>
-            Gestión de talento humano
-          </p>
-          <h2 className="text-[30px] md:text-[38px] font-medium max-w-[700px] mb-4">
-            Contratar es la mitad del trabajo
-          </h2>
-          <p
-            className="text-sm leading-relaxed max-w-[580px] mb-12"
-            style={{ color: MUTED }}
-          >
-            La gente buena no se va por plata: se va porque nadie le dijo cómo
-            venía ni hacia dónde iba. La misma plataforma que te ayuda a
-            elegirlos te ayuda a no perderlos.
-          </p>
-
-          <div className="grid gap-4 lg:grid-cols-3">
-            {TALENTO.map((b) => (
-              <div
-                key={b.t}
-                data-tilt
-                className="rounded-xl p-7 flex flex-col"
-                style={{
-                  background: "var(--nk-card)",
-                  border: "1px solid var(--nk-line)",
-                  transition: "transform .18s ease-out, border-color .3s ease",
-                }}
-              >
-                <p className="nk-mono mb-4" style={{ color: "var(--color-accent)" }}>
-                  {b.k}
+      {/* ── 8. Gestión de talento ──────────────────────────── */}
+      <section id="talento" className="scroll-mt-24">
+        <div className="max-w-[1200px] mx-auto px-5 sm:px-8 py-20 md:py-28">
+          <div data-reveal className="max-w-[720px]">
+            <span className="evl-eyebrow">Gestión de talento humano</span>
+            <h2 className="evl-h2 mt-4">Contratar es la mitad del trabajo</h2>
+            <p className="text-[16px] text-[#404b63] mt-4 leading-relaxed">
+              La gente buena no se va por plata: se va porque nadie le dijo cómo venía ni hacia dónde iba. La misma plataforma que te ayuda a elegirlos te ayuda a no perderlos.
+            </p>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-3 mt-12">
+            {TALENTO.map((b, i) => (
+              <div key={b.t} data-reveal style={{ ["--d" as string]: `${i * 90}ms` }} className="evl-card p-7 flex flex-col">
+                <span className="self-start rounded-full bg-[#efedfb] text-[#5d5294] text-[12.5px] font-semibold px-3 py-1">{b.k}</span>
+                <h3 className="text-[20px] font-semibold text-[var(--evl-ink)] mt-4 leading-snug">{b.t}</h3>
+                <p className="text-[14px] text-[#5f6475] mt-2.5 leading-relaxed flex-1">{b.d}</p>
+                <p className="text-[13px] font-semibold text-[#0a66c2] mt-5 pt-4 border-t border-[#eeecf5] flex items-center gap-1.5">
+                  <ArrowRight size={14} /> {b.dato}
                 </p>
-                <h3 className="text-[19px] font-medium m-0 mb-3">{b.t}</h3>
-                <p
-                  className="text-[13.5px] leading-[1.7] m-0 flex-1"
-                  style={{ color: "#5f5f5f" }}
-                >
-                  {b.d}
-                </p>
-                {b.dato && (
-                  <p
-                    className="text-[12.5px] mt-5 pt-4 m-0"
-                    style={{
-                      borderTop: "1px solid var(--nk-line)",
-                      color: "var(--nk-300)",
-                    }}
-                  >
-                    {b.dato}
-                  </p>
-                )}
               </div>
             ))}
           </div>
 
           {/* El anclaje de conducta, mostrado. Es la diferencia entre esto y
               una planilla de estrellas, y contarlo no alcanza. */}
-          <div
-            className="mt-4 rounded-xl p-7 grid gap-8 lg:grid-cols-[1fr_1.1fr] items-center"
-            style={{
-              background: "var(--nk-card)",
-              border: "1px solid var(--nk-line)",
-            }}
-          >
+          <div data-reveal className="mt-5 evl-card !bg-white p-7 md:p-9 grid gap-8 lg:grid-cols-[1fr_1.1fr] items-center hover:!translate-y-0">
             <div>
-              <p className="nk-mono mb-3.5" style={{ color: "var(--color-accent)" }}>
-                Por qué no son estrellas
-              </p>
-              <h3 className="text-[21px] font-medium m-0 mb-3">
-                El evaluador no elige un número: elige lo que vio
-              </h3>
-              <p
-                className="text-[13.5px] leading-[1.7] m-0"
-                style={{ color: "#5f5f5f" }}
-              >
-                «Calificá comunicación del 1 al 5» da números que dependen de
-                quién califica: el jefe exigente pone 3 donde el complaciente
-                pone 5, y comparar dos áreas se vuelve imposible. Con
-                descripciones de conducta, el número significa lo mismo en toda
-                la empresa — y la persona se lleva algo concreto sobre lo que
-                trabajar.
+              <span className="evl-eyebrow">Por qué no son estrellas</span>
+              <h3 className="text-[24px] font-semibold text-[var(--evl-ink)] mt-3 leading-snug">El evaluador no elige un número: elige lo que vio</h3>
+              <p className="text-[14.5px] text-[#5f6475] mt-3 leading-relaxed">
+                «Calificá comunicación del 1 al 5» da números que dependen de quién califica. Con descripciones de conducta, el número significa lo mismo en toda la empresa — y la persona se lleva algo concreto sobre lo que trabajar.
               </p>
             </div>
-
             <div className="flex flex-col gap-2">
               {[
                 { n: 2, t: "Avisa tarde o de forma confusa; se generan malentendidos.", on: false },
@@ -823,187 +468,187 @@ export default async function EvaluarLandingPage() {
               ].map((a) => (
                 <div
                   key={a.n}
-                  className="flex items-start gap-3 rounded-lg px-3.5 py-2.5"
-                  style={{
-                    border: `1px solid ${a.on ? "var(--color-accent)" : "rgba(29,34,38,.1)"}`,
-                    background: a.on
-                      ? "color-mix(in srgb, var(--color-accent) 8%, transparent)"
-                      : "transparent",
-                  }}
+                  className={`flex items-start gap-3 rounded-xl px-4 py-3 border transition-colors ${a.on ? "border-[#5d5294] bg-[#f5f3ff]" : "border-[#eeecf5]"}`}
                 >
-                  <span
-                    className="grid place-items-center w-5 h-5 rounded-full font-mono text-[11px] font-medium shrink-0 mt-0.5"
-                    style={{
-                      background: a.on ? "var(--color-accent)" : "var(--nk-line)",
-                      color: a.on ? "#ffffff" : "#5f5f5f",
-                    }}
-                  >
+                  <span className={`grid place-items-center w-6 h-6 rounded-full text-[12px] font-bold shrink-0 ${a.on ? "text-white" : "bg-[#f1f0f7] text-[#5f6475]"}`} style={a.on ? { background: "var(--evl-grad)" } : undefined}>
                     {a.n}
                   </span>
-                  <span
-                    className="text-[13px] leading-snug"
-                    style={{
-                      color: a.on ? "var(--color-text)" : "#5f5f5f",
-                    }}
-                  >
-                    {a.t}
-                  </span>
+                  <span className={`text-[14px] leading-snug ${a.on ? "text-[var(--evl-ink)] font-medium" : "text-[#5f6475]"}`}>{a.t}</span>
                 </div>
               ))}
-              <p className="nk-mono mt-2" style={{ color: FAINT }}>
-                Competencia: comunicación
-              </p>
+              <p className="text-[12.5px] text-[#8a8fa0] mt-1">Competencia: comunicación</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── El informe ──────────────────────────────────────── */}
-      <section
-        className="relative z-[2]"
-        style={{ borderTop: "1px solid rgba(29,34,38,.08)" }}
-      >
-        <div className="max-w-[1160px] mx-auto px-6 sm:px-8 py-20 md:py-24">
-          <p className="nk-mono mb-3.5" style={{ color: "var(--color-accent)" }}>
-            El informe
-          </p>
-          <h2 className="text-[30px] md:text-[38px] font-medium max-w-[640px] mb-4">
-            Dejá de contratar por corazonada
-          </h2>
-          <p
-            className="text-sm leading-relaxed max-w-[560px] mb-11"
-            style={{ color: MUTED }}
-          >
-            Cada candidato te llega con un informe que contesta las cuatro
-            preguntas que de verdad te hacés antes de decidir. En una hoja, y
-            listo para imprimir y llevar a la reunión.
-          </p>
-
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {INFORME.map((x) => (
-              <div
-                key={x.t}
-                data-tilt
-                className="rounded-xl p-6"
-                style={{
-                  background: "var(--nk-card)",
-                  border: "1px solid var(--nk-line)",
-                  transition: "transform .18s ease-out, border-color .3s ease",
-                }}
-              >
-                <h3 className="text-[16px] font-medium m-0 mb-2.5">{x.t}</h3>
-                <p
-                  className="text-[13px] leading-[1.65] m-0"
-                  style={{ color: "#5f5f5f" }}
-                >
-                  {x.d}
-                </p>
+      {/* ── 9. El informe ──────────────────────────────────── */}
+      <section className="bg-[linear-gradient(180deg,#f6f5fc,#ffffff)] border-t border-[#eeecf5]">
+        <div className="max-w-[1200px] mx-auto px-5 sm:px-8 py-20 md:py-28 grid gap-12 lg:grid-cols-[1fr_1.3fr]">
+          <div data-reveal className="lg:sticky lg:top-28 self-start">
+            <span className="evl-eyebrow">El informe</span>
+            <h2 className="evl-h2 mt-4">Dejá de contratar por corazonada</h2>
+            <p className="text-[16px] text-[#404b63] mt-4 leading-relaxed">
+              Cada candidato te llega con un informe que contesta las cuatro preguntas que de verdad te hacés antes de decidir. En una hoja, lista para imprimir.
+            </p>
+            <p className="text-[13.5px] text-[#5f6475] mt-5 leading-relaxed">
+              Todo esto entra a la conversación junto a la entrevista y la experiencia, nunca en lugar de ellas.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {INFORME.map((x, i) => (
+              <div key={x.t} data-reveal style={{ ["--d" as string]: `${i * 90}ms` }} className="evl-card p-6">
+                <span className="text-[34px] font-bold evl-grad-text leading-none">{String(i + 1).padStart(2, "0")}</span>
+                <h3 className="text-[18px] font-semibold text-[var(--evl-ink)] mt-3">{x.t}</h3>
+                <p className="text-[14px] text-[#5f6475] mt-2 leading-relaxed">{x.d}</p>
               </div>
             ))}
           </div>
-
-          <p
-            className="text-[12.5px] leading-relaxed mt-8 max-w-[640px]"
-            style={{ color: FAINT }}
-          >
-            Todo esto entra a la conversación junto a la entrevista y la
-            experiencia, nunca en lugar de ellas. Ningún resultado alcanza por
-            sí solo para descartar a una persona, y el propio informe lo dice
-            donde se decide.
-          </p>
         </div>
       </section>
 
-      {/* ── Cómo funciona ───────────────────────────────────── */}
-      <section
-        id="como-funciona"
-        className="relative z-[2] scroll-mt-20"
-        style={{
-          borderTop: "1px solid rgba(29,34,38,.08)",
-          background: "var(--nk-deep)",
-        }}
-      >
-        <div className="max-w-[1160px] mx-auto px-6 sm:px-8 py-20">
-          <p className="nk-mono mb-3.5" style={{ color: "var(--color-accent)" }}>
-            Cómo funciona
-          </p>
-          <h2 className="text-[30px] md:text-[38px] font-medium max-w-[600px] mb-12">
-            Hoy lo armás. Mañana ya tenés gente rindiendo.
-          </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 relative">
-            {/* La línea que une los pasos. Solo en pantalla ancha: apilados
-                en columna, una línea horizontal no une nada. */}
-            <div
-              className="absolute left-0 right-0 hidden lg:block"
-              style={{
-                top: 11,
-                height: 1,
-                background:
-                  "linear-gradient(90deg,rgba(93,82,148,.5),rgba(93,82,148,.12))",
-              }}
-              aria-hidden
-            />
+      {/* ── 10. Cómo funciona ──────────────────────────────── */}
+      <section id="como-funciona" className="scroll-mt-24">
+        <div className="max-w-[1200px] mx-auto px-5 sm:px-8 py-20 md:py-24">
+          <div data-reveal className="text-center max-w-[640px] mx-auto">
+            <span className="evl-eyebrow">Cómo funciona</span>
+            <h2 className="evl-h2 mt-4">Hoy lo armás. Mañana ya tenés gente rindiendo.</h2>
+          </div>
+          <ol className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4 mt-14 relative">
+            <div className="absolute left-[12%] right-[12%] top-7 h-[2px] hidden lg:block rounded-full" style={{ background: "linear-gradient(90deg,#0a66c2,#5d5294)" }} aria-hidden />
             {PASOS.map((p, i) => (
-              <div key={p.t} className="relative">
-                <span
-                  className="grid place-items-center w-[22px] h-[22px] rounded-full font-mono text-[11px] font-medium"
-                  style={{
-                    background: "var(--color-bg)",
-                    border: `1px solid ${i < 2 ? "var(--color-accent)" : "rgba(93,82,148,.5)"}`,
-                    color: i < 2 ? "var(--color-accent)" : "#404040",
-                  }}
-                >
+              <li key={p.t} data-reveal style={{ ["--d" as string]: `${i * 110}ms` }} className="relative text-center">
+                <span className="relative mx-auto w-14 h-14 rounded-full grid place-items-center text-white text-[20px] font-bold ring-8 ring-white" style={{ background: "var(--evl-grad)" }}>
                   {i + 1}
                 </span>
-                <h3 className="text-[17px] font-medium mt-5 mb-2">{p.t}</h3>
-                <p
-                  className="text-[13.5px] leading-[1.65] m-0"
-                  style={{ color: "#5f5f5f" }}
-                >
-                  {p.d}
-                </p>
-              </div>
+                <h3 className="text-[18px] font-semibold text-[var(--evl-ink)] mt-5">{p.t}</h3>
+                <p className="text-[14px] text-[#5f6475] mt-2 leading-relaxed max-w-[260px] mx-auto">{p.d}</p>
+              </li>
             ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* ── 11. Preguntas ──────────────────────────────────── */}
+      <section id="preguntas" className="scroll-mt-24 bg-[#f6f5fc] border-t border-[#eeecf5]">
+        <div className="max-w-[820px] mx-auto px-5 sm:px-8 py-20 md:py-24">
+          <div data-reveal className="text-center">
+            <span className="evl-eyebrow">Preguntas</span>
+            <h2 className="evl-h2 mt-4 mb-10">Lo que más nos preguntan</h2>
+          </div>
+          <div data-reveal className="rounded-[22px] bg-white border border-[#ebe9f5] px-5 sm:px-8 py-2">
+            <Faq />
           </div>
         </div>
       </section>
 
-      {/* ── Preguntas ───────────────────────────────────────── */}
-      <section className="relative z-[2] max-w-[760px] mx-auto px-6 sm:px-8 py-20">
-        <p className="nk-mono mb-3.5" style={{ color: "var(--color-accent)" }}>
-          Preguntas
-        </p>
-        <h2 className="text-[30px] md:text-[38px] font-medium mb-9">
-          Lo que más nos preguntan
-        </h2>
-        <Faq />
-      </section>
-
-      {/* ── Cierre ──────────────────────────────────────────── */}
-      <section className="relative z-[2] max-w-[1160px] mx-auto px-6 sm:px-8 pt-4 pb-24 text-center">
-        <h2 className="text-[34px] md:text-[46px] font-medium tracking-[-.03em] max-w-[660px] mx-auto leading-[1.1]">
-          Probalo con un proceso{" "}
-          <span style={{ color: "var(--color-accent)" }}>real</span>.
-        </h2>
-        <p
-          className="mt-5 mx-auto max-w-[500px] leading-relaxed"
-          style={{ color: "#5f5f5f" }}
-        >
-          Tomá tu próxima búsqueda y hacela acá. {TRIAL_DAYS} días completos,
-          sin tarjeta y sin cobro automático: si no te sirve, cerrás la pestaña
-          y no pagaste nada.
-        </p>
-        <div className="flex gap-3 justify-center mt-8 flex-wrap">
-          <Link href="/evaluar/app" className="nk-cta">
-            Empezar gratis
-          </Link>
-          <VentasCta mensaje="Hola, quiero que me cuenten sobre Worka Evaluar antes de empezar." />
+      {/* ── 12. Cierre ─────────────────────────────────────── */}
+      <section className="px-5 sm:px-8 py-20">
+        <div data-reveal className="relative max-w-[1200px] mx-auto rounded-[32px] overflow-hidden px-6 sm:px-12 py-16 md:py-20 text-center text-white" style={{ background: "var(--evl-grad)" }}>
+          <Ondas claro />
+          <div className="relative">
+            <h2 className="text-[clamp(32px,4.6vw,54px)] font-bold tracking-[-.03em] leading-[1.06] max-w-[760px] mx-auto">
+              Probalo con tu próxima búsqueda
+            </h2>
+            <p className="mt-5 mx-auto max-w-[540px] text-[17px] text-white/85 leading-relaxed">
+              {TRIAL_DAYS} días completos, sin tarjeta y sin cobro automático: si no te sirve, cerrás la pestaña y no pagaste nada.
+            </p>
+            <div className="flex gap-3 justify-center mt-9 flex-wrap">
+              <Link href="/evaluar/app" className="inline-flex items-center gap-2 rounded-full bg-white text-[#0a66c2] font-semibold px-7 py-3.5 hover:bg-[#f3f8fd] transition-colors">
+                Empezar gratis <ArrowRight size={17} />
+              </Link>
+              <VentasCta mensaje="Hola, quiero que me cuenten sobre Worka Evaluar antes de empezar." className="!rounded-full !border-white/50 !text-white !bg-white/10 hover:!bg-white/20 !px-6 !py-3.5 !font-semibold" />
+            </div>
+            <p className="text-[13.5px] mt-6 text-white/70">¿Sos consultora de RRHH o tenés varias sucursales? Escribinos y lo armamos a tu medida.</p>
+          </div>
         </div>
-        <p className="text-[12.5px] mt-5" style={{ color: FAINT }}>
-          ¿Sos consultora de RRHH o tenés varias sucursales? Escribinos y lo
-          armamos a tu medida.
-        </p>
       </section>
     </MarketingShell>
+  );
+}
+
+// Hilos ondulados de fondo: dos capas que se deslizan a distinta velocidad.
+function Ondas({ claro = false }: { claro?: boolean }) {
+  const color = claro ? "rgba(255,255,255,.28)" : "rgba(93,82,148,.16)";
+  const color2 = claro ? "rgba(255,255,255,.16)" : "rgba(10,102,194,.12)";
+  const linea = (y: number, a: number) =>
+    `M0 ${y} C 150 ${y - a}, 300 ${y + a}, 450 ${y} S 750 ${y - a}, 900 ${y} S 1200 ${y + a}, 1350 ${y} S 1650 ${y - a}, 1800 ${y}`;
+  return (
+    <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
+      <svg className="evl-wave absolute -bottom-6 left-0 h-[70%] w-[200%]" viewBox="0 0 1800 300" preserveAspectRatio="none">
+        {Array.from({ length: 9 }).map((_, i) => (
+          <path key={i} d={linea(150 + i * 9, 60 + i * 6)} fill="none" stroke={color} strokeWidth="1.2" />
+        ))}
+      </svg>
+      <svg className="evl-wave is-slow absolute top-0 left-0 h-[60%] w-[200%]" viewBox="0 0 1800 300" preserveAspectRatio="none">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <path key={i} d={linea(120 + i * 12, 80 - i * 6)} fill="none" stroke={color2} strokeWidth="1" />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+// Círculos concéntricos detrás de la grilla de soluciones.
+function Orbitas() {
+  return (
+    <svg className="absolute -left-40 top-24 w-[760px] h-[760px] pointer-events-none hidden md:block" viewBox="0 0 760 760" aria-hidden>
+      {[360, 300, 240].map((r) => (
+        <circle key={r} cx="380" cy="380" r={r} fill="none" stroke="#e6e3f6" strokeWidth="1.2" />
+      ))}
+      <circle cx="680" cy="230" r="9" fill="none" stroke="#b9b1ec" strokeWidth="2" className="evl-float" />
+      <circle cx="40" cy="470" r="11" fill="none" stroke="#9ec5ee" strokeWidth="2" className="evl-float" />
+    </svg>
+  );
+}
+
+// Lo que ve el candidato, dibujado: un teléfono con una pregunta en curso.
+function TelefonoDemo() {
+  return (
+    <div className="relative mx-auto w-[290px] sm:w-[310px]">
+      <div className="absolute -inset-10 rounded-full blur-3xl opacity-60" style={{ background: "radial-gradient(rgba(93,82,148,.35), transparent 70%)" }} aria-hidden />
+      <div className="relative rounded-[40px] bg-[#0e1a33] p-3 shadow-[0_40px_80px_-30px_rgba(29,43,79,.6)] evl-float">
+        <div className="rounded-[30px] bg-[#f3efea] overflow-hidden">
+          <div className="bg-white px-4 py-3 flex items-center gap-2.5 border-b border-[#e0dfdc]">
+            <span className="w-8 h-8 rounded-lg bg-[#0a66c2] text-white grid place-items-center text-sm font-bold">S</span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[12.5px] font-semibold text-[#1d2226]">Supermercado</span>
+              <span className="block text-[10.5px] text-[#666]">Cajero/a · Centro</span>
+            </span>
+            <span className="text-[10px] text-[#666] flex items-center gap-1"><Check size={11} /> Guardado</span>
+          </div>
+          <div className="p-3.5">
+            <div className="rounded-2xl bg-white border border-[#e0dfdc] p-3.5">
+              <div className="flex gap-1 mb-3">
+                <span className="h-1 flex-1 rounded-full bg-[#0a66c2]" />
+                <span className="h-1 flex-1 rounded-full bg-[#e0dfdc]" />
+                <span className="h-1 flex-1 rounded-full bg-[#e0dfdc]" />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-[9.5px] font-bold uppercase tracking-wide text-[#666]">Etapa 1 de 3</span>
+                <span className="text-[10px] font-mono font-semibold bg-slate-100 text-slate-600 rounded-full px-2 py-0.5">08:42</span>
+              </div>
+              <p className="text-[13.5px] font-semibold text-[#1d2226] mt-2.5 leading-snug">¿Qué número sigue? 2, 4, 8, 16, __</p>
+              <div className="space-y-1.5 mt-3">
+                {["18", "24", "32", "64"].map((o, i) => (
+                  <div
+                    key={o}
+                    className={`rounded-xl border px-3 py-2 text-[12.5px] flex items-center gap-2 ${i === 2 ? "bg-[#0a66c2] border-[#0a66c2] text-white" : "border-[#e0dfdc] text-[#1d2226]"}`}
+                  >
+                    <span className={`w-4 h-4 rounded-full border text-[9px] grid place-items-center ${i === 2 ? "border-white" : "border-[#d4d2ce]"}`}>{i === 2 ? "✓" : i + 1}</span>
+                    {o}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 rounded-xl bg-[#0a66c2] text-white text-center text-[12.5px] font-semibold py-2">Siguiente</div>
+            </div>
+            <div className="mt-3 rounded-full bg-[#0a66c2] text-white text-[11.5px] font-semibold px-3 py-2 flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-white text-[#004e99] grid place-items-center text-[10px] font-extrabold">W.</span>
+              Continuar con Worka Empleos
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
