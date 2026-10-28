@@ -8,7 +8,7 @@ export * from "./desempeno-tipos";
 
 export async function getMisCiclos(): Promise<CicloRow[]> {
   const supabase = await getServerClient();
-  if (!supabase) return [];
+  if (!supabase) return (await import("./demo-desempeno")).demoCiclos();
   const user = await getCurrentUser();
   if (!user) return [];
 
@@ -35,7 +35,7 @@ export type CicloDetalle = {
 
 export async function getCiclo(id: string): Promise<CicloDetalle | null> {
   const supabase = await getServerClient();
-  if (!supabase) return null;
+  if (!supabase) return (await import("./demo-desempeno")).demoCiclo(id);
   const user = await getCurrentUser();
   if (!user) return null;
 

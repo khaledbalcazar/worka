@@ -266,15 +266,19 @@ export function HBars({
   color = SERIES[0],
   format = (n: number) => n.toLocaleString("es-PY"),
   total,
+  escala,
 }: {
   items: { label: string; value: number }[];
   color?: string;
   format?: (n: number) => string;
   // Si viene, se muestra también el porcentaje sobre este total.
   total?: number;
+  /** Tope fijo de la escala (por ejemplo 5 en un promedio de 1 a 5). Sin
+   *  esto la barra más larga ocupa todo el ancho y un 3 parece un 5. */
+  escala?: number;
 }) {
   const [hover, setHover] = useState<string | null>(null);
-  const max = Math.max(...items.map((i) => i.value), 1);
+  const max = escala ?? Math.max(...items.map((i) => i.value), 1);
   if (items.length === 0) return <p className="text-sm text-[#767676] py-6 text-center">Todavía no hay datos.</p>;
   return (
     <ul className="space-y-2.5">

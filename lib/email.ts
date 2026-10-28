@@ -68,7 +68,7 @@ export async function cupoEmail(): Promise<CupoEmail> {
   }
 }
 
-export async function sendEmail(opts: {
+type OpcionesEmail = {
   to: string;
   subject: string;
   html: string;
@@ -80,9 +80,18 @@ export async function sendEmail(opts: {
      desde 2024 Gmail y Yahoo se lo exigen a quien manda en volumen, y sin
      eso el correo entero cae en spam. */
   headers?: Record<string, string>;
-}): Promise<boolean> {
+};
+
+export async function sendEmail(opts: OpcionesEmail): Promise<boolean> {
+  return (await enviarEmail(opts)).ok;
+}
+
+// Igual que sendEmail, pero dice por qué no salió. Con un booleano solo, la
+// pantalla decía «no pudimos enviar» y no había forma de saber si faltaba la
+// clave, si Resend rechazaba el remitente o si se había agotado el cupo.
+export async function enviarEmail(opts: OpcionesEmail): Promise<{ ok: boolean; error?: string }> {
   const key = process.env.RESEND_API_KEY;
-  if (!key) return false;
+  if (!key) return { ok: false, error: "Falta configurar RESEND_API_KEY en el servidor." };
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -104,18 +113,27 @@ export async function sendEmail(opts: {
       // silencio y no hay forma de saber por que no llego el correo.
       const detalle = await res.text().catch(() => "");
       console.error("Resend rechazo el envio:", res.status, detalle);
-      return false;
+      let mensaje = "";
+      try {
+        mensaje = (JSON.parse(detalle) as { message?: string }).message ?? "";
+      } catch {}
+      return { ok: false, error: `Resend rechazó el envío (${res.status})${mensaje ? `: ${mensaje}` : "."}` };
     }
     await contarEnvio();
-    return true;
+    return { ok: true };
   } catch (e) {
     console.error("Resend no respondio:", e);
-    return false;
+    return { ok: false, error: "No pudimos conectar con Resend." };
   }
 }
 
 // Envoltura HTML mínima y sobria para los emails de Worka.
-export function emailLayout(inner: string): string {
+export function emailLayout(
+  inner: string,
+  /* Por qué le llega este correo. El texto de siempre es el de las alertas
+     de empleo; los demás correos lo cambian para no decir algo falso. */
+  pie = "Recibís este correo porque creaste una alerta de empleo en Worka."
+): string {
   return `<div style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;max-width:560px;margin:0 auto;color:#1f2937">
     <div style="background:#1e3a8a;padding:16px 20px;border-radius:12px 12px 0 0">
       <span style="color:#fff;font-weight:700;font-size:18px">Worka</span>
@@ -124,7 +142,7 @@ export function emailLayout(inner: string): string {
       ${inner}
     </div>
     <p style="color:#9ca3af;font-size:12px;text-align:center;margin-top:16px">
-      Recibís este correo porque creaste una alerta de empleo en Worka.
+      ${pie}
     </p>
   </div>`;
 }

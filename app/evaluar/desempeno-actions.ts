@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { findUserIdByEmail, getMyEvaluarAccess } from "@/lib/evaluar";
 import { planOf } from "@/lib/evaluar-plans";
-import { emailEnabled, emailLayout, sendEmail } from "@/lib/email";
+import { cupoEmail, emailEnabled, emailLayout, enviarEmail } from "@/lib/email";
 import { evaluarUrl } from "@/lib/supabase/config";
 
 // Acciones de evaluación de desempeño.
@@ -12,7 +12,13 @@ import { evaluarUrl } from "@/lib/supabase/config";
 // Van en su propio archivo y no en app/evaluar/actions.ts: aquel ya pasa las
 // mil setecientas líneas y son dos productos distintos.
 
-type Result = { ok: boolean; error?: string; id?: string };
+type Result = {
+  ok: boolean;
+  error?: string;
+  id?: string;
+  /** Algo salió bien pero hay que contarlo (cuántos correos salieron, etc.). */
+  aviso?: string;
+};
 
 const DEMO: Result = {
   ok: false,
@@ -120,6 +126,13 @@ export async function actualizarCiclo(
   }
   revalidatePath(`/evaluar/app/desempeno/${id}`);
   revalidatePath("/evaluar/app/desempeno");
+
+  // Abrir el ciclo es el momento de avisarle a cada jefe. Antes no salía
+  // ningún correo: el ciclo quedaba abierto y nadie se enteraba.
+  if (input.status === "abierto") {
+    const r = await invitar(supabase, user.id, id, {});
+    return { ok: true, aviso: `Ciclo abierto. ${r.resumen}` };
+  }
   return { ok: true };
 }
 
@@ -200,14 +213,156 @@ export async function agregarEvaluado(
   }
 
   revalidatePath(`/evaluar/app/desempeno/${cicloId}`);
+
+  // Con el ciclo ya abierto, a quien se suma se le avisa en el momento.
+  const { data: estado } = await supabase.from("evaluar_ciclos").select("status").eq("id", cicloId).maybeSingle();
+  let invitacion = "";
+  if ((estado as { status?: string } | null)?.status === "abierto") {
+    const emails = [evalEmail, ...(filas.length > 1 ? [input.empleadoEmail!.trim().toLowerCase()] : [])];
+    invitacion = ` ${(await invitar(supabase, user.id, cicloId, { soloEmails: emails })).resumen}`;
+  }
+
   return {
     ok: true,
     // Que quede claro que la fila quedó esperando y por qué: si no, la
     // persona aparece cargada y nadie entiende por qué el jefe no la ve.
-    error: evaluadorId
-      ? undefined
-      : `Cargada. ${evalEmail} todavía no tiene cuenta en Worka: cuando se registre con ese correo, la evaluación le va a aparecer sola.`,
+    aviso:
+      (evaluadorId
+        ? "Persona cargada."
+        : `Cargada. ${evalEmail} todavía no tiene cuenta en Worka: cuando entre con ese correo, la evaluación le va a aparecer sola.`) + invitacion,
   };
+}
+
+// ── Invitaciones por correo ────────────────────────────────────
+
+/** Enlace directo a una evaluación, para mandar por correo o a mano. */
+function enlaceEvaluacion(id: string) {
+  return evaluarUrl(`/app/desempeno/evaluar/${id}`);
+}
+
+const escapar = (t: string) =>
+  t.replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch]!);
+
+type Supa = NonNullable<Awaited<ReturnType<typeof getServerClient>>>;
+
+// Un correo por evaluador con todo lo que tiene que cargar: a un jefe con
+// seis personas a cargo le llegan seis enlaces en un mensaje, no seis
+// mensajes. Las autoevaluaciones le llegan a la propia persona.
+async function invitar(
+  supabase: Supa,
+  companyId: string,
+  cicloId: string,
+  opciones: { soloEmails?: string[] }
+): Promise<{ enviados: number; fallidos: { email: string; error: string }[]; resumen: string; nada?: boolean }> {
+  const { data: ciclo } = await supabase
+    .from("evaluar_ciclos")
+    .select("title, closes_at, status")
+    .eq("id", cicloId)
+    .eq("company_id", companyId)
+    .maybeSingle();
+  const c = ciclo as { title: string; closes_at: string | null; status: string } | null;
+  if (!c) return { enviados: 0, fallidos: [], resumen: "No encontramos el ciclo." };
+
+  const { data } = await supabase
+    .from("evaluar_desempeno")
+    .select("id, tipo, status, empleado_nombre, evaluador_email")
+    .eq("ciclo_id", cicloId)
+    .neq("status", "enviada");
+  const filas = (data ?? []) as { id: string; tipo: string; status: string; empleado_nombre: string; evaluador_email: string }[];
+
+  const solo = opciones.soloEmails?.map((e) => e.toLowerCase());
+  const porEmail = new Map<string, typeof filas>();
+  for (const f of filas) {
+    const email = (f.evaluador_email ?? "").trim().toLowerCase();
+    if (!email || (solo && !solo.includes(email))) continue;
+    porEmail.set(email, [...(porEmail.get(email) ?? []), f]);
+  }
+  if (porEmail.size === 0)
+    return { enviados: 0, fallidos: [], resumen: "No quedan evaluaciones pendientes para avisar.", nada: true };
+
+  if (!emailEnabled())
+    return {
+      enviados: 0,
+      fallidos: [],
+      resumen:
+        "No salió ningún correo: el envío no está configurado en el servidor (falta RESEND_API_KEY). Usá «Copiar enlace» para pasarlos a mano.",
+    };
+
+  const cupo = await cupoEmail();
+  if (cupo.quedanHoy < porEmail.size)
+    return {
+      enviados: 0,
+      fallidos: [],
+      resumen: `No alcanza el cupo de correos de hoy (quedan ${cupo.quedanHoy} y hacen falta ${porEmail.size}). Probá mañana o pasá los enlaces a mano.`,
+    };
+
+  const plazo = c.closes_at
+    ? new Date(c.closes_at).toLocaleDateString("es-PY", { day: "numeric", month: "long" })
+    : null;
+  let enviados = 0;
+  const fallidos: { email: string; error: string }[] = [];
+
+  for (const [email, lista] of porEmail) {
+    const propias = lista.filter((f) => f.tipo === "auto");
+    const ajenas = lista.filter((f) => f.tipo !== "auto");
+    const items = [
+      ...propias.map((f) => ({ texto: "Tu autoevaluación", url: enlaceEvaluacion(f.id) })),
+      ...ajenas.map((f) => ({ texto: f.empleado_nombre, url: enlaceEvaluacion(f.id) })),
+    ];
+    const r = await enviarEmail({
+      to: email,
+      subject:
+        ajenas.length > 0
+          ? `Te toca evaluar ${ajenas.length === 1 ? `a ${ajenas[0].empleado_nombre}` : `a ${ajenas.length} personas`} — ${c.title}`
+          : `Tu autoevaluación de desempeño — ${c.title}`,
+      html: emailLayout(
+        `
+        <p>Hola,</p>
+        <p>Se abrió la evaluación de desempeño <strong>${escapar(c.title)}</strong>${plazo ? ` y cierra el <strong>${plazo}</strong>` : ""}.
+        ${ajenas.length > 0 ? "Te toca evaluar a estas personas:" : "Te toca completar tu autoevaluación:"}</p>
+        <ul style="padding-left:18px">
+          ${items.map((i) => `<li style="margin:6px 0"><a href="${i.url}" style="color:#0a66c2;font-weight:600">${escapar(i.texto)}</a></li>`).join("")}
+        </ul>
+        <p style="color:#6b7280;font-size:13px">Cada competencia tiene descripciones de conducta: elegís la que mejor describe lo que viste,
+        no un número. Lo que vas cargando se guarda solo.</p>
+        <p style="color:#6b7280;font-size:13px">Entrá con <strong>${escapar(email)}</strong>. Si todavía no tenés cuenta en Worka,
+        creala con ese mismo correo y las evaluaciones te van a aparecer.</p>
+      `,
+        "Recibís este correo porque tu empresa te incluyó en una evaluación de desempeño en Worka Evaluar."
+      ),
+      text: [`Se abrió la evaluación de desempeño ${c.title}.`, ...items.map((i) => `${i.texto}: ${i.url}`), `Entrá con ${email}.`].join("\n"),
+    });
+    if (r.ok) enviados++;
+    else fallidos.push({ email, error: r.error ?? "No salió." });
+  }
+
+  const resumen =
+    fallidos.length === 0
+      ? `Enviamos ${enviados} ${enviados === 1 ? "invitación" : "invitaciones"} por correo.`
+      : `Enviamos ${enviados} de ${porEmail.size}. No salieron: ${fallidos.map((f) => f.email).join(", ")}. Motivo: ${fallidos[0].error}`;
+  return { enviados, fallidos, resumen };
+}
+
+// «Recordar a quienes faltan»: vuelve a mandar el enlace a todos los que
+// tienen algo sin enviar. Solo el dueño del ciclo.
+export async function enviarInvitaciones(cicloId: string): Promise<Result> {
+  const { supabase, user } = await requireEmpresa();
+  if (!supabase) return { ok: true, aviso: "Modo demostración: no se envían correos. Usá «Copiar enlace»." };
+  if (!user) return { ok: false, error: "Iniciá sesión como empresa." };
+
+  const { data: ciclo } = await supabase
+    .from("evaluar_ciclos")
+    .select("status")
+    .eq("id", cicloId)
+    .eq("company_id", user.id)
+    .maybeSingle();
+  if (!ciclo) return { ok: false, error: "No encontramos el ciclo." };
+  if ((ciclo as { status: string }).status !== "abierto")
+    return { ok: false, error: "Abrí el ciclo primero: en borrador los jefes todavía no pueden cargar nada." };
+
+  const r = await invitar(supabase, user.id, cicloId, {});
+  if (r.enviados === 0 && !r.nada) return { ok: false, error: r.resumen };
+  return { ok: true, aviso: r.resumen };
 }
 
 export async function quitarEvaluado(
@@ -410,7 +565,7 @@ export async function avisarAlEmpleado(id: string): Promise<Result> {
   const url = `${base}/app/desempeno/mias`;
   const nombre = fila.empleado_nombre?.split(" ")[0] ?? "";
 
-  const enviado = await sendEmail({
+  const enviado = await enviarEmail({
     to: email,
     subject: `Tu evaluación de desempeño está lista${fila.ciclo?.title ? ` — ${fila.ciclo.title}` : ""}`,
     html: emailLayout(`
@@ -432,13 +587,13 @@ export async function avisarAlEmpleado(id: string): Promise<Result> {
       constancia de que la leíste. Eso <strong>no significa que estés de
       acuerdo</strong>: si algo no te parece, hay un espacio para escribirlo y
       queda guardado junto a la evaluación.</p>
-    `),
+    `, "Recibís este correo porque tu empresa te evaluó en Worka Evaluar."),
   });
 
-  if (!enviado)
+  if (!enviado.ok)
     return {
       ok: false,
-      error: "No pudimos enviar el correo. Pasale el enlace vos por otro medio.",
+      error: `No pudimos enviar el correo. ${enviado.error ?? ""} Pasale el enlace a mano: ${url}`,
     };
 
   await supabase

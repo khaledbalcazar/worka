@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { isLive } from "@/lib/data";
 import { getCiclo } from "@/lib/evaluar/desempeno";
 import CicloEditor from "@/components/evaluar/CicloEditor";
+import { evaluarUrl } from "@/lib/supabase/config";
 
 export const metadata = { title: "Ciclo de desempeño" };
 
@@ -31,7 +32,7 @@ export default async function CicloPage({
       >
         <ChevronLeft size={16} /> Desempeño
       </Link>
-      <CicloEditor detalle={detalle} />
+      <CicloEditor detalle={detalle} base={evaluarUrl()} />
     </div>
   );
 }
