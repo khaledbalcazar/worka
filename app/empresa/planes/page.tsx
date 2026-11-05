@@ -11,7 +11,6 @@ import {
   localMonthlyPrice,
   monthlyPrice,
   requestMoney,
-  paymentLink,
 } from "@/lib/plans";
 import {
   countListedJobs,
@@ -178,19 +177,14 @@ export default async function CompanyPlansPage({ searchParams }: { searchParams:
           {pago && <ConfirmarPagoTarjeta pago={pago} refPago={ref} />}
           <h2 className="font-semibold text-lg">{subscription ? "Renovar o cambiar de plan" : "Contratar"}</h2>
           <p className="text-sm text-muted mb-4">
-            {tarjeta
-              ? "Con tarjeta el plan se activa al instante. Con el link de pago nos avisás y lo activamos en el día."
-              : "Pagás con el link de pago y nos avisás. Confirmamos el pago y activamos el plan, normalmente en el día."}{" "}
-            Si renovás antes de que venza, los días se suman.
+            Pagás con tarjeta y el plan se activa al instante. Si renovás antes de que venza, los días se suman.
           </p>
           <PlanCheckout
             product="enterprise"
             plans={paid}
             initialPlan={wanted === "pro" || wanted === "empresa" ? wanted : plan.id === "gratis" ? "pro" : plan.id}
-            paymentLink={paymentLink("enterprise", settings)}
             pending={pending}
             currency={country.currencyCode}
-            billing={{ name: company.company_name, doc: company.ruc ?? "", docLabel: country.taxIdLabel }}
             tarjeta={tarjeta}
           />
         </div>

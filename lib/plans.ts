@@ -5,8 +5,9 @@
 // - Worka Pro (personas): un solo plan.
 //
 // Los precios por defecto viven acá; el admin los cambia desde /admin
-// (site_settings) sin tocar código. El cobro es manual: link de pago +
-// aprobación del admin.
+// (site_settings) sin tocar código. El cobro es con tarjeta por dLocal Go
+// (lib/billing) y el plan se activa solo; el alta manual del admin queda
+// para cortesías.
 
 import { formatMoney, fromGuaranies, type Money } from "@/lib/currency";
 
@@ -163,13 +164,9 @@ export function enterpriseLimits(id: string | null | undefined): EnterpriseLimit
   return enterprisePlan(id).limits;
 }
 
-// Claves de site_settings con precio y link de pago de cada plan.
+// Claves de site_settings con el precio de cada plan.
 export function priceSettingKey(product: Product, plan: string): string {
   return product === "pro" ? "price_worka_pro" : `price_enterprise_${plan}`;
-}
-
-export function paymentLinkKey(product: Product): string {
-  return product === "pro" ? "payment_link_pro" : "payment_link_enterprise";
 }
 
 function parseGs(value: string | undefined): number | null {
@@ -191,12 +188,6 @@ export function totalPrice(product: Product, plan: string, months: number, setti
   const option = BILLING_OPTIONS.find((o) => o.months === months);
   if (!option || !isPaidPlan(product, plan)) return 0;
   return monthlyPrice(product, plan, settings) * option.paidMonths;
-}
-
-// Link de pago del producto; si no hay uno propio, el general (payment_link).
-export function paymentLink(product: Product, settings: Record<string, string | undefined>): string | null {
-  const link = (settings[paymentLinkKey(product)] || settings.payment_link || "").trim();
-  return /^https?:\/\//i.test(link) ? link : null;
 }
 
 export function formatGs(amount: number): string {
@@ -221,14 +212,12 @@ export function daysLeft(endsAt: string | null, now = Date.now()): number {
   return Math.max(0, Math.ceil((Date.parse(endsAt) - now) / 86400000));
 }
 
-// Claves de site_settings con precios y links de pago (las edita el admin
+// Claves de site_settings con precios y cotizaciones (las edita el admin
 // en «Pagos y planes»): [clave, etiqueta, ejemplo].
 export const PLAN_SETTING_KEYS = [
   ["price_enterprise_pro", `${ENTERPRISE_BRAND} · Pro (Gs. por mes)`, String(ENTERPRISE_PLANS[1].defaultPriceGs)],
   ["price_enterprise_empresa", `${ENTERPRISE_BRAND} · Empresa (Gs. por mes)`, String(ENTERPRISE_PLANS[2].defaultPriceGs)],
   ["price_worka_pro", `${PRO_BRAND} (Gs. por mes)`, String(WORKA_PRO.defaultPriceGs)],
-  ["payment_link_enterprise", "Link de pago para empresas", "https://…"],
-  ["payment_link_pro", `Link de pago para ${PRO_BRAND}`, "Vacío = usa el link de pago general"],
   // Cotizaciones para mostrar los precios en la moneda de cada país.
   ["fx_usd_pyg", "Cotización: guaraníes por 1 USD", "5700"],
   ["fx_usd_ars", "Cotización: pesos argentinos por 1 USD", "1516"],

@@ -107,8 +107,8 @@ export default function EvaluarPlanCheckout({
         />
       ) : (
         <p className="text-sm opacity-70">
-          Esta combinación todavía no se puede pagar con tarjeta. Escribinos y te pasamos los datos para
-          pagar por transferencia.
+          Esta combinación todavía no tiene precio cargado. Escribinos y te avisamos apenas se pueda
+          contratar.
         </p>
       )}
     </div>

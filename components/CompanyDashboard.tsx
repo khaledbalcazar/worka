@@ -15,7 +15,6 @@ import { daysUntil, formatDate, isoEnDias, timeAgo } from "@/lib/format";
 import {
   deleteJob,
   duplicateJob,
-  requestBoost,
   setJobStatus,
   updateJobExpiry,
 } from "@/app/actions";
@@ -330,7 +329,6 @@ const FREE_PLAN: DashboardPlan = {
 export default function CompanyDashboard({
   company,
   jobs: initialJobs,
-  paymentLink = "",
   destacadosTarjeta = null,
   stats: realStats,
   activity = [],
@@ -338,7 +336,6 @@ export default function CompanyDashboard({
 }: {
   company: Company;
   jobs: JobWithCompany[];
-  paymentLink?: string;
   /** Destacados que se pueden pagar con tarjeta: días → monto. */
   destacadosTarjeta?: Record<string, Monto> | null;
   stats?: DashStats;
@@ -352,7 +349,6 @@ export default function CompanyDashboard({
   const [editingExpiry, setEditingExpiry] = useState<string | null>(null);
   const [expiryValue, setExpiryValue] = useState("");
   const [boosting, setBoosting] = useState<JobWithCompany | null>(null);
-  const [boostSent, setBoostSent] = useState(false);
   const [tipIndex, setTipIndex] = useState(0);
   const [filtro, setFiltro] = useState<"Todas" | JobStatus>("Todas");
   const [pending, startTransition] = useTransition();
@@ -363,18 +359,6 @@ export default function CompanyDashboard({
   }
 
   /* ── Acciones ─────────────────────────────────────────────────────── */
-
-  function handleBoost(plan: string, priceGs: number) {
-    if (!boosting) return;
-    startTransition(async () => {
-      const result = await requestBoost(boosting.id, plan, priceGs);
-      if (result.ok) setBoostSent(true);
-      else {
-        setBoosting(null);
-        flash(result.error ?? "No pudimos registrar la solicitud.");
-      }
-    });
-  }
 
   function handleDuplicate(job: JobWithCompany) {
     startTransition(async () => {
@@ -800,7 +784,6 @@ export default function CompanyDashboard({
                 );
                 return;
               }
-              setBoostSent(false);
               setBoosting(candidata);
             }}
             className="text-xs font-semibold px-3 py-2 rounded-lg bg-white/15 hover:bg-white/25 transition-colors cursor-pointer"
@@ -978,10 +961,7 @@ export default function CompanyDashboard({
                             onEstado={(s) => handleStatus(job.id, s)}
                             onDuplicar={() => handleDuplicate(job)}
                             onEliminar={() => setConfirmDelete(job.id)}
-                            onBoost={() => {
-                              setBoostSent(false);
-                              setBoosting(job);
-                            }}
+                            onBoost={() => setBoosting(job)}
                             onVigencia={() => {
                               setEditingExpiry(job.id);
                               setExpiryValue(job.expires_at.slice(0, 10));
@@ -1005,93 +985,44 @@ export default function CompanyDashboard({
       {/* ── Potenciar ─────────────────────────────────────────────────── */}
       {boosting && (
         <Modal onClose={() => setBoosting(null)}>
-          {boostSent ? (
-            <div className="text-center py-2">
-              <div className="w-12 h-12 rounded-2xl mx-auto mb-3 grid place-items-center text-2xl bg-amber-50">
-                ⚡
-              </div>
-              <p className="font-bold text-slate-900">¡Solicitud registrada!</p>
-              <p className="text-sm text-slate-500 mt-2 leading-relaxed">
-                {paymentLink
-                  ? "Completá el pago con el botón de abajo. Apenas lo confirmemos, tu vacante aparece destacada arriba del feed."
-                  : "Nuestro equipo te contacta para coordinar el pago. Apenas se confirme, tu vacante aparece destacada arriba del feed."}
-              </p>
-              {paymentLink && (
-                <a
-                  href={paymentLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-primary w-full mt-4"
-                >
-                  💳 Ir a pagar
-                </a>
-              )}
-              <button
-                className="w-full mt-2 py-2 text-sm text-slate-400 hover:text-slate-600 cursor-pointer"
-                onClick={() => setBoosting(null)}
-              >
-                Cerrar
-              </button>
+          <div className="text-center mb-5">
+            <div className="w-12 h-12 rounded-2xl mx-auto mb-3 grid place-items-center text-2xl bg-amber-50">
+              ⚡
+            </div>
+            <h3 className="text-base font-bold text-slate-900">
+              Potenciar «{boosting.title}»
+            </h3>
+            <p className="text-sm mt-1 text-slate-500">
+              Aparece destacada arriba del feed y recibe en promedio{" "}
+              <strong>3× más vistas</strong>.
+            </p>
+          </div>
+          {/* Se paga con dLocal Go y se activa sola apenas entra el pago. */}
+          {destacadosTarjeta ? (
+            <div className="space-y-2">
+              {BOOST_PLANS.filter((p) => destacadosTarjeta[String(p.days)]).map((p) => (
+                <PagarConTarjeta
+                  key={p.plan}
+                  product="boost"
+                  plan={String(p.days)}
+                  jobId={boosting.id}
+                  monto={destacadosTarjeta[String(p.days)]}
+                  className="btn-primary w-full justify-between"
+                  etiqueta={`${p.plan} · pagar con tarjeta`}
+                />
+              ))}
             </div>
           ) : (
-            <>
-              <div className="text-center mb-5">
-                <div className="w-12 h-12 rounded-2xl mx-auto mb-3 grid place-items-center text-2xl bg-amber-50">
-                  ⚡
-                </div>
-                <h3 className="text-base font-bold text-slate-900">
-                  Potenciar «{boosting.title}»
-                </h3>
-                <p className="text-sm mt-1 text-slate-500">
-                  Aparece destacada arriba del feed y recibe en promedio{" "}
-                  <strong>3× más vistas</strong>.
-                </p>
-              </div>
-              {/* Con tarjeta se activa sola apenas entra el pago. El pedido
-                  manual (link de pago + confirmación) queda abajo. */}
-              {destacadosTarjeta && (
-                <div className="space-y-2 mb-4">
-                  {BOOST_PLANS.filter((p) => destacadosTarjeta[String(p.days)]).map((p) => (
-                    <PagarConTarjeta
-                      key={p.plan}
-                      product="boost"
-                      plan={String(p.days)}
-                      jobId={boosting.id}
-                      monto={destacadosTarjeta[String(p.days)]}
-                      className="btn-primary w-full justify-between"
-                      etiqueta={`${p.plan} · pagar con tarjeta`}
-                    />
-                  ))}
-                  <p className="text-xs text-slate-400 text-center pt-1">
-                    ¿Preferís otro medio? Pedilo y pagás con el link:
-                  </p>
-                </div>
-              )}
-              <div className="space-y-2">
-                {BOOST_PLANS.map((p) => (
-                  <button
-                    key={p.plan}
-                    disabled={pending}
-                    onClick={() => handleBoost(p.plan, p.price_gs)}
-                    className="w-full flex items-center justify-between px-4 py-3.5 rounded-xl text-sm border-[1.5px] border-slate-200 hover:border-blue-600 hover:bg-blue-50 transition-colors disabled:opacity-50 cursor-pointer"
-                  >
-                    <span className="font-semibold text-slate-800">
-                      {p.plan}
-                    </span>
-                    <span className="font-mono-data font-bold text-slate-900">
-                      Gs. {p.price_gs.toLocaleString("es-PY")}
-                    </span>
-                  </button>
-                ))}
-              </div>
-              <button
-                className="w-full mt-3 py-2 text-sm text-slate-400 hover:text-slate-600 cursor-pointer"
-                onClick={() => setBoosting(null)}
-              >
-                Cancelar
-              </button>
-            </>
+            <p className="text-sm text-slate-500 text-center">
+              El pago en línea todavía no está disponible. Escribinos y te avisamos apenas se habilite.
+            </p>
           )}
+          <button
+            className="w-full mt-3 py-2 text-sm text-slate-400 hover:text-slate-600 cursor-pointer"
+            onClick={() => setBoosting(null)}
+          >
+            Cancelar
+          </button>
         </Modal>
       )}
 

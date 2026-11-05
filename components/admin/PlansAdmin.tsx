@@ -147,7 +147,7 @@ export default function PlansAdmin({
 
       <div>
         <h3 className="font-semibold flex items-center gap-2"><Gift size={16} /> Dar un plan a mano</h3>
-        <p className="text-xs text-gray-500">Para cortesías, períodos de gracia o pagos por transferencia.</p>
+        <p className="text-xs text-gray-500">Para cortesías y períodos de gracia.</p>
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-2 items-end">
           <label className="relative lg:col-span-2">
             <span className="label">Cliente (nombre o email)</span>
@@ -203,7 +203,7 @@ export default function PlansAdmin({
       </div>
 
       <div>
-        <h3 className="font-semibold">Precios, links de pago y cotizaciones</h3>
+        <h3 className="font-semibold">Precios y cotizaciones</h3>
         <div className="grid lg:grid-cols-2 gap-3 mt-2">
           {PLAN_SETTING_KEYS.map(([key, label, placeholder]) => (
             <label key={key}>
@@ -217,9 +217,9 @@ export default function PlansAdmin({
             </label>
           ))}
         </div>
-        <p className="text-xs text-gray-500 mt-2">Precio vacío = el de lista. Link vacío = se usa el «Link de pago» general. Los precios de cada país salen del precio en guaraníes y estas cotizaciones (vacío = la cotización de octubre de 2026).</p>
-        <button className="btn-primary mt-3" disabled={pending} onClick={() => run(() => saveSiteSettings(prices), "Precios y links guardados.")}>
-          Guardar precios y links
+        <p className="text-xs text-gray-500 mt-2">Precio vacío = el de lista. Es lo que se cobra con tarjeta. Los precios de cada país salen del precio en guaraníes y estas cotizaciones (vacío = la cotización de octubre de 2026).</p>
+        <button className="btn-primary mt-3" disabled={pending} onClick={() => run(() => saveSiteSettings(prices), "Precios guardados.")}>
+          Guardar precios
         </button>
       </div>
 

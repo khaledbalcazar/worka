@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { slugify as toSlug } from "@/lib/slug";
 import { WHATS_NEW_SETTING, sanitizeWhatsNew, type WhatsNewConfig } from "@/lib/whats-new";
-import { BOOST_PLANS, COMPANY_ROLES } from "@/lib/types";
+import { COMPANY_ROLES } from "@/lib/types";
 import { isJobListed } from "@/lib/job-visibility";
 import { getEffectiveCompanyId } from "@/lib/company-context";
 import { getEnterpriseLimits, listingLimitError, planErrorMessage } from "@/lib/subscriptions";
@@ -1511,39 +1511,8 @@ export async function registerCompany(input: {
   return { ok: true, promo: promo.redeemed };
 }
 
-// Potenciar empleo: la empresa solicita el destaque, el admin confirma el pago.
-export async function requestBoost(
-  jobId: string,
-  plan: string,
-  priceGs: number
-): Promise<ActionResult> {
-  const supabase = await getServerClient();
-  if (!supabase) return DEMO;
-  const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "Iniciá sesión como empresa." };
-  // El plan y el precio salen de la lista oficial, no de lo que mande el
-  // navegador: antes una llamada armada a mano podía pedir 30 días por Gs. 1.
-  void priceGs;
-  const option = BOOST_PLANS.find((p) => p.plan === plan);
-  if (!option) return { ok: false, error: "Elegí uno de los planes disponibles." };
-  const companyId = await getEffectiveCompanyId(supabase, user.id);
-  if (!companyId) return { ok: false, error: "Tu cuenta no tiene una empresa asociada." };
-  const { data: job } = await supabase
-    .from("jobs")
-    .select("id")
-    .eq("id", jobId)
-    .eq("company_id", companyId)
-    .maybeSingle();
-  if (!job) return { ok: false, error: "Esa vacante no es de tu empresa." };
-  const { error } = await supabase.from("boost_requests").insert({
-    job_id: jobId,
-    company_id: companyId,
-    plan: option.plan,
-    price_gs: option.price_gs,
-  });
-  if (error) return { ok: false, error: "No pudimos registrar la solicitud." };
-  return { ok: true };
-}
+// Potenciar empleo: se paga con tarjeta por dLocal Go (app/billing-actions.ts).
+// resolveBoost queda para las solicitudes manuales que quedaron de antes.
 
 export async function resolveBoost(
   boostId: string,

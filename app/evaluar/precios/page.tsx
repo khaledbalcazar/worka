@@ -199,10 +199,9 @@ export default async function PreciosPage() {
             Cómo se paga
           </h2>
           <p className="text-sm text-[#5f5f5f] mt-2 leading-relaxed">
-            Con tarjeta de crédito o débito: pagás 1, 3 o 12 meses, el plan se
-            activa al instante y no se renueva solo (si pagás antes de que venza,
-            los días se suman). También por transferencia bancaria o link de pago: nos
-            avisás y lo activamos en el día. En los dos casos seguís donde
+            Con tarjeta de crédito o débito, en el checkout seguro de dLocal Go:
+            pagás 1, 3 o 12 meses, el plan se activa al instante y no se renueva
+            solo (si pagás antes de que venza, los días se suman). Seguís donde
             estabas: no se pierde ningún proceso ni ninguna evaluación en curso.
           </p>
           <VentasCta

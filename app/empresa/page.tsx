@@ -8,7 +8,7 @@ import {
   getJobsByCompany,
   getSiteSettings,
 } from "@/lib/data";
-import { enterprisePlan, paymentLink } from "@/lib/plans";
+import { enterprisePlan } from "@/lib/plans";
 import { getCompanySubscription, getEnterprisePlanId, getPromotionUsage } from "@/lib/subscriptions";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { redeemSignupPromo } from "@/lib/promo-server";
@@ -72,7 +72,6 @@ export default async function CompanyDashboardPage({ searchParams }: { searchPar
       <CompanyDashboard
         company={company}
         jobs={jobs}
-        paymentLink={paymentLink("enterprise", settings) ?? ""}
         destacadosTarjeta={destacadosTarjeta}
         plan={{ id: plan.id, name: plan.name, endsAt: subscription?.ends_at ?? null, limits: plan.limits, usage }}
         stats={stats}

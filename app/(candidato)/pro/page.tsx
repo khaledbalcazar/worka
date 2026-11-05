@@ -15,7 +15,7 @@ import PlanCheckout from "@/components/plans/PlanCheckout";
 import EntityAvatar from "@/components/EntityAvatar";
 import { getCurrentCandidate, getMyApplications, getSiteSettings, isLive } from "@/lib/data";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { ALWAYS_FREE_FOR_PEOPLE, PRO_BRAND, WORKA_PRO, formatMoney, localMonthlyPrice, monthlyPrice, paymentLink, requestMoney } from "@/lib/plans";
+import { ALWAYS_FREE_FOR_PEOPLE, PRO_BRAND, WORKA_PRO, formatMoney, localMonthlyPrice, monthlyPrice, requestMoney } from "@/lib/plans";
 import { countryByCode } from "@/lib/countries";
 import { listReceipts } from "@/lib/receipts-server";
 import ReceiptList from "@/components/plans/ReceiptList";
@@ -208,17 +208,12 @@ export default async function WorkaProPage({ searchParams }: { searchParams: Pro
           <div className="card p-5">
             <h2 className="font-semibold text-lg">{pro ? "Renová" : "Activá"} {PRO_BRAND}</h2>
             <p className="text-sm text-muted mb-4">
-              {priceLabel} por mes.{" "}
-              {tarjeta
-                ? "Con tarjeta se activa al instante; con el link de pago nos avisás y lo activamos en el día."
-                : "Pagás con el link de pago, nos avisás y lo activamos en el día."}
+              {priceLabel} por mes. Pagás con tarjeta y se activa al instante.
             </p>
             <PlanCheckout
               product="pro"
               plans={[{ id: "pro", name: PRO_BRAND, monthly: localPrice.amount, monthlyGs: monthlyPrice("pro", "pro", settings) }]}
               currency={country.currencyCode}
-              billing={{ name: candidate.full_name, doc: "", docLabel: country.taxIdLabel }}
-              paymentLink={paymentLink("pro", settings)}
               pending={pending}
               tarjeta={tarjeta}
             />

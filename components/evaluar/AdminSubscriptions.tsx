@@ -13,9 +13,9 @@ import { PLANS, type PlanKey } from "@/lib/evaluar-plans";
 
 // Suscripciones de Worka Evaluar en el backoffice.
 //
-// El cobro es por transferencia o link y la activación es manual: acá es donde
-// se cierra ese circuito. Sin esta pantalla habría que editar la tabla a mano
-// en Supabase cada vez que una empresa paga.
+// El cobro es con tarjeta por dLocal Go y se activa solo; acá quedan las
+// altas manuales (cortesías, Corporativo a medida) y las correcciones. Sin
+// esta pantalla habría que editar la tabla a mano en Supabase.
 export default function AdminSubscriptions({
   accounts,
 }: {

@@ -817,8 +817,9 @@ export default function AdminPanel({
           ⚡ Vacantes potenciadas
         </h2>
         <p className="text-sm text-gray-500 -mt-2">
-          Al confirmar el pago, la vacante pasa a ⭐ destacada por los días del
-          plan. El link de pago se configura abajo en el sitio.
+          Las pagadas con tarjeta (dLocal Go) se activan solas. Acá quedan las
+          solicitudes viejas de pago manual: al confirmarlas, la vacante pasa a
+          ⭐ destacada por los días del plan.
         </p>
         {boosts.length === 0 && (
           <div className="card p-6 text-center text-sm text-gray-400">
@@ -902,7 +903,6 @@ export default function AdminPanel({
               ["hero_subtitle", "Subtítulo de la portada"],
               ["contact_email", "Email de contacto"],
               ["contact_whatsapp", "WhatsApp de contacto"],
-              ["payment_link", "Link de pago (potenciar empleo)"],
               ["help_text", "Texto de ayuda"],
               ["custom_industries", "Rubros extra (separados por coma)"],
               ["custom_cities", "Ciudades extra (separadas por coma)"],

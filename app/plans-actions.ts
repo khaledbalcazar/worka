@@ -4,23 +4,18 @@ import { revalidatePath } from "next/cache";
 import { getServerClient, getCurrentUser } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { getCompanyAccess } from "@/lib/company-context";
-import { getSiteSettings } from "@/lib/data";
 import { notify, notifyMany } from "@/lib/notify";
 import { isJobListed } from "@/lib/job-visibility";
 import { askJson } from "@/lib/ai-server";
 import { bullets, formatPeriod, type CvData } from "@/lib/cv";
 import {
-  BILLING_OPTIONS,
   ENTERPRISE_BRAND,
   PRO_BRAND,
   WORKA_PRO,
   enterpriseLimits,
   enterprisePlan,
   extendedEnd,
-  formatGs,
-  formatMoney,
   isPaidPlan,
-  localTotal,
   type Product,
 } from "@/lib/plans";
 import {
@@ -57,104 +52,9 @@ function formatDay(iso: string): string {
 
 // ── Cobro manual ────────────────────────────────────────────────────────
 
-// La persona pagó con el link y avisa. Queda pendiente hasta que el admin
-// confirme el pago. El monto se calcula acá, nunca llega del navegador.
-export async function requestPlanPayment(input: {
-  product: Product;
-  plan: string;
-  months: number;
-  reference: string;
-  billingName?: string;
-  billingDoc?: string;
-}): Promise<Result> {
-  const supabase = await getServerClient();
-  if (!supabase) return DEMO;
-  const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "Iniciá sesión primero." };
-
-  const product: Product = input.product === "pro" ? "pro" : "enterprise";
-  if (!isPaidPlan(product, input.plan)) return { ok: false, error: "Elegí un plan." };
-  if (!BILLING_OPTIONS.some((o) => o.months === input.months)) return { ok: false, error: "Elegí la duración." };
-
-  // ¿A nombre de quién? La empresa paga por la empresa (el dueño o un
-  // administrador del equipo); la persona, por sí misma.
-  let payerId = user.id;
-  let country = "py";
-  let defaultName = "";
-  if (product === "enterprise") {
-    const access = await getCompanyAccess(supabase, user.id);
-    if (!access) return { ok: false, error: "Tu cuenta no tiene una empresa asociada." };
-    if (access.role !== "dueño" && access.role !== "administrador")
-      return { ok: false, error: "Solo el dueño o un administrador del equipo puede contratar el plan." };
-    payerId = access.companyId;
-    const { data: comp } = await supabase.from("companies").select("company_name, country").eq("id", payerId).maybeSingle();
-    country = comp?.country ?? "py";
-    defaultName = comp?.company_name ?? "";
-  } else {
-    const { data: cand } = await supabase.from("candidates").select("id, full_name, country").eq("id", user.id).maybeSingle();
-    if (!cand) return { ok: false, error: "Worka Pro es para cuentas de candidato." };
-    country = cand.country ?? "py";
-    defaultName = cand.full_name ?? "";
-  }
-
-  // Precio en la moneda del país de quien paga (y su equivalente en Gs).
-  const settings = await getSiteSettings();
-  const { local, gs: amount } = localTotal(product, input.plan, input.months, country, settings);
-  const reference = input.reference.trim().slice(0, 120);
-  const billingName = (input.billingName ?? "").trim().slice(0, 120) || defaultName;
-  const billingDoc = (input.billingDoc ?? "").trim().slice(0, 30);
-
-  const db = getAdminClient() ?? supabase;
-  const { data: pending } = await db
-    .from("payment_requests")
-    .select("id")
-    .eq("user_id", payerId)
-    .eq("product", product)
-    .eq("status", "pendiente")
-    .limit(1);
-  if (pending && pending.length > 0)
-    return { ok: false, error: "Ya tenés un pago en revisión. Te avisamos apenas lo confirmemos." };
-
-  const base = {
-    user_id: payerId,
-    product,
-    plan: input.plan,
-    months: input.months,
-    amount_gs: amount,
-    reference: reference || null,
-  };
-  let { error } = await db.from("payment_requests").insert({
-    ...base,
-    currency: local.currency,
-    amount_local: local.amount,
-    billing_name: billingName || null,
-    billing_doc: billingDoc || null,
-  });
-  // Sin la migración 048 no existen las columnas nuevas: se guarda lo básico.
-  if (error && /column/i.test(error.message)) ({ error } = await db.from("payment_requests").insert(base));
-  if (error) {
-    console.error(`[worka:plans] payment_request insert failed: ${error.message}`);
-    return { ok: false, error: "No pudimos registrar tu aviso de pago. ¿Ya corriste la migración 047?" };
-  }
-
-  // Aviso al admin (campanita + correo).
-  const admin = getAdminClient();
-  if (admin) {
-    const { data: admins } = await admin.from("profiles").select("id").eq("role", "admin");
-    await notifyMany(((admins ?? []) as { id: string }[]).map((a) => a.id), (id) => ({
-      userId: id,
-      icon: "💳",
-      title: "Pago para confirmar",
-      body: `${planLabel(product, input.plan)} · ${input.months} ${input.months === 1 ? "mes" : "meses"} · ${formatMoney(local)}${local.currency !== "PYG" ? ` (${formatGs(amount)})` : ""}${reference ? ` · Ref: ${reference}` : ""}`,
-      href: "/admin#pagos",
-      cta: "Revisar pago",
-    }));
-  }
-
-  revalidatePath(product === "pro" ? "/pro" : "/empresa/planes");
-  revalidatePath("/admin");
-  return { ok: true };
-}
+// Ya no se piden pagos manuales: todo se cobra con tarjeta por dLocal Go
+// (app/billing-actions.ts). Lo que sigue resuelve los avisos de pago que
+// quedaron pendientes de antes del cambio, y las altas de cortesía.
 
 // El admin confirma (o rechaza) un pago. Confirmar activa el plan o lo
 // extiende desde su vencimiento, sin perder días.

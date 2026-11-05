@@ -11,7 +11,7 @@ import VentasCta from "@/components/evaluar/VentasCta";
 
 // Mi plan de Worka Evaluar: en qué estado está la cuenta y cómo pagar.
 // Con el cobro con tarjeta configurado, se paga acá mismo y el plan se
-// activa solo; sin él, se ofrece el contacto para pagar por transferencia.
+// activa solo; sin él, se ofrece el contacto con ventas.
 
 export const metadata = { title: "Mi plan" };
 
@@ -71,7 +71,7 @@ export default async function EvaluarPlanPage({
         ) : (
           <div>
             <p className="text-sm text-[#404040]">
-              Por ahora el pago es por transferencia bancaria o link de pago. Escribinos y activamos tu plan en el día.
+              El pago en línea todavía no está disponible. Escribinos y te avisamos apenas se habilite.
             </p>
             <VentasCta variante="cta" className="w-full mt-4" mensaje="Hola, quiero contratar Worka Evaluar.">
               Contratar por WhatsApp

@@ -14,7 +14,7 @@ export const FAQS: Faq[] = [
   },
   {
     q: "¿Cómo funciona el período de prueba?",
-    a: "Tenés 15 días de acceso completo, sin restricciones y sin tarjeta. Si al final decidís seguir, coordinamos el pago por transferencia o link de pago. No hay cobro automático: la renovación la confirmás vos.",
+    a: "Tenés 15 días de acceso completo, sin restricciones y sin tarjeta. Si al final decidís seguir, pagás con tarjeta desde «Mi plan» y se activa al instante. No hay cobro automático: la renovación la confirmás vos.",
   },
   {
     q: "¿Los candidatos necesitan crear una cuenta para rendir?",

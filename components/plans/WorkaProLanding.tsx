@@ -25,8 +25,8 @@ export default function WorkaProLanding({ country, settings }: { country: Countr
   const vos = ["py", "ar"].includes(country.code);
   const faqs = [
     { q: "¿Tengo que pagar para postularme?", a: "No. Postularte, armar tu CV, las alertas diarias y los mensajes con empresas son gratis para siempre. Worka Pro suma herramientas, no quita nada." },
-    { q: "¿Cómo se paga?", a: `Con el link de pago, en un solo pago por 1, 3 o 12 meses (el anual cuesta 10). No hay débito automático: cuando vence, ${vos ? "decidís" : "decides"} si renovar.` },
-    { q: `¿En qué moneda pago desde ${country.name}?`, a: country.currencyCode === "PYG" ? "En guaraníes." : `El precio se muestra en ${country.currencyCode} para que sepas cuánto es. El link de pago cobra el equivalente en guaraníes y tu banco o tarjeta hace la conversión.` },
+    { q: "¿Cómo se paga?", a: `Con tarjeta de crédito o débito, en un solo pago por 1, 3 o 12 meses (el anual cuesta 10). No hay débito automático: cuando vence, ${vos ? "decidís" : "decides"} si renovar.` },
+    { q: `¿En qué moneda pago desde ${country.name}?`, a: country.currencyCode === "PYG" ? "En guaraníes." : `El precio se muestra en ${country.currencyCode} para que sepas cuánto es. El cobro se hace en guaraníes y tu banco o tarjeta hace la conversión.` },
     { q: "¿Me dan comprobante?", a: "Sí: un recibo digital con número y código QR para verificarlo. Por ahora es sin valor fiscal." },
   ];
   return (
