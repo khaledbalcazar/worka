@@ -6,15 +6,17 @@ import { planDisplayName } from "@/lib/plans";
 import { accesoHasta, leerDatosCompra, type DatosCompra } from "./catalogo";
 import { leerSuscripcion, type SuscripcionLs } from "./lemonsqueezy";
 
-// Lo que hace Worka con cada evento de Lemon Squeezy.
+// Lo que hace Worka con cada evento de Lemon Squeezy (heredado: solo llegan
+// los de las suscripciones contratadas antes de dLocal Go). Los destacados
+// los reusa también pagos.ts.
 //
 // Corre desde el webhook, sin sesión: escribe con la service role. Quién
 // pagó y qué compró NO sale de lo que manda el navegador sino de los datos
 // ocultos del checkout (meta.custom_data), que armó el servidor de Worka al
 // crear el checkout y que Lemon Squeezy devuelve firmados en el webhook.
 
-type Admin = NonNullable<ReturnType<typeof getAdminClient>>;
-type Datos = DatosCompra & { compra: { product: string; plan: string; months?: number } };
+export type Admin = NonNullable<ReturnType<typeof getAdminClient>>;
+export type Datos = DatosCompra & { compra: { product: string; plan: string; months?: number } };
 
 export type Evento = {
   meta: { event_name: string; test_mode?: boolean; custom_data?: unknown };
@@ -251,7 +253,7 @@ async function avisarCobroFallido(datos: Datos) {
 
 // ── Destacados (pago único) ────────────────────────────────────
 
-async function activarDestacado(admin: Admin, datos: Datos, orderId: string): Promise<Resultado> {
+export async function activarDestacado(admin: Admin, datos: Datos, orderId: string): Promise<Resultado> {
   const { data: boost } = await admin
     .from("boost_requests")
     .select("id, job_id, company_id, plan, status")
@@ -286,7 +288,7 @@ async function activarDestacado(admin: Admin, datos: Datos, orderId: string): Pr
   return { ok: true };
 }
 
-async function quitarDestacado(admin: Admin, datos: Datos): Promise<Resultado> {
+export async function quitarDestacado(admin: Admin, datos: Datos): Promise<Resultado> {
   const { data: boost } = await admin
     .from("boost_requests")
     .select("id, job_id, status")

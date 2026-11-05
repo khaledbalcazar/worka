@@ -6,22 +6,41 @@ import { getCompanyAccess } from "@/lib/company-context";
 import { getSiteSettings } from "@/lib/data";
 import { SITE_URL, evaluarUrl } from "@/lib/supabase/config";
 import { BOOST_PLANS } from "@/lib/types";
-import { compraValida, type Compra, type DatosCompra } from "@/lib/billing/catalogo";
-import { crearCheckout, leerSuscripcion } from "@/lib/billing/lemonsqueezy";
-import { precioUsd } from "@/lib/billing/ofertas";
+import { planDisplayName } from "@/lib/plans";
+import { compraValida, type Compra } from "@/lib/billing/catalogo";
+import { crearPago, dlocalConfig } from "@/lib/billing/dlocalgo";
+import { leerSuscripcion } from "@/lib/billing/lemonsqueezy";
+import { confirmarPago } from "@/lib/billing/pagos";
+import { precioCobro } from "@/lib/billing/ofertas";
 
-// Pago con tarjeta (Lemon Squeezy): abrir el checkout y gestionar la
-// suscripción. Lo que activa el plan es el webhook
-// (app/api/webhooks/lemonsqueezy), nunca esta acción: acá todavía no se pagó.
+// Pago con tarjeta (dLocal Go): abrir el checkout y confirmar el pago a la
+// vuelta. Lo que activa el plan es confirmarPago, que le pregunta el estado a
+// la API; desde el webhook (app/api/webhooks/dlocalgo) o desde la página de
+// retorno, nunca porque el navegador diga que pagó.
 
 type Result = { ok: boolean; error?: string; url?: string };
 
 const BASE = SITE_URL.replace(/\/$/, "");
 
+/** Agrega parámetros a una URL que puede traer ya los suyos. */
+function conParams(url: string, params: Record<string, string>): string {
+  const u = new URL(url);
+  for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
+  return u.toString();
+}
+
+function nombreCompra(c: Compra): string {
+  const duracion = c.months === 12 ? "12 meses" : c.months === 3 ? "3 meses" : "1 mes";
+  if (c.product === "boost") return `Worka · vacante destacada ${c.plan} días`;
+  if (c.product === "evaluar")
+    return `Worka Evaluar ${c.plan === "profesional" ? "Profesional" : "Esencial"} · ${duracion}`;
+  return `${planDisplayName(c.product, c.plan)} · ${duracion}`;
+}
+
 /**
- * Crea el checkout de una compra y devuelve su URL. El plan, la duración y
- * el precio se validan y se calculan acá: del navegador solo llega qué
- * eligió la persona.
+ * Crea el pago de una compra y devuelve la URL del checkout. El plan, la
+ * duración y el precio se validan y se calculan acá: del navegador solo
+ * llega qué eligió la persona.
  */
 export async function startCardCheckout(input: {
   product: string;
@@ -40,11 +59,14 @@ export async function startCardCheckout(input: {
   if (!supabase) return { ok: false, error: "Modo demostración: el pago no está disponible." };
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Iniciá sesión primero." };
+  if (!dlocalConfig()) return { ok: false, error: "El pago con tarjeta todavía no está configurado." };
+  const admin = getAdminClient();
+  if (!admin) return { ok: false, error: "No pudimos abrir el pago. Probá de nuevo en un rato." };
 
   // ¿A nombre de quién se paga? Mismas reglas que el cobro manual.
   let payerId = user.id;
   let nombre: string | null = null;
-  let volver = `${BASE}/empresa/planes?pago=ok`;
+  let volver = `${BASE}/empresa/planes`;
   let boostId: string | undefined;
 
   if (compra.product === "enterprise" || compra.product === "boost") {
@@ -61,38 +83,17 @@ export async function startCardCheckout(input: {
     const { data: cand } = await supabase.from("candidates").select("full_name").eq("id", user.id).maybeSingle();
     if (!cand) return { ok: false, error: "Worka Pro es para cuentas de candidato." };
     nombre = cand.full_name ?? null;
-    volver = `${BASE}/pro?pago=ok`;
+    volver = `${BASE}/pro`;
   } else {
     // Evaluar: la cuenta es de la empresa que inició sesión (company_id = user.id).
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
     if (profile?.role !== "company") return { ok: false, error: "Worka Evaluar es para cuentas de empresa." };
     const { data: comp } = await supabase.from("companies").select("company_name").eq("id", user.id).maybeSingle();
     nombre = comp?.company_name ?? null;
-    volver = `${evaluarUrl("/app")}?pago=ok`;
+    volver = evaluarUrl("/app/plan");
   }
 
-  // Una sola suscripción con tarjeta por producto: una segunda cobraría dos
-  // veces. El cambio de plan se hace cancelando la actual.
-  if (compra.product !== "boost") {
-    const admin = getAdminClient();
-    if (admin) {
-      const { data: vigente } = await admin
-        .from("billing_subscriptions")
-        .select("id")
-        .eq("user_id", payerId)
-        .eq("product", compra.product)
-        .in("status", ["active", "on_trial", "past_due"])
-        .limit(1)
-        .maybeSingle();
-      if (vigente)
-        return {
-          ok: false,
-          error: "Ya tenés una suscripción con tarjeta para este producto. Gestionala desde «Gestionar suscripción».",
-        };
-    }
-  }
-
-  // Destacado: se crea la solicitud antes del pago, y el webhook la activa.
+  // Destacado: se crea la solicitud antes del pago, y la confirmación la activa.
   if (compra.product === "boost") {
     const opcion = BOOST_PLANS.find((p) => p.days === Number(compra.plan));
     if (!opcion || !input.jobId) return { ok: false, error: "Elegí la vacante y el plan." };
@@ -110,36 +111,93 @@ export async function startCardCheckout(input: {
       .single();
     if (error || !boost) return { ok: false, error: "No pudimos preparar el destacado." };
     boostId = boost.id as string;
-    volver = `${BASE}/empresa?pago=ok`;
+    volver = `${BASE}/empresa`;
   }
 
   const settings = await getSiteSettings();
-  const centavos = precioUsd(compra, settings);
-  if (centavos <= 0) return { ok: false, error: "Este plan todavía no tiene precio cargado." };
+  const monto = precioCobro(compra, settings);
+  if (!monto) return { ok: false, error: "Este plan todavía no tiene precio cargado." };
 
-  const custom: DatosCompra = {
-    payer_id: payerId,
-    buyer_id: user.id,
-    product: compra.product,
-    plan: compra.plan,
-    ...(compra.months ? { months: String(compra.months) } : {}),
-    ...(boostId ? { boost_id: boostId } : {}),
-  };
+  // La compra queda guardada antes de ir al checkout: el pago solo lleva su
+  // id (order_id), y es esta fila la que dice a quién activar y qué.
+  const { data: fila, error: filaError } = await admin
+    .from("billing_payments")
+    .insert({
+      payer_id: payerId,
+      buyer_id: user.id,
+      product: compra.product,
+      plan: compra.plan,
+      months: compra.months ?? null,
+      boost_id: boostId ?? null,
+      amount: monto.valor,
+      currency: monto.moneda,
+      status: "CREATED",
+      test_mode: dlocalConfig()?.sandbox ?? false,
+    })
+    .select("id")
+    .single();
+  if (filaError || !fila) {
+    console.error("[worka:billing] guardar compra:", filaError?.message);
+    return { ok: false, error: "No pudimos abrir el pago. ¿Ya corriste la migración 058?" };
+  }
+  const ref = fila.id as string;
 
-  const r = await crearCheckout({
-    compra,
-    centavos,
-    custom: custom as unknown as Record<string, string>,
+  const r = await crearPago({
+    orderId: ref,
+    monto: monto.valor,
+    descripcion: nombreCompra(compra),
     email: user.email ?? null,
     nombre,
-    volver,
+    exito: conParams(volver, { pago: "ok", ref }),
+    volver: conParams(volver, { pago: "cancelado" }),
+    aviso: `${BASE}/api/webhooks/dlocalgo`,
   });
-  return r.ok ? { ok: true, url: r.url } : { ok: false, error: r.error };
+  if (!r.ok) {
+    await admin.from("billing_payments").update({ status: "FAILED", error: r.error }).eq("id", ref);
+    return { ok: false, error: r.error };
+  }
+  await admin
+    .from("billing_payments")
+    .update({ provider_payment_id: r.id, status: "PENDING", updated_at: new Date().toISOString() })
+    .eq("id", ref);
+  return { ok: true, url: r.url };
 }
 
 /**
- * Enlace al portal de Lemon Squeezy para cambiar la tarjeta o cancelar. Se
- * pide en el momento porque los enlaces del portal vienen firmados y vencen.
+ * A la vuelta del checkout: le pregunta a dLocal Go cómo quedó el pago y, si
+ * entró, activa el plan sin esperar el aviso. Lo puede pedir solo quien
+ * compró o la cuenta que paga.
+ */
+export async function checkCardPayment(
+  ref: string
+): Promise<{ ok: boolean; estado?: "pagado" | "pendiente" | "rechazado"; error?: string }> {
+  if (!/^[0-9a-f-]{36}$/i.test(ref)) return { ok: false, error: "Pago desconocido." };
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Iniciá sesión primero." };
+  const admin = getAdminClient();
+  if (!admin) return { ok: false, error: "No pudimos confirmar el pago." };
+
+  const { data: fila } = await admin
+    .from("billing_payments")
+    .select("buyer_id, payer_id")
+    .eq("id", ref)
+    .maybeSingle();
+  if (!fila || (fila.buyer_id !== user.id && fila.payer_id !== user.id))
+    return { ok: false, error: "Pago desconocido." };
+
+  const r = await confirmarPago({ id: ref });
+  if (!r.ok && r.reintentar) return { ok: true, estado: "pendiente" };
+  if (!r.ok) return { ok: false, error: "Recibimos el pago pero no coincide con la compra. Escribinos y lo revisamos." };
+  if (r.estado === "PAID") return { ok: true, estado: "pagado" };
+  if (r.estado === "REJECTED" || r.estado === "CANCELLED" || r.estado === "EXPIRED")
+    return { ok: true, estado: "rechazado" };
+  return { ok: true, estado: "pendiente" };
+}
+
+/**
+ * Heredado de Lemon Squeezy: el portal para cancelar una suscripción que se
+ * contrató antes de pasar a dLocal Go. Se pide en el momento porque los
+ * enlaces del portal vienen firmados y vencen.
  */
 export async function openBillingPortal(product: "enterprise" | "pro" | "evaluar"): Promise<Result> {
   const supabase = await getServerClient();

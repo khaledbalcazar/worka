@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { OfertaTarjeta } from "@/lib/billing/ofertas";
-import { formatoUsd } from "@/lib/billing/catalogo";
+import { formatoMonto } from "@/lib/billing/catalogo";
 import { GestionarSuscripcion, PagarConTarjeta } from "@/components/plans/CardCheckout";
 
 // Elegir plan y duración de Worka Evaluar y pagar con tarjeta. Corporativo
@@ -13,9 +13,9 @@ const PLANES = [
   { id: "profesional", nombre: "Profesional", detalle: "Procesos sin límite, informes, equipo, IA y Excel" },
 ];
 const DURACIONES = [
-  { months: 1, label: "Mensual" },
-  { months: 3, label: "Trimestral" },
-  { months: 12, label: "Anual (pagás 10 meses)" },
+  { months: 1, label: "1 mes" },
+  { months: 3, label: "3 meses" },
+  { months: 12, label: "12 meses (pagás 10)" },
 ];
 
 export default function EvaluarPlanCheckout({
@@ -42,7 +42,7 @@ export default function EvaluarPlanCheckout({
   }
 
   const clave = `${plan}:${months}`;
-  const disponible = oferta.disponible[clave];
+  const monto = oferta.monto[clave];
 
   return (
     <div className="space-y-4">
@@ -64,14 +64,16 @@ export default function EvaluarPlanCheckout({
               />
               <span className="block font-semibold">{p.nombre}</span>
               <span className="block text-xs opacity-60 mt-0.5">{p.detalle}</span>
-              <span className="block text-sm mt-1.5">{formatoUsd(oferta.usd[`${p.id}:1`] ?? 0)} / mes</span>
+              {oferta.monto[`${p.id}:1`] && (
+                <span className="block text-sm mt-1.5">{formatoMonto(oferta.monto[`${p.id}:1`])} / mes</span>
+              )}
             </label>
           ))}
         </div>
       </fieldset>
 
       <fieldset>
-        <legend className="text-sm font-semibold mb-2">Cada cuánto se cobra</legend>
+        <legend className="text-sm font-semibold mb-2">Cuánto tiempo pagás</legend>
         <div className="grid grid-cols-3 gap-2">
           {DURACIONES.map((d) => (
             <label
@@ -87,18 +89,20 @@ export default function EvaluarPlanCheckout({
                 className="sr-only"
               />
               <span className="block font-medium">{d.label}</span>
-              <span className="block text-xs opacity-60">{formatoUsd(oferta.usd[`${plan}:${d.months}`] ?? 0)}</span>
+              {oferta.monto[`${plan}:${d.months}`] && (
+                <span className="block text-xs opacity-60">{formatoMonto(oferta.monto[`${plan}:${d.months}`])}</span>
+              )}
             </label>
           ))}
         </div>
       </fieldset>
 
-      {disponible ? (
+      {monto ? (
         <PagarConTarjeta
           product="evaluar"
           plan={plan}
           months={months}
-          centavos={oferta.usd[clave]}
+          monto={monto}
           className="nk-cta w-full"
         />
       ) : (

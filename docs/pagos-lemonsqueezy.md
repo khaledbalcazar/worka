@@ -1,3 +1,5 @@
+> Heredado: desde el 04/11/2026 los cobros nuevos van por dLocal Go (ver docs/pagos-dlocalgo.md). Esta guía queda para las suscripciones contratadas antes.
+
 # Pago con tarjeta: Lemon Squeezy
 
 Integración del 24/10/2026. El código ya está: **mientras no cargues las

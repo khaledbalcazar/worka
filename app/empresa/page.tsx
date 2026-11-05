@@ -13,11 +13,12 @@ import { getCompanySubscription, getEnterprisePlanId, getPromotionUsage } from "
 import { getCurrentUser } from "@/lib/supabase/server";
 import { redeemSignupPromo } from "@/lib/promo-server";
 import PromoWelcome from "@/components/plans/PromoWelcome";
+import { ConfirmarPagoTarjeta } from "@/components/plans/CardCheckout";
 
 export const metadata = { title: "Panel de empresa" };
 
-export default async function CompanyDashboardPage({ searchParams }: { searchParams: Promise<{ bienvenida?: string }> }) {
-  const [{ bienvenida }, company] = await Promise.all([searchParams, getCurrentCompany()]);
+export default async function CompanyDashboardPage({ searchParams }: { searchParams: Promise<{ bienvenida?: string; pago?: string; ref?: string }> }) {
+  const [{ bienvenida, pago, ref }, company] = await Promise.all([searchParams, getCurrentCompany()]);
 
   if (!company) {
     return (
@@ -55,6 +56,8 @@ export default async function CompanyDashboardPage({ searchParams }: { searchPar
   const destacadosTarjeta = ofertaDestacados(settings);
   return (
     <div className="space-y-4">
+      {/* Vuelta del checkout de un destacado pagado con tarjeta. */}
+      {pago && <ConfirmarPagoTarjeta pago={pago} refPago={ref} />}
       {/* Puerta de entrada a Worka Evaluar desde donde la empresa ya trabaja:
           si vive solo en su propio dominio, nadie se entera de que existe. */}
       {(promo.redeemed || bienvenida === "promo") && subscription && (

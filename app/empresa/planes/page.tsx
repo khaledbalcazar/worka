@@ -25,11 +25,12 @@ import { countryByCode } from "@/lib/countries";
 import { listReceipts } from "@/lib/receipts-server";
 import ReceiptList from "@/components/plans/ReceiptList";
 import { ofertaTarjeta } from "@/lib/billing/ofertas";
+import { ConfirmarPagoTarjeta } from "@/components/plans/CardCheckout";
 
 export const metadata = { title: ENTERPRISE_BRAND };
 
-export default async function CompanyPlansPage({ searchParams }: { searchParams: Promise<{ plan?: string; pago?: string }> }) {
-  const [{ plan: wanted, pago }, company] = await Promise.all([searchParams, getCurrentCompany()]);
+export default async function CompanyPlansPage({ searchParams }: { searchParams: Promise<{ plan?: string; pago?: string; ref?: string }> }) {
+  const [{ plan: wanted, pago, ref }, company] = await Promise.all([searchParams, getCurrentCompany()]);
   if (!company) {
     return (
       <div className="max-w-md mx-auto card p-8 text-center mt-10">
@@ -174,15 +175,11 @@ export default async function CompanyPlansPage({ searchParams }: { searchParams:
 
       <section className="grid lg:grid-cols-[1fr_360px] gap-6 items-start">
         <div className="card p-5">
-          {pago === "ok" && (
-            <p className="text-sm bg-emerald-50 text-emerald-800 rounded-xl px-3.5 py-2.5 mb-4" role="status">
-              Recibimos tu pago con tarjeta. El plan se activa en unos segundos: si todavía no lo ves, recargá la página.
-            </p>
-          )}
+          {pago && <ConfirmarPagoTarjeta pago={pago} refPago={ref} />}
           <h2 className="font-semibold text-lg">{subscription ? "Renovar o cambiar de plan" : "Contratar"}</h2>
           <p className="text-sm text-muted mb-4">
             {tarjeta
-              ? "Con tarjeta el plan se activa al instante y se renueva solo. Con el link de pago nos avisás y lo activamos en el día."
+              ? "Con tarjeta el plan se activa al instante. Con el link de pago nos avisás y lo activamos en el día."
               : "Pagás con el link de pago y nos avisás. Confirmamos el pago y activamos el plan, normalmente en el día."}{" "}
             Si renovás antes de que venza, los días se suman.
           </p>

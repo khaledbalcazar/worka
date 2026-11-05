@@ -35,7 +35,7 @@ export default function PlanCheckout({
   pending: PendingPayment;
   canPay?: boolean;
   cannotPayReason?: string;
-  /** Pago con tarjeta (Lemon Squeezy). Null si no está configurado. */
+  /** Pago con tarjeta (dLocal Go). Null si no está configurado. */
   tarjeta?: OfertaTarjeta | null;
 }) {
   const [plan, setPlan] = useState(initialPlan && plans.some((p) => p.id === initialPlan) ? initialPlan : plans[0]?.id);
@@ -138,16 +138,16 @@ export default function PlanCheckout({
             tarjeta={tarjeta.suscripcion.tarjeta}
           />
         </div>
-      ) : canPay && selected && tarjeta?.disponible[`${selected.id}:${months}`] ? (
+      ) : canPay && selected && tarjeta?.monto[`${selected.id}:${months}`] ? (
         <div className="mb-4">
           <PagarConTarjeta
             product={product}
             plan={selected.id}
             months={months}
-            centavos={tarjeta.usd[`${selected.id}:${months}`]}
+            monto={tarjeta.monto[`${selected.id}:${months}`]}
           />
           <p className="text-xs text-muted text-center mt-4">
-            ¿Sin tarjeta internacional? Pagá con el link de pago y avisanos:
+            ¿Preferís otro medio? Pagá con el link de pago y avisanos:
           </p>
         </div>
       ) : null}

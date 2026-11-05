@@ -6,6 +6,7 @@ import { getSiteSettings, isLive } from "@/lib/data";
 import { getMyEvaluarAccess } from "@/lib/evaluar";
 import { ofertaTarjeta } from "@/lib/billing/ofertas";
 import EvaluarPlanCheckout from "@/components/evaluar/EvaluarPlanCheckout";
+import { ConfirmarPagoTarjeta } from "@/components/plans/CardCheckout";
 import VentasCta from "@/components/evaluar/VentasCta";
 
 // Mi plan de Worka Evaluar: en qué estado está la cuenta y cómo pagar.
@@ -24,9 +25,9 @@ const ESTADO: Record<string, string> = {
 export default async function EvaluarPlanPage({
   searchParams,
 }: {
-  searchParams: Promise<{ plan?: string; pago?: string }>;
+  searchParams: Promise<{ plan?: string; pago?: string; ref?: string }>;
 }) {
-  const { plan: planInicial, pago } = await searchParams;
+  const { plan: planInicial, pago, ref } = await searchParams;
   let userId: string | null = null;
   if (isLive()) {
     const user = await getCurrentUser();
@@ -45,11 +46,7 @@ export default async function EvaluarPlanPage({
         <ChevronLeft size={16} /> Volver al panel
       </Link>
 
-      {pago === "ok" && (
-        <p className="text-sm bg-emerald-50 text-emerald-800 rounded-xl px-3.5 py-2.5" role="status">
-          Recibimos tu pago con tarjeta. El plan se activa en unos segundos: si todavía no lo ves, recargá la página.
-        </p>
-      )}
+      {pago && <ConfirmarPagoTarjeta pago={pago} refPago={ref} />}
 
       <section className="card p-6">
         <h1 className="text-xl font-semibold">Mi plan</h1>

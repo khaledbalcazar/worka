@@ -29,7 +29,7 @@ import {
 } from "@/lib/subscriptions";
 import { formatDate, timeAgo } from "@/lib/format";
 import { ofertaTarjeta } from "@/lib/billing/ofertas";
-import { GestionarSuscripcion } from "@/components/plans/CardCheckout";
+import { ConfirmarPagoTarjeta, GestionarSuscripcion } from "@/components/plans/CardCheckout";
 
 export const metadata = { title: PRO_BRAND };
 
@@ -40,7 +40,8 @@ const SOURCE: Record<string, string> = {
   perfil: "Abrió tu perfil",
 };
 
-export default async function WorkaProPage() {
+export default async function WorkaProPage({ searchParams }: { searchParams: Promise<{ pago?: string; ref?: string }> }) {
+  const { pago, ref } = await searchParams;
   const candidate = await getCurrentCandidate();
   if (!candidate) {
     return (
@@ -89,6 +90,7 @@ export default async function WorkaProPage() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-10">
+      {pago && <ConfirmarPagoTarjeta pago={pago} refPago={ref} />}
       <header className="card p-5 sm:p-6">
         <p className="plan-eyebrow"><Crown size={15} /> {PRO_BRAND}</p>
         <h1 className="page-title mt-1">{pro ? "Tu búsqueda, con todas las herramientas" : "Conseguí trabajo antes, con más información"}</h1>
@@ -199,14 +201,16 @@ export default async function WorkaProPage() {
         </section>
       )}
 
-      {!pro && (
+      {/* Con tarjeta cada pago cubre un período y no se renueva solo: quien
+          ya es Pro también ve el formulario, para renovar (los días se suman). */}
+      {(!pro || (tarjeta && !tarjeta.suscripcion)) && (
         <section className="grid lg:grid-cols-[1fr_340px] gap-6 items-start">
           <div className="card p-5">
-            <h2 className="font-semibold text-lg">Activá {PRO_BRAND}</h2>
+            <h2 className="font-semibold text-lg">{pro ? "Renová" : "Activá"} {PRO_BRAND}</h2>
             <p className="text-sm text-muted mb-4">
               {priceLabel} por mes.{" "}
               {tarjeta
-                ? "Con tarjeta se activa al instante y se renueva solo; con el link de pago nos avisás y lo activamos en el día."
+                ? "Con tarjeta se activa al instante; con el link de pago nos avisás y lo activamos en el día."
                 : "Pagás con el link de pago, nos avisás y lo activamos en el día."}
             </p>
             <PlanCheckout

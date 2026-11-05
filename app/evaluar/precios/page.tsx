@@ -199,9 +199,9 @@ export default async function PreciosPage() {
             Cómo se paga
           </h2>
           <p className="text-sm text-[#5f5f5f] mt-2 leading-relaxed">
-            Con tarjeta internacional, PayPal, Apple Pay o Google Pay: se cobra
-            en dólares, el plan se activa al instante y se renueva solo hasta que
-            lo canceles. También por transferencia bancaria o link de pago: nos
+            Con tarjeta de crédito o débito: pagás 1, 3 o 12 meses, el plan se
+            activa al instante y no se renueva solo (si pagás antes de que venza,
+            los días se suman). También por transferencia bancaria o link de pago: nos
             avisás y lo activamos en el día. En los dos casos seguís donde
             estabas: no se pierde ningún proceso ni ninguna evaluación en curso.
           </p>

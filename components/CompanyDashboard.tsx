@@ -7,6 +7,7 @@ import type { Company, JobStatus, JobWithCompany } from "@/lib/types";
 import type { CompanyActivity } from "@/lib/data";
 import { BOOST_PLANS } from "@/lib/types";
 import { PagarConTarjeta } from "@/components/plans/CardCheckout";
+import type { Monto } from "@/lib/billing/catalogo";
 import { isJobListed } from "@/lib/job-visibility";
 import { ENTERPRISE_BRAND, type EnterpriseLimits } from "@/lib/plans";
 import { sendUrgentAlert, setJobAutoRenew, applyIncludedBoost } from "@/app/plans-actions";
@@ -338,8 +339,8 @@ export default function CompanyDashboard({
   company: Company;
   jobs: JobWithCompany[];
   paymentLink?: string;
-  /** Destacados que se pueden pagar con tarjeta: días → centavos de dólar. */
-  destacadosTarjeta?: Record<string, number> | null;
+  /** Destacados que se pueden pagar con tarjeta: días → monto. */
+  destacadosTarjeta?: Record<string, Monto> | null;
   stats?: DashStats;
   activity?: CompanyActivity[];
   plan?: DashboardPlan;
@@ -1056,14 +1057,13 @@ export default function CompanyDashboard({
                       product="boost"
                       plan={String(p.days)}
                       jobId={boosting.id}
-                      centavos={destacadosTarjeta[String(p.days)]}
-                      renueva={false}
+                      monto={destacadosTarjeta[String(p.days)]}
                       className="btn-primary w-full justify-between"
                       etiqueta={`${p.plan} · pagar con tarjeta`}
                     />
                   ))}
                   <p className="text-xs text-slate-400 text-center pt-1">
-                    ¿Sin tarjeta internacional? Pedilo y pagás con el link:
+                    ¿Preferís otro medio? Pedilo y pagás con el link:
                   </p>
                 </div>
               )}

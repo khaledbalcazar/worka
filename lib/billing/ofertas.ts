@@ -7,12 +7,12 @@ import {
   MESES_VALIDOS,
   PLANES_COBRABLES,
   accesoHasta,
-  centavosUsd,
-  claveVariante,
   mesesPagados,
+  montoCobro,
   type Compra,
+  type Monto,
 } from "./catalogo";
-import { billingConfig } from "./lemonsqueezy";
+import { dlocalConfig } from "./dlocalgo";
 
 // Precio y disponibilidad del pago con tarjeta, para las pantallas y para
 // el checkout. Las dos cosas salen de acá, así lo que se muestra es
@@ -39,23 +39,24 @@ export function precioGs(c: Compra, settings: Settings): number {
   return totalPrice(c.product, c.plan, c.months ?? 1, settings);
 }
 
-/** Lo mismo en centavos de dólar, con el tipo de cambio del admin. */
-export function precioUsd(c: Compra, settings: Settings): number {
-  return centavosUsd(precioGs(c, settings), fxPerUsd("PYG", settings));
+/**
+ * Lo que se cobra con tarjeta, en la moneda de dLocal Go (guaraníes por
+ * defecto, o dólares con el cambio del admin). Null si el cobro no está
+ * configurado o el plan no tiene precio.
+ */
+export function precioCobro(c: Compra, settings: Settings): Monto | null {
+  const cfg = dlocalConfig();
+  if (!cfg) return null;
+  const m = montoCobro(precioGs(c, settings), cfg.moneda, fxPerUsd("PYG", settings));
+  return m.valor > 0 ? m : null;
 }
 
-/**
- * Destacados con tarjeta: días → centavos de dólar, solo los que tienen
- * variante configurada. Null si el cobro con tarjeta no está configurado.
- */
-export function ofertaDestacados(settings: Settings): Record<string, number> | null {
-  const cfg = billingConfig();
-  if (!cfg) return null;
-  const out: Record<string, number> = {};
+/** Destacados con tarjeta: días → monto. Null si el cobro con tarjeta no está configurado. */
+export function ofertaDestacados(settings: Settings): Record<string, Monto> | null {
+  const out: Record<string, Monto> = {};
   for (const plan of PLANES_COBRABLES.boost) {
-    const compra: Compra = { product: "boost", plan };
-    const centavos = precioUsd(compra, settings);
-    if (cfg.variants[claveVariante(compra)] && centavos > 0) out[plan] = centavos;
+    const m = precioCobro({ product: "boost", plan }, settings);
+    if (m) out[plan] = m;
   }
   return Object.keys(out).length ? out : null;
 }
@@ -72,15 +73,18 @@ export type SuscripcionVigente = {
 };
 
 export type OfertaTarjeta = {
-  /** "plan:meses" → hay variante configurada. */
-  disponible: Record<string, boolean>;
-  /** "plan:meses" → centavos de dólar por cobro. */
-  usd: Record<string, number>;
+  /** "plan:meses" → monto del pago. Si falta, esa combinación no tiene precio. */
+  monto: Record<string, Monto>;
+  /**
+   * Suscripción de Lemon Squeezy contratada antes de dLocal Go, si sigue
+   * vigente: mientras exista no se ofrece pagar de nuevo (cobraría dos
+   * veces) sino gestionarla.
+   */
   suscripcion: SuscripcionVigente | null;
 };
 
 /**
- * Qué se puede pagar con tarjeta para un producto con suscripción. Null si
+ * Qué se puede pagar con tarjeta para un producto con plan. Null si
  * el cobro con tarjeta no está configurado: la pantalla queda como antes,
  * solo con el cobro manual.
  */
@@ -89,17 +93,13 @@ export async function ofertaTarjeta(
   payerId: string | null,
   settings: Settings
 ): Promise<OfertaTarjeta | null> {
-  const cfg = billingConfig();
-  if (!cfg) return null;
+  if (!dlocalConfig()) return null;
 
-  const disponible: Record<string, boolean> = {};
-  const usd: Record<string, number> = {};
+  const monto: Record<string, Monto> = {};
   for (const plan of PLANES_COBRABLES[product]) {
     for (const months of MESES_VALIDOS) {
-      const compra: Compra = { product, plan, months };
-      const k = `${plan}:${months}`;
-      usd[k] = precioUsd(compra, settings);
-      disponible[k] = !!cfg.variants[claveVariante(compra)] && usd[k] > 0;
+      const m = precioCobro({ product, plan, months }, settings);
+      if (m) monto[`${plan}:${months}`] = m;
     }
   }
 
@@ -115,8 +115,9 @@ export async function ofertaTarjeta(
       .limit(1)
       .maybeSingle();
     if (data) {
+      // Cancelada ya no cobra: se puede pagar con dLocal Go y los días se suman.
       const hasta = accesoHasta(data.status, data.renews_at, data.ends_at);
-      if (hasta) {
+      if (hasta && data.status !== "cancelled") {
         suscripcion = {
           status: data.status,
           plan: data.plan,
@@ -131,5 +132,5 @@ export async function ofertaTarjeta(
     }
   }
 
-  return { disponible, usd, suscripcion };
+  return { monto, suscripcion };
 }

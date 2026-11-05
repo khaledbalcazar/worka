@@ -1,4 +1,5 @@
-// Casos de referencia del cobro con Lemon Squeezy. Los valores esperados
+// Casos de referencia del cobro con tarjeta (dLocal Go, y lo heredado de
+// Lemon Squeezy). Los valores esperados
 // están calculados a mano al lado de cada caso.
 //
 // Correr con: npm run test:billing
@@ -8,15 +9,15 @@ import { createHmac } from "node:crypto";
 import {
   accesoHasta,
   centavosUsd,
-  claveVariante,
   compraValida,
+  formatoMonto,
   formatoUsd,
   leerDatosCompra,
-  leerVariantes,
   mesesPagados,
-  todasLasClaves,
+  montoCobro,
+  pagoCubre,
 } from "../../lib/billing/catalogo.ts";
-import { claveEvento, firmaValida } from "../../lib/billing/firma.ts";
+import { claveEvento, firmaDlocalValida, firmaValida } from "../../lib/billing/firma.ts";
 
 const UUID_A = "11111111-1111-4111-8111-111111111111";
 const UUID_B = "22222222-2222-4222-8222-222222222222";
@@ -33,22 +34,25 @@ test("compraValida: solo planes y duraciones que existen", () => {
   assert.equal(compraValida(null), false);
 });
 
-test("claves de variante: 18 en total (15 suscripciones + 3 destacados)", () => {
-  assert.equal(claveVariante({ product: "enterprise", plan: "empresa", months: 12 }), "enterprise:empresa:12");
-  assert.equal(claveVariante({ product: "boost", plan: "30" }), "boost:30");
-  const todas = todasLasClaves();
-  assert.equal(todas.length, 18);
-  assert.equal(new Set(todas).size, 18);
+test("montoCobro: guaraníes tal cual, o dólares enteros", () => {
+  assert.deepEqual(montoCobro(250000, "PYG", 5700), { valor: 250000, moneda: "PYG" });
+  // 250.000 / 5.700 = 43,86 → USD 44 (dLocal Go pide dólares, no centavos)
+  assert.deepEqual(montoCobro(250000, "USD", 5700), { valor: 44, moneda: "USD" });
+  assert.equal(montoCobro(0, "PYG", 5700).valor, 0);
+  assert.equal(formatoMonto({ valor: 250000, moneda: "PYG" }), "Gs. 250.000");
+  assert.equal(formatoMonto({ valor: 44, moneda: "USD" }), "USD 44");
 });
 
-test("leerVariantes: ignora ids que no son números", () => {
-  assert.deepEqual(
-    leerVariantes('{"pro:pro:1": 123456, "pro:pro:3": "789", "pro:pro:12": "abc", "boost:7": 0}'),
-    { "pro:pro:1": "123456", "pro:pro:3": "789" }
-  );
-  assert.deepEqual(leerVariantes("no es json"), {});
-  assert.deepEqual(leerVariantes("[1,2]"), {});
-  assert.deepEqual(leerVariantes(undefined), {});
+test("pagoCubre: solo un pago aprobado, nuestro y por el monto entero", () => {
+  const esperado = { orderId: UUID_A, monto: { valor: 250000, moneda: "PYG" } };
+  const pago = { status: "PAID", order_id: UUID_A, currency: "PYG", amount: 250000 };
+  assert.equal(pagoCubre(pago, esperado), true);
+  assert.equal(pagoCubre({ ...pago, status: "PENDING" }, esperado), false);
+  // Un pago de otra compra que trae otro order_id no activa esta.
+  assert.equal(pagoCubre({ ...pago, order_id: UUID_B }, esperado), false);
+  assert.equal(pagoCubre({ ...pago, currency: "USD" }, esperado), false);
+  assert.equal(pagoCubre({ ...pago, amount: 1000 }, esperado), false);
+  assert.equal(pagoCubre(null, esperado), false);
 });
 
 test("centavosUsd: guaraníes a dólares enteros", () => {
@@ -119,4 +123,15 @@ test("firma del webhook: HMAC-SHA256 del cuerpo crudo", () => {
 test("claveEvento: el mismo cuerpo, la misma clave", () => {
   assert.equal(claveEvento("x"), claveEvento("x"));
   assert.notEqual(claveEvento("x"), claveEvento("y"));
+});
+
+test("firma de dLocal Go: HMAC de la API Key más el cuerpo, con la Secret Key", () => {
+  const cuerpo = '{"payment_id":"DP-283"}';
+  const firma = createHmac("sha256", "MiSecretKey").update("MiApiKey" + cuerpo).digest("hex");
+  const cabecera = `V2-HMAC-SHA256, Signature: ${firma}`;
+  assert.equal(firmaDlocalValida(cuerpo, cabecera, "MiApiKey", "MiSecretKey"), true);
+  assert.equal(firmaDlocalValida(cuerpo + " ", cabecera, "MiApiKey", "MiSecretKey"), false);
+  assert.equal(firmaDlocalValida(cuerpo, cabecera, "OtraApiKey", "MiSecretKey"), false);
+  assert.equal(firmaDlocalValida(cuerpo, `Bearer ${firma}`, "MiApiKey", "MiSecretKey"), false);
+  assert.equal(firmaDlocalValida(cuerpo, null, "MiApiKey", "MiSecretKey"), false);
 });
