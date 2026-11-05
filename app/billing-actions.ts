@@ -34,7 +34,10 @@ const BASE = SITE_URL.replace(/\/$/, "");
  */
 function destinosPago(): { web: string; evaluar: (path: string) => string; aviso: string } {
   const preview = process.env.VERCEL_ENV === "preview";
-  const host = process.env.VERCEL_BRANCH_URL || process.env.VERCEL_URL;
+  // La URL única del deploy y no la de la rama: la de main puede apuntar al
+  // deploy de producción, y además un "Redeploy" como Preview no tiene rama
+  // propia.
+  const host = process.env.VERCEL_URL;
   if (!preview || !host) {
     return { web: BASE, evaluar: evaluarUrl, aviso: `${BASE}/api/webhooks/dlocalgo` };
   }
