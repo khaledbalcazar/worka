@@ -22,6 +22,33 @@ type Result = { ok: boolean; error?: string; url?: string };
 
 const BASE = SITE_URL.replace(/\/$/, "");
 
+/**
+ * A dónde vuelve la persona y a dónde manda dLocal Go el aviso.
+ *
+ * En producción, al sitio. En un deploy de Preview (el que se usa con las
+ * claves de sandbox), a ese mismo deploy: SITE_URL apunta a producción, que
+ * tiene las claves reales, y ahí el pago de prueba no se podía consultar ni
+ * el aviso validar. Si el deploy tiene la protección de Vercel, el aviso
+ * lleva el secreto de "Protection Bypass for Automation" para poder entrar
+ * (la firma cubre solo el cuerpo, así que el parámetro no la cambia).
+ */
+function destinosPago(): { web: string; evaluar: (path: string) => string; aviso: string } {
+  const preview = process.env.VERCEL_ENV === "preview";
+  const host = process.env.VERCEL_BRANCH_URL || process.env.VERCEL_URL;
+  if (!preview || !host) {
+    return { web: BASE, evaluar: evaluarUrl, aviso: `${BASE}/api/webhooks/dlocalgo` };
+  }
+  const web = `https://${host}`;
+  const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+  const aviso = `${web}/api/webhooks/dlocalgo`;
+  return {
+    web,
+    // Sin subdominio evaluar. en Preview: la ruta /evaluar es la misma app.
+    evaluar: (path) => `${web}/evaluar${path}`,
+    aviso: bypass ? conParams(aviso, { "x-vercel-protection-bypass": bypass }) : aviso,
+  };
+}
+
 /** Agrega parámetros a una URL que puede traer ya los suyos. */
 function conParams(url: string, params: Record<string, string>): string {
   const u = new URL(url);
@@ -64,9 +91,10 @@ export async function startCardCheckout(input: {
   if (!admin) return { ok: false, error: "No pudimos abrir el pago. Probá de nuevo en un rato." };
 
   // ¿A nombre de quién se paga? Mismas reglas que el cobro manual.
+  const destino = destinosPago();
   let payerId = user.id;
   let nombre: string | null = null;
-  let volver = `${BASE}/empresa/planes`;
+  let volver = `${destino.web}/empresa/planes`;
   let boostId: string | undefined;
 
   if (compra.product === "enterprise" || compra.product === "boost") {
@@ -83,14 +111,14 @@ export async function startCardCheckout(input: {
     const { data: cand } = await supabase.from("candidates").select("full_name").eq("id", user.id).maybeSingle();
     if (!cand) return { ok: false, error: "Worka Pro es para cuentas de candidato." };
     nombre = cand.full_name ?? null;
-    volver = `${BASE}/pro`;
+    volver = `${destino.web}/pro`;
   } else {
     // Evaluar: la cuenta es de la empresa que inició sesión (company_id = user.id).
     const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
     if (profile?.role !== "company") return { ok: false, error: "Worka Evaluar es para cuentas de empresa." };
     const { data: comp } = await supabase.from("companies").select("company_name").eq("id", user.id).maybeSingle();
     nombre = comp?.company_name ?? null;
-    volver = evaluarUrl("/app/plan");
+    volver = destino.evaluar("/app/plan");
   }
 
   // Destacado: se crea la solicitud antes del pago, y la confirmación la activa.
@@ -111,7 +139,7 @@ export async function startCardCheckout(input: {
       .single();
     if (error || !boost) return { ok: false, error: "No pudimos preparar el destacado." };
     boostId = boost.id as string;
-    volver = `${BASE}/empresa`;
+    volver = `${destino.web}/empresa`;
   }
 
   const settings = await getSiteSettings();
@@ -150,7 +178,7 @@ export async function startCardCheckout(input: {
     nombre,
     exito: conParams(volver, { pago: "ok", ref }),
     volver: conParams(volver, { pago: "cancelado" }),
-    aviso: `${BASE}/api/webhooks/dlocalgo`,
+    aviso: destino.aviso,
   });
   if (!r.ok) {
     await admin.from("billing_payments").update({ status: "FAILED", error: r.error }).eq("id", ref);

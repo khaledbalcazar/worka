@@ -76,9 +76,13 @@ En el panel conviene:
 
 ## Probar en sandbox
 
-1. Cargar las claves de sandbox y `DLOCALGO_SANDBOX=1` en un deploy de
-   preview (el aviso necesita una URL pública; en localhost solo funciona la
-   confirmación al volver).
+1. Cargar las claves de sandbox y `DLOCALGO_SANDBOX=1` solo en el entorno
+   Preview de Vercel, y hacer un deploy nuevo (las variables no cambian los
+   deploys ya hechos). En Preview, el retorno y el aviso vuelven a ese mismo
+   deploy, no a worka.click. Si el proyecto tiene Deployment Protection,
+   activar «Protection Bypass for Automation» (Settings → Deployment
+   Protection): Worka le agrega ese secreto a la URL del aviso. En localhost
+   solo funciona la confirmación al volver.
 2. Correr la migración `supabase/migration-058.sql`.
 3. Pagar un plan con la tarjeta de prueba `4111 1111 1111 1111` (cualquier
    vencimiento futuro, cualquier CVV). Rechazada: `5555 5555 5555 4444`.
